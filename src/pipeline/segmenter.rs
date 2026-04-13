@@ -25,16 +25,22 @@ pub fn smooth_speech(raw: &[bool], frame_ms: u32, hangover_ms: u32) -> Vec<bool>
     out
 }
 
-pub fn speech_segments(smoothed: &[bool], frame_ms: u32, min_speech_ms: u32) -> Vec<Segment> {
+pub fn speech_segments(
+    smoothed: &[bool],
+    frame_ms: u32,
+    min_speech_ms: u32,
+    frame_likelihoods: &[f32],
+) -> Vec<Segment> {
     let mut segs = Vec::new();
-    let mut start = None;
+    let mut start: Option<usize> = None;
     for (i, &v) in smoothed.iter().enumerate() {
         match (start, v) {
-            (None, true) => start = Some(i as u64 * frame_ms as u64),
+            (None, true) => start = Some(i),
             (Some(s), false) => {
-                let end = i as u64 * frame_ms as u64;
-                if end - s >= min_speech_ms as u64 {
-                    segs.push(speech_seg(s, end));
+                let end = i;
+                let duration_ms = (end.saturating_sub(s) as u64) * frame_ms as u64;
+                if duration_ms >= min_speech_ms as u64 {
+                    segs.push(speech_seg(s, end, frame_ms, frame_likelihoods));
                 }
                 start = None;
             }
@@ -42,9 +48,10 @@ pub fn speech_segments(smoothed: &[bool], frame_ms: u32, min_speech_ms: u32) -> 
         }
     }
     if let Some(s) = start {
-        let end = smoothed.len() as u64 * frame_ms as u64;
-        if end - s >= min_speech_ms as u64 {
-            segs.push(speech_seg(s, end));
+        let end = smoothed.len();
+        let duration_ms = (end.saturating_sub(s) as u64) * frame_ms as u64;
+        if duration_ms >= min_speech_ms as u64 {
+            segs.push(speech_seg(s, end, frame_ms, frame_likelihoods));
         }
     }
     segs
@@ -72,52 +79,139 @@ pub fn invert_to_non_voice(
     speech: &[Segment],
     total_ms: u64,
     min_non_voice_ms: u32,
+    frame_ms: u32,
+    frame_likelihoods: &[f32],
 ) -> Vec<Segment> {
     let mut out = Vec::new();
     let mut cursor = 0u64;
     for s in speech {
         if s.start_ms > cursor {
-            push_nv(&mut out, cursor, s.start_ms, min_non_voice_ms);
+            push_nv(
+                &mut out,
+                cursor,
+                s.start_ms,
+                min_non_voice_ms,
+                frame_ms,
+                frame_likelihoods,
+            );
         }
         cursor = s.end_ms;
     }
     if cursor < total_ms {
-        push_nv(&mut out, cursor, total_ms, min_non_voice_ms);
+        push_nv(
+            &mut out,
+            cursor,
+            total_ms,
+            min_non_voice_ms,
+            frame_ms,
+            frame_likelihoods,
+        );
     }
     out
 }
 
-fn speech_seg(start_ms: u64, end_ms: u64) -> Segment {
+fn speech_seg(
+    start_idx: usize,
+    end_idx: usize,
+    frame_ms: u32,
+    frame_likelihoods: &[f32],
+) -> Segment {
+    let frame_ms_u64 = frame_ms.max(1) as u64;
+    let start_ms = start_idx as u64 * frame_ms_u64;
+    let end_ms = end_idx as u64 * frame_ms_u64;
+    let confidence = slice_confidence(frame_likelihoods, start_idx, end_idx, false);
     Segment {
         start_ms,
         end_ms,
         kind: SegmentKind::Speech,
-        confidence: 0.8,
+        confidence,
         tags: vec![],
         prompt: None,
     }
 }
 
-fn push_nv(out: &mut Vec<Segment>, start: u64, end: u64, min_ms: u32) {
+fn push_nv(
+    out: &mut Vec<Segment>,
+    start: u64,
+    end: u64,
+    min_ms: u32,
+    frame_ms: u32,
+    frame_likelihoods: &[f32],
+) {
     if end.saturating_sub(start) >= min_ms as u64 {
+        let confidence = confidence_for_range(frame_likelihoods, frame_ms, start, end, true);
         out.push(Segment {
             start_ms: start,
             end_ms: end,
             kind: SegmentKind::NonVoice,
-            confidence: 0.9,
+            confidence,
             tags: vec![],
             prompt: None,
         });
     }
 }
 
+fn slice_confidence(
+    frame_likelihoods: &[f32],
+    start_idx: usize,
+    end_idx: usize,
+    invert: bool,
+) -> f32 {
+    if frame_likelihoods.is_empty() || end_idx <= start_idx {
+        return 0.5;
+    }
+    let end_idx = end_idx.min(frame_likelihoods.len());
+    if end_idx <= start_idx {
+        return 0.5;
+    }
+    let slice = &frame_likelihoods[start_idx..end_idx];
+    if slice.is_empty() {
+        return 0.5;
+    }
+    let avg = slice.iter().copied().sum::<f32>() / slice.len() as f32;
+    let score = if invert { 1.0 - avg } else { avg };
+    score.clamp(0.0, 1.0)
+}
+
+fn confidence_for_range(
+    frame_likelihoods: &[f32],
+    frame_ms: u32,
+    start_ms: u64,
+    end_ms: u64,
+    invert: bool,
+) -> f32 {
+    if frame_likelihoods.is_empty() || end_ms <= start_ms {
+        return 0.5;
+    }
+    let frame_ms = frame_ms.max(1) as u64;
+    let len = frame_likelihoods.len();
+    let mut start_idx = (start_ms / frame_ms) as usize;
+    if start_idx >= len {
+        start_idx = len.saturating_sub(1);
+    }
+    let mut end_idx = end_ms.div_ceil(frame_ms) as usize;
+    end_idx = end_idx.clamp(start_idx + 1, len);
+    slice_confidence(frame_likelihoods, start_idx, end_idx, invert)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn fake_speech(start_ms: u64, end_ms: u64) -> Segment {
+        Segment {
+            start_ms,
+            end_ms,
+            kind: SegmentKind::Speech,
+            confidence: 0.8,
+            tags: vec![],
+            prompt: None,
+        }
+    }
+
     #[test]
     fn merge_gap_works() {
-        let speech = vec![speech_seg(0, 200), speech_seg(300, 500)];
+        let speech = vec![fake_speech(0, 200), fake_speech(300, 500)];
         let merged = merge_close_segments(&speech, 120);
         assert_eq!(merged.len(), 1);
     }

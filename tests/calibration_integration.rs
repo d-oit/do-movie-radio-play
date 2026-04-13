@@ -1,14 +1,9 @@
 use assert_cmd::Command;
 use predicates::str::contains;
-use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 use tempfile::tempdir;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CalibrationProfile {
-    pub name: String,
-    pub energy_threshold_delta: f32,
-}
+use movie_nonvoice_timeline::learning::profiles::CalibrationProfile;
 
 fn gen_wav_with_speech(path: &std::path::Path, speech_start_ms: u32, speech_end_ms: u32) {
     let spec = hound::WavSpec {
@@ -47,6 +42,7 @@ fn calibration_profile_changes_output() {
     let default_profile = CalibrationProfile {
         name: "test".to_string(),
         energy_threshold_delta: 0.0,
+        version: 1,
     };
     std::fs::write(
         &profile,
@@ -100,10 +96,12 @@ fn positive_delta_reduces_speech_detection() {
     let low_profile = CalibrationProfile {
         name: "low".to_string(),
         energy_threshold_delta: -0.005,
+        version: 1,
     };
     let high_profile = CalibrationProfile {
         name: "high".to_string(),
         energy_threshold_delta: 0.005,
+        version: 1,
     };
 
     std::fs::write(
@@ -232,4 +230,39 @@ fn save_calibration_writes_profile() {
     let content = std::fs::read_to_string(&expected_path).unwrap();
     let saved: CalibrationProfile = serde_json::from_str(&content).unwrap();
     assert_eq!(saved.name, "runtime");
+    assert_eq!(saved.version, 1);
+}
+
+#[test]
+fn apply_calibration_converts_report() {
+    let d = tempdir().unwrap_or_else(|_| panic!("tmpdir"));
+    let report_path = d.path().join("report.json");
+    let output_profile = d.path().join("applied.json");
+    let report = serde_json::json!({
+        "version": 1,
+        "profile": "drama",
+        "records_seen": 10,
+        "speech_to_non_voice": 2,
+        "non_voice_to_speech": 3,
+        "recommended_energy_threshold_delta": -0.0025
+    });
+    std::fs::write(&report_path, serde_json::to_vec_pretty(&report).unwrap()).unwrap();
+
+    Command::cargo_bin("timeline")
+        .unwrap_or_else(|_| panic!("bin"))
+        .args([
+            "apply-calibration",
+            "--report",
+            report_path.to_str().unwrap_or_default(),
+            "--output",
+            output_profile.to_str().unwrap_or_default(),
+        ])
+        .assert()
+        .success();
+
+    let applied: CalibrationProfile =
+        serde_json::from_slice(&std::fs::read(&output_profile).unwrap()).unwrap();
+    assert_eq!(applied.version, 2);
+    assert!(applied.name.contains("drama"));
+    assert_eq!(applied.energy_threshold_delta, -0.0025);
 }

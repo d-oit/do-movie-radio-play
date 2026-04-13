@@ -86,7 +86,9 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     let frame_count = frames.len();
 
     let vad_start = Instant::now();
-    let speech = vad_engine.classify(&frames);
+    let vad_output = vad_engine.classify(&frames);
+    let speech = vad_output.decisions;
+    let frame_likelihoods = vad_output.likelihoods;
     stage_ms.vad_ms = vad_start.elapsed().as_millis();
     let speech_frames = speech.iter().filter(|&&v| v).count();
     info!(
@@ -113,7 +115,12 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     );
 
     let speech_stage = Instant::now();
-    let speech_segments = segmenter::speech_segments(&smoothed, cfg.frame_ms, cfg.min_speech_ms);
+    let speech_segments = segmenter::speech_segments(
+        &smoothed,
+        cfg.frame_ms,
+        cfg.min_speech_ms,
+        &frame_likelihoods,
+    );
     stage_ms.speech_ms = speech_stage.elapsed().as_millis();
     info!(
         stage = "speech_segments",
@@ -137,8 +144,13 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
 
     let total_audio_ms = mono.len() as u64 * 1000 / cfg.sample_rate_hz as u64;
     let invert_start = Instant::now();
-    let non_voice =
-        segmenter::invert_to_non_voice(&merged_speech, total_audio_ms, cfg.min_non_voice_ms);
+    let non_voice = segmenter::invert_to_non_voice(
+        &merged_speech,
+        total_audio_ms,
+        cfg.min_non_voice_ms,
+        cfg.frame_ms,
+        &frame_likelihoods,
+    );
     stage_ms.invert_ms = invert_start.elapsed().as_millis();
     info!(
         stage = "invert",

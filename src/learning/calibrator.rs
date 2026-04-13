@@ -1,12 +1,12 @@
 use anyhow::{Context, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
 use crate::io::json::read_json;
 use crate::learning::corrections::CorrectionRecord;
-use crate::learning::profiles;
+use crate::learning::profiles::{self, CalibrationProfile};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct CalibrationReport {
     version: u32,
     profile: String,
@@ -59,5 +59,24 @@ pub fn run_calibration(corrections_dir: &Path, profile: &str) -> Result<()> {
     fs::create_dir_all(out_dir)?;
     let out_path = out_dir.join("latest-calibration.json");
     fs::write(out_path, serde_json::to_vec_pretty(&report)?)?;
+    Ok(())
+}
+
+pub fn apply_calibration_report(report_path: &Path, output_profile: &Path) -> Result<()> {
+    let report: CalibrationReport = read_json(report_path).with_context(|| {
+        format!(
+            "failed to read calibration report: {}",
+            report_path.display()
+        )
+    })?;
+    let profile = CalibrationProfile {
+        name: format!("{}-v{}", report.profile, report.version + 1),
+        energy_threshold_delta: report.recommended_energy_threshold_delta,
+        version: report.version + 1,
+    };
+    if let Some(parent) = output_profile.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(output_profile, serde_json::to_vec_pretty(&profile)?)?;
     Ok(())
 }

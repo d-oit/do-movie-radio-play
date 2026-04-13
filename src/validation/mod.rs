@@ -72,8 +72,13 @@ pub fn timeline_from_speech_segments(
     total_ms: u64,
     min_non_voice_ms: u32,
 ) -> TimelineOutput {
-    let non_voice =
-        crate::pipeline::segmenter::invert_to_non_voice(speech, total_ms, min_non_voice_ms);
+    let non_voice = crate::pipeline::segmenter::invert_to_non_voice(
+        speech,
+        total_ms,
+        min_non_voice_ms,
+        frame_ms,
+        &[],
+    );
     TimelineOutput {
         file,
         analysis_sample_rate: sample_rate,

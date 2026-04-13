@@ -13,7 +13,7 @@ impl WebRtcVad {
 }
 
 impl VadEngine for WebRtcVad {
-    fn classify(&self, frames: &[Frame]) -> Vec<bool> {
+    fn classify(&self, frames: &[Frame]) -> engine::VadResult {
         tracing::warn!("WebRTC VAD not yet implemented, falling back to energy VAD");
         let fallback = EnergyVad::new(0.015);
         fallback.classify(frames)
@@ -39,7 +39,7 @@ impl SileroVad {
 }
 
 impl VadEngine for SileroVad {
-    fn classify(&self, frames: &[Frame]) -> Vec<bool> {
+    fn classify(&self, frames: &[Frame]) -> engine::VadResult {
         tracing::warn!("Silero VAD not yet implemented, falling back to energy VAD");
         let fallback = EnergyVad::new(0.015);
         fallback.classify(frames)

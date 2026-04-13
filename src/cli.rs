@@ -41,11 +41,19 @@ pub enum Commands {
         input_json: PathBuf,
         #[arg(long)]
         output: PathBuf,
+        #[arg(long)]
+        config: Option<PathBuf>,
     },
     Calibrate {
         corrections_dir: PathBuf,
         #[arg(long, default_value = "drama")]
         profile: String,
+    },
+    ApplyCalibration {
+        #[arg(long, default_value = "analysis/learnings/latest-calibration.json")]
+        report: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
     },
     Bench {
         input_media: PathBuf,

@@ -1,8 +1,7 @@
 use crate::config::AnalysisConfig;
 use crate::types::{SegmentKind, TimelineOutput};
 
-pub fn add_prompts(timeline: &mut TimelineOutput) {
-    let cfg = AnalysisConfig::default();
+pub fn add_prompts(timeline: &mut TimelineOutput, cfg: &AnalysisConfig) {
     for seg in &mut timeline.segments {
         if seg.kind != SegmentKind::NonVoice {
             continue;
@@ -26,12 +25,19 @@ fn prompt_for_tags(tags: &[String]) -> String {
     if tags.iter().any(|t| t == "nature_like") {
         return "No dialogue. Ambient natural atmosphere.".to_string();
     }
+    if tags.iter().any(|t| t == "machinery_like") {
+        return "No dialogue. Mechanical textures and industrial motion.".to_string();
+    }
+    if tags.iter().any(|t| t == "crowd_like") {
+        return "No dialogue. Distant crowd and human presence.".to_string();
+    }
     "No dialogue. Ambient environmental sound.".to_string()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::AnalysisConfig;
     use crate::types::{Segment, TimelineOutput};
 
     #[test]
@@ -49,7 +55,7 @@ mod tests {
                 prompt: None,
             }],
         };
-        add_prompts(&mut t);
+        add_prompts(&mut t, &AnalysisConfig::default());
         assert_eq!(
             t.segments[0].prompt.clone().unwrap_or_default(),
             "No dialogue. Ambient environmental sound."

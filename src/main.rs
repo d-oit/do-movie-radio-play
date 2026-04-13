@@ -14,7 +14,7 @@ use tracing_subscriber::EnvFilter;
 
 use crate::cli::{Cli, Commands};
 use crate::io::json::{read_json, read_timeline, write_json_pretty};
-use crate::learning::calibrator::run_calibration;
+use crate::learning::calibrator::{apply_calibration_report, run_calibration};
 use crate::learning::profiles::CalibrationProfile;
 use crate::pipeline::prompts::add_prompts;
 use crate::pipeline::tags::add_tags;
@@ -87,6 +87,7 @@ fn run() -> Result<()> {
                 let profile = CalibrationProfile {
                     name: "runtime".to_string(),
                     energy_threshold_delta: cfg.vad_threshold_delta,
+                    version: 1,
                 };
                 std::fs::create_dir_all(profile_path.parent().unwrap())?;
                 std::fs::write(&profile_path, serde_json::to_vec_pretty(&profile)?)?;
@@ -102,9 +103,14 @@ fn run() -> Result<()> {
             add_tags(&input_media, &mut timeline)?;
             write_json_pretty(&output, &timeline)?;
         }
-        Commands::Prompt { input_json, output } => {
+        Commands::Prompt {
+            input_json,
+            output,
+            config,
+        } => {
+            let cfg = config::AnalysisConfig::from_args(config, None, None, None, None, None)?;
             let mut timeline = read_timeline(&input_json)?;
-            add_prompts(&mut timeline);
+            add_prompts(&mut timeline, &cfg);
             write_json_pretty(&output, &timeline)?;
         }
         Commands::Calibrate {
@@ -112,6 +118,19 @@ fn run() -> Result<()> {
             profile,
         } => {
             run_calibration(&corrections_dir, &profile)?;
+        }
+        Commands::ApplyCalibration { report, output } => {
+            let out_path = if let Some(path) = output {
+                path
+            } else {
+                get_calibration_dir()?.join("latest.json")
+            };
+            apply_calibration_report(&report, &out_path)?;
+            info!(
+                report = %report.display(),
+                output = %out_path.display(),
+                "applied calibration report"
+            );
         }
         Commands::Bench {
             input_media,

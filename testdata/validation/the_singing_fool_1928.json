@@ -1,0 +1,2615 @@
+{
+  "file": "the_singing_fool_1928.webm",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 20980,
+      "end_ms": 23300,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 24260,
+      "end_ms": 27000,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 52440,
+      "end_ms": 57320,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 57640,
+      "end_ms": 60680,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 67120,
+      "end_ms": 71940,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 72340,
+      "end_ms": 73520,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 73840,
+      "end_ms": 76400,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 84540,
+      "end_ms": 86180,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 419820,
+      "end_ms": 421220,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 425200,
+      "end_ms": 426300,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 513260,
+      "end_ms": 517200,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 541240,
+      "end_ms": 542840,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 552860,
+      "end_ms": 554780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 578080,
+      "end_ms": 579500,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 665980,
+      "end_ms": 667120,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 667580,
+      "end_ms": 669500,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 697280,
+      "end_ms": 701620,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 822020,
+      "end_ms": 824780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 825700,
+      "end_ms": 826940,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 843620,
+      "end_ms": 846080,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1103900,
+      "end_ms": 1104920,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1111040,
+      "end_ms": 1112380,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1223500,
+      "end_ms": 1224620,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1259220,
+      "end_ms": 1260260,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1294880,
+      "end_ms": 1296220,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1440420,
+      "end_ms": 1442640,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1536320,
+      "end_ms": 1537420,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1703520,
+      "end_ms": 1704540,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1739580,
+      "end_ms": 1740580,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1756480,
+      "end_ms": 1758900,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 1763340,
+      "end_ms": 1765400,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2003420,
+      "end_ms": 2004940,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2020600,
+      "end_ms": 2022240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2186120,
+      "end_ms": 2191660,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2251180,
+      "end_ms": 2252420,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2284100,
+      "end_ms": 2285600,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2346760,
+      "end_ms": 2347940,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2366320,
+      "end_ms": 2368880,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2392840,
+      "end_ms": 2394260,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2451660,
+      "end_ms": 2452960,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2471120,
+      "end_ms": 2472120,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2501700,
+      "end_ms": 2502900,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2530420,
+      "end_ms": 2531880,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2573460,
+      "end_ms": 2575500,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2579600,
+      "end_ms": 2580620,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2588060,
+      "end_ms": 2589240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2593240,
+      "end_ms": 2595160,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2596700,
+      "end_ms": 2599960,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2621800,
+      "end_ms": 2624500,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2627360,
+      "end_ms": 2628780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2629680,
+      "end_ms": 2630880,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2637300,
+      "end_ms": 2638700,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2644540,
+      "end_ms": 2645580,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2663000,
+      "end_ms": 2666040,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2669360,
+      "end_ms": 2671440,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2672240,
+      "end_ms": 2673260,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2701580,
+      "end_ms": 2702820,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2727680,
+      "end_ms": 2729020,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2737160,
+      "end_ms": 2739060,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2746500,
+      "end_ms": 2747560,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2750320,
+      "end_ms": 2751720,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2758060,
+      "end_ms": 2759720,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2768620,
+      "end_ms": 2776500,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2777740,
+      "end_ms": 2779460,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2779800,
+      "end_ms": 2783060,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2783380,
+      "end_ms": 2785000,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2790560,
+      "end_ms": 2792340,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2801120,
+      "end_ms": 2802380,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2805500,
+      "end_ms": 2806600,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2815600,
+      "end_ms": 2817360,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2821200,
+      "end_ms": 2822280,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2823340,
+      "end_ms": 2825220,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2882240,
+      "end_ms": 2884380,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2887000,
+      "end_ms": 2888720,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2894440,
+      "end_ms": 2896240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2919720,
+      "end_ms": 2925080,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2941240,
+      "end_ms": 2942300,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2957080,
+      "end_ms": 2958360,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2976200,
+      "end_ms": 2977300,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3002040,
+      "end_ms": 3006800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3007120,
+      "end_ms": 3008500,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3014860,
+      "end_ms": 3017980,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3237820,
+      "end_ms": 3239420,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3260800,
+      "end_ms": 3261980,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3263240,
+      "end_ms": 3264420,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3264960,
+      "end_ms": 3266880,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3267960,
+      "end_ms": 3270200,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3308760,
+      "end_ms": 3313360,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3320420,
+      "end_ms": 3323740,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3327240,
+      "end_ms": 3329920,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3332120,
+      "end_ms": 3334020,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3348740,
+      "end_ms": 3349920,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3371900,
+      "end_ms": 3373540,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3384780,
+      "end_ms": 3390960,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3395320,
+      "end_ms": 3399220,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3402320,
+      "end_ms": 3406600,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3411720,
+      "end_ms": 3414880,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3435380,
+      "end_ms": 3444040,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3444360,
+      "end_ms": 3456980,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3458380,
+      "end_ms": 3462860,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3463200,
+      "end_ms": 3464920,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3465920,
+      "end_ms": 3469240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3469600,
+      "end_ms": 3471300,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3472340,
+      "end_ms": 3473640,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3474400,
+      "end_ms": 3475420,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3477540,
+      "end_ms": 3478700,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3481180,
+      "end_ms": 3483660,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3488740,
+      "end_ms": 3489740,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3496740,
+      "end_ms": 3499360,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3499860,
+      "end_ms": 3501780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3512920,
+      "end_ms": 3514440,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3516140,
+      "end_ms": 3519400,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3521560,
+      "end_ms": 3523480,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3558980,
+      "end_ms": 3560300,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3571580,
+      "end_ms": 3572940,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3574720,
+      "end_ms": 3576040,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3577400,
+      "end_ms": 3582720,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3583100,
+      "end_ms": 3584280,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3630400,
+      "end_ms": 3631780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3634160,
+      "end_ms": 3636380,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3638280,
+      "end_ms": 3639420,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3650420,
+      "end_ms": 3654340,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3654660,
+      "end_ms": 3656720,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3692300,
+      "end_ms": 3693460,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3713360,
+      "end_ms": 3714620,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3722560,
+      "end_ms": 3725120,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3725680,
+      "end_ms": 3726700,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3727120,
+      "end_ms": 3728120,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3732100,
+      "end_ms": 3734200,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3759140,
+      "end_ms": 3760320,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3762120,
+      "end_ms": 3763420,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3764380,
+      "end_ms": 3765620,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3768200,
+      "end_ms": 3770080,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3770820,
+      "end_ms": 3772080,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3778920,
+      "end_ms": 3780800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3787820,
+      "end_ms": 3795480,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3796540,
+      "end_ms": 3801660,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3804360,
+      "end_ms": 3808320,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3817800,
+      "end_ms": 3818900,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3819560,
+      "end_ms": 3821000,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3835860,
+      "end_ms": 3839360,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3864280,
+      "end_ms": 3869640,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3881640,
+      "end_ms": 3883000,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3895960,
+      "end_ms": 3897840,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3913660,
+      "end_ms": 3915640,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3987280,
+      "end_ms": 3988380,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 3990240,
+      "end_ms": 3991300,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4033580,
+      "end_ms": 4036380,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4047620,
+      "end_ms": 4049720,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4055780,
+      "end_ms": 4058320,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4059600,
+      "end_ms": 4060760,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4062000,
+      "end_ms": 4064400,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4110660,
+      "end_ms": 4111920,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4211400,
+      "end_ms": 4216340,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4243100,
+      "end_ms": 4244460,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4251860,
+      "end_ms": 4256860,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4258120,
+      "end_ms": 4260000,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4342320,
+      "end_ms": 4343900,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4345360,
+      "end_ms": 4348160,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4351720,
+      "end_ms": 4352800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4377420,
+      "end_ms": 4378580,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4402460,
+      "end_ms": 4404180,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4404520,
+      "end_ms": 4405520,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4406760,
+      "end_ms": 4409380,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4412580,
+      "end_ms": 4414680,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4415540,
+      "end_ms": 4416900,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4418640,
+      "end_ms": 4419940,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4424800,
+      "end_ms": 4428540,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4482300,
+      "end_ms": 4483680,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4488680,
+      "end_ms": 4489780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4491100,
+      "end_ms": 4492940,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4497200,
+      "end_ms": 4499160,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4501980,
+      "end_ms": 4503540,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4508020,
+      "end_ms": 4509240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4518760,
+      "end_ms": 4522040,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4530720,
+      "end_ms": 4533540,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4535340,
+      "end_ms": 4538680,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4539740,
+      "end_ms": 4542120,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4542580,
+      "end_ms": 4543780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4544740,
+      "end_ms": 4545800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4546960,
+      "end_ms": 4548240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4553600,
+      "end_ms": 4554800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4556700,
+      "end_ms": 4557780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4559960,
+      "end_ms": 4562900,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4564160,
+      "end_ms": 4567240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4570220,
+      "end_ms": 4572220,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4657960,
+      "end_ms": 4659580,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4661000,
+      "end_ms": 4662740,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4663860,
+      "end_ms": 4665640,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4666940,
+      "end_ms": 4669100,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4670160,
+      "end_ms": 4671300,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4708920,
+      "end_ms": 4709960,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4741740,
+      "end_ms": 4744900,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4763820,
+      "end_ms": 4765420,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4788800,
+      "end_ms": 4791280,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4792660,
+      "end_ms": 4796460,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4801440,
+      "end_ms": 4804420,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4805280,
+      "end_ms": 4806560,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4807560,
+      "end_ms": 4810280,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4817400,
+      "end_ms": 4819020,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4825600,
+      "end_ms": 4827880,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4828260,
+      "end_ms": 4830040,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4834860,
+      "end_ms": 4838680,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4847820,
+      "end_ms": 4851980,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4865040,
+      "end_ms": 4878300,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4878780,
+      "end_ms": 4880760,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4881240,
+      "end_ms": 4882320,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4882800,
+      "end_ms": 4886220,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4886660,
+      "end_ms": 4887780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4889980,
+      "end_ms": 4891160,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4895460,
+      "end_ms": 4897640,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4901280,
+      "end_ms": 4902280,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4905380,
+      "end_ms": 4906660,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4907380,
+      "end_ms": 4910280,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4914560,
+      "end_ms": 4915760,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4925400,
+      "end_ms": 4926980,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4929180,
+      "end_ms": 4931400,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4931880,
+      "end_ms": 4939400,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4940400,
+      "end_ms": 4942960,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4943300,
+      "end_ms": 4945140,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4947960,
+      "end_ms": 4952920,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4955120,
+      "end_ms": 4956520,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4958540,
+      "end_ms": 4959580,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4980360,
+      "end_ms": 4981740,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4982820,
+      "end_ms": 4986700,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4987740,
+      "end_ms": 4989800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 4995280,
+      "end_ms": 4996880,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5003800,
+      "end_ms": 5007980,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5009800,
+      "end_ms": 5011780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5013720,
+      "end_ms": 5016140,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5017520,
+      "end_ms": 5019580,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5022520,
+      "end_ms": 5025780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5033160,
+      "end_ms": 5034400,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5042280,
+      "end_ms": 5043720,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5047160,
+      "end_ms": 5048800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5051100,
+      "end_ms": 5054200,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5062780,
+      "end_ms": 5065560,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5066620,
+      "end_ms": 5067860,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5078220,
+      "end_ms": 5079500,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5086280,
+      "end_ms": 5098940,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5099880,
+      "end_ms": 5103100,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5105780,
+      "end_ms": 5107900,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5115580,
+      "end_ms": 5118100,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5127000,
+      "end_ms": 5128520,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5133720,
+      "end_ms": 5134800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5139280,
+      "end_ms": 5140680,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5148440,
+      "end_ms": 5157140,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5187020,
+      "end_ms": 5188400,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5213220,
+      "end_ms": 5214580,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5215500,
+      "end_ms": 5216540,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5217520,
+      "end_ms": 5219620,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5233460,
+      "end_ms": 5234800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5258320,
+      "end_ms": 5264000,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5270220,
+      "end_ms": 5274240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5288380,
+      "end_ms": 5291800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5306420,
+      "end_ms": 5307880,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5311780,
+      "end_ms": 5312860,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5317260,
+      "end_ms": 5318600,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5326320,
+      "end_ms": 5327760,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5344380,
+      "end_ms": 5346120,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5362020,
+      "end_ms": 5366680,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5384680,
+      "end_ms": 5385980,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5387340,
+      "end_ms": 5388520,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5399700,
+      "end_ms": 5401140,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5420640,
+      "end_ms": 5422160,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5441260,
+      "end_ms": 5443520,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5444440,
+      "end_ms": 5446800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5451480,
+      "end_ms": 5453220,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5456040,
+      "end_ms": 5457080,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5463760,
+      "end_ms": 5467100,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5516840,
+      "end_ms": 5518380,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5526840,
+      "end_ms": 5528180,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5531560,
+      "end_ms": 5532580,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5533260,
+      "end_ms": 5536200,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5573580,
+      "end_ms": 5574940,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5582080,
+      "end_ms": 5583680,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5584060,
+      "end_ms": 5585240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5613220,
+      "end_ms": 5615040,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5615360,
+      "end_ms": 5618140,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5638220,
+      "end_ms": 5640620,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5641000,
+      "end_ms": 5643060,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5644500,
+      "end_ms": 5647060,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5650960,
+      "end_ms": 5652200,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5694700,
+      "end_ms": 5696100,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5704620,
+      "end_ms": 5705620,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5707620,
+      "end_ms": 5709900,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5710220,
+      "end_ms": 5712560,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5754400,
+      "end_ms": 5756240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5758020,
+      "end_ms": 5759100,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5763040,
+      "end_ms": 5764580,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5767120,
+      "end_ms": 5769180,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5771540,
+      "end_ms": 5772960,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5775080,
+      "end_ms": 5778360,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5779740,
+      "end_ms": 5781240,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5781640,
+      "end_ms": 5782820,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5784000,
+      "end_ms": 5785160,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5787520,
+      "end_ms": 5791100,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5791560,
+      "end_ms": 5792960,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5821440,
+      "end_ms": 5825780,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5828220,
+      "end_ms": 5830420,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5843240,
+      "end_ms": 5844440,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5874740,
+      "end_ms": 5875900,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5891740,
+      "end_ms": 5894500,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5898860,
+      "end_ms": 5899920,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5901380,
+      "end_ms": 5902800,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5934040,
+      "end_ms": 5935540,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5935880,
+      "end_ms": 5937000,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5941840,
+      "end_ms": 5944920,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5946520,
+      "end_ms": 5948500,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5956520,
+      "end_ms": 5957980,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5967600,
+      "end_ms": 5969120,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5970060,
+      "end_ms": 5971540,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5977920,
+      "end_ms": 5978980,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5986460,
+      "end_ms": 5987620,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5988640,
+      "end_ms": 5990000,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 5995140,
+      "end_ms": 5997480,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 6000620,
+      "end_ms": 6001640,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 6048720,
+      "end_ms": 6050140,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 6055360,
+      "end_ms": 6056820,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 6057420,
+      "end_ms": 6065440,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 6068780,
+      "end_ms": 6071260,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 6071960,
+      "end_ms": 6073060,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 6077800,
+      "end_ms": 6079000,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 6080360,
+      "end_ms": 6081600,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 6091860,
+      "end_ms": 6092960,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 6103080,
+      "end_ms": 6104220,
+      "kind": "non_voice",
+      "confidence": 0.9,
+      "tags": [],
+      "prompt": null
+    }
+  ]
+}

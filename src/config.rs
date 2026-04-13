@@ -2,6 +2,8 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{env, fs, path::PathBuf};
 
+const VALID_VAD_ENGINES: [&str; 3] = ["energy", "webrtc", "silero"];
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnalysisConfig {
     pub sample_rate_hz: u32,
@@ -51,7 +53,7 @@ impl AnalysisConfig {
             Self::default()
         };
 
-        let mut cfg = apply_env_overrides(cfg);
+        let mut cfg = apply_env_overrides(cfg)?;
         if let Some(t) = threshold_override {
             cfg.energy_threshold = t;
         }
@@ -73,41 +75,65 @@ impl AnalysisConfig {
     }
 }
 
-fn apply_env_overrides(mut cfg: AnalysisConfig) -> AnalysisConfig {
+fn apply_env_overrides(mut cfg: AnalysisConfig) -> Result<AnalysisConfig> {
     if let Ok(v) = env::var("TIMELINE_SAMPLE_RATE") {
-        if let Ok(sr) = v.parse() {
-            cfg.sample_rate_hz = sr;
-        }
+        cfg.sample_rate_hz = parse_env_value("TIMELINE_SAMPLE_RATE", &v)?;
     }
     if let Ok(v) = env::var("TIMELINE_FRAME_MS") {
-        if let Ok(fm) = v.parse() {
-            cfg.frame_ms = fm;
-        }
+        cfg.frame_ms = parse_env_value("TIMELINE_FRAME_MS", &v)?;
     }
     if let Ok(v) = env::var("TIMELINE_MIN_SPEECH_MS") {
-        if let Ok(ms) = v.parse() {
-            cfg.min_speech_ms = ms;
-        }
+        cfg.min_speech_ms = parse_env_value("TIMELINE_MIN_SPEECH_MS", &v)?;
     }
     if let Ok(v) = env::var("TIMELINE_MIN_SILENCE_MS") {
-        if let Ok(ms) = v.parse() {
-            cfg.min_non_voice_ms = ms;
-        }
+        cfg.min_non_voice_ms = parse_env_value("TIMELINE_MIN_SILENCE_MS", &v)?;
     }
     if let Ok(v) = env::var("TIMELINE_ENERGY_THRESHOLD") {
-        if let Ok(t) = v.parse() {
-            cfg.energy_threshold = t;
-        }
+        cfg.energy_threshold = parse_env_value("TIMELINE_ENERGY_THRESHOLD", &v)?;
     }
-    cfg
+    Ok(cfg)
+}
+
+fn parse_env_value<T>(key: &str, value: &str) -> Result<T>
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+{
+    value
+        .parse::<T>()
+        .map_err(|err| anyhow::anyhow!("invalid env var {key}={value:?}: {err}"))
 }
 
 fn validate(cfg: &AnalysisConfig) -> Result<()> {
-    if cfg.sample_rate_hz == 0 || cfg.frame_ms == 0 {
-        bail!("invalid config: sample_rate_hz and frame_ms must be > 0");
+    if cfg.sample_rate_hz == 0 {
+        bail!("invalid config: sample_rate_hz must be > 0");
+    }
+    if cfg.frame_ms == 0 {
+        bail!("invalid config: frame_ms must be > 0");
+    }
+    if cfg.speech_hangover_ms < cfg.frame_ms {
+        bail!("invalid config: speech_hangover_ms must be >= frame_ms");
+    }
+    if cfg.min_speech_ms < cfg.frame_ms {
+        bail!("invalid config: min_speech_ms must be >= frame_ms");
+    }
+    if cfg.min_non_voice_ms < cfg.frame_ms {
+        bail!("invalid config: min_non_voice_ms must be >= frame_ms");
+    }
+    if !(0.0..=1.0).contains(&cfg.energy_threshold) {
+        bail!("invalid config: energy_threshold must be in [0, 1]");
+    }
+    if !(-1.0..=1.0).contains(&cfg.vad_threshold_delta) {
+        bail!("invalid config: vad_threshold_delta must be in [-1, 1]");
     }
     if cfg.prompt_min_confidence <= 0.0 || cfg.prompt_min_confidence > 1.0 {
         bail!("invalid config: prompt_min_confidence must be in (0, 1]");
+    }
+    if !VALID_VAD_ENGINES.contains(&cfg.vad_engine.as_str()) {
+        bail!(
+            "invalid config: vad_engine must be one of {}",
+            VALID_VAD_ENGINES.join(", ")
+        );
     }
     Ok(())
 }
@@ -137,5 +163,33 @@ mod tests {
         assert_eq!(cfg.min_non_voice_ms, 2000);
         assert_eq!(cfg.vad_engine, "silero");
         assert_eq!(cfg.vad_threshold_delta, 0.01);
+    }
+
+    #[test]
+    fn invalid_energy_threshold_is_rejected() {
+        let cfg = AnalysisConfig {
+            energy_threshold: 1.5,
+            ..AnalysisConfig::default()
+        };
+        assert!(validate(&cfg).is_err());
+    }
+
+    #[test]
+    fn min_non_voice_must_be_at_least_frame_ms() {
+        let cfg = AnalysisConfig {
+            frame_ms: 20,
+            min_non_voice_ms: 10,
+            ..AnalysisConfig::default()
+        };
+        assert!(validate(&cfg).is_err());
+    }
+
+    #[test]
+    fn invalid_vad_engine_is_rejected() {
+        let cfg = AnalysisConfig {
+            vad_engine: "bogus".to_string(),
+            ..AnalysisConfig::default()
+        };
+        assert!(validate(&cfg).is_err());
     }
 }

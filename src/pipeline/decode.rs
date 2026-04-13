@@ -1,5 +1,6 @@
 use anyhow::{bail, Context, Result};
 use std::{path::Path, process::Command};
+use tracing::info;
 
 use crate::error::TimelineError;
 use crate::io::wav::read_wav_to_f32;
@@ -9,13 +10,23 @@ pub fn decode_audio(path: &Path) -> Result<(Vec<f32>, u32)> {
         return Err(TimelineError::MissingInput(path.display().to_string()).into());
     }
     if path.extension().and_then(|e| e.to_str()) == Some("wav") {
-        let (samples, sr) = read_wav_to_f32(path)?;
-        if samples.is_empty() {
-            return Err(TimelineError::EmptyAudio.into());
+        match read_wav_to_f32(path) {
+            Ok((samples, sr)) => {
+                if samples.is_empty() {
+                    return Err(TimelineError::EmptyAudio.into());
+                }
+                return Ok((samples, sr));
+            }
+            Err(err) => {
+                info!(input = %path.display(), error = %err, "direct wav decode failed, falling back to ffmpeg");
+            }
         }
-        return Ok((samples, sr));
     }
 
+    decode_with_ffmpeg(path)
+}
+
+fn decode_with_ffmpeg(path: &Path) -> Result<(Vec<f32>, u32)> {
     let output = Command::new("ffmpeg")
         .args([
             "-hide_banner",

@@ -46,7 +46,7 @@ pub fn extract_timeline(input: &Path, cfg: &AnalysisConfig) -> Result<TimelineOu
 
 fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts> {
     let effective_threshold = cfg.energy_threshold + cfg.vad_threshold_delta;
-    let vad_engine: Box<dyn VadEngine> = create_engine(&cfg.vad_engine, effective_threshold);
+    let vad_engine: Box<dyn VadEngine> = create_engine(&cfg.vad_engine, effective_threshold)?;
 
     let vad_name = vad_engine.name();
     let mut stage_ms = StageDurations::default();
@@ -179,15 +179,14 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     })
 }
 
-pub fn benchmark_file(input: &Path) -> Result<BenchmarkResult> {
-    let cfg = AnalysisConfig::default();
+pub fn benchmark_file(input: &Path, cfg: &AnalysisConfig) -> Result<BenchmarkResult> {
     let total_start = Instant::now();
     let PipelineArtifacts {
         timeline,
         frame_count,
         speech_segment_count: _,
         stage_ms,
-    } = run_pipeline(input, &cfg)?;
+    } = run_pipeline(input, cfg)?;
     let segment_count = timeline.segments.len();
     Ok(BenchmarkResult {
         input_file: input.display().to_string(),

@@ -120,3 +120,92 @@ fn repeated_extract_is_deterministic() {
     let b = std::fs::read(&out2).unwrap_or_default();
     assert_eq!(a, b);
 }
+
+#[test]
+fn unsupported_vad_engine_errors_clearly() {
+    let d = tempdir().unwrap_or_else(|_| panic!("tmpdir"));
+    let wav = d.path().join("in.wav");
+    let out = d.path().join("segments.json");
+    gen_wav(&wav);
+
+    Command::cargo_bin("timeline")
+        .unwrap_or_else(|_| panic!("bin"))
+        .args([
+            "extract",
+            wav.to_str().unwrap_or_default(),
+            "--vad-engine",
+            "webrtc",
+            "--output",
+            out.to_str().unwrap_or_default(),
+        ])
+        .assert()
+        .failure()
+        .stderr(contains("VAD engine 'webrtc' is not implemented"));
+}
+
+#[test]
+fn float_wav_falls_back_to_ffmpeg() {
+    let ffmpeg_available = std::process::Command::new("ffmpeg")
+        .arg("-version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false);
+    if !ffmpeg_available {
+        return;
+    }
+
+    let d = tempdir().unwrap_or_else(|_| panic!("tmpdir"));
+    let wav = d.path().join("float.wav");
+    let out = d.path().join("segments.json");
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate: 16000,
+        bits_per_sample: 32,
+        sample_format: hound::SampleFormat::Float,
+    };
+    let mut writer = hound::WavWriter::create(&wav, spec).unwrap_or_else(|_| panic!("create wav"));
+    for i in 0..16000 {
+        let t = i as f32 / 16000.0;
+        let sample = if (0.25..0.75).contains(&t) {
+            (2.0 * PI * 220.0 * t).sin() * 0.25
+        } else {
+            0.0
+        };
+        writer.write_sample(sample).unwrap_or_default();
+    }
+    writer.finalize().unwrap_or_default();
+
+    Command::cargo_bin("timeline")
+        .unwrap_or_else(|_| panic!("bin"))
+        .args([
+            "extract",
+            wav.to_str().unwrap_or_default(),
+            "--output",
+            out.to_str().unwrap_or_default(),
+        ])
+        .assert()
+        .success();
+
+    assert!(out.exists());
+}
+
+#[test]
+fn invalid_env_override_errors_clearly() {
+    let d = tempdir().unwrap_or_else(|_| panic!("tmpdir"));
+    let wav = d.path().join("in.wav");
+    let out = d.path().join("segments.json");
+    gen_wav(&wav);
+
+    Command::cargo_bin("timeline")
+        .unwrap_or_else(|_| panic!("bin"))
+        .env("TIMELINE_SAMPLE_RATE", "not-a-number")
+        .args([
+            "extract",
+            wav.to_str().unwrap_or_default(),
+            "--output",
+            out.to_str().unwrap_or_default(),
+        ])
+        .assert()
+        .failure()
+        .stderr(contains("invalid env var TIMELINE_SAMPLE_RATE"));
+}

@@ -44,26 +44,13 @@ fn run() -> Result<()> {
             calibration_profile,
             save_calibration,
         } => {
-            let threshold_delta = if let Some(ref profile_path) = calibration_profile {
-                let profile: CalibrationProfile = read_json(profile_path).with_context(|| {
-                    format!(
-                        "failed to read calibration profile: {}",
-                        profile_path.display()
-                    )
-                })?;
-                info!(profile = %profile.name, delta = profile.energy_threshold_delta, "loaded calibration profile");
-                Some(profile.energy_threshold_delta)
-            } else {
-                None
-            };
-
-            let cfg = config::AnalysisConfig::from_args(
+            let cfg = load_analysis_config(
                 config,
                 threshold,
                 min_speech_ms,
                 min_silence_ms,
-                Some(vad_engine),
-                threshold_delta,
+                vad_engine,
+                calibration_profile,
             )?;
 
             if let Some(delta) = cfg.vad_threshold_delta.abs().partial_cmp(&0.0_f32) {
@@ -89,7 +76,9 @@ fn run() -> Result<()> {
                     energy_threshold_delta: cfg.vad_threshold_delta,
                     version: 1,
                 };
-                std::fs::create_dir_all(profile_path.parent().unwrap())?;
+                if let Some(parent) = profile_path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
                 std::fs::write(&profile_path, serde_json::to_vec_pretty(&profile)?)?;
                 info!(path = %profile_path.display(), "saved calibration profile");
             }
@@ -134,9 +123,23 @@ fn run() -> Result<()> {
         }
         Commands::Bench {
             input_media,
+            config,
+            threshold,
+            min_speech_ms,
+            min_silence_ms,
+            vad_engine,
+            calibration_profile,
             output,
         } => {
-            let benchmark = benchmark_file(&input_media)?;
+            let cfg = load_analysis_config(
+                config,
+                threshold,
+                min_speech_ms,
+                min_silence_ms,
+                vad_engine,
+                calibration_profile,
+            )?;
+            let benchmark = benchmark_file(&input_media, &cfg)?;
             write_json_pretty(&output, &benchmark)?;
         }
         Commands::GenFixtures { output_dir } => {
@@ -144,6 +147,12 @@ fn run() -> Result<()> {
         }
         Commands::Validate {
             input_media,
+            config,
+            threshold,
+            min_speech_ms,
+            min_silence_ms,
+            vad_engine,
+            calibration_profile,
             truth_json,
             subtitles,
             dataset_manifest,
@@ -151,7 +160,14 @@ fn run() -> Result<()> {
             profile,
             output,
         } => {
-            let cfg = config::AnalysisConfig::default();
+            let cfg = load_analysis_config(
+                config,
+                threshold,
+                min_speech_ms,
+                min_silence_ms,
+                vad_engine,
+                calibration_profile,
+            )?;
             if let Some(truth_json) = truth_json {
                 let tolerance_ms = tolerance_for_profile(&profile);
                 validation::validate_file(
@@ -168,11 +184,11 @@ fn run() -> Result<()> {
                 let total = total_ms.context("--total-ms required for subtitle validation")?;
                 let truth = validation::timeline_from_speech_segments(
                     input_media.display().to_string(),
-                    16000,
-                    20,
+                    cfg.sample_rate_hz,
+                    cfg.frame_ms,
                     &speech,
                     total,
-                    1000,
+                    cfg.min_non_voice_ms,
                 );
                 let predicted = extract_timeline(&input_media, &cfg)?;
                 let report = validation::validate_against_timeline(
@@ -187,8 +203,10 @@ fn run() -> Result<()> {
                 let truth = validation::dataset::build_truth_from_manifest(
                     &dataset_manifest,
                     &input_media.display().to_string(),
+                    cfg.sample_rate_hz,
+                    cfg.frame_ms,
                     total,
-                    1000,
+                    cfg.min_non_voice_ms,
                 )?;
                 let predicted = extract_timeline(&input_media, &cfg)?;
                 let report = validation::validate_against_timeline(
@@ -214,6 +232,39 @@ fn tolerance_for_profile(profile: &str) -> u64 {
         "dataset" => 200,
         _ => 400,
     }
+}
+
+fn load_analysis_config(
+    config_path: Option<std::path::PathBuf>,
+    threshold_override: Option<f32>,
+    min_speech_override: Option<u32>,
+    min_silence_override: Option<u32>,
+    vad_engine: String,
+    calibration_profile: Option<std::path::PathBuf>,
+) -> Result<config::AnalysisConfig> {
+    let threshold_delta = load_calibration_threshold_delta(calibration_profile.as_deref())?;
+    config::AnalysisConfig::from_args(
+        config_path,
+        threshold_override,
+        min_speech_override,
+        min_silence_override,
+        Some(vad_engine),
+        threshold_delta,
+    )
+}
+
+fn load_calibration_threshold_delta(profile_path: Option<&std::path::Path>) -> Result<Option<f32>> {
+    let Some(profile_path) = profile_path else {
+        return Ok(None);
+    };
+    let profile: CalibrationProfile = read_json(profile_path).with_context(|| {
+        format!(
+            "failed to read calibration profile: {}",
+            profile_path.display()
+        )
+    })?;
+    info!(profile = %profile.name, delta = profile.energy_threshold_delta, "loaded calibration profile");
+    Ok(Some(profile.energy_threshold_delta))
 }
 
 fn init_logging() {

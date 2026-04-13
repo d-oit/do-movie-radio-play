@@ -57,6 +57,18 @@ pub enum Commands {
     },
     Bench {
         input_media: PathBuf,
+        #[arg(long)]
+        config: Option<PathBuf>,
+        #[arg(long)]
+        threshold: Option<f32>,
+        #[arg(long)]
+        min_speech_ms: Option<u32>,
+        #[arg(long)]
+        min_silence_ms: Option<u32>,
+        #[arg(long, default_value = "energy", value_parser = ["energy", "webrtc", "silero"])]
+        vad_engine: String,
+        #[arg(long)]
+        calibration_profile: Option<PathBuf>,
         #[arg(long, default_value = "analysis/benchmarks/latest.json")]
         output: PathBuf,
     },
@@ -66,6 +78,18 @@ pub enum Commands {
     },
     Validate {
         input_media: PathBuf,
+        #[arg(long)]
+        config: Option<PathBuf>,
+        #[arg(long)]
+        threshold: Option<f32>,
+        #[arg(long)]
+        min_speech_ms: Option<u32>,
+        #[arg(long)]
+        min_silence_ms: Option<u32>,
+        #[arg(long, default_value = "energy", value_parser = ["energy", "webrtc", "silero"])]
+        vad_engine: String,
+        #[arg(long)]
+        calibration_profile: Option<PathBuf>,
         #[arg(long)]
         truth_json: Option<PathBuf>,
         #[arg(long)]

@@ -1,0 +1,125 @@
+{
+  "skill_name": "analysis-swarm",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review this authentication code - is it secure?",
+      "expected_output": "RYAN-led analysis with security focus, identify vulnerabilities, rate severity",
+      "should_trigger": true
+    },
+    {
+      "id": 2,
+      "prompt": "Help me debug this crash happening in production",
+      "expected_output": "DEBUG mode with hypothesis ranking, diagnostic steps",
+      "should_trigger": true
+    },
+    {
+      "id": 3,
+      "prompt": "Should we use PostgreSQL or MongoDB for our new service?",
+      "expected_output": "COMPARE mode with trade-offs explicit, architecture focus",
+      "should_trigger": true
+    },
+    {
+      "id": 4,
+      "prompt": "This PR has a memory leak - can you find it?",
+      "expected_output": "DEBUG/REVIEW mode, identify leak patterns, rank hypotheses",
+      "should_trigger": true
+    },
+    {
+      "id": 5,
+      "prompt": "Is our API vulnerable to SQL injection?",
+      "expected_output": "SECURITY mode, identify injection paths, trust boundaries",
+      "should_trigger": true
+    },
+    {
+      "id": 6,
+      "prompt": "Quick question - what's the best way to parse JSON in Rust?",
+      "expected_output": "Simple answer without full swarm needed",
+      "should_trigger": false
+    },
+    {
+      "id": 7,
+      "prompt": "Write me a function that calculates fibonacci",
+      "expected_output": "Code writing task, not analysis",
+      "should_trigger": false
+    },
+    {
+      "id": 8,
+      "prompt": "Can you check if my tests pass?",
+      "expected_output": "Execution task, not analysis",
+      "should_trigger": false
+    },
+    {
+      "id": 9,
+      "prompt": "We have two design options - monolithic or microservices. Which should we pick?",
+      "expected_output": "ARCHITECTURE mode with comparison, trade-offs, long-term implications",
+      "should_trigger": true
+    },
+    {
+      "id": 10,
+      "prompt": "This legacy code needs refactoring - where do we start?",
+      "expected_output": "TRIAGE mode, prioritize highest-risk areas, quick wins",
+      "should_trigger": true
+    },
+    {
+      "id": 11,
+      "prompt": "Why is our build so slow?",
+      "expected_output": "DEBUG/TRIAGE mode with hypothesis ranking",
+      "should_trigger": true
+    },
+    {
+      "id": 12,
+      "prompt": "Explain what closures are in JavaScript",
+      "expected_output": "Explanation task, not multi-persona analysis needed",
+      "should_trigger": false
+    },
+    {
+      "id": 13,
+      "prompt": "Review this PR - the changes are in src/auth.rs and src/api.rs",
+      "expected_output": "REVIEW mode, file-specific analysis, risk assessment",
+      "should_trigger": true
+    },
+    {
+      "id": 14,
+      "prompt": "Should we add rate limiting to our public API?",
+      "expected_output": "SECURITY/ARCHITECTURE with trade-offs, implementation considerations",
+      "should_trigger": true
+    },
+    {
+      "id": 15,
+      "prompt": "What does this error mean: Connection refused?",
+      "expected_output": "Simple troubleshooting, likely doesn't need full swarm",
+      "should_trigger": false
+    },
+    {
+      "id": 16,
+      "prompt": "Our incident postmortem says the root cause was the cache layer - help us prevent recurrence",
+      "expected_output": "Architecture/REVIEW mode, identify systemic issues, recommendations",
+      "should_trigger": true
+    },
+    {
+      "id": 17,
+      "prompt": "I need to merge three conflicting architectural proposals - each has passionate supporters",
+      "expected_output": "SOCRATES-heavy mode, surface assumptions, clarify trade-offs, decision support",
+      "should_trigger": true
+    },
+    {
+      "id": 18,
+      "prompt": "Find all TODO comments in this codebase",
+      "expected_output": "Search task, not analysis requiring personas",
+      "should_trigger": false
+    },
+    {
+      "id": 19,
+      "prompt": "This React component re-renders too often - how do I fix it?",
+      "expected_output": "DEBUG/REVIEW mode with specific performance patterns",
+      "should_trigger": true
+    },
+    {
+      "id": 20,
+      "prompt": "We need to ship in 2 days but there's a critical security issue - what do we do?",
+      "expected_output": "FLASH-heavy triage with RYAN security input, clear recommendation",
+      "should_trigger": true
+    }
+  ]
+}

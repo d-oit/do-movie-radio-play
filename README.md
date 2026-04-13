@@ -7,6 +7,10 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 - `timeline tag <input_media> --input segments.json --output tagged.json`
 - `timeline prompt <input_json> --output prompted.json`
 - `timeline calibrate <corrections_dir> --profile drama`
+- `timeline gen-fixtures --output-dir testdata/generated`
+- `timeline validate <input_media> --truth-json testdata/generated/alternating.truth.json --profile synthetic`
+- `timeline validate <input_media> --subtitles in.srt --total-ms 120000 --profile movie`
+- `timeline validate <input_media> --dataset-manifest speech.csv --total-ms 120000 --profile dataset`
 - `timeline bench <input_media> --output analysis/benchmarks/latest.json`
 
 ## Build

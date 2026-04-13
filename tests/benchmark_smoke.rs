@@ -1,4 +1,6 @@
 use assert_cmd::Command;
+use movie_nonvoice_timeline::types::BenchmarkResult;
+use std::fs;
 use tempfile::tempdir;
 
 #[test]
@@ -30,4 +32,17 @@ fn benchmark_command_writes_output() {
         .success();
 
     assert!(out.exists());
+
+    let bytes = fs::read(&out).unwrap_or_else(|_| panic!("read"));
+    let result: BenchmarkResult = serde_json::from_slice(&bytes).unwrap_or_else(|_| panic!("json"));
+    assert_eq!(result.stage_ms.decode_ms, result.decode_ms);
+    let stage_total = result.stage_ms.decode_ms
+        + result.stage_ms.resample_ms
+        + result.stage_ms.frame_ms
+        + result.stage_ms.vad_ms
+        + result.stage_ms.smooth_ms
+        + result.stage_ms.speech_ms
+        + result.stage_ms.merge_ms
+        + result.stage_ms.invert_ms;
+    assert!(stage_total <= result.total_ms + 1);
 }

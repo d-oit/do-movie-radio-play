@@ -22,6 +22,10 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 ## Bench
 `bash scripts/benchmark.sh testdata/generated/alternating.wav`
 
+## Observability
+- `timeline extract` emits INFO logs per pipeline stage with elapsed milliseconds for decode, resample, framing, VAD, smoothing, segmentation, merging, and inversion.
+- `timeline bench` writes a JSON report that now includes `stage_ms` timing fields for each stage so benchmarking artifacts capture bottlenecks over time.
+
 ## Fixtures
 `bash scripts/fetch_test_assets.sh`
 
@@ -33,6 +37,14 @@ Top-level fields:
 - `analysis_sample_rate`
 - `frame_ms`
 - `segments[]` with `start_ms`, `end_ms`, `kind`, `confidence`, `tags`, `prompt`
+
+Benchmark JSON fields:
+- `input_file`
+- `total_ms`
+- `decode_ms`
+- `frame_count`
+- `segment_count`
+- `stage_ms` with `decode_ms`, `resample_ms`, `frame_ms`, `vad_ms`, `smooth_ms`, `speech_ms`, `merge_ms`, `invert_ms`
 
 ## Calibration
 `timeline calibrate corrections/ --profile action` reads correction JSON files and writes a versioned calibration report to `analysis/learnings/latest-calibration.json`.

@@ -14,29 +14,37 @@ pub fn add_tags(input_media: &Path, timeline: &mut TimelineOutput) -> Result<()>
         let start = (seg.start_ms * sr as u64 / 1000) as usize;
         let end = (seg.end_ms * sr as u64 / 1000) as usize;
         let clip = &samples[start.min(samples.len())..end.min(samples.len())];
-        let f = compute_features(clip);
-        seg.tags = map_tags(f.rms, f.zcr);
+        let f = compute_features(clip, sr);
+        seg.tags = map_tags(f);
     }
     Ok(())
 }
 
-fn map_tags(rms: f32, zcr: f32) -> Vec<String> {
+fn map_tags(f: crate::pipeline::features::FeatureSet) -> Vec<String> {
     let mut tags = Vec::new();
-    if rms < 0.01 {
-        tags.push("low_intensity".into());
+    if f.rms < 0.012 {
         tags.push("ambience".into());
-    } else if rms > 0.08 {
-        tags.push("high_intensity".into());
-        tags.push("impact_heavy".into());
-    } else {
+    }
+    if f.low_band_ratio > 0.25 && f.rms > 0.015 {
         tags.push("music_bed".into());
     }
-    if zcr > 0.2 {
+    if f.spectral_flux > 0.01 && f.rms > 0.05 {
+        tags.push("impact_heavy".into());
+    }
+    if f.centroid_hz > 1800.0 && f.zcr > 0.15 {
         tags.push("machinery_like".into());
     }
-    if tags.is_empty() {
-        tags.push("unclassified_non_voice".into());
+    if f.low_band_ratio > 0.35 && f.zcr > 0.12 {
+        tags.push("crowd_like".into());
     }
+    if f.high_band_ratio < 0.1 && f.rms < 0.03 {
+        tags.push("nature_like".into());
+    }
+    if tags.is_empty() {
+        tags.push("ambience".into());
+    }
+    tags.sort();
+    tags.dedup();
     tags
 }
 
@@ -46,6 +54,14 @@ mod tests {
 
     #[test]
     fn tag_mapping_stable() {
-        assert!(map_tags(0.0, 0.0).contains(&"ambience".to_string()));
+        let f = crate::pipeline::features::FeatureSet {
+            rms: 0.0,
+            zcr: 0.0,
+            spectral_flux: 0.0,
+            centroid_hz: 0.0,
+            low_band_ratio: 0.2,
+            high_band_ratio: 0.0,
+        };
+        assert!(map_tags(f).contains(&"ambience".to_string()));
     }
 }

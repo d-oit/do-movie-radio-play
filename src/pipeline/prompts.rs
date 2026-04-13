@@ -18,12 +18,15 @@ pub fn add_prompts(timeline: &mut TimelineOutput) {
 
 fn prompt_for_tags(tags: &[String]) -> String {
     if tags.iter().any(|t| t == "impact_heavy") {
-        return "No dialogue. Rapid impact sounds and heightened action energy.".to_string();
+        return "No dialogue. Energetic impact-forward soundscape.".to_string();
     }
-    if tags.iter().any(|t| t == "ambience") {
-        return "No dialogue. Ambient environmental sound without speech.".to_string();
+    if tags.iter().any(|t| t == "music_bed") {
+        return "No dialogue. Background music bed without spoken words.".to_string();
     }
-    "No dialogue. Soft background score with low intensity.".to_string()
+    if tags.iter().any(|t| t == "nature_like") {
+        return "No dialogue. Ambient natural atmosphere.".to_string();
+    }
+    "No dialogue. Ambient environmental sound.".to_string()
 }
 
 #[cfg(test)]
@@ -47,6 +50,9 @@ mod tests {
             }],
         };
         add_prompts(&mut t);
-        assert!(t.segments[0].prompt.is_some());
+        assert_eq!(
+            t.segments[0].prompt.clone().unwrap_or_default(),
+            "No dialogue. Ambient environmental sound."
+        );
     }
 }

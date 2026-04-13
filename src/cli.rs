@@ -40,4 +40,23 @@ pub enum Commands {
         #[arg(long, default_value = "analysis/benchmarks/latest.json")]
         output: PathBuf,
     },
+    GenFixtures {
+        #[arg(long, default_value = "testdata/generated")]
+        output_dir: PathBuf,
+    },
+    Validate {
+        input_media: PathBuf,
+        #[arg(long)]
+        truth_json: Option<PathBuf>,
+        #[arg(long)]
+        subtitles: Option<PathBuf>,
+        #[arg(long)]
+        dataset_manifest: Option<PathBuf>,
+        #[arg(long)]
+        total_ms: Option<u64>,
+        #[arg(long, default_value = "movie")]
+        profile: String,
+        #[arg(long, default_value = "analysis/validation/latest.json")]
+        output: PathBuf,
+    },
 }

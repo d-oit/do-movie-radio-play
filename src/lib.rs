@@ -5,3 +5,4 @@ pub mod io;
 pub mod learning;
 pub mod pipeline;
 pub mod types;
+pub mod validation;

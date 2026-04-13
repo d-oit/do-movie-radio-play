@@ -10,28 +10,10 @@
 | 02 | Acoustic tags | COMPLETE | Rule-based tags with spectral features |
 | 03 | Prompt generation | COMPLETE | Config passthrough and tag mappings are wired |
 | 04 | Self-learning | PARTIAL | Report apply path exists, but runtime save/apply flow is incomplete |
-| 05 | Hardening and quality | IN PROGRESS | Remaining gaps are mostly correctness and operational consistency |
+| 05 | Hardening and quality | IN PROGRESS | Validation/config, WAV fallback, and VAD fail-fast are now complete |
 | 06 | New capabilities | READY | Next feature should build on existing profile/tag infrastructure |
 
 ## Current Missing Implementations
-
-### Advertised VAD Engines Still Fall Back to Energy (High)
-
-`src/pipeline/vad/mod.rs` - `WebRtcVad` and `SileroVad` still log a warning and
-fall back to `EnergyVad`. The CLI continues to advertise `--vad-engine webrtc`
-and `--vad-engine silero` as supported in `src/cli.rs`.
-
-- User-visible behavior does not match the CLI contract.
-- The stub path hardcodes `0.015` and can ignore user-selected threshold tuning.
-
-### Validation Uses Default Config Instead of Runtime Settings (High)
-
-`src/main.rs` - `validate` creates `AnalysisConfig::default()` and uses it for all
-prediction paths. Validation therefore does not reflect extraction settings such
-as calibration profile, VAD engine, or threshold overrides.
-
-- Benchmark and validation results are not directly comparable to production runs.
-- Subtitle and dataset truth generation also hardcode `16000`, `20`, and `1000`.
 
 ### Calibration Save Flow Still Persists the Input Delta (Medium)
 
@@ -43,20 +25,6 @@ the separate `apply-calibration` flow.
 - The report-to-profile path exists in `src/learning/calibrator.rs`, but the most
   convenient runtime save path still stores the pre-learning value.
 
-### Unsupported WAV Formats Do Not Fall Back to ffmpeg (Medium)
-
-`src/pipeline/decode.rs` always routes `.wav` input through `src/io/wav.rs`, but
-the direct reader only accepts 16-bit PCM WAV. 24-bit PCM and float WAV files
-error out instead of using the already-available ffmpeg decoder.
-
-### Config Validation Is Too Permissive (Medium)
-
-`src/config.rs` silently ignores invalid environment overrides and only validates
-a small subset of fields.
-
-- Bad env values can be dropped without feedback.
-- Threshold and duration mistakes can survive until runtime behavior looks wrong.
-
 ## Quality Issues
 
 ### unwrap() Still Present in Production Code (Medium)
@@ -64,7 +32,6 @@ a small subset of fields.
 | File | Line | Context |
 |------|------|---------|
 | `src/pipeline/features.rs` | 31 | `fft.process(...).unwrap()` in feature extraction hot path |
-| `src/main.rs` | 92 | `profile_path.parent().unwrap()` in calibration save path |
 
 ### Semantic Error Mapping Is Still Wrong (Low)
 
@@ -87,6 +54,10 @@ comparison or regression alerting yet.
 - Prompt generation now honors `AnalysisConfig` in `src/pipeline/prompts.rs`.
 - `crowd_like` and `machinery_like` have distinct prompt mappings.
 - Segment confidence is derived from frame likelihoods in `src/pipeline/segmenter.rs`.
+- `validate` and `bench` now accept runtime config, threshold, engine, and calibration inputs.
+- Unsupported `webrtc` and `silero` engine selections now fail fast instead of silently degrading.
+- Unsupported WAV direct decodes now fall back to `ffmpeg`.
+- Config and env override validation now fail clearly on malformed values and invalid ranges.
 - JSON schema validation exists via `schema/timeline.schema.json` and
   `tests/json_contract.rs`.
 - Criterion benchmarks are configured in `Cargo.toml` and implemented in

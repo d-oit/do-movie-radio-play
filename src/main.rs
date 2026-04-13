@@ -13,8 +13,9 @@ use tracing::{info, Level};
 use tracing_subscriber::EnvFilter;
 
 use crate::cli::{Cli, Commands};
-use crate::io::json::{read_timeline, write_json_pretty};
+use crate::io::json::{read_json, read_timeline, write_json_pretty};
 use crate::learning::calibrator::run_calibration;
+use crate::learning::profiles::CalibrationProfile;
 use crate::pipeline::prompts::add_prompts;
 use crate::pipeline::tags::add_tags;
 use crate::pipeline::{benchmark_file, extract_timeline};
@@ -36,12 +37,61 @@ fn run() -> Result<()> {
             input,
             output,
             config,
+            threshold,
+            min_speech_ms,
+            min_silence_ms,
+            vad_engine,
+            calibration_profile,
+            save_calibration,
         } => {
-            let cfg = config::load_config(config)?;
+            let threshold_delta = if let Some(ref profile_path) = calibration_profile {
+                let profile: CalibrationProfile = read_json(profile_path).with_context(|| {
+                    format!(
+                        "failed to read calibration profile: {}",
+                        profile_path.display()
+                    )
+                })?;
+                info!(profile = %profile.name, delta = profile.energy_threshold_delta, "loaded calibration profile");
+                Some(profile.energy_threshold_delta)
+            } else {
+                None
+            };
+
+            let cfg = config::AnalysisConfig::from_args(
+                config,
+                threshold,
+                min_speech_ms,
+                min_silence_ms,
+                Some(vad_engine),
+                threshold_delta,
+            )?;
+
+            if let Some(delta) = cfg.vad_threshold_delta.abs().partial_cmp(&0.0_f32) {
+                if delta != std::cmp::Ordering::Equal {
+                    info!(
+                        base_threshold = cfg.energy_threshold,
+                        delta = cfg.vad_threshold_delta,
+                        effective = cfg.energy_threshold + cfg.vad_threshold_delta,
+                        "applying calibration threshold delta"
+                    );
+                }
+            }
+
             let timeline = extract_timeline(&input, &cfg)
                 .with_context(|| format!("extract failed for {}", input.display()))?;
             write_json_pretty(&output, &timeline)
                 .with_context(|| format!("failed writing {}", output.display()))?;
+
+            if save_calibration {
+                let profile_path = get_calibration_dir()?.join("latest.json");
+                let profile = CalibrationProfile {
+                    name: "runtime".to_string(),
+                    energy_threshold_delta: cfg.vad_threshold_delta,
+                };
+                std::fs::create_dir_all(profile_path.parent().unwrap())?;
+                std::fs::write(&profile_path, serde_json::to_vec_pretty(&profile)?)?;
+                info!(path = %profile_path.display(), "saved calibration profile");
+            }
         }
         Commands::Tag {
             input_media,
@@ -155,4 +205,20 @@ fn init_logging() {
         .with_target(false)
         .compact()
         .init();
+}
+
+fn get_calibration_dir() -> Result<std::path::PathBuf> {
+    let base = if cfg!(target_os = "windows") {
+        std::env::var("APPDATA")?
+    } else if cfg!(target_os = "macos") {
+        std::path::PathBuf::from(std::env::var("HOME")?)
+            .join("Library/Application Support")
+            .to_string_lossy()
+            .to_string()
+    } else {
+        std::env::var("XDG_CONFIG_HOME")
+            .or_else(|_| std::env::var("HOME").map(|h| format!("{h}/.config")))
+            .map_err(|_| anyhow::anyhow!("Neither XDG_CONFIG_HOME nor HOME set"))?
+    };
+    Ok(std::path::PathBuf::from(base).join("do-movie-radio-play/profiles"))
 }

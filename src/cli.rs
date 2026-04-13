@@ -17,6 +17,18 @@ pub enum Commands {
         output: PathBuf,
         #[arg(long)]
         config: Option<PathBuf>,
+        #[arg(long)]
+        threshold: Option<f32>,
+        #[arg(long)]
+        min_speech_ms: Option<u32>,
+        #[arg(long)]
+        min_silence_ms: Option<u32>,
+        #[arg(long, default_value = "energy", value_parser = ["energy", "webrtc", "silero"])]
+        vad_engine: String,
+        #[arg(long)]
+        calibration_profile: Option<PathBuf>,
+        #[arg(long)]
+        save_calibration: bool,
     },
     Tag {
         input_media: PathBuf,

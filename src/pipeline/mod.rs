@@ -7,11 +7,13 @@ pub mod segmenter;
 pub mod tags;
 pub mod vad;
 
-use anyhow::Result;
 use std::{path::Path, time::Instant};
+
+use anyhow::Result;
 use tracing::info;
 
 use crate::config::AnalysisConfig;
+use crate::pipeline::vad::{create_engine, VadEngine};
 use crate::types::{BenchmarkResult, StageDurations, TimelineOutput};
 
 struct PipelineArtifacts {
@@ -43,6 +45,10 @@ pub fn extract_timeline(input: &Path, cfg: &AnalysisConfig) -> Result<TimelineOu
 }
 
 fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts> {
+    let effective_threshold = cfg.energy_threshold + cfg.vad_threshold_delta;
+    let vad_engine: Box<dyn VadEngine> = create_engine(&cfg.vad_engine, effective_threshold);
+
+    let vad_name = vad_engine.name();
     let mut stage_ms = StageDurations::default();
 
     let decode_start = Instant::now();
@@ -80,14 +86,17 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     let frame_count = frames.len();
 
     let vad_start = Instant::now();
-    let speech = vad::classify_frames(&frames, cfg.energy_threshold);
+    let speech = vad_engine.classify(&frames);
     stage_ms.vad_ms = vad_start.elapsed().as_millis();
     let speech_frames = speech.iter().filter(|&&v| v).count();
     info!(
         stage = "vad",
         ms = stage_ms.vad_ms,
+        engine = vad_name,
         speech_frames,
-        threshold = cfg.energy_threshold,
+        threshold = effective_threshold,
+        base_threshold = cfg.energy_threshold,
+        delta = cfg.vad_threshold_delta,
         "stage complete"
     );
 

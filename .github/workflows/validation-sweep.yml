@@ -1,0 +1,31 @@
+name: Validation Sweep
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  full_sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bash scripts/fetch_test_assets.sh
+      - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
+      - run: chmod +x scripts/check_validation_coverage.py scripts/run_validation_manifest.py
+      - run: python3 scripts/check_validation_coverage.py --tier A --tier B --tier C --strict-files
+      - run: python3 scripts/run_validation_manifest.py --manifest testdata/validation/manifest.json --tier A --tier B --tier C --summary analysis/validation/full-sweep-summary.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: validation-sweep-summary
+          path: analysis/validation/full-sweep-summary.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: validation-reports
+          path: testdata/validation/*.json

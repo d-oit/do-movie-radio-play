@@ -2,11 +2,11 @@
   "profile": "synthetic",
   "tolerance_ms": 100,
   "expected_segments": 3,
-  "predicted_segments": 326,
-  "overlap_ratio": 0.0,
-  "boundary_error_ms": 4024284.2,
+  "predicted_segments": 2,
+  "overlap_ratio": 0.7368421,
+  "boundary_error_ms": 75.0,
   "speech_precision": 1.0,
   "speech_recall": 0.0,
-  "non_voice_precision": 0.0,
-  "non_voice_recall": 0.0
+  "non_voice_precision": 0.5,
+  "non_voice_recall": 0.5
 }

@@ -1,0 +1,12 @@
+{
+  "profile": "movie",
+  "tolerance_ms": 400,
+  "expected_segments": 38,
+  "predicted_segments": 3,
+  "overlap_ratio": 0.051975485,
+  "boundary_error_ms": 21895.834,
+  "speech_precision": 1.0,
+  "speech_recall": 1.0,
+  "non_voice_precision": 0.0,
+  "non_voice_recall": 0.0
+}

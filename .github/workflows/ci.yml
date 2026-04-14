@@ -33,6 +33,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
+      - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
+      - run: python3 scripts/check_validation_coverage.py --tier A --strict-files
       - run: cargo build
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --all-features -- -D warnings

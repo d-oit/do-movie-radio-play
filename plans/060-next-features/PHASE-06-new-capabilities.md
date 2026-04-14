@@ -2,6 +2,15 @@
 
 New features to extend the pipeline beyond its current scope.
 
+## 6.0 Production Evaluation Correctness First
+
+Before adding new runtime capabilities, prioritize testable production-eval correctness.
+
+- Establish fixture-to-output coverage so selected real-media fixtures always produce validation reports.
+- Keep Tier A evals (synthetic + one modern subtitle fixture) green on every PR.
+- Fail fast when outputs are missing, malformed, or metrics are absent.
+- See `plans/040-validation/PRODUCTION-EVALS.md` for the concrete matrix and gates.
+
 ## 6.1 Profile-Driven Tag Calibration
 
 Extend `CalibrationProfile` beyond `energy_threshold_delta` so genre profiles can

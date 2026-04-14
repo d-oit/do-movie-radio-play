@@ -16,15 +16,28 @@ pub fn build_truth_from_manifest(
         .with_context(|| format!("cannot read manifest {}", manifest_csv.display()))?;
     let mut speech = Vec::new();
     for (idx, line) in data.lines().enumerate() {
-        if idx == 0 && line.contains("start_ms") {
+        let line_number = idx + 1;
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
             continue;
         }
-        let cols: Vec<_> = line.split(',').collect();
+        if idx == 0 && trimmed.contains("start_ms") {
+            continue;
+        }
+        let cols: Vec<_> = trimmed.split(',').collect();
         if cols.len() < 2 {
-            continue;
+            anyhow::bail!(
+                "invalid manifest row at line {line_number}: expected at least 2 columns"
+            );
         }
-        let start_ms: u64 = cols[0].trim().parse().unwrap_or(0);
-        let end_ms: u64 = cols[1].trim().parse().unwrap_or(start_ms);
+        let start_ms: u64 = cols[0]
+            .trim()
+            .parse()
+            .with_context(|| format!("invalid start_ms at line {line_number}"))?;
+        let end_ms: u64 = cols[1]
+            .trim()
+            .parse()
+            .with_context(|| format!("invalid end_ms at line {line_number}"))?;
         speech.push(speech_segment(start_ms, end_ms));
     }
     Ok(timeline_from_speech_segments(

@@ -6,8 +6,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - run: bash scripts/fetch_test_assets.sh
       - run: cargo build
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test
       - run: bash scripts/quality_gate.sh
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: bash scripts/fetch_test_assets.sh
+      - run: bash scripts/benchmark.sh testdata/raw/eggs_1970.mp4 analysis/benchmarks/ci.json
+      - run: python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/ci.json
+      - run: cargo bench --bench pipeline_bench -- --noplot
+      - uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-artifacts
+          path: |
+            analysis/benchmarks/ci.json
+            analysis/benchmarks/latest.json
+            target/criterion

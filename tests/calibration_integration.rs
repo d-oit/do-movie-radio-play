@@ -29,6 +29,10 @@ fn gen_wav_with_speech(path: &std::path::Path, speech_start_ms: u32, speech_end_
     writer.finalize().unwrap_or_default();
 }
 
+fn write_corrections(path: &std::path::Path, records: serde_json::Value) {
+    std::fs::write(path, serde_json::to_vec_pretty(&records).unwrap()).unwrap();
+}
+
 #[test]
 fn calibration_profile_changes_output() {
     let d = tempdir().unwrap_or_else(|_| panic!("tmpdir"));
@@ -265,4 +269,63 @@ fn apply_calibration_converts_report() {
     assert_eq!(applied.version, 2);
     assert!(applied.name.contains("drama"));
     assert_eq!(applied.energy_threshold_delta, -0.0025);
+}
+
+#[test]
+fn calibrate_updates_active_profile_from_report() {
+    let d = tempdir().unwrap_or_else(|_| panic!("tmpdir"));
+    let corrections_dir = d.path().join("corrections");
+    let temp_home = d.path().join("home");
+    std::fs::create_dir_all(&corrections_dir).unwrap();
+    std::fs::create_dir_all(&temp_home).unwrap();
+
+    write_corrections(
+        &corrections_dir.join("feedback.json"),
+        serde_json::json!([
+            {
+                "file_id": "sample",
+                "segment_start_ms": 0,
+                "segment_end_ms": 1000,
+                "original_kind": "non_voice",
+                "corrected_kind": "speech",
+                "original_tags": [],
+                "corrected_tags": []
+            },
+            {
+                "file_id": "sample",
+                "segment_start_ms": 1000,
+                "segment_end_ms": 2000,
+                "original_kind": "non_voice",
+                "corrected_kind": "speech",
+                "original_tags": [],
+                "corrected_tags": []
+            }
+        ]),
+    );
+
+    Command::cargo_bin("timeline")
+        .unwrap_or_else(|_| panic!("bin"))
+        .current_dir(d.path())
+        .args([
+            "calibrate",
+            corrections_dir.to_str().unwrap_or_default(),
+            "--profile",
+            "drama",
+        ])
+        .env("HOME", temp_home.to_str().unwrap())
+        .env_remove("XDG_CONFIG_HOME")
+        .assert()
+        .success();
+
+    let expected_path = temp_home
+        .join(".config")
+        .join("do-movie-radio-play")
+        .join("profiles")
+        .join("latest.json");
+    let applied: CalibrationProfile =
+        serde_json::from_slice(&std::fs::read(&expected_path).unwrap()).unwrap();
+
+    assert_eq!(applied.version, 2);
+    assert!(applied.name.contains("drama"));
+    assert_eq!(applied.energy_threshold_delta, 0.0);
 }

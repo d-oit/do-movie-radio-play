@@ -10,8 +10,8 @@ pub enum TimelineError {
     Decode(String),
     #[error("invalid JSON: {0}")]
     InvalidJson(#[from] serde_json::Error),
-    #[error("invalid config: {0}")]
-    InvalidConfig(String),
+    #[error("io error: {0}")]
+    IoError(String),
     #[error("invalid subtitle: {0}")]
     #[allow(dead_code)]
     InvalidSubtitle(String),
@@ -19,6 +19,6 @@ pub enum TimelineError {
 
 impl From<std::io::Error> for TimelineError {
     fn from(err: std::io::Error) -> Self {
-        TimelineError::InvalidConfig(err.to_string())
+        TimelineError::IoError(err.to_string())
     }
 }

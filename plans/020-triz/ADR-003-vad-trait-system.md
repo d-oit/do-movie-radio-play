@@ -26,8 +26,8 @@ pub trait VadEngine: Send + Sync {
 | Engine | Status | Description |
 |--------|--------|-------------|
 | `energy` | Implemented | RMS-based threshold VAD |
-| `webrtc` | Stub | Placeholder for WebRTC VAD integration |
-| `silero` | Stub | Placeholder for Silero VAD integration |
+| `webrtc` | Planned | Placeholder for future WebRTC VAD integration |
+| `silero` | Planned | Placeholder for future Silero VAD integration |
 
 ### Factory Pattern
 
@@ -40,14 +40,14 @@ pub fn create_engine(name: &str, threshold: f32) -> Box<dyn VadEngine>
 ## Consequences
 
 ### Positive
-- Runtime engine selection via `--vad-engine` CLI flag
+- Runtime engine selection via `--vad-engine` CLI flag for implemented engines
 - Thread-safe implementations (`Send + Sync` bounds)
 - Extensible: new engines only need to implement `VadEngine`
 - Decoupled pipeline from specific VAD implementation
 
 ### Negative
 - Trait object indirection adds runtime overhead
-- Stubs for future engines log warnings when used
+- Future engines need feature-gated reintroduction to avoid exposing unsupported options
 
 ### Neutral
 - Existing energy VAD refactored to implement trait

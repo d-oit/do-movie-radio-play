@@ -28,9 +28,11 @@ impl SpectralAnalyzer {
         }
 
         let mut spectrum = self.fft.make_output_vec();
-        self.fft.process(&mut input, &mut spectrum).unwrap();
-
         let bin_count = self.fft_len / 2;
+        if self.fft.process(&mut input, &mut spectrum).is_err() {
+            return vec![0.0; bin_count];
+        }
+
         let mut magnitudes = Vec::with_capacity(bin_count);
         for c in spectrum.iter().take(bin_count) {
             magnitudes.push((c.re * c.re + c.im * c.im).sqrt());

@@ -1,10 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
-input=${1:-testdata/generated/alternating.wav}
+pick_default_input(){
+  local candidate
+  for candidate in \
+    testdata/raw/eggs_1970.mp4 \
+    testdata/raw/windy_day_1967.mp4 \
+    testdata/raw/the_hole_1962.mp4 \
+    testdata/raw/dinner_time_1928.webm \
+    testdata/raw/the_singing_fool_1928.webm
+  do
+    [[ -f "$candidate" ]] && {
+      printf '%s\n' "$candidate"
+      return 0
+    }
+  done
+  printf '%s\n' testdata/generated/alternating.wav
+}
+
+input=${1:-$(pick_default_input)}
 out=${2:-analysis/benchmarks/latest.json}
 mkdir -p "$(dirname "$out")"
 
-if [[ ! -f "$input" ]]; then
+if [[ ! -f "$input" && "$input" == "testdata/generated/alternating.wav" ]]; then
   echo "benchmark input missing ($input); generating deterministic fixtures..." >&2
   cargo run --quiet -- gen-fixtures --output-dir testdata/generated
 fi

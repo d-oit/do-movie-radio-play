@@ -20,7 +20,13 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 `bash scripts/quality_gate.sh`
 
 ## Bench
-`bash scripts/benchmark.sh testdata/generated/alternating.wav`
+`bash scripts/benchmark.sh`
+
+The benchmark script now prefers downloaded movie assets in `testdata/raw/` and
+falls back to generated synthetic audio only when those videos are unavailable.
+
+CI compares a fresh benchmark artifact against the checked-in real-media baseline
+in `analysis/benchmarks/latest.json` before uploading benchmark artifacts.
 
 ## Observability
 - `timeline extract` emits INFO logs per pipeline stage with elapsed milliseconds for decode, resample, framing, VAD, smoothing, segmentation, merging, and inversion.
@@ -49,5 +55,10 @@ Benchmark JSON fields:
 ## Calibration
 `timeline calibrate corrections/ --profile action` reads correction JSON files and writes a versioned calibration report to `analysis/learnings/latest-calibration.json`.
 
+## Real-Media Validation
+`timeline validate testdata/raw/the_hole_1962.mp4 --subtitles testdata/raw/the_hole_1962.srt --total-ms 937900 --profile movie --output analysis/validation/the_hole_1962.json`
+
 ## Limitations
 Current VAD uses deterministic energy thresholding and conservative smoothing; it is intended for robust non-voice extraction, not transcript-grade speech detection.
+
+Only the `energy` VAD engine is currently exposed in the CLI.

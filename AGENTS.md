@@ -44,7 +44,8 @@ cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 
 # Benchmark smoke:
-bash scripts/benchmark.sh testdata/generated/alternating.wav
+bash scripts/benchmark.sh
+python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/latest.json
 ```
 
 ## Commit Policy
@@ -109,7 +110,7 @@ bash scripts/quality_gate.sh && git add -A && git commit
 |-----------|---------|
 | `src/` | Production CLI and pipeline code |
 | `src/pipeline/` | Core pipeline stages (VAD, framing, segmentation, features, tags, prompts) |
-| `src/pipeline/vad/` | VAD engine trait and implementations (energy, webrtc stub, silero stub) |
+| `src/pipeline/vad/` | VAD engine trait and current energy implementation |
 | `src/io/` | Audio I/O (WAV reader, ffmpeg decoder) |
 | `src/learning/` | Calibration and profile system |
 | `src/types/` | Shared types (Frame, Segment, Metrics, FeatureSet) |
@@ -154,12 +155,9 @@ Documented in `plans/010-architecture/`:
 - Before adding new code, search for existing similar code to avoid duplication.
 - ffmpeg must be on PATH for non-WAV media decoding.
 - WAV reader currently supports 16-bit PCM only; other formats fall through to ffmpeg.
+- Prefer downloaded movie assets in `testdata/raw/` for smoke tests, validation, and benchmarks when present; keep deterministic generated-audio fallback when absent.
 
 ## Known Limitations
 
 Track in `plans/050-status-report/STATUS.md`. Current items:
-- WebRTC and Silero VAD engines are stubs (fall back to energy VAD).
-- Confidence values are hardcoded (0.8 speech, 0.9 non-voice) -- not signal-derived.
-- `add_prompts()` ignores user config (uses AnalysisConfig::default()).
-- `benches/pipeline_bench.rs` is a no-op stub.
-- Calibration feedback loop does not close automatically.
+- Benchmark regression checks use the checked-in real-media baseline, so intentional performance shifts should update `analysis/benchmarks/latest.json`.

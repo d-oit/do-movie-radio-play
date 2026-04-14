@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{env, fs, path::PathBuf};
 
-const VALID_VAD_ENGINES: [&str; 3] = ["energy", "webrtc", "silero"];
+const VALID_VAD_ENGINES: [&str; 1] = ["energy"];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnalysisConfig {
@@ -154,14 +154,14 @@ mod tests {
             Some(0.5),
             Some(500),
             Some(2000),
-            Some("silero".to_string()),
+            Some("energy".to_string()),
             Some(0.01),
         )
         .unwrap();
         assert_eq!(cfg.energy_threshold, 0.5);
         assert_eq!(cfg.min_speech_ms, 500);
         assert_eq!(cfg.min_non_voice_ms, 2000);
-        assert_eq!(cfg.vad_engine, "silero");
+        assert_eq!(cfg.vad_engine, "energy");
         assert_eq!(cfg.vad_threshold_delta, 0.01);
     }
 

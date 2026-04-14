@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use crate::io::json::read_json;
 use crate::learning::corrections::CorrectionRecord;
@@ -16,7 +19,7 @@ struct CalibrationReport {
     recommended_energy_threshold_delta: f32,
 }
 
-pub fn run_calibration(corrections_dir: &Path, profile: &str) -> Result<()> {
+pub fn run_calibration(corrections_dir: &Path, profile: &str) -> Result<PathBuf> {
     let mut files = vec![];
     for e in fs::read_dir(corrections_dir)
         .with_context(|| format!("failed reading {}", corrections_dir.display()))?
@@ -58,8 +61,8 @@ pub fn run_calibration(corrections_dir: &Path, profile: &str) -> Result<()> {
     let out_dir = Path::new("analysis/learnings");
     fs::create_dir_all(out_dir)?;
     let out_path = out_dir.join("latest-calibration.json");
-    fs::write(out_path, serde_json::to_vec_pretty(&report)?)?;
-    Ok(())
+    fs::write(&out_path, serde_json::to_vec_pretty(&report)?)?;
+    Ok(out_path)
 }
 
 pub fn apply_calibration_report(report_path: &Path, output_profile: &Path) -> Result<()> {

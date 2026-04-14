@@ -106,7 +106,14 @@ fn run() -> Result<()> {
             corrections_dir,
             profile,
         } => {
-            run_calibration(&corrections_dir, &profile)?;
+            let report_path = run_calibration(&corrections_dir, &profile)?;
+            let output_profile = get_calibration_dir()?.join("latest.json");
+            apply_calibration_report(&report_path, &output_profile)?;
+            info!(
+                report = %report_path.display(),
+                output = %output_profile.display(),
+                "saved calibration report and updated active profile"
+            );
         }
         Commands::ApplyCalibration { report, output } => {
             let out_path = if let Some(path) = output {

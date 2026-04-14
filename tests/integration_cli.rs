@@ -122,7 +122,7 @@ fn repeated_extract_is_deterministic() {
 }
 
 #[test]
-fn unsupported_vad_engine_errors_clearly() {
+fn unsupported_vad_engine_is_rejected_by_cli() {
     let d = tempdir().unwrap_or_else(|_| panic!("tmpdir"));
     let wav = d.path().join("in.wav");
     let out = d.path().join("segments.json");
@@ -140,7 +140,9 @@ fn unsupported_vad_engine_errors_clearly() {
         ])
         .assert()
         .failure()
-        .stderr(contains("VAD engine 'webrtc' is not implemented"));
+        .stderr(contains(
+            "invalid value 'webrtc' for '--vad-engine <VAD_ENGINE>'",
+        ));
 }
 
 #[test]

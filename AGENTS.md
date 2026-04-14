@@ -53,6 +53,39 @@ python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/lat
 - Dependabot is configured for weekly Cargo and GitHub Actions updates.
 - Dependabot PRs are auto-merge enabled after required checks pass.
 
+## Standard Validation Workflow (Always Use)
+
+Use this exact sequence for every non-trivial change:
+
+```bash
+# 1) Sync fixtures and deterministic inputs
+bash scripts/fetch_test_assets.sh
+
+# 2) Local quality gate (must be warning-free)
+bash scripts/quality_gate.sh
+
+# 3) Benchmark artifact generation + regression check
+bash scripts/benchmark.sh testdata/raw/sintel_trailer_2010.mp4 analysis/benchmarks/ci.json
+python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/ci.json
+
+# 4) Bench harness (performance visibility)
+cargo bench --bench pipeline_bench -- --noplot
+
+# 5) Atomic commit and push
+git add -A
+git commit -m "<type(scope): message>"
+git push
+
+# 6) CI monitor to completion
+gh run watch --exit-status
+```
+
+Required outcome before considering work complete:
+- no clippy warnings
+- no failing tests
+- benchmark regression check passes
+- GitHub Actions `Quality Gate` passes
+
 ## Commit Policy
 
 Use atomic commits via the `atomic-commit` skill or manual equivalent.

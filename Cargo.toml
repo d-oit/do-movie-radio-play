@@ -22,7 +22,7 @@ realfft = "3"
 assert_cmd = "2"
 predicates = "3"
 tempfile = "3"
-rand = "0.8"
+rand = "0.9.3"
 jsonschema = "0.17"
 criterion = { version = "0.5", features = ["html_reports"] }
 

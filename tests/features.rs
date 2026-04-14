@@ -42,7 +42,7 @@ fn known_frequency_signal_4khz() {
 #[test]
 fn noise_floor_detection() {
     let mut rng = StdRng::seed_from_u64(123);
-    let samples: Vec<f32> = (0..4096).map(|_| rng.gen_range(-0.01..0.01)).collect();
+    let samples: Vec<f32> = (0..4096).map(|_| rng.random_range(-0.01..0.01)).collect();
     let features = compute_features(&samples, 16000);
 
     assert!(

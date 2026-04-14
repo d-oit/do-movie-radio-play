@@ -166,7 +166,7 @@ mod tests {
         use rand::Rng;
         use rand::SeedableRng;
         let mut rng = StdRng::seed_from_u64(42);
-        let samples: Vec<f32> = (0..2048).map(|_| rng.gen::<f32>() * 2.0 - 1.0).collect();
+        let samples: Vec<f32> = (0..2048).map(|_| rng.random::<f32>() * 2.0 - 1.0).collect();
         let features = compute_features(&samples, 16000);
         assert!(
             features.spectral_flux > 0.0,

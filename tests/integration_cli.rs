@@ -211,3 +211,40 @@ fn invalid_env_override_errors_clearly() {
         .failure()
         .stderr(contains("invalid env var TIMELINE_SAMPLE_RATE"));
 }
+
+#[test]
+fn review_generates_html_player() {
+    let d = tempdir().unwrap_or_else(|_| panic!("tmpdir"));
+    let wav = d.path().join("in.wav");
+    let out = d.path().join("segments.json");
+    let review = d.path().join("review.html");
+    gen_wav(&wav);
+
+    Command::cargo_bin("timeline")
+        .unwrap_or_else(|_| panic!("bin"))
+        .args([
+            "extract",
+            wav.to_str().unwrap_or_default(),
+            "--output",
+            out.to_str().unwrap_or_default(),
+        ])
+        .assert()
+        .success();
+
+    Command::cargo_bin("timeline")
+        .unwrap_or_else(|_| panic!("bin"))
+        .args([
+            "review",
+            wav.to_str().unwrap_or_default(),
+            "--input",
+            out.to_str().unwrap_or_default(),
+            "--output",
+            review.to_str().unwrap_or_default(),
+        ])
+        .assert()
+        .success();
+
+    let html = std::fs::read_to_string(&review).unwrap_or_default();
+    assert!(html.contains("Non-Voice Review Player"));
+    assert!(html.contains("const segments ="));
+}

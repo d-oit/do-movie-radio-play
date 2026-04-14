@@ -4,5 +4,6 @@ pub mod error;
 pub mod io;
 pub mod learning;
 pub mod pipeline;
+pub mod review;
 pub mod types;
 pub mod validation;

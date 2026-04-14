@@ -21,6 +21,15 @@ No medium-or-higher runtime gaps are currently open in the shipped CLI flow.
 
 No active hardening gaps are currently open beyond future feature work.
 
+## Production Evaluation Correctness
+
+- Manifest-based eval coverage is now implemented in `testdata/validation/manifest.json`.
+- Tier A coverage is enforced in PR CI via `.github/workflows/ci.yml`.
+- Scheduled full sweeps are implemented in `.github/workflows/validation-sweep.yml`.
+- Coverage and artifact integrity checks are enforced by `scripts/check_validation_coverage.py`.
+- Full manifest execution and summary emission are implemented in
+  `scripts/run_validation_manifest.py` and `analysis/validation/full-sweep-summary.json`.
+
 ## Completed Since Earlier Plan Drafts
 
 - Prompt generation now honors `AnalysisConfig` in `src/pipeline/prompts.rs`.
@@ -40,3 +49,6 @@ No active hardening gaps are currently open beyond future feature work.
 - CI now runs benchmark smoke, compares against the checked-in real-media baseline, and uploads benchmark artifacts.
 - Frame construction and VAD already use spectral features through
    `src/types/frame.rs` and `src/pipeline/framing.rs`.
+- Production eval governance is now codified in
+  `plans/040-validation/PRODUCTION-EVALS.md` and
+  `plans/040-validation/ACCEPTANCE.md`.

@@ -44,6 +44,19 @@ pub enum Commands {
         #[arg(long)]
         config: Option<PathBuf>,
     },
+    Review {
+        input_media: PathBuf,
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long, default_value = "reports/nonvoice-review.html")]
+        output: PathBuf,
+        #[arg(long, default_value_t = 1.0)]
+        pre_roll_s: f32,
+        #[arg(long, default_value_t = 1.0)]
+        post_roll_s: f32,
+        #[arg(long)]
+        open: bool,
+    },
     Calibrate {
         corrections_dir: PathBuf,
         #[arg(long, default_value = "drama")]

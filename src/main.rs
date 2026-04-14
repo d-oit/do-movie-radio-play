@@ -4,6 +4,7 @@ mod error;
 mod io;
 mod learning;
 mod pipeline;
+mod review;
 mod types;
 mod validation;
 
@@ -101,6 +102,39 @@ fn run() -> Result<()> {
             let mut timeline = read_timeline(&input_json)?;
             add_prompts(&mut timeline, &cfg);
             write_json_pretty(&output, &timeline)?;
+        }
+        Commands::Review {
+            input_media,
+            input,
+            output,
+            pre_roll_s,
+            post_roll_s,
+            open,
+        } => {
+            if !pre_roll_s.is_finite() || pre_roll_s < 0.0 {
+                bail!("--pre-roll-s must be a finite non-negative number");
+            }
+            if !post_roll_s.is_finite() || post_roll_s < 0.0 {
+                bail!("--post-roll-s must be a finite non-negative number");
+            }
+
+            let timeline = read_timeline(&input)?;
+            let count = review::write_review_html(
+                &input_media,
+                &timeline,
+                &output,
+                pre_roll_s,
+                post_roll_s,
+            )?;
+            info!(
+                output = %output.display(),
+                non_voice_segments = count,
+                "review player generated"
+            );
+
+            if open {
+                open_in_browser(&output)?;
+            }
         }
         Commands::Calibrate {
             corrections_dir,
@@ -298,6 +332,39 @@ fn init_logging() {
         .with_target(false)
         .compact()
         .init();
+}
+
+fn open_in_browser(path: &std::path::Path) -> Result<()> {
+    let path_str = path.to_string_lossy().to_string();
+
+    let mut cmd = if cfg!(target_os = "macos") {
+        let mut c = std::process::Command::new("open");
+        c.arg(&path_str);
+        c
+    } else if cfg!(target_os = "windows") {
+        let mut c = std::process::Command::new("cmd");
+        c.args(["/C", "start", "", &path_str]);
+        c
+    } else {
+        let mut c = std::process::Command::new("xdg-open");
+        c.arg(&path_str);
+        c
+    };
+
+    let status = cmd
+        .status()
+        .with_context(|| format!("failed to launch browser opener for {}", path.display()))?;
+
+    if !status.success() {
+        bail!(
+            "browser open command failed for {} (exit status: {})",
+            path.display(),
+            status
+        );
+    }
+
+    info!(path = %path.display(), "opened review output in browser");
+    Ok(())
 }
 
 fn get_calibration_dir() -> Result<std::path::PathBuf> {

@@ -6,6 +6,7 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 - `timeline extract <input> --output out.json`
 - `timeline tag <input_media> --input segments.json --output tagged.json`
 - `timeline prompt <input_json> --output prompted.json`
+- `timeline review <input_media> --input segments.json --output reports/nonvoice-review.html [--open]`
 - `timeline calibrate <corrections_dir> --profile drama`
 - `timeline apply-calibration --report analysis/learnings/latest-calibration.json --output ~/.config/do-movie-radio-play/profiles/latest.json`
 - `timeline gen-fixtures --output-dir testdata/generated`
@@ -77,6 +78,14 @@ Non-English subtitle validation example:
 Validation/eval guardrails:
 - Pass exactly one truth source: `--truth-json` or `--subtitles` or `--dataset-manifest`.
 - `--total-ms` is required when using `--subtitles` or `--dataset-manifest`.
+
+## Human Review Player
+
+Use the review player to manually confirm that extracted `non_voice` windows are actually non-voice:
+
+`timeline review testdata/raw/the_hole_1962.mp4 --input testdata/validation/the_hole_1962.json --output reports/nonvoice-review.html --open`
+
+Open the generated HTML file in a browser. It provides per-segment navigation with pre/post-roll playback.
 
 ## Limitations
 Current VAD uses deterministic energy thresholding and conservative smoothing; it is intended for robust non-voice extraction, not transcript-grade speech detection.

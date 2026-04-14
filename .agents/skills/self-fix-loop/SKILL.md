@@ -9,6 +9,18 @@ template_version: "0.2"
 
 Automated self-learning cycle: **commit → push → monitor → analyze failures → fix → retry** until all GitHub Actions pass.
 
+## When to use
+
+- You want one command to run commit/push/CI-monitor loops.
+- CI is flaky or failing and you need structured triage + retries.
+- You want explicit handoff artifacts for multi-agent coordination.
+
+## When not to use
+
+- You need an interactive/manual debugging session first.
+- You are working directly on protected branches.
+- You only need a single local lint/test run.
+
 ## Overview
 
 Continuous improvement loop that:
@@ -30,6 +42,9 @@ Continuous improvement loop that:
 
 # Dry run (simulate without push)
 ./scripts/self-fix-loop.sh --dry-run
+
+# Convert a handoff into machine-readable agent tasks
+./scripts/handoff-to-tasks.sh analysis/handoffs/self-fix-loop-iter-1-*.md
 ```
 
 ## Arguments
@@ -69,8 +84,8 @@ Phase 4: ANALYZE FAILURES
    - Categorize failure type
    ↓
 Phase 5: FIX (if failures)
-   - Launch swarm agents
-   - Use relevant skills on demand
+   - Generate parallel handoff bundle for swarm agents
+   - Route to relevant skills on demand
    - Apply fixes
    - Commit fix
    ↓
@@ -101,6 +116,20 @@ On each failure:
 2. **Researcher Agent**: Web searches for solutions (if enabled)
 3. **Fixer Agent**: Applies fixes using relevant skills
 4. **Validator Agent**: Runs local quality gate before retry
+
+The script writes a handoff file under `analysis/handoffs/` with:
+- CI failure classification
+- suggested parallel agent split
+- skill routing hints
+- convergence instructions for final validation
+
+Use `scripts/handoff-to-tasks.sh` to convert the handoff markdown into JSON task payloads for fixer-agent automation.
+
+## Implementation Status
+
+- `scripts/self-fix-loop.sh` now exists and supports loop orchestration, PR checks monitoring, failure classification, and handoff bundle generation.
+- Built-in auto-fix handlers currently cover formatting-focused cases (`cargo fmt`, optional `shfmt`).
+- Non-trivial failures are intentionally escalated through the handoff bundle for agent-driven fixes.
 
 ## Configuration
 

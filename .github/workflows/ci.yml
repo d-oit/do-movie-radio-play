@@ -12,6 +12,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  self_fix_loop_smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bash -n scripts/self-fix-loop.sh
+      - run: bash -n scripts/handoff-to-tasks.sh
+      - run: chmod +x scripts/self-fix-loop.sh scripts/handoff-to-tasks.sh
+      - run: bash scripts/self-fix-loop.sh --help
+      - run: bash scripts/self-fix-loop.sh --dry-run --max-retries 1 --timeout 60 --poll-interval 1
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30

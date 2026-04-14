@@ -2,9 +2,22 @@ use assert_cmd::Command;
 use predicates::str::contains;
 use std::fs;
 use std::path::Path;
+use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
+fn ffmpeg_available() -> bool {
+    StdCommand::new("ffmpeg")
+        .arg("-version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
 fn preferred_validation_media() -> Option<(&'static str, &'static str, &'static str)> {
+    if !ffmpeg_available() {
+        return None;
+    }
+
     if Path::new("testdata/raw/sintel_trailer_2010.mp4").exists()
         && Path::new("testdata/raw/sintel_trailer_2010.srt").exists()
     {
@@ -45,6 +58,10 @@ fn preferred_validation_media() -> Option<(&'static str, &'static str, &'static 
 }
 
 fn preferred_multilingual_validation_media() -> Option<(&'static str, &'static str, &'static str)> {
+    if !ffmpeg_available() {
+        return None;
+    }
+
     if Path::new("testdata/raw/elephants_dream_2006.mp4").exists()
         && Path::new("testdata/raw/elephants_dream_2006.es.srt").exists()
     {

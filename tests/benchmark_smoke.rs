@@ -2,9 +2,22 @@ use assert_cmd::Command;
 use movie_nonvoice_timeline::types::BenchmarkResult;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command as StdCommand;
 use tempfile::tempdir;
 
+fn ffmpeg_available() -> bool {
+    StdCommand::new("ffmpeg")
+        .arg("-version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
 fn preferred_benchmark_input() -> Option<PathBuf> {
+    if !ffmpeg_available() {
+        return None;
+    }
+
     [
         "testdata/raw/sintel_trailer_2010.mp4",
         "testdata/raw/big_buck_bunny_trailer_2008.mov",

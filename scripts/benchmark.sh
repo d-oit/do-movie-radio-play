@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+ffmpeg_available(){
+  command -v ffmpeg >/dev/null 2>&1
+}
+
 pick_default_input(){
+  if ! ffmpeg_available; then
+    printf '%s\n' testdata/generated/alternating.wav
+    return 0
+  fi
+
   local candidate
   for candidate in \
     testdata/raw/sintel_trailer_2010.mp4 \
@@ -23,6 +33,11 @@ pick_default_input(){
 input=${1:-$(pick_default_input)}
 out=${2:-analysis/benchmarks/latest.json}
 mkdir -p "$(dirname "$out")"
+
+if [[ "$input" != *.wav ]] && ! ffmpeg_available; then
+  echo "ffmpeg unavailable; falling back to deterministic WAV fixture" >&2
+  input="testdata/generated/alternating.wav"
+fi
 
 if [[ ! -f "$input" && "$input" == "testdata/generated/alternating.wav" ]]; then
   echo "benchmark input missing ($input); generating deterministic fixtures..." >&2

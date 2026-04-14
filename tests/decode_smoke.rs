@@ -1,7 +1,20 @@
 use assert_cmd::Command;
 use std::path::Path;
+use std::process::Command as StdCommand;
+
+fn ffmpeg_available() -> bool {
+    StdCommand::new("ffmpeg")
+        .arg("-version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
 
 fn downloaded_movie() -> Option<&'static str> {
+    if !ffmpeg_available() {
+        return None;
+    }
+
     [
         "testdata/raw/sintel_trailer_2010.mp4",
         "testdata/raw/big_buck_bunny_trailer_2008.mov",

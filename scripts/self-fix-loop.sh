@@ -115,13 +115,13 @@ commit_and_push_iteration() {
   fi
 
   run_quality_gate
-  git add -A
-  git commit -m "fix(ci): self-fix-loop iteration ${iteration}"
-
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    log "Dry run: skipping git push"
+    log "Dry run: skipping git commit/push"
     return 0
   fi
+
+  git add -A
+  git commit -m "fix(ci): self-fix-loop iteration ${iteration}"
 
   git push -u origin "$(current_branch)"
 }

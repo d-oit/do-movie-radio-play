@@ -149,6 +149,13 @@ Loop succeeds when:
 3. ✓ ALL GitHub Actions passing
 4. ✓ Zero warnings in all checks
 
+## Pre-existing Issue Enforcement
+
+- Always attempt to fix pre-existing warnings/failures discovered in loop execution.
+- If a failure cannot be fixed in-loop, document it in `plans/050-status-report/STATUS.md`
+  with file path, reason, and follow-up action before closing the run.
+- Never suppress diagnostics as a shortcut; either fix or document with explicit rationale.
+
 ## Error Codes
 
 | Code | Meaning |

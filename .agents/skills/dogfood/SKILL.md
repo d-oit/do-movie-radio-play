@@ -9,6 +9,12 @@ description: Systematically explore and test a web application to find bugs, UX 
 
 Systematically explore a web application, find issues, and produce a report with full reproduction evidence for every finding.
 
+## When to use
+
+- You need exploratory QA across real user flows.
+- You are hunting for functional, UX, and console issues with reproducible evidence.
+- You want a structured quality report instead of ad hoc notes.
+
 ## Setup
 
 Only the **Target URL** is required. Everything else has sensible defaults -- use them unless the user explicitly provides an override.

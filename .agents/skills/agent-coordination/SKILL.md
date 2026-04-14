@@ -7,6 +7,12 @@ description: Coordinate multiple agents for software development across any lang
 
 Coordinate multiple agents efficiently for complex development tasks across any programming language.
 
+## When to use
+
+- The task has multiple workstreams (parallel, sequential, swarm, or hybrid).
+- You need explicit handoff and convergence between specialized agents.
+- You want throughput gains without losing validation quality.
+
 ## Quick Start
 
 Choose your coordination strategy:

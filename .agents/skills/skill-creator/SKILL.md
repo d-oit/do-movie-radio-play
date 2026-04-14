@@ -8,6 +8,12 @@ license: MIT
 
 Create and improve skills following the Agent Skills specification. A skill extends agent capabilities with specialized knowledge, workflows, and tools.
 
+## When to use
+
+- You need to create a new skill with proper frontmatter and structure.
+- You are improving an existing skill's trigger quality or workflow clarity.
+- You want eval-driven iteration and measurable skill quality improvements.
+
 ## Core Loop
 
 1. **Capture intent** - What should the skill do? When should it trigger?

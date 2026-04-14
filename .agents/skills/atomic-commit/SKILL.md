@@ -7,6 +7,12 @@ description: Atomic git workflow - validates, commits, pushes, creates PR, and v
 
 Atomic workflow: validate → commit → push → PR → verify. All changes committed as single unit with **zero warnings** policy.
 
+## When to use
+
+- You want a full validate/commit/push/PR/CI cycle in one workflow.
+- You need rollback-aware safety for failed checks or push/PR operations.
+- You must enforce zero-warning quality before sharing changes.
+
 ## Overview
 
 Orchestrates complete code submission as state machine with 7 phases:

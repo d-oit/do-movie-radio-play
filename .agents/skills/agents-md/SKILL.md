@@ -8,6 +8,12 @@ license: MIT
 
 Create production-ready AGENTS.md files following best practices below.
 
+## When to use
+
+- You are creating a new `AGENTS.md` from scratch.
+- You need to harden agent instructions with quality gates and issue policy.
+- You are standardizing multi-repo or multi-team agent operating docs.
+
 ## Quick Start
 
 **Basic:**

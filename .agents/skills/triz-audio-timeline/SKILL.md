@@ -3,7 +3,7 @@ name: triz-audio-timeline
 description: TRIZ inventive principles applied to audio timeline segmentation problems
 ---
 
-## When to do use
+## When to use
 Use when facing fundamental tradeoffs in audio segmentation: speed vs accuracy, sensitivity vs specificity, granularity vs simplicity. TRIZ provides structured problem-solving for these contradictions.
 
 ## TRIZ core concepts

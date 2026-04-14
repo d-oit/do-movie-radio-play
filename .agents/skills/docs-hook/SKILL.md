@@ -7,6 +7,12 @@ description: Lightweight git hook integration for updating agents-docs with mini
 
 Ultra-lightweight documentation sync via git hooks.
 
+## When to use
+
+- You need docs updates to happen automatically on commit/merge.
+- You want low-overhead markdown synchronization with minimal token usage.
+- You are keeping `agents-docs/` aligned with recently changed docs files.
+
 ## Trigger
 
 - "git hook", "on commit", "pre-commit"

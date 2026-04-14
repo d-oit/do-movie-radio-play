@@ -8,6 +8,12 @@ description: Lint and test shell scripts using ShellCheck and BATS. Use when che
 
 Comprehensive shell script linting and testing using ShellCheck and BATS with 2025 best practices.
 
+## When to use
+
+- You need to lint or fix shell scripts with ShellCheck guidance.
+- You are adding or hardening BATS tests for script behavior.
+- You want CI-safe shell quality standards with repeatable checks.
+
 ## Quick Start
 
 Copy this workflow checklist and track your progress:

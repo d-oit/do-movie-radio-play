@@ -8,6 +8,12 @@ description: >
 
 AI tools flooded the design and copy space. The result: a recognizable monoculture. This skill is a systematic antidote. Use it to audit existing work OR to guide new creation from scratch.
 
+## When to use
+
+- The user asks for UI/UX/copy that should feel intentional, non-generic, and human.
+- Existing output feels templated, corporate, or "AI generated" and needs redesign.
+- You need a structured anti-pattern audit before shipping frontend or product copy.
+
 ---
 
 ## How to Use This Skill

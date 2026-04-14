@@ -115,6 +115,14 @@ bash scripts/quality_gate.sh && git add -A && git commit
 - Never use `#[allow(...)]` to silence warnings without a comment explaining why.
 - Never skip, ignore, or defer. Document and fix is the rule.
 
+### Agent and Skill Enforcement
+
+- Apply this policy to code, CI workflows, scripts, and skill docs.
+- If an issue is fixable in the current task scope, fix it before completion.
+- If not currently fixable, document it immediately in `plans/050-status-report/STATUS.md`
+  with owner, impact, and next action.
+- Do not ship new instructions or skills that normalize leaving warnings unresolved.
+
 ## Code Style
 
 ### Rust Rules

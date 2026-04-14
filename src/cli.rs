@@ -76,6 +76,7 @@ pub enum Commands {
         #[arg(long, default_value = "testdata/generated")]
         output_dir: PathBuf,
     },
+    #[command(alias = "eval")]
     Validate {
         input_media: PathBuf,
         #[arg(long)]

@@ -48,6 +48,11 @@ bash scripts/benchmark.sh
 python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/latest.json
 ```
 
+## Dependency Hygiene
+
+- Dependabot is configured for weekly Cargo and GitHub Actions updates.
+- Dependabot PRs are auto-merge enabled after required checks pass.
+
 ## Commit Policy
 
 Use atomic commits via the `atomic-commit` skill or manual equivalent.
@@ -155,7 +160,7 @@ Documented in `plans/010-architecture/`:
 - Before adding new code, search for existing similar code to avoid duplication.
 - ffmpeg must be on PATH for non-WAV media decoding.
 - WAV reader currently supports 16-bit PCM only; other formats fall through to ffmpeg.
-- Prefer downloaded movie assets in `testdata/raw/` for smoke tests, validation, and benchmarks when present; keep deterministic generated-audio fallback when absent.
+- Prefer post-2000 downloaded movie assets in `testdata/raw/` for smoke tests, validation, and benchmarks when present; keep older fixtures only as fallback compatibility and keep deterministic generated-audio fallback when absent.
 
 ## Known Limitations
 

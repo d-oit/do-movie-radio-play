@@ -5,7 +5,7 @@ use movie_nonvoice_timeline::pipeline::{
     framing, resample, segmenter,
     vad::{EnergyVad, VadEngine},
 };
-use std::{path::Path, sync::OnceLock};
+use std::{path::Path, sync::OnceLock, time::Duration};
 
 const BENCH_SAMPLE_RATE_HZ: u32 = 16000;
 const BENCH_FRAME_MS: u32 = 20;
@@ -29,6 +29,9 @@ fn sample_audio() -> Vec<f32> {
 
 fn preferred_media_path() -> Option<&'static str> {
     [
+        "testdata/raw/sintel_trailer_2010.mp4",
+        "testdata/raw/big_buck_bunny_trailer_2008.mov",
+        "testdata/raw/elephants_dream_2006.mp4",
         "testdata/raw/eggs_1970.mp4",
         "testdata/raw/windy_day_1967.mp4",
         "testdata/raw/the_hole_1962.mp4",
@@ -107,11 +110,11 @@ fn bench_segmenter(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    benches,
-    bench_framing,
-    bench_features,
-    bench_vad,
-    bench_segmenter
-);
+criterion_group! {
+    name = benches;
+    config = Criterion::default()
+        .sample_size(50)
+        .measurement_time(Duration::from_secs(8));
+    targets = bench_framing, bench_features, bench_vad, bench_segmenter
+}
 criterion_main!(benches);

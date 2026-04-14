@@ -175,56 +175,72 @@ fn run() -> Result<()> {
                 vad_engine,
                 calibration_profile,
             )?;
-            if let Some(truth_json) = truth_json {
-                let tolerance_ms = tolerance_for_profile(&profile);
-                validation::validate_file(
-                    &input_media,
-                    &truth_json,
-                    &output,
-                    &cfg,
-                    tolerance_ms,
-                    &profile,
-                )?;
-            } else if let Some(subtitles) = subtitles {
-                let srt = std::fs::read_to_string(&subtitles)?;
-                let speech = validation::srt::parse_srt_segments(&srt)?;
-                let total = total_ms.context("--total-ms required for subtitle validation")?;
-                let truth = validation::timeline_from_speech_segments(
-                    input_media.display().to_string(),
-                    cfg.sample_rate_hz,
-                    cfg.frame_ms,
-                    &speech,
-                    total,
-                    cfg.min_non_voice_ms,
-                );
-                let predicted = extract_timeline(&input_media, &cfg)?;
-                let report = validation::validate_against_timeline(
-                    &predicted,
-                    &truth,
-                    &profile,
-                    tolerance_for_profile(&profile),
-                );
-                write_json_pretty(&output, &report)?;
-            } else if let Some(dataset_manifest) = dataset_manifest {
-                let total = total_ms.context("--total-ms required for dataset validation")?;
-                let truth = validation::dataset::build_truth_from_manifest(
-                    &dataset_manifest,
-                    &input_media.display().to_string(),
-                    cfg.sample_rate_hz,
-                    cfg.frame_ms,
-                    total,
-                    cfg.min_non_voice_ms,
-                )?;
-                let predicted = extract_timeline(&input_media, &cfg)?;
-                let report = validation::validate_against_timeline(
-                    &predicted,
-                    &truth,
-                    &profile,
-                    tolerance_for_profile(&profile),
-                );
-                write_json_pretty(&output, &report)?;
-            } else {
-                bail!("provide one of --truth-json, --subtitles, or --dataset-manifest")
+            let selected_inputs = [
+                truth_json.is_some(),
+                subtitles.is_some(),
+                dataset_manifest.is_some(),
+            ]
+            .into_iter()
+            .filter(|selected| *selected)
+            .count();
+
+            if selected_inputs != 1 {
+                bail!("provide exactly one of --truth-json, --subtitles, or --dataset-manifest");
+            }
+
+            match (truth_json, subtitles, dataset_manifest) {
+                (Some(truth_json), None, None) => {
+                    let tolerance_ms = tolerance_for_profile(&profile);
+                    validation::validate_file(
+                        &input_media,
+                        &truth_json,
+                        &output,
+                        &cfg,
+                        tolerance_ms,
+                        &profile,
+                    )?;
+                }
+                (None, Some(subtitles), None) => {
+                    let srt = std::fs::read_to_string(&subtitles)?;
+                    let speech = validation::srt::parse_srt_segments(&srt)?;
+                    let total = total_ms.context("--total-ms required for subtitle validation")?;
+                    let truth = validation::timeline_from_speech_segments(
+                        input_media.display().to_string(),
+                        cfg.sample_rate_hz,
+                        cfg.frame_ms,
+                        &speech,
+                        total,
+                        cfg.min_non_voice_ms,
+                    );
+                    let predicted = extract_timeline(&input_media, &cfg)?;
+                    let report = validation::validate_against_timeline(
+                        &predicted,
+                        &truth,
+                        &profile,
+                        tolerance_for_profile(&profile),
+                    );
+                    write_json_pretty(&output, &report)?;
+                }
+                (None, None, Some(dataset_manifest)) => {
+                    let total = total_ms.context("--total-ms required for dataset validation")?;
+                    let truth = validation::dataset::build_truth_from_manifest(
+                        &dataset_manifest,
+                        &input_media.display().to_string(),
+                        cfg.sample_rate_hz,
+                        cfg.frame_ms,
+                        total,
+                        cfg.min_non_voice_ms,
+                    )?;
+                    let predicted = extract_timeline(&input_media, &cfg)?;
+                    let report = validation::validate_against_timeline(
+                        &predicted,
+                        &truth,
+                        &profile,
+                        tolerance_for_profile(&profile),
+                    );
+                    write_json_pretty(&output, &report)?;
+                }
+                _ => unreachable!("validation input source selection was checked above"),
             }
         }
     }

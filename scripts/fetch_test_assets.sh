@@ -7,24 +7,18 @@ fetch(){
   curl -L --fail --retry 3 "$url" -o "$out"
   [[ -s "$out" ]] || { echo "empty: $out"; exit 1; }
 }
-# Wikimedia Commons public domain/safe fixture sources.
-fetch "https://upload.wikimedia.org/wikipedia/commons/0/0f/Br%C3%BCder_%281929%29.webm" "testdata/raw/bruder-1929.webm"
-fetch "https://upload.wikimedia.org/wikipedia/commons/0/0a/CPIDL_German_-_Hallo.ogg" "testdata/raw/cpidl-hallo.ogg"
-fetch "https://upload.wikimedia.org/wikipedia/commons/0/0a/De-Bier.ogg" "testdata/raw/de-bier.ogg"
+# Layer 3: Post-2000 video fixtures only.
+# Elephants Dream (2006) - Blender Open Movie
+fetch "https://archive.org/download/ElephantsDream/ed_1024_512kb.mp4" "testdata/raw/elephants_dream_2006.mp4"
+# Multilingual subtitle fixtures for non-English validation coverage
+fetch "https://commons.wikimedia.org/wiki/TimedText:Elephants_Dream_(2006).webm.es.srt?action=raw" "testdata/raw/elephants_dream_2006.es.srt"
+fetch "https://commons.wikimedia.org/wiki/TimedText:Elephants_Dream_(2006).webm.de.srt?action=raw" "testdata/raw/elephants_dream_2006.de.srt"
+# Big Buck Bunny trailer (2008) - Blender Open Movie trailer
+fetch "https://download.blender.org/peach/trailer/trailer_480p.mov" "testdata/raw/big_buck_bunny_trailer_2008.mov"
+# Sintel trailer (2010) - Blender Open Movie trailer
+fetch "https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4" "testdata/raw/sintel_trailer_2010.mp4"
 
-# Layer 3: Movie + subtitle validation (public domain films with VOICE)
-# The Singing Fool (1928) - first sound film to reach #1 at box office, has actual dialogue!
-fetch "https://upload.wikimedia.org/wikipedia/commons/2/2e/The_Singing_Fool_%281928%29.webm" "testdata/raw/the_singing_fool_1928.webm"
-# The Hole (1962) - Academy Award winner with actual dialogue by Dizzy Gillespie
-fetch "https://archive.org/download/1960publicdomainanimation/1962%20-%20The%20Hole.ia.mp4" "testdata/raw/the_hole_1962.mp4"
-# Windy Day (1967) - experimental animated short
-fetch "https://archive.org/download/1960publicdomainanimation/1967%20-%20Windy%20Day.ia.mp4" "testdata/raw/windy_day_1967.mp4"
-# Eggs (1970) - animated short
-fetch "https://archive.org/download/1960publicdomainanimation/1970%20-%20Eggs.ia.mp4" "testdata/raw/eggs_1970.mp4"
-# Dinner Time (1928) - first sound-on-film cartoon (6 min)
-fetch "https://upload.wikimedia.org/wikipedia/commons/1/19/Dinner_Time_%281928%29.webm" "testdata/raw/dinner_time_1928.webm"
-
-for f in testdata/raw/bruder-1929.webm testdata/raw/cpidl-hallo.ogg testdata/raw/de-bier.ogg testdata/raw/dinner_time_1928.webm testdata/raw/the_singing_fool_1928.webm; do
+for f in testdata/raw/elephants_dream_2006.mp4 testdata/raw/elephants_dream_2006.es.srt testdata/raw/elephants_dream_2006.de.srt testdata/raw/big_buck_bunny_trailer_2008.mov testdata/raw/sintel_trailer_2010.mp4; do
   [[ -s "$f" ]] || { echo "missing $f"; exit 1; }
 done
 echo "assets ready in testdata/raw"

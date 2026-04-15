@@ -205,6 +205,9 @@ pub fn write_review_html_with_options(
     }}
     button:hover {{ background: #ffe8da; }}
     .segment-list {{ max-height: 62vh; overflow: auto; display: grid; gap: 8px; }}
+    .segment-controls {{ display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }}
+    .segment-controls label {{ font-size: 0.85em; color: var(--muted); }}
+    .segment-controls select {{ padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; font-family: inherit; }}
     .segment {{ border: 1px solid var(--line); border-radius: 10px; padding: 8px; }}
     .segment.active {{ border-color: var(--accent); box-shadow: 0 0 0 2px rgba(182, 83, 40, 0.2); }}
     .meta {{ font-size: 0.85rem; color: var(--muted); }}
@@ -277,6 +280,22 @@ pub fn write_review_html_with_options(
     </section>
     <aside class="panel">
       <h1>Segments</h1>
+      <div class="segment-controls">
+        <label for="segment-filter">Filter:</label>
+        <select id="segment-filter">
+          <option value="all">All Segments</option>
+          <option value="unverified">Unverified</option>
+          <option value="verified">Verified</option>
+          <option value="suspicious">Suspicious</option>
+          <option value="excluded">Excluded</option>
+        </select>
+        <label for="segment-sort">Sort by:</label>
+        <select id="segment-sort">
+          <option value="time">Time</option>
+          <option value="confidence">Confidence</option>
+          <option value="duration">Duration</option>
+        </select>
+      </div>
       <div class="segment-list" id="segment-list"></div>
     </aside>
   </div>
@@ -309,6 +328,8 @@ pub fn write_review_html_with_options(
     const btnSaveHtml = document.getElementById('save-html');
     const btnPause = document.getElementById('pause');
     const btnNext = document.getElementById('next');
+    const btnSegmentFilter = document.getElementById('segment-filter');
+    const btnSegmentSort = document.getElementById('segment-sort');
 
     video.src = mediaSrc;
     let currentIndex = 0;
@@ -316,13 +337,25 @@ pub fn write_review_html_with_options(
     let playAll = false;
     let nonVoiceOnlyMode = true;
     let mergedMode = {merged_json};
+    let currentFilter = 'all';
+    let currentSort = 'time';
 
     function segKey(seg) {{
       return `${{seg.start_ms}}-${{seg.end_ms}}`;
     }}
 
     function refreshSegments() {{
-      segments = mergedMode ? getMergedSegments() : allSegments.filter(seg => !excluded.has(segKey(seg)));
+      let filtered = mergedMode ? getMergedSegments() : allSegments.filter(seg => !excluded.has(segKey(seg)));
+      if (currentFilter === 'verified') {{
+        filtered = filtered.filter(seg => seg.verification_status === 'verified');
+      }} else if (currentFilter === 'unverified') {{
+        filtered = filtered.filter(seg => !seg.verification_status);
+      }} else if (currentFilter === 'suspicious') {{
+        filtered = filtered.filter(seg => seg.verification_status === 'suspicious');
+      }} else if (currentFilter === 'excluded') {{
+        filtered = filtered.filter(seg => excluded.has(segKey(seg)));
+      }}
+      segments = filtered;
       if (currentIndex >= segments.length) {{
         currentIndex = Math.max(0, segments.length - 1);
       }}
@@ -607,6 +640,25 @@ pub fn write_review_html_with_options(
       video.pause();
     }});
 
+    btnSegmentFilter.addEventListener('change', (e) => {{
+      currentFilter = e.target.value;
+      refreshSegments();
+      renderList();
+    }});
+    btnSegmentSort.addEventListener('change', (e) => {{
+      currentSort = e.target.value;
+      if (currentSort === 'time') {{
+        segments.sort((a, b) => a.start_ms - b.start_ms);
+      }} else if (currentSort === 'confidence') {{
+        segments.sort((a, b) => b.confidence - a.confidence);
+      }} else if (currentSort === 'duration') {{
+        segments.sort((a, b) => (b.end_ms - b.start_ms) - (a.end_ms - a.start_ms));
+      }}
+      currentIndex = 0;
+      renderList();
+      jumpToCurrent(false);
+    }});
+
     document.addEventListener('keydown', (event) => {{
       if (event.key === ' ') {{
         event.preventDefault();
@@ -657,6 +709,8 @@ pub fn write_review_html_with_options(
         }} else {{
           playAll = false;
           video.pause();
+          btnPlayAll.textContent = 'Play All (a) - Done!';
+          setTimeout(() => {{ btnPlayAll.textContent = 'Play All (a)'; }}, 2000);
         }}
       }}
     }});

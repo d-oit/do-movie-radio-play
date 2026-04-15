@@ -15,6 +15,10 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 - `timeline validate <input_media> --subtitles in.srt --total-ms 120000 --profile movie`
 - `timeline validate <input_media> --dataset-manifest speech.csv --total-ms 120000 --profile dataset`
 - `timeline bench <input_media> --output analysis/benchmarks/latest.json`
+- `timeline verify-timeline <media> --timeline timeline.json --output verified.json [--save-learning]`
+- `timeline update-thresholds --learning-state state.json`
+- `timeline merge-timeline --input timeline.json --output merged.json`
+- `timeline export --input timeline.json --output out.json --format json|edl|vtt [--verified verified.json]`
 
 ## Build
 `cargo build`
@@ -107,3 +111,53 @@ Review workflow improvements in the HTML player:
 Current VAD uses deterministic energy thresholding and conservative smoothing; it is intended for robust non-voice extraction, not transcript-grade speech detection.
 
 Only the `energy` VAD engine is currently exposed in the CLI.
+
+## Spectral VAD
+
+The spectral VAD engine uses spectral features (entropy, flatness, centroid) to better distinguish speech from music/effects:
+
+```bash
+timeline extract input.mp4 --output timeline.json --vad-engine spectral
+```
+
+Configurable thresholds in profiles:
+
+```json
+{
+  "vad_engine": "spectral",
+  "spectral_flatness_max": 0.5,
+  "spectral_entropy_min": 3.5,
+  "spectral_centroid_min": 100,
+  "spectral_centroid_max": 6000
+}
+```
+
+## Learning System
+
+The system can learn from verification results to improve detection:
+
+1. **Extract** with spectral VAD
+2. **Verify** segments and save learning state:
+   ```bash
+   timeline verify-timeline --media input.mp4 --timeline timeline.json --output verified.json --save-learning
+   ```
+3. **Update thresholds** based on learned patterns:
+   ```bash
+   timeline update-thresholds --learning-state analysis/thresholds/learning-state.json
+   ```
+4. **Re-extract** with optimized thresholds
+
+## Export
+
+Export timelines in various formats:
+
+```bash
+# JSON with verification status
+timeline export --input timeline.json --output out.json --format json --verified verified.json
+
+# EDL for video editors
+timeline export --input timeline.json --output out.edl --format edl --verified verified.json
+
+# WebVTT for web players
+timeline export --input timeline.json --output out.vtt --format vtt --verified verified.json
+```

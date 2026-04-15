@@ -151,3 +151,29 @@ Parallel service validation:
 
 Gate: Tests pass, no race conditions detected
 ```
+
+## Project-Specific Examples (do-movie-radio-play)
+
+### Example 4: Feature Validation with New Commands
+```
+Goal: Validate new spectral VAD and learning system
+
+Parallel:
+- code-reviewer: Review spectral VAD implementation (src/pipeline/vad/spectral.rs)
+- test-runner: Run verification and export tests
+- browser-verification: Test review player with new filter/sort UI
+
+Gate: All pass, exports work correctly
+```
+
+### Example 5: Documentation Update
+```
+Goal: Update docs for new features
+
+Parallel:
+- docs-updater: Update README.md with new commands
+- docs-updater: Create plans/090-recent-improvements/RECENT.md
+- docs-updater: Update agent-coordination skill
+
+Gate: All docs consistent
+```

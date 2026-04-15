@@ -1,0 +1,155 @@
+# Recent Improvements
+
+Features implemented in recent releases.
+
+## 1. Spectral VAD Engine
+
+Added alternative spectral-based VAD engine with configurable thresholds.
+
+### Description
+Uses spectral features (flatness, entropy, centroid) instead of RMS energy for voice detection. Useful for content with varying background noise levels.
+
+### How to Use
+
+```bash
+# Via config file
+timeline extract input.mp4 --config vad-spectral.json --output out.json
+
+# Via CLI
+timeline extract input.mp4 --vad-engine spectral --output out.json
+```
+
+### Configuration Options
+
+| Option | Type | Description | Default |
+|--------|------|-------------|---------|
+| `vad_engine` | string | VAD engine: "energy" or "spectral" | "energy" |
+| `spectral_flatness_max` | f32 | Max spectral flatness (0-1). Higher = more noise-like | none |
+| `spectral_entropy_min` | f32 | Min spectral entropy (log2 scale). Higher = more tonal | none |
+| `spectral_centroid_min` | f32 | Min spectral centroid (Hz) | none |
+| `spectral_centroid_max` | f32 | Max spectral centroid (Hz) | none |
+
+Example config:
+```json
+{
+  "vad_engine": "spectral",
+  "spectral_flatness_max": 0.5,
+  "spectral_entropy_min": 3.5,
+  "spectral_centroid_min": 200,
+  "spectral_centroid_max": 4000
+}
+```
+
+---
+
+## 2. Verification System
+
+Added timeline verification with spectral analysis to validate segment boundaries.
+
+### Description
+Analyzes media at verified segment boundaries to confirm speech/non-voice classification. Supports saving learning data for threshold adaptation.
+
+### How to Use
+
+```bash
+timeline verify-timeline input.mp4 --timeline timeline.json --output verified.json
+timeline verify-timeline input.mp4 --timeline timeline.json --output verified.json --save-learning
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--timeline` | Input timeline JSON |
+| `--output` | Output path for verified timeline |
+| `--save-learning` | Save learning data to `analysis/thresholds/learning-state.json` |
+
+---
+
+## 3. Learning System
+
+Adaptive threshold system that adjusts VAD parameters based on verification feedback.
+
+### Description
+Maintains learning state from verification results and updates configuration thresholds automatically. Reduces false positives/negatives over time.
+
+### How to Use
+
+```bash
+# Update thresholds from learning state
+timeline update-thresholds --learning-state analysis/thresholds/learning-state.json
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--learning-state` | Path to learning state JSON from verify-timeline |
+
+### Output
+Generates updated configuration in `analysis/thresholds/updated-config.json`.
+
+---
+
+## 4. Export System
+
+Export timelines to multiple formats (JSON, EDL, WebVTT).
+
+### Description
+Converts internal timeline format to industry-standard formats for downstream use in video editors, subtitle tools, or web players.
+
+### How to Use
+
+```bash
+# JSON export
+timeline export --input timeline.json --output out.json --format json
+
+# CMX 3600 EDL export
+timeline export --input timeline.json --output out.edl --format edl
+
+# WebVTT export
+timeline export --input timeline.json --output out.vtt --format vtt
+
+# Include verified segments
+timeline export --input timeline.json --output out.json --format json --verified verified.json
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--input` | Input timeline JSON |
+| `--output` | Output file path |
+| `--format` | Format: json, edl, vtt |
+| `--verified` | Optional verified timeline for flagged segments |
+
+---
+
+## 5. Review Player Improvements
+
+Enhanced UI for segment review with filtering, sorting, and keyboard shortcuts.
+
+### Description
+Improved review player with filter/sort controls, keyboard shortcuts, and learning data export.
+
+### Features
+
+- **Filter**: Show All / Verified / Unverified / Suspicious / Excluded
+- **Sort**: By Time / By Confidence / By Duration
+- **Ctrl+S**: Save current review state
+- **Export Learning Data**: Button to export learning data (keyboard shortcut: E)
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| Space | Play/Pause |
+| Arrow Left/Right | Seek ±5s |
+| Ctrl+S | Save |
+| E | Export Learning Data |
+
+### How to Use
+
+```bash
+timeline review input.mp4 --input segments.json --output report.html --open
+```

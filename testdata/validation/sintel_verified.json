@@ -1,0 +1,54 @@
+{
+  "verified_timeline": {
+    "file": "sintel_trailer_2010.mp4",
+    "analysis_sample_rate": 16000,
+    "frame_ms": 20,
+    "segments": [
+      {
+        "start_ms": 50840,
+        "end_ms": 51925,
+        "kind": "non_voice",
+        "confidence": 0.76242995,
+        "tags": [],
+        "prompt": null
+      }
+    ]
+  },
+  "segment_results": [
+    {
+      "start_ms": 50840,
+      "end_ms": 51925,
+      "original_confidence": 0.76242995,
+      "verification_status": "inconclusive",
+      "spectral_features": {
+        "rms": 0.0,
+        "zcr": 0.0,
+        "spectral_entropy": 0.0,
+        "spectral_flatness": 0.0,
+        "spectral_flux": 0.0,
+        "centroid_hz": 0.0,
+        "low_band_ratio": 0.0,
+        "high_band_ratio": 0.0
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": "analysis failed: ffmpeg extraction failed: [AVFormatContext @ 0x63f8024f2e40] Unable to choose an output format for '/tmp/.tmpnnqMxX'; use a standard extension for the filename or specify the format manually.\n[out#0 @ 0x63f8024f0c40] Error initializing the muxer for /tmp/.tmpnnqMxX: Invalid argument\nError opening output file /tmp/.tmpnnqMxX.\nError opening output files: Invalid argument\n"
+    }
+  ],
+  "summary": {
+    "total_segments": 1,
+    "verified_count": 0,
+    "suspicious_count": 1,
+    "rejected_count": 0,
+    "false_positive_rate": 1.0,
+    "average_confidence": 0.76242995,
+    "thresholds_applied": {
+      "entropy_min": 3.5,
+      "entropy_max": 7.0,
+      "flatness_max": 0.45,
+      "energy_min": 0.001,
+      "centroid_min": 100.0,
+      "centroid_max": 6000.0
+    }
+  }
+}

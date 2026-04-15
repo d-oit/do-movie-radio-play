@@ -110,6 +110,50 @@ pub fn invert_to_non_voice(
     out
 }
 
+pub fn split_long_segments(
+    segments: Vec<Segment>,
+    max_non_voice_ms: u32,
+    min_non_voice_ms: u32,
+    frame_ms: u32,
+    frame_likelihoods: &[f32],
+) -> Vec<Segment> {
+    let mut out = Vec::new();
+    for seg in segments {
+        let duration_ms = seg.end_ms.saturating_sub(seg.start_ms);
+        if duration_ms <= max_non_voice_ms as u64 {
+            out.push(seg);
+        } else {
+            let mut cursor = seg.start_ms;
+            while cursor < seg.end_ms {
+                let remaining = seg.end_ms - cursor;
+                if remaining <= max_non_voice_ms as u64 {
+                    push_nv(
+                        &mut out,
+                        cursor,
+                        seg.end_ms,
+                        min_non_voice_ms,
+                        frame_ms,
+                        frame_likelihoods,
+                    );
+                    break;
+                } else {
+                    let split_end = cursor + max_non_voice_ms as u64;
+                    push_nv(
+                        &mut out,
+                        cursor,
+                        split_end,
+                        min_non_voice_ms,
+                        frame_ms,
+                        frame_likelihoods,
+                    );
+                    cursor = split_end;
+                }
+            }
+        }
+    }
+    out
+}
+
 fn speech_seg(
     start_idx: usize,
     end_idx: usize,

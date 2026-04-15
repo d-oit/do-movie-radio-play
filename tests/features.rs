@@ -107,3 +107,42 @@ fn amplitude_affects_rms() {
         "Louder signal should have higher RMS"
     );
 }
+
+#[test]
+fn speech_has_lower_entropy_than_noise() {
+    let mut rng = StdRng::seed_from_u64(42);
+    let speech_samples: Vec<f32> = (0..4096)
+        .map(|i| {
+            (2.0 * PI * 200.0 * i as f32 / 16000.0).sin() * 0.3
+                + (2.0 * PI * 800.0 * i as f32 / 16000.0).sin() * 0.2
+                + rng.random_range(-0.02..0.02)
+        })
+        .collect();
+    let noise_samples: Vec<f32> = (0..4096).map(|_| rng.random_range(-0.3..0.3)).collect();
+
+    let speech_features = compute_features(&speech_samples, 16000);
+    let noise_features = compute_features(&noise_samples, 16000);
+
+    assert!(
+        speech_features.spectral_entropy < noise_features.spectral_entropy,
+        "Speech-like (tonal) signal should have lower entropy than noise, speech={:.2} noise={:.2}",
+        speech_features.spectral_entropy,
+        noise_features.spectral_entropy
+    );
+}
+
+#[test]
+fn spectral_entropy_is_computed() {
+    let samples = vec![0.1f32; 2048];
+    let features = compute_features(&samples, 16000);
+    assert!(
+        features.spectral_entropy >= 0.0,
+        "Spectral entropy should be non-negative, got {}",
+        features.spectral_entropy
+    );
+    assert!(
+        features.spectral_entropy <= 10.0,
+        "Spectral entropy should be bounded, got {}",
+        features.spectral_entropy
+    );
+}

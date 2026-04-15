@@ -36,6 +36,19 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
         let mut mag_sum = 0.0f32;
         let mut low = 0.0f32;
         let mut high = 0.0f32;
+        let mut geometric_mean = 1.0f32;
+        let mut arithmetic_mean = 0.0f32;
+        let mut valid_mag_count = 0usize;
+        let mag_sum_total: f32 = mags.iter().sum();
+        let mut spectral_entropy = 0.0f32;
+        if mag_sum_total > 0.0 {
+            for &m in &mags {
+                if m > 0.0 {
+                    let p = m / mag_sum_total;
+                    spectral_entropy -= p * p.log2().max(-20.0);
+                }
+            }
+        }
         for (i, &m) in mags.iter().enumerate() {
             let freq = i as f32 * bin_width;
             weighted += freq * m;
@@ -45,6 +58,11 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
             }
             if i >= high_bin {
                 high += m;
+            }
+            if m > 0.0 {
+                geometric_mean *= m.powf(1.0 / half_bins as f32);
+                arithmetic_mean += m;
+                valid_mag_count += 1;
             }
         }
         let centroid_hz = if mag_sum > 0.0 {
@@ -63,12 +81,21 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
         } else {
             0.0
         };
+        let spectral_flatness = if valid_mag_count > 0 && arithmetic_mean > 0.0 {
+            let am = arithmetic_mean / valid_mag_count as f32;
+            let gm = geometric_mean.max(1e-10);
+            (gm / am).ln().max(-10.0).exp()
+        } else {
+            0.0
+        };
         prev_mags = Some(mags);
 
         out.push(Frame {
             rms,
             zcr,
             spectral_flux,
+            spectral_flatness,
+            spectral_entropy,
             centroid_hz,
             low_band_ratio,
             high_band_ratio,

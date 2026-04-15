@@ -1,0 +1,23 @@
+{
+  "file": "sintel_trailer_2010.mp4",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 700,
+      "kind": "non_voice",
+      "confidence": 0.68444085,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 51000,
+      "end_ms": 51925,
+      "kind": "non_voice",
+      "confidence": 0.7573488,
+      "tags": [],
+      "prompt": null
+    }
+  ]
+}

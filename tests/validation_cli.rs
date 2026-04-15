@@ -92,7 +92,7 @@ fn write_invalid_config(path: &std::path::Path) {
   "speech_hangover_ms": 300,
   "merge_gap_ms": 250,
   "min_speech_ms": 120,
-  "min_non_voice_ms": 1000,
+  "min_non_voice_ms": 10000,
   "energy_threshold": 0.015,
   "vad_threshold_delta": 0.0,
   "prompt_min_duration_ms": 2500,

@@ -8,7 +8,7 @@
 | `DEFAULT_SAMPLE_RATE_HZ` | 16000 | Standard audio processing sample rate |
 | `DEFAULT_FRAME_MS` | 20 | Frame window duration in milliseconds |
 | `DEFAULT_ENERGY_THRESHOLD` | 0.015 | RMS threshold for speech detection |
-| `MIN_NON_VOICE_MS` | 1000 | Minimum non-voice segment duration |
+| `MIN_NON_VOICE_MS` | 10000 | Minimum non-voice segment duration |
 | `MIN_SPEECH_MS` | 120 | Minimum speech segment duration |
 | `SPEECH_HANGOVER_MS` | 300 | Post-speech hangover buffer |
 
@@ -19,7 +19,7 @@
 | `TIMELINE_SAMPLE_RATE` | `DEFAULT_SAMPLE_RATE_HZ` | `16000` |
 | `TIMELINE_FRAME_MS` | `DEFAULT_FRAME_MS` | `20` |
 | `TIMELINE_MIN_SPEECH_MS` | `MIN_SPEECH_MS` | `120` |
-| `TIMELINE_MIN_SILENCE_MS` | `MIN_NON_VOICE_MS` | `1000` |
+| `TIMELINE_MIN_SILENCE_MS` | `MIN_NON_VOICE_MS` | `10000` |
 | `TIMELINE_ENERGY_THRESHOLD` | `DEFAULT_ENERGY_THRESHOLD` | `0.015` |
 | `RUST_LOG` | Tracing log level | `info`, `debug` |
 

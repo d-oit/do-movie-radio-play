@@ -85,7 +85,23 @@ Use the review player to manually confirm that extracted `non_voice` windows are
 
 `timeline review testdata/raw/the_hole_1962.mp4 --input testdata/validation/the_hole_1962.json --output reports/nonvoice-review.html --open`
 
+Modern fixture example:
+
+`timeline review testdata/raw/elephants_dream_2006.mp4 --input testdata/validation/elephants_dream_2006_nonvoice.json --output reports/nonvoice-review-elephants-modern.html --open`
+
 Open the generated HTML file in a browser. It provides per-segment navigation with pre/post-roll playback.
+
+Review workflow improvements in the HTML player:
+- mark current segment as voice false-positive (`x`)
+- undo last review action (`u`)
+- save a fully reviewed standalone HTML (`Save Reviewed HTML`) without exporting a separate JSON file
+- toggle full-movie context mode (`f`) to inspect the rest of the movie while keeping non-voice markers visible
+
+`--open` uses OS-specific openers with fallback support:
+- macOS: `open`
+- Linux: `xdg-open` then `gio open`
+- Windows: `cmd /C start` then PowerShell `Start-Process`
+- WSL2: `wslview` first, then Windows interop openers via `cmd.exe`/PowerShell
 
 ## Limitations
 Current VAD uses deterministic energy thresholding and conservative smoothing; it is intended for robust non-voice extraction, not transcript-grade speech detection.

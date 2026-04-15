@@ -46,6 +46,8 @@ pub struct FeatureSet {
     pub rms: f32,
     pub zcr: f32,
     pub spectral_flux: f32,
+    pub spectral_flatness: f32,
+    pub spectral_entropy: f32,
     pub centroid_hz: f32,
     pub low_band_ratio: f32,
     pub high_band_ratio: f32,
@@ -57,11 +59,16 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
             rms: 0.0,
             zcr: 0.0,
             spectral_flux: 0.0,
+            spectral_flatness: 0.0,
+            spectral_entropy: 0.0,
             centroid_hz: 0.0,
             low_band_ratio: 0.0,
             high_band_ratio: 0.0,
         };
     }
+
+    let mut entropy_acc = 0.0f32;
+    let mut entropy_count = 0usize;
 
     let rms = (samples.iter().map(|v| v * v).sum::<f32>() / samples.len() as f32).sqrt();
 
@@ -87,6 +94,9 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
     let mut low = 0.0;
     let mut high = 0.0;
     let mut prev_mags: Option<Vec<f32>> = None;
+    let mut geometric_mean = 1.0f32;
+    let mut arithmetic_mean = 0.0f32;
+    let mut valid_mag_count = 0usize;
 
     for chunk in samples
         .chunks(fft_len / 2)
@@ -101,6 +111,19 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
             }
         }
 
+        let chunk_mag_sum: f32 = mags.iter().take(half_bins).sum();
+        let mut chunk_entropy = 0.0f32;
+        if chunk_mag_sum > 0.0 {
+            for &m in mags.iter().take(half_bins) {
+                if m > 0.0 {
+                    let p = m / chunk_mag_sum;
+                    chunk_entropy -= p * p.log2().max(-20.0);
+                }
+            }
+        }
+        entropy_acc += chunk_entropy;
+        entropy_count += 1;
+
         for (i, &m) in mags.iter().enumerate().take(half_bins) {
             let freq = i as f32 * bin_width;
             weighted_bin_sum += freq * m;
@@ -111,15 +134,36 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
             if i >= high_bin {
                 high += m;
             }
+            if m > 0.0 {
+                geometric_mean *= m.powf(1.0 / half_bins as f32);
+                arithmetic_mean += m;
+                valid_mag_count += 1;
+            }
         }
 
         prev_mags = Some(mags);
     }
 
+    let spectral_entropy = if entropy_count > 0 {
+        entropy_acc / entropy_count as f32
+    } else {
+        0.0
+    };
+
+    let spectral_flatness = if valid_mag_count > 0 && arithmetic_mean > 0.0 {
+        let am = arithmetic_mean / valid_mag_count as f32;
+        let gm = geometric_mean.max(1e-10);
+        (gm / am).ln().max(-10.0).exp()
+    } else {
+        0.0
+    };
+
     FeatureSet {
         rms,
         zcr,
         spectral_flux: flux_acc / samples.len().max(1) as f32 * 1000.0,
+        spectral_flatness,
+        spectral_entropy,
         centroid_hz: if mag_sum > 0.0 {
             weighted_bin_sum / mag_sum
         } else {
@@ -140,6 +184,7 @@ mod tests {
         assert_eq!(features.rms, 0.0);
         assert_eq!(features.zcr, 0.0);
         assert_eq!(features.spectral_flux, 0.0);
+        assert_eq!(features.spectral_flatness, 0.0);
         assert_eq!(features.centroid_hz, 0.0);
     }
 

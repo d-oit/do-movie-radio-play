@@ -23,7 +23,9 @@ pub enum Commands {
         min_speech_ms: Option<u32>,
         #[arg(long)]
         min_silence_ms: Option<u32>,
-        #[arg(long, default_value = "energy", value_parser = ["energy"])]
+        #[arg(long)]
+        max_non_voice_ms: Option<u32>,
+        #[arg(long, default_value = "energy", value_parser = ["energy", "spectral"])]
         vad_engine: String,
         #[arg(long)]
         calibration_profile: Option<PathBuf>,
@@ -56,6 +58,10 @@ pub enum Commands {
         post_roll_s: f32,
         #[arg(long)]
         open: bool,
+        #[arg(long)]
+        verified: Option<PathBuf>,
+        #[arg(long)]
+        merged: bool,
     },
     Calibrate {
         corrections_dir: PathBuf,
@@ -78,7 +84,9 @@ pub enum Commands {
         min_speech_ms: Option<u32>,
         #[arg(long)]
         min_silence_ms: Option<u32>,
-        #[arg(long, default_value = "energy", value_parser = ["energy"])]
+        #[arg(long)]
+        max_non_voice_ms: Option<u32>,
+        #[arg(long, default_value = "energy", value_parser = ["energy", "spectral"])]
         vad_engine: String,
         #[arg(long)]
         calibration_profile: Option<PathBuf>,
@@ -100,7 +108,9 @@ pub enum Commands {
         min_speech_ms: Option<u32>,
         #[arg(long)]
         min_silence_ms: Option<u32>,
-        #[arg(long, default_value = "energy", value_parser = ["energy"])]
+        #[arg(long)]
+        max_non_voice_ms: Option<u32>,
+        #[arg(long, default_value = "energy", value_parser = ["energy", "spectral"])]
         vad_engine: String,
         #[arg(long)]
         calibration_profile: Option<PathBuf>,
@@ -116,5 +126,52 @@ pub enum Commands {
         profile: String,
         #[arg(long, default_value = "analysis/validation/latest.json")]
         output: PathBuf,
+    },
+    AiVoiceExtract {
+        input_json: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    VerifyTimeline {
+        media: PathBuf,
+        #[arg(long)]
+        timeline: PathBuf,
+        #[arg(long, default_value = "verified.json")]
+        output: PathBuf,
+        #[arg(long)]
+        entropy_min: Option<f32>,
+        #[arg(long)]
+        entropy_max: Option<f32>,
+        #[arg(long)]
+        flatness_max: Option<f32>,
+        #[arg(long)]
+        energy_min: Option<f32>,
+        #[arg(long)]
+        centroid_min: Option<f32>,
+        #[arg(long)]
+        centroid_max: Option<f32>,
+        #[arg(long)]
+        learning_state: Option<PathBuf>,
+        #[arg(long)]
+        save_learning: bool,
+    },
+    UpdateThresholds {
+        #[arg(long, default_value = "analysis/thresholds/learning-state.json")]
+        learning_state: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+    MergeTimeline {
+        input: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long)]
+        config: Option<PathBuf>,
+        #[arg(long)]
+        min_gap_to_merge: Option<u32>,
+        #[arg(long, value_parser = ["all", "longest", "sparse"])]
+        merge_strategy: Option<String>,
+        #[arg(long)]
+        verified: Option<PathBuf>,
     },
 }

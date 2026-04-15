@@ -24,3 +24,11 @@ pub struct TimelineOutput {
     pub frame_ms: u32,
     pub segments: Vec<Segment>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AiVoiceOutput {
+    pub file: String,
+    pub analysis_sample_rate: u32,
+    pub frame_ms: u32,
+    pub segments: Vec<Segment>,
+}

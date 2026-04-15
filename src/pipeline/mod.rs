@@ -152,10 +152,33 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
         &frame_likelihoods,
     );
     stage_ms.invert_ms = invert_start.elapsed().as_millis();
+    let segments_before_split = non_voice.len();
+    let segments = if let Some(max_ms) = cfg.max_non_voice_ms {
+        let split_start = Instant::now();
+        let split = segmenter::split_long_segments(
+            non_voice,
+            max_ms,
+            cfg.min_non_voice_ms,
+            cfg.frame_ms,
+            &frame_likelihoods,
+        );
+        stage_ms.invert_ms += split_start.elapsed().as_millis();
+        info!(
+            stage = "split",
+            ms = split_start.elapsed().as_millis(),
+            segments_before = segments_before_split,
+            segments_after = split.len(),
+            max_non_voice_ms = max_ms,
+            "stage complete"
+        );
+        split
+    } else {
+        non_voice
+    };
     info!(
         stage = "invert",
         ms = stage_ms.invert_ms,
-        segments = non_voice.len(),
+        segments = segments.len(),
         total_ms = total_audio_ms,
         min_non_voice_ms = cfg.min_non_voice_ms,
         "stage complete"
@@ -168,7 +191,7 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
             .unwrap_or_else(|| "unknown".to_string()),
         analysis_sample_rate: cfg.sample_rate_hz,
         frame_ms: cfg.frame_ms,
-        segments: non_voice,
+        segments,
     };
 
     Ok(PipelineArtifacts {

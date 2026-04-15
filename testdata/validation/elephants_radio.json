@@ -1,0 +1,15 @@
+{
+  "file": "elephants_dream_2006.mp4",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 653696,
+      "kind": "non_voice",
+      "confidence": 0.77099985,
+      "tags": [],
+      "prompt": null
+    }
+  ]
+}

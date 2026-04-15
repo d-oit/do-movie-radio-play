@@ -40,6 +40,15 @@ fn map_tags(f: crate::pipeline::features::FeatureSet) -> Vec<String> {
     if f.high_band_ratio < 0.1 && f.rms < 0.03 {
         tags.push("nature_like".into());
     }
+    if f.spectral_flatness > 0.35 && f.rms > 0.02 {
+        tags.push("tonal".into());
+    }
+    if f.spectral_entropy > 6.0 && f.low_band_ratio > 0.3 {
+        tags.push("music_like".into());
+    }
+    if f.spectral_entropy < 4.0 && f.spectral_flatness < 0.3 {
+        tags.push("speech_like".into());
+    }
     if tags.is_empty() {
         tags.push("ambience".into());
     }
@@ -58,6 +67,8 @@ mod tests {
             rms: 0.0,
             zcr: 0.0,
             spectral_flux: 0.0,
+            spectral_flatness: 0.2,
+            spectral_entropy: 5.0,
             centroid_hz: 0.0,
             low_band_ratio: 0.2,
             high_band_ratio: 0.0,

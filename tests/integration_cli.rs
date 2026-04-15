@@ -246,5 +246,5 @@ fn review_generates_html_player() {
 
     let html = std::fs::read_to_string(&review).unwrap_or_default();
     assert!(html.contains("Non-Voice Review Player"));
-    assert!(html.contains("const segments ="));
+    assert!(html.contains("segments-data"));
 }

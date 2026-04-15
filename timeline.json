@@ -1,0 +1,167 @@
+{
+  "file": "elephants_dream_2006.mp4",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 1080,
+      "kind": "non_voice",
+      "confidence": 0.83544433,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2200,
+      "end_ms": 2760,
+      "kind": "non_voice",
+      "confidence": 0.74604464,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 151900,
+      "end_ms": 152460,
+      "kind": "non_voice",
+      "confidence": 0.8193866,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 153860,
+      "end_ms": 154920,
+      "kind": "non_voice",
+      "confidence": 0.80363894,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 156180,
+      "end_ms": 157140,
+      "kind": "non_voice",
+      "confidence": 0.76840687,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 158500,
+      "end_ms": 159620,
+      "kind": "non_voice",
+      "confidence": 0.8030546,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 160900,
+      "end_ms": 161780,
+      "kind": "non_voice",
+      "confidence": 0.8409363,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 163140,
+      "end_ms": 164260,
+      "kind": "non_voice",
+      "confidence": 0.85377765,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 165380,
+      "end_ms": 166460,
+      "kind": "non_voice",
+      "confidence": 0.8822584,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 167640,
+      "end_ms": 168220,
+      "kind": "non_voice",
+      "confidence": 0.8241797,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 196220,
+      "end_ms": 198140,
+      "kind": "non_voice",
+      "confidence": 0.7733224,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 203680,
+      "end_ms": 204280,
+      "kind": "non_voice",
+      "confidence": 0.70171255,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 204600,
+      "end_ms": 205400,
+      "kind": "non_voice",
+      "confidence": 0.7107425,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 209600,
+      "end_ms": 210160,
+      "kind": "non_voice",
+      "confidence": 0.71152633,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 220060,
+      "end_ms": 222340,
+      "kind": "non_voice",
+      "confidence": 0.78906995,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 222660,
+      "end_ms": 223580,
+      "kind": "non_voice",
+      "confidence": 0.8219924,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 306740,
+      "end_ms": 307400,
+      "kind": "non_voice",
+      "confidence": 0.718137,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 386220,
+      "end_ms": 387320,
+      "kind": "non_voice",
+      "confidence": 0.8350986,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 530420,
+      "end_ms": 531000,
+      "kind": "non_voice",
+      "confidence": 0.63604677,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 562400,
+      "end_ms": 564720,
+      "kind": "non_voice",
+      "confidence": 0.7806301,
+      "tags": [],
+      "prompt": null
+    }
+  ]
+}

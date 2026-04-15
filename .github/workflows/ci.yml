@@ -52,3 +52,29 @@ jobs:
       - run: bash scripts/benchmark.sh testdata/raw/sintel_trailer_2010.mp4 analysis/benchmarks/ci.json
       - run: python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/ci.json
       - run: cargo bench --bench pipeline_bench -- --noplot
+
+  verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bash scripts/fetch_test_assets.sh
+      - run: cargo build --quiet
+      - name: Extract timeline for verification
+        run: |
+          mkdir -p analysis/verification
+          cargo run --quiet -- extract testdata/raw/sintel_trailer_2010.mp4 \
+            --output analysis/verification/sintel-extracted.json
+      - name: Verify timeline
+        run: |
+          cargo run --quiet -- verify-timeline testdata/raw/sintel_trailer_2010.mp4 \
+            --timeline analysis/verification/sintel-extracted.json \
+            --output analysis/verification/sintel-verified.json
+      - name: Update thresholds from verification
+        run: |
+          mkdir -p analysis/thresholds
+          cargo run --quiet -- update-thresholds \
+            --learning-state analysis/thresholds/learning-state.json \
+            --output analysis/thresholds/recommendations.json || true

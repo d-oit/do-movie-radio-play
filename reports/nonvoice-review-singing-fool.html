@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Non-Voice Review Player</title>
+  <style>
+    :root {
+      --bg: #f5f3ef;
+      --panel: #fffdf9;
+      --text: #2a2118;
+      --muted: #6a5a49;
+      --accent: #b65328;
+      --line: #e4dacd;
+    }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      background: radial-gradient(circle at top, #fffaf3, var(--bg));
+      color: var(--text);
+    }
+    .layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 2fr 1fr;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 10px 24px rgba(72, 46, 25, 0.08);
+    }
+    h1 { margin: 0 0 10px; font-size: 1.4rem; }
+    .muted { color: var(--muted); font-size: 0.95rem; }
+    video { width: 100%; border-radius: 10px; border: 1px solid var(--line); background: #000; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .window-info {
+      margin-top: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      background: #fff9f4;
+      font-size: 0.92rem;
+    }
+    .timeline-shell { margin-top: 10px; }
+    .timeline-track {
+      position: relative;
+      height: 18px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fbf6ef;
+      overflow: hidden;
+    }
+    .marker {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background: rgba(182, 83, 40, 0.55);
+      cursor: pointer;
+    }
+    .marker.active { background: rgba(182, 83, 40, 0.9); }
+    .playhead {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: #1f140d;
+      pointer-events: none;
+    }
+    .timeline-legend {
+      margin-top: 6px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    button {
+      border: 1px solid #ca9d83;
+      background: #fff4ec;
+      color: #4a2f1e;
+      border-radius: 999px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    button:hover { background: #ffe8da; }
+    .segment-list { max-height: 62vh; overflow: auto; display: grid; gap: 8px; }
+    .segment { border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+    .segment.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(182, 83, 40, 0.2); }
+    .meta { font-size: 0.85rem; color: var(--muted); }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #d7b9a6;
+      background: #fff8f3;
+      margin-right: 4px;
+      margin-top: 4px;
+      font-size: 0.8rem;
+    }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      .segment-list { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <section class="panel">
+      <h1>Non-Voice Review Player</h1>
+      <div class="muted" id="summary"></div>
+      <video id="video" preload="metadata"></video>
+      <div class="controls">
+        <button type="button" id="prev">Previous (k)</button>
+        <button type="button" id="play">Play Current (p)</button>
+        <button type="button" id="play-all">Play Non-Voice Only (a)</button>
+        <button type="button" id="pause">Pause (space)</button>
+        <button type="button" id="next">Next (j)</button>
+      </div>
+      <div class="window-info" id="window-info"></div>
+      <div class="timeline-shell">
+        <div class="timeline-track" id="timeline-track">
+          <div class="playhead" id="playhead"></div>
+        </div>
+        <div class="timeline-legend" id="timeline-legend"></div>
+      </div>
+      <p class="muted">This player is constrained to extracted non-voice windows only. Use Play Current or Play Non-Voice Only to validate timestamps quickly.</p>
+      <p class="muted" id="status"></p>
+    </section>
+    <aside class="panel">
+      <h1>Segments</h1>
+      <div class="segment-list" id="segment-list"></div>
+    </aside>
+  </div>
+  <script>
+    const mediaSrc = "/home/do/git/d-oit/do-movie-radio-play/testdata/raw/the_singing_fool_1928.webm";
+    const preRoll = 1.0;
+    const postRoll = 1.0;
+    const segments = [{"index":1,"start_ms":20980,"end_ms":23300,"duration_ms":2320,"confidence":0.9,"tags":[],"prompt":null},{"index":2,"start_ms":24260,"end_ms":27000,"duration_ms":2740,"confidence":0.9,"tags":[],"prompt":null},{"index":3,"start_ms":52440,"end_ms":57320,"duration_ms":4880,"confidence":0.9,"tags":[],"prompt":null},{"index":4,"start_ms":57640,"end_ms":60680,"duration_ms":3040,"confidence":0.9,"tags":[],"prompt":null},{"index":5,"start_ms":67120,"end_ms":71940,"duration_ms":4820,"confidence":0.9,"tags":[],"prompt":null},{"index":6,"start_ms":72340,"end_ms":73520,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":7,"start_ms":73840,"end_ms":76400,"duration_ms":2560,"confidence":0.9,"tags":[],"prompt":null},{"index":8,"start_ms":84540,"end_ms":86180,"duration_ms":1640,"confidence":0.9,"tags":[],"prompt":null},{"index":9,"start_ms":419820,"end_ms":421220,"duration_ms":1400,"confidence":0.9,"tags":[],"prompt":null},{"index":10,"start_ms":425200,"end_ms":426300,"duration_ms":1100,"confidence":0.9,"tags":[],"prompt":null},{"index":11,"start_ms":513260,"end_ms":517200,"duration_ms":3940,"confidence":0.9,"tags":[],"prompt":null},{"index":12,"start_ms":541240,"end_ms":542840,"duration_ms":1600,"confidence":0.9,"tags":[],"prompt":null},{"index":13,"start_ms":552860,"end_ms":554780,"duration_ms":1920,"confidence":0.9,"tags":[],"prompt":null},{"index":14,"start_ms":578080,"end_ms":579500,"duration_ms":1420,"confidence":0.9,"tags":[],"prompt":null},{"index":15,"start_ms":665980,"end_ms":667120,"duration_ms":1140,"confidence":0.9,"tags":[],"prompt":null},{"index":16,"start_ms":667580,"end_ms":669500,"duration_ms":1920,"confidence":0.9,"tags":[],"prompt":null},{"index":17,"start_ms":697280,"end_ms":701620,"duration_ms":4340,"confidence":0.9,"tags":[],"prompt":null},{"index":18,"start_ms":822020,"end_ms":824780,"duration_ms":2760,"confidence":0.9,"tags":[],"prompt":null},{"index":19,"start_ms":825700,"end_ms":826940,"duration_ms":1240,"confidence":0.9,"tags":[],"prompt":null},{"index":20,"start_ms":843620,"end_ms":846080,"duration_ms":2460,"confidence":0.9,"tags":[],"prompt":null},{"index":21,"start_ms":1103900,"end_ms":1104920,"duration_ms":1020,"confidence":0.9,"tags":[],"prompt":null},{"index":22,"start_ms":1111040,"end_ms":1112380,"duration_ms":1340,"confidence":0.9,"tags":[],"prompt":null},{"index":23,"start_ms":1223500,"end_ms":1224620,"duration_ms":1120,"confidence":0.9,"tags":[],"prompt":null},{"index":24,"start_ms":1259220,"end_ms":1260260,"duration_ms":1040,"confidence":0.9,"tags":[],"prompt":null},{"index":25,"start_ms":1294880,"end_ms":1296220,"duration_ms":1340,"confidence":0.9,"tags":[],"prompt":null},{"index":26,"start_ms":1440420,"end_ms":1442640,"duration_ms":2220,"confidence":0.9,"tags":[],"prompt":null},{"index":27,"start_ms":1536320,"end_ms":1537420,"duration_ms":1100,"confidence":0.9,"tags":[],"prompt":null},{"index":28,"start_ms":1703520,"end_ms":1704540,"duration_ms":1020,"confidence":0.9,"tags":[],"prompt":null},{"index":29,"start_ms":1739580,"end_ms":1740580,"duration_ms":1000,"confidence":0.9,"tags":[],"prompt":null},{"index":30,"start_ms":1756480,"end_ms":1758900,"duration_ms":2420,"confidence":0.9,"tags":[],"prompt":null},{"index":31,"start_ms":1763340,"end_ms":1765400,"duration_ms":2060,"confidence":0.9,"tags":[],"prompt":null},{"index":32,"start_ms":2003420,"end_ms":2004940,"duration_ms":1520,"confidence":0.9,"tags":[],"prompt":null},{"index":33,"start_ms":2020600,"end_ms":2022240,"duration_ms":1640,"confidence":0.9,"tags":[],"prompt":null},{"index":34,"start_ms":2186120,"end_ms":2191660,"duration_ms":5540,"confidence":0.9,"tags":[],"prompt":null},{"index":35,"start_ms":2251180,"end_ms":2252420,"duration_ms":1240,"confidence":0.9,"tags":[],"prompt":null},{"index":36,"start_ms":2284100,"end_ms":2285600,"duration_ms":1500,"confidence":0.9,"tags":[],"prompt":null},{"index":37,"start_ms":2346760,"end_ms":2347940,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":38,"start_ms":2366320,"end_ms":2368880,"duration_ms":2560,"confidence":0.9,"tags":[],"prompt":null},{"index":39,"start_ms":2392840,"end_ms":2394260,"duration_ms":1420,"confidence":0.9,"tags":[],"prompt":null},{"index":40,"start_ms":2451660,"end_ms":2452960,"duration_ms":1300,"confidence":0.9,"tags":[],"prompt":null},{"index":41,"start_ms":2471120,"end_ms":2472120,"duration_ms":1000,"confidence":0.9,"tags":[],"prompt":null},{"index":42,"start_ms":2501700,"end_ms":2502900,"duration_ms":1200,"confidence":0.9,"tags":[],"prompt":null},{"index":43,"start_ms":2530420,"end_ms":2531880,"duration_ms":1460,"confidence":0.9,"tags":[],"prompt":null},{"index":44,"start_ms":2573460,"end_ms":2575500,"duration_ms":2040,"confidence":0.9,"tags":[],"prompt":null},{"index":45,"start_ms":2579600,"end_ms":2580620,"duration_ms":1020,"confidence":0.9,"tags":[],"prompt":null},{"index":46,"start_ms":2588060,"end_ms":2589240,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":47,"start_ms":2593240,"end_ms":2595160,"duration_ms":1920,"confidence":0.9,"tags":[],"prompt":null},{"index":48,"start_ms":2596700,"end_ms":2599960,"duration_ms":3260,"confidence":0.9,"tags":[],"prompt":null},{"index":49,"start_ms":2621800,"end_ms":2624500,"duration_ms":2700,"confidence":0.9,"tags":[],"prompt":null},{"index":50,"start_ms":2627360,"end_ms":2628780,"duration_ms":1420,"confidence":0.9,"tags":[],"prompt":null},{"index":51,"start_ms":2629680,"end_ms":2630880,"duration_ms":1200,"confidence":0.9,"tags":[],"prompt":null},{"index":52,"start_ms":2637300,"end_ms":2638700,"duration_ms":1400,"confidence":0.9,"tags":[],"prompt":null},{"index":53,"start_ms":2644540,"end_ms":2645580,"duration_ms":1040,"confidence":0.9,"tags":[],"prompt":null},{"index":54,"start_ms":2663000,"end_ms":2666040,"duration_ms":3040,"confidence":0.9,"tags":[],"prompt":null},{"index":55,"start_ms":2669360,"end_ms":2671440,"duration_ms":2080,"confidence":0.9,"tags":[],"prompt":null},{"index":56,"start_ms":2672240,"end_ms":2673260,"duration_ms":1020,"confidence":0.9,"tags":[],"prompt":null},{"index":57,"start_ms":2701580,"end_ms":2702820,"duration_ms":1240,"confidence":0.9,"tags":[],"prompt":null},{"index":58,"start_ms":2727680,"end_ms":2729020,"duration_ms":1340,"confidence":0.9,"tags":[],"prompt":null},{"index":59,"start_ms":2737160,"end_ms":2739060,"duration_ms":1900,"confidence":0.9,"tags":[],"prompt":null},{"index":60,"start_ms":2746500,"end_ms":2747560,"duration_ms":1060,"confidence":0.9,"tags":[],"prompt":null},{"index":61,"start_ms":2750320,"end_ms":2751720,"duration_ms":1400,"confidence":0.9,"tags":[],"prompt":null},{"index":62,"start_ms":2758060,"end_ms":2759720,"duration_ms":1660,"confidence":0.9,"tags":[],"prompt":null},{"index":63,"start_ms":2768620,"end_ms":2776500,"duration_ms":7880,"confidence":0.9,"tags":[],"prompt":null},{"index":64,"start_ms":2777740,"end_ms":2779460,"duration_ms":1720,"confidence":0.9,"tags":[],"prompt":null},{"index":65,"start_ms":2779800,"end_ms":2783060,"duration_ms":3260,"confidence":0.9,"tags":[],"prompt":null},{"index":66,"start_ms":2783380,"end_ms":2785000,"duration_ms":1620,"confidence":0.9,"tags":[],"prompt":null},{"index":67,"start_ms":2790560,"end_ms":2792340,"duration_ms":1780,"confidence":0.9,"tags":[],"prompt":null},{"index":68,"start_ms":2801120,"end_ms":2802380,"duration_ms":1260,"confidence":0.9,"tags":[],"prompt":null},{"index":69,"start_ms":2805500,"end_ms":2806600,"duration_ms":1100,"confidence":0.9,"tags":[],"prompt":null},{"index":70,"start_ms":2815600,"end_ms":2817360,"duration_ms":1760,"confidence":0.9,"tags":[],"prompt":null},{"index":71,"start_ms":2821200,"end_ms":2822280,"duration_ms":1080,"confidence":0.9,"tags":[],"prompt":null},{"index":72,"start_ms":2823340,"end_ms":2825220,"duration_ms":1880,"confidence":0.9,"tags":[],"prompt":null},{"index":73,"start_ms":2882240,"end_ms":2884380,"duration_ms":2140,"confidence":0.9,"tags":[],"prompt":null},{"index":74,"start_ms":2887000,"end_ms":2888720,"duration_ms":1720,"confidence":0.9,"tags":[],"prompt":null},{"index":75,"start_ms":2894440,"end_ms":2896240,"duration_ms":1800,"confidence":0.9,"tags":[],"prompt":null},{"index":76,"start_ms":2919720,"end_ms":2925080,"duration_ms":5360,"confidence":0.9,"tags":[],"prompt":null},{"index":77,"start_ms":2941240,"end_ms":2942300,"duration_ms":1060,"confidence":0.9,"tags":[],"prompt":null},{"index":78,"start_ms":2957080,"end_ms":2958360,"duration_ms":1280,"confidence":0.9,"tags":[],"prompt":null},{"index":79,"start_ms":2976200,"end_ms":2977300,"duration_ms":1100,"confidence":0.9,"tags":[],"prompt":null},{"index":80,"start_ms":3002040,"end_ms":3006800,"duration_ms":4760,"confidence":0.9,"tags":[],"prompt":null},{"index":81,"start_ms":3007120,"end_ms":3008500,"duration_ms":1380,"confidence":0.9,"tags":[],"prompt":null},{"index":82,"start_ms":3014860,"end_ms":3017980,"duration_ms":3120,"confidence":0.9,"tags":[],"prompt":null},{"index":83,"start_ms":3237820,"end_ms":3239420,"duration_ms":1600,"confidence":0.9,"tags":[],"prompt":null},{"index":84,"start_ms":3260800,"end_ms":3261980,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":85,"start_ms":3263240,"end_ms":3264420,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":86,"start_ms":3264960,"end_ms":3266880,"duration_ms":1920,"confidence":0.9,"tags":[],"prompt":null},{"index":87,"start_ms":3267960,"end_ms":3270200,"duration_ms":2240,"confidence":0.9,"tags":[],"prompt":null},{"index":88,"start_ms":3308760,"end_ms":3313360,"duration_ms":4600,"confidence":0.9,"tags":[],"prompt":null},{"index":89,"start_ms":3320420,"end_ms":3323740,"duration_ms":3320,"confidence":0.9,"tags":[],"prompt":null},{"index":90,"start_ms":3327240,"end_ms":3329920,"duration_ms":2680,"confidence":0.9,"tags":[],"prompt":null},{"index":91,"start_ms":3332120,"end_ms":3334020,"duration_ms":1900,"confidence":0.9,"tags":[],"prompt":null},{"index":92,"start_ms":3348740,"end_ms":3349920,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":93,"start_ms":3371900,"end_ms":3373540,"duration_ms":1640,"confidence":0.9,"tags":[],"prompt":null},{"index":94,"start_ms":3384780,"end_ms":3390960,"duration_ms":6180,"confidence":0.9,"tags":[],"prompt":null},{"index":95,"start_ms":3395320,"end_ms":3399220,"duration_ms":3900,"confidence":0.9,"tags":[],"prompt":null},{"index":96,"start_ms":3402320,"end_ms":3406600,"duration_ms":4280,"confidence":0.9,"tags":[],"prompt":null},{"index":97,"start_ms":3411720,"end_ms":3414880,"duration_ms":3160,"confidence":0.9,"tags":[],"prompt":null},{"index":98,"start_ms":3435380,"end_ms":3444040,"duration_ms":8660,"confidence":0.9,"tags":[],"prompt":null},{"index":99,"start_ms":3444360,"end_ms":3456980,"duration_ms":12620,"confidence":0.9,"tags":[],"prompt":null},{"index":100,"start_ms":3458380,"end_ms":3462860,"duration_ms":4480,"confidence":0.9,"tags":[],"prompt":null},{"index":101,"start_ms":3463200,"end_ms":3464920,"duration_ms":1720,"confidence":0.9,"tags":[],"prompt":null},{"index":102,"start_ms":3465920,"end_ms":3469240,"duration_ms":3320,"confidence":0.9,"tags":[],"prompt":null},{"index":103,"start_ms":3469600,"end_ms":3471300,"duration_ms":1700,"confidence":0.9,"tags":[],"prompt":null},{"index":104,"start_ms":3472340,"end_ms":3473640,"duration_ms":1300,"confidence":0.9,"tags":[],"prompt":null},{"index":105,"start_ms":3474400,"end_ms":3475420,"duration_ms":1020,"confidence":0.9,"tags":[],"prompt":null},{"index":106,"start_ms":3477540,"end_ms":3478700,"duration_ms":1160,"confidence":0.9,"tags":[],"prompt":null},{"index":107,"start_ms":3481180,"end_ms":3483660,"duration_ms":2480,"confidence":0.9,"tags":[],"prompt":null},{"index":108,"start_ms":3488740,"end_ms":3489740,"duration_ms":1000,"confidence":0.9,"tags":[],"prompt":null},{"index":109,"start_ms":3496740,"end_ms":3499360,"duration_ms":2620,"confidence":0.9,"tags":[],"prompt":null},{"index":110,"start_ms":3499860,"end_ms":3501780,"duration_ms":1920,"confidence":0.9,"tags":[],"prompt":null},{"index":111,"start_ms":3512920,"end_ms":3514440,"duration_ms":1520,"confidence":0.9,"tags":[],"prompt":null},{"index":112,"start_ms":3516140,"end_ms":3519400,"duration_ms":3260,"confidence":0.9,"tags":[],"prompt":null},{"index":113,"start_ms":3521560,"end_ms":3523480,"duration_ms":1920,"confidence":0.9,"tags":[],"prompt":null},{"index":114,"start_ms":3558980,"end_ms":3560300,"duration_ms":1320,"confidence":0.9,"tags":[],"prompt":null},{"index":115,"start_ms":3571580,"end_ms":3572940,"duration_ms":1360,"confidence":0.9,"tags":[],"prompt":null},{"index":116,"start_ms":3574720,"end_ms":3576040,"duration_ms":1320,"confidence":0.9,"tags":[],"prompt":null},{"index":117,"start_ms":3577400,"end_ms":3582720,"duration_ms":5320,"confidence":0.9,"tags":[],"prompt":null},{"index":118,"start_ms":3583100,"end_ms":3584280,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":119,"start_ms":3630400,"end_ms":3631780,"duration_ms":1380,"confidence":0.9,"tags":[],"prompt":null},{"index":120,"start_ms":3634160,"end_ms":3636380,"duration_ms":2220,"confidence":0.9,"tags":[],"prompt":null},{"index":121,"start_ms":3638280,"end_ms":3639420,"duration_ms":1140,"confidence":0.9,"tags":[],"prompt":null},{"index":122,"start_ms":3650420,"end_ms":3654340,"duration_ms":3920,"confidence":0.9,"tags":[],"prompt":null},{"index":123,"start_ms":3654660,"end_ms":3656720,"duration_ms":2060,"confidence":0.9,"tags":[],"prompt":null},{"index":124,"start_ms":3692300,"end_ms":3693460,"duration_ms":1160,"confidence":0.9,"tags":[],"prompt":null},{"index":125,"start_ms":3713360,"end_ms":3714620,"duration_ms":1260,"confidence":0.9,"tags":[],"prompt":null},{"index":126,"start_ms":3722560,"end_ms":3725120,"duration_ms":2560,"confidence":0.9,"tags":[],"prompt":null},{"index":127,"start_ms":3725680,"end_ms":3726700,"duration_ms":1020,"confidence":0.9,"tags":[],"prompt":null},{"index":128,"start_ms":3727120,"end_ms":3728120,"duration_ms":1000,"confidence":0.9,"tags":[],"prompt":null},{"index":129,"start_ms":3732100,"end_ms":3734200,"duration_ms":2100,"confidence":0.9,"tags":[],"prompt":null},{"index":130,"start_ms":3759140,"end_ms":3760320,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":131,"start_ms":3762120,"end_ms":3763420,"duration_ms":1300,"confidence":0.9,"tags":[],"prompt":null},{"index":132,"start_ms":3764380,"end_ms":3765620,"duration_ms":1240,"confidence":0.9,"tags":[],"prompt":null},{"index":133,"start_ms":3768200,"end_ms":3770080,"duration_ms":1880,"confidence":0.9,"tags":[],"prompt":null},{"index":134,"start_ms":3770820,"end_ms":3772080,"duration_ms":1260,"confidence":0.9,"tags":[],"prompt":null},{"index":135,"start_ms":3778920,"end_ms":3780800,"duration_ms":1880,"confidence":0.9,"tags":[],"prompt":null},{"index":136,"start_ms":3787820,"end_ms":3795480,"duration_ms":7660,"confidence":0.9,"tags":[],"prompt":null},{"index":137,"start_ms":3796540,"end_ms":3801660,"duration_ms":5120,"confidence":0.9,"tags":[],"prompt":null},{"index":138,"start_ms":3804360,"end_ms":3808320,"duration_ms":3960,"confidence":0.9,"tags":[],"prompt":null},{"index":139,"start_ms":3817800,"end_ms":3818900,"duration_ms":1100,"confidence":0.9,"tags":[],"prompt":null},{"index":140,"start_ms":3819560,"end_ms":3821000,"duration_ms":1440,"confidence":0.9,"tags":[],"prompt":null},{"index":141,"start_ms":3835860,"end_ms":3839360,"duration_ms":3500,"confidence":0.9,"tags":[],"prompt":null},{"index":142,"start_ms":3864280,"end_ms":3869640,"duration_ms":5360,"confidence":0.9,"tags":[],"prompt":null},{"index":143,"start_ms":3881640,"end_ms":3883000,"duration_ms":1360,"confidence":0.9,"tags":[],"prompt":null},{"index":144,"start_ms":3895960,"end_ms":3897840,"duration_ms":1880,"confidence":0.9,"tags":[],"prompt":null},{"index":145,"start_ms":3913660,"end_ms":3915640,"duration_ms":1980,"confidence":0.9,"tags":[],"prompt":null},{"index":146,"start_ms":3987280,"end_ms":3988380,"duration_ms":1100,"confidence":0.9,"tags":[],"prompt":null},{"index":147,"start_ms":3990240,"end_ms":3991300,"duration_ms":1060,"confidence":0.9,"tags":[],"prompt":null},{"index":148,"start_ms":4033580,"end_ms":4036380,"duration_ms":2800,"confidence":0.9,"tags":[],"prompt":null},{"index":149,"start_ms":4047620,"end_ms":4049720,"duration_ms":2100,"confidence":0.9,"tags":[],"prompt":null},{"index":150,"start_ms":4055780,"end_ms":4058320,"duration_ms":2540,"confidence":0.9,"tags":[],"prompt":null},{"index":151,"start_ms":4059600,"end_ms":4060760,"duration_ms":1160,"confidence":0.9,"tags":[],"prompt":null},{"index":152,"start_ms":4062000,"end_ms":4064400,"duration_ms":2400,"confidence":0.9,"tags":[],"prompt":null},{"index":153,"start_ms":4110660,"end_ms":4111920,"duration_ms":1260,"confidence":0.9,"tags":[],"prompt":null},{"index":154,"start_ms":4211400,"end_ms":4216340,"duration_ms":4940,"confidence":0.9,"tags":[],"prompt":null},{"index":155,"start_ms":4243100,"end_ms":4244460,"duration_ms":1360,"confidence":0.9,"tags":[],"prompt":null},{"index":156,"start_ms":4251860,"end_ms":4256860,"duration_ms":5000,"confidence":0.9,"tags":[],"prompt":null},{"index":157,"start_ms":4258120,"end_ms":4260000,"duration_ms":1880,"confidence":0.9,"tags":[],"prompt":null},{"index":158,"start_ms":4342320,"end_ms":4343900,"duration_ms":1580,"confidence":0.9,"tags":[],"prompt":null},{"index":159,"start_ms":4345360,"end_ms":4348160,"duration_ms":2800,"confidence":0.9,"tags":[],"prompt":null},{"index":160,"start_ms":4351720,"end_ms":4352800,"duration_ms":1080,"confidence":0.9,"tags":[],"prompt":null},{"index":161,"start_ms":4377420,"end_ms":4378580,"duration_ms":1160,"confidence":0.9,"tags":[],"prompt":null},{"index":162,"start_ms":4402460,"end_ms":4404180,"duration_ms":1720,"confidence":0.9,"tags":[],"prompt":null},{"index":163,"start_ms":4404520,"end_ms":4405520,"duration_ms":1000,"confidence":0.9,"tags":[],"prompt":null},{"index":164,"start_ms":4406760,"end_ms":4409380,"duration_ms":2620,"confidence":0.9,"tags":[],"prompt":null},{"index":165,"start_ms":4412580,"end_ms":4414680,"duration_ms":2100,"confidence":0.9,"tags":[],"prompt":null},{"index":166,"start_ms":4415540,"end_ms":4416900,"duration_ms":1360,"confidence":0.9,"tags":[],"prompt":null},{"index":167,"start_ms":4418640,"end_ms":4419940,"duration_ms":1300,"confidence":0.9,"tags":[],"prompt":null},{"index":168,"start_ms":4424800,"end_ms":4428540,"duration_ms":3740,"confidence":0.9,"tags":[],"prompt":null},{"index":169,"start_ms":4482300,"end_ms":4483680,"duration_ms":1380,"confidence":0.9,"tags":[],"prompt":null},{"index":170,"start_ms":4488680,"end_ms":4489780,"duration_ms":1100,"confidence":0.9,"tags":[],"prompt":null},{"index":171,"start_ms":4491100,"end_ms":4492940,"duration_ms":1840,"confidence":0.9,"tags":[],"prompt":null},{"index":172,"start_ms":4497200,"end_ms":4499160,"duration_ms":1960,"confidence":0.9,"tags":[],"prompt":null},{"index":173,"start_ms":4501980,"end_ms":4503540,"duration_ms":1560,"confidence":0.9,"tags":[],"prompt":null},{"index":174,"start_ms":4508020,"end_ms":4509240,"duration_ms":1220,"confidence":0.9,"tags":[],"prompt":null},{"index":175,"start_ms":4518760,"end_ms":4522040,"duration_ms":3280,"confidence":0.9,"tags":[],"prompt":null},{"index":176,"start_ms":4530720,"end_ms":4533540,"duration_ms":2820,"confidence":0.9,"tags":[],"prompt":null},{"index":177,"start_ms":4535340,"end_ms":4538680,"duration_ms":3340,"confidence":0.9,"tags":[],"prompt":null},{"index":178,"start_ms":4539740,"end_ms":4542120,"duration_ms":2380,"confidence":0.9,"tags":[],"prompt":null},{"index":179,"start_ms":4542580,"end_ms":4543780,"duration_ms":1200,"confidence":0.9,"tags":[],"prompt":null},{"index":180,"start_ms":4544740,"end_ms":4545800,"duration_ms":1060,"confidence":0.9,"tags":[],"prompt":null},{"index":181,"start_ms":4546960,"end_ms":4548240,"duration_ms":1280,"confidence":0.9,"tags":[],"prompt":null},{"index":182,"start_ms":4553600,"end_ms":4554800,"duration_ms":1200,"confidence":0.9,"tags":[],"prompt":null},{"index":183,"start_ms":4556700,"end_ms":4557780,"duration_ms":1080,"confidence":0.9,"tags":[],"prompt":null},{"index":184,"start_ms":4559960,"end_ms":4562900,"duration_ms":2940,"confidence":0.9,"tags":[],"prompt":null},{"index":185,"start_ms":4564160,"end_ms":4567240,"duration_ms":3080,"confidence":0.9,"tags":[],"prompt":null},{"index":186,"start_ms":4570220,"end_ms":4572220,"duration_ms":2000,"confidence":0.9,"tags":[],"prompt":null},{"index":187,"start_ms":4657960,"end_ms":4659580,"duration_ms":1620,"confidence":0.9,"tags":[],"prompt":null},{"index":188,"start_ms":4661000,"end_ms":4662740,"duration_ms":1740,"confidence":0.9,"tags":[],"prompt":null},{"index":189,"start_ms":4663860,"end_ms":4665640,"duration_ms":1780,"confidence":0.9,"tags":[],"prompt":null},{"index":190,"start_ms":4666940,"end_ms":4669100,"duration_ms":2160,"confidence":0.9,"tags":[],"prompt":null},{"index":191,"start_ms":4670160,"end_ms":4671300,"duration_ms":1140,"confidence":0.9,"tags":[],"prompt":null},{"index":192,"start_ms":4708920,"end_ms":4709960,"duration_ms":1040,"confidence":0.9,"tags":[],"prompt":null},{"index":193,"start_ms":4741740,"end_ms":4744900,"duration_ms":3160,"confidence":0.9,"tags":[],"prompt":null},{"index":194,"start_ms":4763820,"end_ms":4765420,"duration_ms":1600,"confidence":0.9,"tags":[],"prompt":null},{"index":195,"start_ms":4788800,"end_ms":4791280,"duration_ms":2480,"confidence":0.9,"tags":[],"prompt":null},{"index":196,"start_ms":4792660,"end_ms":4796460,"duration_ms":3800,"confidence":0.9,"tags":[],"prompt":null},{"index":197,"start_ms":4801440,"end_ms":4804420,"duration_ms":2980,"confidence":0.9,"tags":[],"prompt":null},{"index":198,"start_ms":4805280,"end_ms":4806560,"duration_ms":1280,"confidence":0.9,"tags":[],"prompt":null},{"index":199,"start_ms":4807560,"end_ms":4810280,"duration_ms":2720,"confidence":0.9,"tags":[],"prompt":null},{"index":200,"start_ms":4817400,"end_ms":4819020,"duration_ms":1620,"confidence":0.9,"tags":[],"prompt":null},{"index":201,"start_ms":4825600,"end_ms":4827880,"duration_ms":2280,"confidence":0.9,"tags":[],"prompt":null},{"index":202,"start_ms":4828260,"end_ms":4830040,"duration_ms":1780,"confidence":0.9,"tags":[],"prompt":null},{"index":203,"start_ms":4834860,"end_ms":4838680,"duration_ms":3820,"confidence":0.9,"tags":[],"prompt":null},{"index":204,"start_ms":4847820,"end_ms":4851980,"duration_ms":4160,"confidence":0.9,"tags":[],"prompt":null},{"index":205,"start_ms":4865040,"end_ms":4878300,"duration_ms":13260,"confidence":0.9,"tags":[],"prompt":null},{"index":206,"start_ms":4878780,"end_ms":4880760,"duration_ms":1980,"confidence":0.9,"tags":[],"prompt":null},{"index":207,"start_ms":4881240,"end_ms":4882320,"duration_ms":1080,"confidence":0.9,"tags":[],"prompt":null},{"index":208,"start_ms":4882800,"end_ms":4886220,"duration_ms":3420,"confidence":0.9,"tags":[],"prompt":null},{"index":209,"start_ms":4886660,"end_ms":4887780,"duration_ms":1120,"confidence":0.9,"tags":[],"prompt":null},{"index":210,"start_ms":4889980,"end_ms":4891160,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":211,"start_ms":4895460,"end_ms":4897640,"duration_ms":2180,"confidence":0.9,"tags":[],"prompt":null},{"index":212,"start_ms":4901280,"end_ms":4902280,"duration_ms":1000,"confidence":0.9,"tags":[],"prompt":null},{"index":213,"start_ms":4905380,"end_ms":4906660,"duration_ms":1280,"confidence":0.9,"tags":[],"prompt":null},{"index":214,"start_ms":4907380,"end_ms":4910280,"duration_ms":2900,"confidence":0.9,"tags":[],"prompt":null},{"index":215,"start_ms":4914560,"end_ms":4915760,"duration_ms":1200,"confidence":0.9,"tags":[],"prompt":null},{"index":216,"start_ms":4925400,"end_ms":4926980,"duration_ms":1580,"confidence":0.9,"tags":[],"prompt":null},{"index":217,"start_ms":4929180,"end_ms":4931400,"duration_ms":2220,"confidence":0.9,"tags":[],"prompt":null},{"index":218,"start_ms":4931880,"end_ms":4939400,"duration_ms":7520,"confidence":0.9,"tags":[],"prompt":null},{"index":219,"start_ms":4940400,"end_ms":4942960,"duration_ms":2560,"confidence":0.9,"tags":[],"prompt":null},{"index":220,"start_ms":4943300,"end_ms":4945140,"duration_ms":1840,"confidence":0.9,"tags":[],"prompt":null},{"index":221,"start_ms":4947960,"end_ms":4952920,"duration_ms":4960,"confidence":0.9,"tags":[],"prompt":null},{"index":222,"start_ms":4955120,"end_ms":4956520,"duration_ms":1400,"confidence":0.9,"tags":[],"prompt":null},{"index":223,"start_ms":4958540,"end_ms":4959580,"duration_ms":1040,"confidence":0.9,"tags":[],"prompt":null},{"index":224,"start_ms":4980360,"end_ms":4981740,"duration_ms":1380,"confidence":0.9,"tags":[],"prompt":null},{"index":225,"start_ms":4982820,"end_ms":4986700,"duration_ms":3880,"confidence":0.9,"tags":[],"prompt":null},{"index":226,"start_ms":4987740,"end_ms":4989800,"duration_ms":2060,"confidence":0.9,"tags":[],"prompt":null},{"index":227,"start_ms":4995280,"end_ms":4996880,"duration_ms":1600,"confidence":0.9,"tags":[],"prompt":null},{"index":228,"start_ms":5003800,"end_ms":5007980,"duration_ms":4180,"confidence":0.9,"tags":[],"prompt":null},{"index":229,"start_ms":5009800,"end_ms":5011780,"duration_ms":1980,"confidence":0.9,"tags":[],"prompt":null},{"index":230,"start_ms":5013720,"end_ms":5016140,"duration_ms":2420,"confidence":0.9,"tags":[],"prompt":null},{"index":231,"start_ms":5017520,"end_ms":5019580,"duration_ms":2060,"confidence":0.9,"tags":[],"prompt":null},{"index":232,"start_ms":5022520,"end_ms":5025780,"duration_ms":3260,"confidence":0.9,"tags":[],"prompt":null},{"index":233,"start_ms":5033160,"end_ms":5034400,"duration_ms":1240,"confidence":0.9,"tags":[],"prompt":null},{"index":234,"start_ms":5042280,"end_ms":5043720,"duration_ms":1440,"confidence":0.9,"tags":[],"prompt":null},{"index":235,"start_ms":5047160,"end_ms":5048800,"duration_ms":1640,"confidence":0.9,"tags":[],"prompt":null},{"index":236,"start_ms":5051100,"end_ms":5054200,"duration_ms":3100,"confidence":0.9,"tags":[],"prompt":null},{"index":237,"start_ms":5062780,"end_ms":5065560,"duration_ms":2780,"confidence":0.9,"tags":[],"prompt":null},{"index":238,"start_ms":5066620,"end_ms":5067860,"duration_ms":1240,"confidence":0.9,"tags":[],"prompt":null},{"index":239,"start_ms":5078220,"end_ms":5079500,"duration_ms":1280,"confidence":0.9,"tags":[],"prompt":null},{"index":240,"start_ms":5086280,"end_ms":5098940,"duration_ms":12660,"confidence":0.9,"tags":[],"prompt":null},{"index":241,"start_ms":5099880,"end_ms":5103100,"duration_ms":3220,"confidence":0.9,"tags":[],"prompt":null},{"index":242,"start_ms":5105780,"end_ms":5107900,"duration_ms":2120,"confidence":0.9,"tags":[],"prompt":null},{"index":243,"start_ms":5115580,"end_ms":5118100,"duration_ms":2520,"confidence":0.9,"tags":[],"prompt":null},{"index":244,"start_ms":5127000,"end_ms":5128520,"duration_ms":1520,"confidence":0.9,"tags":[],"prompt":null},{"index":245,"start_ms":5133720,"end_ms":5134800,"duration_ms":1080,"confidence":0.9,"tags":[],"prompt":null},{"index":246,"start_ms":5139280,"end_ms":5140680,"duration_ms":1400,"confidence":0.9,"tags":[],"prompt":null},{"index":247,"start_ms":5148440,"end_ms":5157140,"duration_ms":8700,"confidence":0.9,"tags":[],"prompt":null},{"index":248,"start_ms":5187020,"end_ms":5188400,"duration_ms":1380,"confidence":0.9,"tags":[],"prompt":null},{"index":249,"start_ms":5213220,"end_ms":5214580,"duration_ms":1360,"confidence":0.9,"tags":[],"prompt":null},{"index":250,"start_ms":5215500,"end_ms":5216540,"duration_ms":1040,"confidence":0.9,"tags":[],"prompt":null},{"index":251,"start_ms":5217520,"end_ms":5219620,"duration_ms":2100,"confidence":0.9,"tags":[],"prompt":null},{"index":252,"start_ms":5233460,"end_ms":5234800,"duration_ms":1340,"confidence":0.9,"tags":[],"prompt":null},{"index":253,"start_ms":5258320,"end_ms":5264000,"duration_ms":5680,"confidence":0.9,"tags":[],"prompt":null},{"index":254,"start_ms":5270220,"end_ms":5274240,"duration_ms":4020,"confidence":0.9,"tags":[],"prompt":null},{"index":255,"start_ms":5288380,"end_ms":5291800,"duration_ms":3420,"confidence":0.9,"tags":[],"prompt":null},{"index":256,"start_ms":5306420,"end_ms":5307880,"duration_ms":1460,"confidence":0.9,"tags":[],"prompt":null},{"index":257,"start_ms":5311780,"end_ms":5312860,"duration_ms":1080,"confidence":0.9,"tags":[],"prompt":null},{"index":258,"start_ms":5317260,"end_ms":5318600,"duration_ms":1340,"confidence":0.9,"tags":[],"prompt":null},{"index":259,"start_ms":5326320,"end_ms":5327760,"duration_ms":1440,"confidence":0.9,"tags":[],"prompt":null},{"index":260,"start_ms":5344380,"end_ms":5346120,"duration_ms":1740,"confidence":0.9,"tags":[],"prompt":null},{"index":261,"start_ms":5362020,"end_ms":5366680,"duration_ms":4660,"confidence":0.9,"tags":[],"prompt":null},{"index":262,"start_ms":5384680,"end_ms":5385980,"duration_ms":1300,"confidence":0.9,"tags":[],"prompt":null},{"index":263,"start_ms":5387340,"end_ms":5388520,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":264,"start_ms":5399700,"end_ms":5401140,"duration_ms":1440,"confidence":0.9,"tags":[],"prompt":null},{"index":265,"start_ms":5420640,"end_ms":5422160,"duration_ms":1520,"confidence":0.9,"tags":[],"prompt":null},{"index":266,"start_ms":5441260,"end_ms":5443520,"duration_ms":2260,"confidence":0.9,"tags":[],"prompt":null},{"index":267,"start_ms":5444440,"end_ms":5446800,"duration_ms":2360,"confidence":0.9,"tags":[],"prompt":null},{"index":268,"start_ms":5451480,"end_ms":5453220,"duration_ms":1740,"confidence":0.9,"tags":[],"prompt":null},{"index":269,"start_ms":5456040,"end_ms":5457080,"duration_ms":1040,"confidence":0.9,"tags":[],"prompt":null},{"index":270,"start_ms":5463760,"end_ms":5467100,"duration_ms":3340,"confidence":0.9,"tags":[],"prompt":null},{"index":271,"start_ms":5516840,"end_ms":5518380,"duration_ms":1540,"confidence":0.9,"tags":[],"prompt":null},{"index":272,"start_ms":5526840,"end_ms":5528180,"duration_ms":1340,"confidence":0.9,"tags":[],"prompt":null},{"index":273,"start_ms":5531560,"end_ms":5532580,"duration_ms":1020,"confidence":0.9,"tags":[],"prompt":null},{"index":274,"start_ms":5533260,"end_ms":5536200,"duration_ms":2940,"confidence":0.9,"tags":[],"prompt":null},{"index":275,"start_ms":5573580,"end_ms":5574940,"duration_ms":1360,"confidence":0.9,"tags":[],"prompt":null},{"index":276,"start_ms":5582080,"end_ms":5583680,"duration_ms":1600,"confidence":0.9,"tags":[],"prompt":null},{"index":277,"start_ms":5584060,"end_ms":5585240,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":278,"start_ms":5613220,"end_ms":5615040,"duration_ms":1820,"confidence":0.9,"tags":[],"prompt":null},{"index":279,"start_ms":5615360,"end_ms":5618140,"duration_ms":2780,"confidence":0.9,"tags":[],"prompt":null},{"index":280,"start_ms":5638220,"end_ms":5640620,"duration_ms":2400,"confidence":0.9,"tags":[],"prompt":null},{"index":281,"start_ms":5641000,"end_ms":5643060,"duration_ms":2060,"confidence":0.9,"tags":[],"prompt":null},{"index":282,"start_ms":5644500,"end_ms":5647060,"duration_ms":2560,"confidence":0.9,"tags":[],"prompt":null},{"index":283,"start_ms":5650960,"end_ms":5652200,"duration_ms":1240,"confidence":0.9,"tags":[],"prompt":null},{"index":284,"start_ms":5694700,"end_ms":5696100,"duration_ms":1400,"confidence":0.9,"tags":[],"prompt":null},{"index":285,"start_ms":5704620,"end_ms":5705620,"duration_ms":1000,"confidence":0.9,"tags":[],"prompt":null},{"index":286,"start_ms":5707620,"end_ms":5709900,"duration_ms":2280,"confidence":0.9,"tags":[],"prompt":null},{"index":287,"start_ms":5710220,"end_ms":5712560,"duration_ms":2340,"confidence":0.9,"tags":[],"prompt":null},{"index":288,"start_ms":5754400,"end_ms":5756240,"duration_ms":1840,"confidence":0.9,"tags":[],"prompt":null},{"index":289,"start_ms":5758020,"end_ms":5759100,"duration_ms":1080,"confidence":0.9,"tags":[],"prompt":null},{"index":290,"start_ms":5763040,"end_ms":5764580,"duration_ms":1540,"confidence":0.9,"tags":[],"prompt":null},{"index":291,"start_ms":5767120,"end_ms":5769180,"duration_ms":2060,"confidence":0.9,"tags":[],"prompt":null},{"index":292,"start_ms":5771540,"end_ms":5772960,"duration_ms":1420,"confidence":0.9,"tags":[],"prompt":null},{"index":293,"start_ms":5775080,"end_ms":5778360,"duration_ms":3280,"confidence":0.9,"tags":[],"prompt":null},{"index":294,"start_ms":5779740,"end_ms":5781240,"duration_ms":1500,"confidence":0.9,"tags":[],"prompt":null},{"index":295,"start_ms":5781640,"end_ms":5782820,"duration_ms":1180,"confidence":0.9,"tags":[],"prompt":null},{"index":296,"start_ms":5784000,"end_ms":5785160,"duration_ms":1160,"confidence":0.9,"tags":[],"prompt":null},{"index":297,"start_ms":5787520,"end_ms":5791100,"duration_ms":3580,"confidence":0.9,"tags":[],"prompt":null},{"index":298,"start_ms":5791560,"end_ms":5792960,"duration_ms":1400,"confidence":0.9,"tags":[],"prompt":null},{"index":299,"start_ms":5821440,"end_ms":5825780,"duration_ms":4340,"confidence":0.9,"tags":[],"prompt":null},{"index":300,"start_ms":5828220,"end_ms":5830420,"duration_ms":2200,"confidence":0.9,"tags":[],"prompt":null},{"index":301,"start_ms":5843240,"end_ms":5844440,"duration_ms":1200,"confidence":0.9,"tags":[],"prompt":null},{"index":302,"start_ms":5874740,"end_ms":5875900,"duration_ms":1160,"confidence":0.9,"tags":[],"prompt":null},{"index":303,"start_ms":5891740,"end_ms":5894500,"duration_ms":2760,"confidence":0.9,"tags":[],"prompt":null},{"index":304,"start_ms":5898860,"end_ms":5899920,"duration_ms":1060,"confidence":0.9,"tags":[],"prompt":null},{"index":305,"start_ms":5901380,"end_ms":5902800,"duration_ms":1420,"confidence":0.9,"tags":[],"prompt":null},{"index":306,"start_ms":5934040,"end_ms":5935540,"duration_ms":1500,"confidence":0.9,"tags":[],"prompt":null},{"index":307,"start_ms":5935880,"end_ms":5937000,"duration_ms":1120,"confidence":0.9,"tags":[],"prompt":null},{"index":308,"start_ms":5941840,"end_ms":5944920,"duration_ms":3080,"confidence":0.9,"tags":[],"prompt":null},{"index":309,"start_ms":5946520,"end_ms":5948500,"duration_ms":1980,"confidence":0.9,"tags":[],"prompt":null},{"index":310,"start_ms":5956520,"end_ms":5957980,"duration_ms":1460,"confidence":0.9,"tags":[],"prompt":null},{"index":311,"start_ms":5967600,"end_ms":5969120,"duration_ms":1520,"confidence":0.9,"tags":[],"prompt":null},{"index":312,"start_ms":5970060,"end_ms":5971540,"duration_ms":1480,"confidence":0.9,"tags":[],"prompt":null},{"index":313,"start_ms":5977920,"end_ms":5978980,"duration_ms":1060,"confidence":0.9,"tags":[],"prompt":null},{"index":314,"start_ms":5986460,"end_ms":5987620,"duration_ms":1160,"confidence":0.9,"tags":[],"prompt":null},{"index":315,"start_ms":5988640,"end_ms":5990000,"duration_ms":1360,"confidence":0.9,"tags":[],"prompt":null},{"index":316,"start_ms":5995140,"end_ms":5997480,"duration_ms":2340,"confidence":0.9,"tags":[],"prompt":null},{"index":317,"start_ms":6000620,"end_ms":6001640,"duration_ms":1020,"confidence":0.9,"tags":[],"prompt":null},{"index":318,"start_ms":6048720,"end_ms":6050140,"duration_ms":1420,"confidence":0.9,"tags":[],"prompt":null},{"index":319,"start_ms":6055360,"end_ms":6056820,"duration_ms":1460,"confidence":0.9,"tags":[],"prompt":null},{"index":320,"start_ms":6057420,"end_ms":6065440,"duration_ms":8020,"confidence":0.9,"tags":[],"prompt":null},{"index":321,"start_ms":6068780,"end_ms":6071260,"duration_ms":2480,"confidence":0.9,"tags":[],"prompt":null},{"index":322,"start_ms":6071960,"end_ms":6073060,"duration_ms":1100,"confidence":0.9,"tags":[],"prompt":null},{"index":323,"start_ms":6077800,"end_ms":6079000,"duration_ms":1200,"confidence":0.9,"tags":[],"prompt":null},{"index":324,"start_ms":6080360,"end_ms":6081600,"duration_ms":1240,"confidence":0.9,"tags":[],"prompt":null},{"index":325,"start_ms":6091860,"end_ms":6092960,"duration_ms":1100,"confidence":0.9,"tags":[],"prompt":null},{"index":326,"start_ms":6103080,"end_ms":6104220,"duration_ms":1140,"confidence":0.9,"tags":[],"prompt":null}];
+
+    const video = document.getElementById('video');
+    const segmentList = document.getElementById('segment-list');
+    const summary = document.getElementById('summary');
+    const status = document.getElementById('status');
+    const windowInfo = document.getElementById('window-info');
+    const timelineTrack = document.getElementById('timeline-track');
+    const timelineLegend = document.getElementById('timeline-legend');
+    const playhead = document.getElementById('playhead');
+    const btnPrev = document.getElementById('prev');
+    const btnPlay = document.getElementById('play');
+    const btnPlayAll = document.getElementById('play-all');
+    const btnPause = document.getElementById('pause');
+    const btnNext = document.getElementById('next');
+
+    video.src = mediaSrc;
+    let currentIndex = 0;
+    let stopAt = null;
+    let playAll = false;
+
+    function formatClock(seconds) {
+      const totalMs = Math.max(0, Math.round(seconds * 1000));
+      const h = Math.floor(totalMs / 3600000);
+      const m = Math.floor((totalMs % 3600000) / 60000);
+      const s = Math.floor((totalMs % 60000) / 1000);
+      const ms = totalMs % 1000;
+      if (h > 0) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+    }
+
+    function seconds(ms) {
+      return (ms / 1000).toFixed(2);
+    }
+
+    function renderList() {
+      if (segments.length === 0) {
+        segmentList.innerHTML = '<p class="muted">No non-voice segments found in this JSON.</p>';
+        summary.textContent = '0 non-voice segments';
+        status.textContent = 'No playable non-voice windows in this file.';
+        btnPrev.disabled = true;
+        btnPlay.disabled = true;
+        btnPlayAll.disabled = true;
+        btnPause.disabled = true;
+        btnNext.disabled = true;
+        return;
+      }
+      summary.textContent = `${segments.length} non-voice segments | preroll ${preRoll}s | postroll ${postRoll}s`;
+      status.textContent = 'Ready. Player will stay inside non-voice timestamps only.';
+      segmentList.innerHTML = '';
+      for (const seg of segments) {
+        const el = document.createElement('div');
+        el.className = 'segment';
+        el.dataset.index = String(seg.index - 1);
+        const tags = (seg.tags || []).map(t => `<span class="badge">${t}</span>`).join('');
+        const prompt = seg.prompt ? `<div class="meta">Prompt: ${seg.prompt}</div>` : '';
+        el.innerHTML = `
+          <div><strong>#${seg.index}</strong> ${seconds(seg.start_ms)}s - ${seconds(seg.end_ms)}s</div>
+          <div class="meta">duration ${seconds(seg.duration_ms)}s | confidence ${Number(seg.confidence).toFixed(2)}</div>
+          <div>${tags}</div>
+          ${prompt}
+        `;
+        el.addEventListener('click', () => {
+          currentIndex = seg.index - 1;
+          jumpToCurrent(true);
+        });
+        segmentList.appendChild(el);
+      }
+      highlight();
+    }
+
+    function highlight() {
+      const items = segmentList.querySelectorAll('.segment');
+      for (const item of items) item.classList.remove('active');
+      const active = segmentList.querySelector(`.segment[data-index="${currentIndex}"]`);
+      if (active) active.classList.add('active');
+
+      const markers = timelineTrack.querySelectorAll('.marker');
+      for (const marker of markers) marker.classList.remove('active');
+      const activeMarker = timelineTrack.querySelector(`.marker[data-index="${currentIndex}"]`);
+      if (activeMarker) activeMarker.classList.add('active');
+
+      if (segments.length > 0) {
+        const seg = segments[currentIndex];
+        windowInfo.innerHTML = `<strong>Selected:</strong> #${seg.index} | <strong>start:</strong> ${formatClock(seg.start_ms / 1000)} | <strong>end:</strong> ${formatClock(seg.end_ms / 1000)} | <strong>duration:</strong> ${seconds(seg.duration_ms)}s | <strong>confidence:</strong> ${Number(seg.confidence).toFixed(2)}`;
+      }
+    }
+
+    function mediaDurationMs() {
+      const fromVideo = Number.isFinite(video.duration) && video.duration > 0 ? Math.round(video.duration * 1000) : 0;
+      if (fromVideo > 0) return fromVideo;
+      let maxEnd = 0;
+      for (const seg of segments) {
+        if (seg.end_ms > maxEnd) maxEnd = seg.end_ms;
+      }
+      return maxEnd;
+    }
+
+    function renderTimelineMarkers() {
+      const existing = timelineTrack.querySelectorAll('.marker');
+      for (const el of existing) el.remove();
+
+      const totalMs = mediaDurationMs();
+      if (totalMs <= 0 || segments.length === 0) {
+        timelineLegend.textContent = 'timeline unavailable';
+        return;
+      }
+
+      timelineLegend.innerHTML = `<span>00:00.000</span><span>${formatClock(totalMs / 1000)}</span>`;
+
+      for (const seg of segments) {
+        const marker = document.createElement('div');
+        marker.className = 'marker';
+        marker.dataset.index = String(seg.index - 1);
+        const leftPct = Math.max(0, Math.min(100, (seg.start_ms / totalMs) * 100));
+        const widthPct = Math.max(0.35, (seg.duration_ms / totalMs) * 100);
+        marker.style.left = `${leftPct}%`;
+        marker.style.width = `${Math.min(100 - leftPct, widthPct)}%`;
+        marker.title = `#${seg.index} ${formatClock(seg.start_ms / 1000)} - ${formatClock(seg.end_ms / 1000)} (${seconds(seg.duration_ms)}s)`;
+        marker.addEventListener('click', () => {
+          currentIndex = seg.index - 1;
+          jumpToCurrent(false);
+        });
+        timelineTrack.appendChild(marker);
+      }
+      highlight();
+    }
+
+    function jumpToCurrent(playNow) {
+      if (segments.length === 0) return;
+      const seg = segments[currentIndex];
+      const startAt = Math.max(0, seg.start_ms / 1000 - preRoll);
+      stopAt = seg.end_ms / 1000 + postRoll;
+      try {
+        video.currentTime = startAt;
+      } catch (_err) {
+        // Some browsers throw if media failed to load; keep list navigation usable.
+      }
+      highlight();
+      if (playNow) {
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(() => {});
+        }
+      }
+      status.textContent = `Segment #${seg.index} | ${seconds(seg.start_ms)}s - ${seconds(seg.end_ms)}s`;
+    }
+
+    btnPrev.addEventListener('click', () => {
+      if (segments.length === 0) return;
+      currentIndex = (currentIndex - 1 + segments.length) % segments.length;
+      jumpToCurrent(true);
+    });
+
+    btnNext.addEventListener('click', () => {
+      if (segments.length === 0) return;
+      currentIndex = (currentIndex + 1) % segments.length;
+      jumpToCurrent(true);
+    });
+
+    btnPlay.addEventListener('click', () => jumpToCurrent(true));
+    btnPlayAll.addEventListener('click', () => {
+      if (segments.length === 0) return;
+      playAll = true;
+      jumpToCurrent(true);
+    });
+    btnPause.addEventListener('click', () => {
+      playAll = false;
+      video.pause();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === ' ') {
+        event.preventDefault();
+        btnPause.click();
+      }
+      if (event.key === 'j') btnNext.click();
+      if (event.key === 'k') btnPrev.click();
+      if (event.key === 'p') btnPlay.click();
+      if (event.key === 'a') btnPlayAll.click();
+    });
+
+    video.addEventListener('play', () => {
+      if (segments.length === 0) {
+        video.pause();
+        return;
+      }
+      const seg = segments[currentIndex];
+      const allowedStart = Math.max(0, seg.start_ms / 1000 - preRoll);
+      const allowedEnd = seg.end_ms / 1000 + postRoll;
+      if (video.currentTime < allowedStart || video.currentTime > allowedEnd) {
+        try {
+          video.currentTime = allowedStart;
+        } catch (_err) {}
+      }
+      stopAt = allowedEnd;
+    });
+
+    video.addEventListener('timeupdate', () => {
+      const total = mediaDurationMs();
+      if (total > 0) {
+        const leftPct = Math.max(0, Math.min(100, (video.currentTime * 1000 / total) * 100));
+        playhead.style.left = `${leftPct}%`;
+      }
+      if (stopAt !== null && video.currentTime >= stopAt) {
+        if (playAll && currentIndex + 1 < segments.length) {
+          currentIndex += 1;
+          jumpToCurrent(true);
+        } else {
+          playAll = false;
+          video.pause();
+        }
+      }
+    });
+
+    renderList();
+    video.addEventListener('loadedmetadata', renderTimelineMarkers);
+    renderTimelineMarkers();
+    jumpToCurrent(false);
+  </script>
+</body>
+</html>

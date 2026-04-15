@@ -43,6 +43,14 @@ pub struct AnalysisConfig {
     pub vad_engine: String,
     #[serde(default)]
     pub merge_options: Option<MergeOptions>,
+    #[serde(default)]
+    pub spectral_flatness_max: Option<f32>,
+    #[serde(default)]
+    pub spectral_entropy_min: Option<f32>,
+    #[serde(default)]
+    pub spectral_centroid_min: Option<f32>,
+    #[serde(default)]
+    pub spectral_centroid_max: Option<f32>,
 }
 
 impl Default for AnalysisConfig {
@@ -61,6 +69,10 @@ impl Default for AnalysisConfig {
             prompt_min_confidence: 0.65,
             vad_engine: "energy".to_string(),
             merge_options: None,
+            spectral_flatness_max: None,
+            spectral_entropy_min: None,
+            spectral_centroid_min: None,
+            spectral_centroid_max: None,
         }
     }
 }

@@ -46,7 +46,14 @@ pub fn extract_timeline(input: &Path, cfg: &AnalysisConfig) -> Result<TimelineOu
 
 fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts> {
     let effective_threshold = cfg.energy_threshold + cfg.vad_threshold_delta;
-    let vad_engine: Box<dyn VadEngine> = create_engine(&cfg.vad_engine, effective_threshold)?;
+    let vad_engine: Box<dyn VadEngine> = create_engine(
+        &cfg.vad_engine,
+        effective_threshold,
+        cfg.spectral_flatness_max,
+        cfg.spectral_entropy_min,
+        cfg.spectral_centroid_min,
+        cfg.spectral_centroid_max,
+    )?;
 
     let vad_name = vad_engine.name();
     let mut stage_ms = StageDurations::default();

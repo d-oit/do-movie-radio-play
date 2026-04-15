@@ -265,6 +265,7 @@ pub fn write_review_html_with_options(
         <button type="button" id="mark-voice">Mark Voice (x)</button>
         <button type="button" id="undo">Undo (u)</button>
         <button type="button" id="save-html">Save Reviewed HTML</button>
+        <button type="button" id="export-learning">Export Learning Data (e)</button>
         <button type="button" id="pause">Pause (space)</button>
         <button type="button" id="next">Next (j)</button>
       </div>
@@ -326,6 +327,7 @@ pub fn write_review_html_with_options(
     const btnMarkVoice = document.getElementById('mark-voice');
     const btnUndo = document.getElementById('undo');
     const btnSaveHtml = document.getElementById('save-html');
+    const btnExportLearning = document.getElementById('export-learning');
     const btnPause = document.getElementById('pause');
     const btnNext = document.getElementById('next');
     const btnSegmentFilter = document.getElementById('segment-filter');
@@ -373,6 +375,33 @@ pub fn write_review_html_with_options(
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }}
+
+    function exportLearningData() {{
+      const excludedSegments = allSegments.filter(seg => excluded.has(segKey(seg)));
+      const learningData = {{
+        export_timestamp: new Date().toISOString(),
+        total_segments: allSegments.length,
+        marked_as_voice_count: excludedSegments.length,
+        segments_marked_as_voice: excludedSegments.map(seg => ({{
+          start_ms: seg.start_ms,
+          end_ms: seg.end_ms,
+          confidence: seg.confidence,
+          duration_ms: seg.end_ms - seg.start_ms,
+          verification_status: seg.verification_status || null
+        }}))
+      }};
+      const json = JSON.stringify(learningData, null, 2);
+      const blob = new Blob([json], {{ type: 'application/json' }});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'learning-false-positives.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      status.textContent = `Exported ${{excludedSegments.length}} false positives for learning`;
     }}
 
     function formatClock(seconds) {{
@@ -635,6 +664,7 @@ pub fn write_review_html_with_options(
       if (segments.length > 0) jumpToCurrent(false);
     }});
     btnSaveHtml.addEventListener('click', saveReviewedHtml);
+    btnExportLearning.addEventListener('click', exportLearningData);
     btnPause.addEventListener('click', () => {{
       playAll = false;
       video.pause();
@@ -672,6 +702,7 @@ pub fn write_review_html_with_options(
       if (event.key === 'f') btnToggleFull.click();
       if (event.key === 'x') btnMarkVoice.click();
       if (event.key === 'u') btnUndo.click();
+      if (event.key === 'e') btnExportLearning.click();
       if ((event.ctrlKey || event.metaKey) && event.key === 's') {{
         event.preventDefault();
         saveReviewedHtml();

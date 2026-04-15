@@ -213,8 +213,24 @@ fn slice_confidence(
         return 0.5;
     }
     let avg = slice.iter().copied().sum::<f32>() / slice.len() as f32;
-    let score = if invert { 1.0 - avg } else { avg };
-    score.clamp(0.0, 1.0)
+    let base_score = if invert { 1.0 - avg } else { avg };
+    let frame_count = slice.len();
+    let duration_adjustment = duration_confidence_adjustment(frame_count);
+    let adjusted = base_score * duration_adjustment;
+    adjusted.clamp(0.0, 1.0)
+}
+
+fn duration_confidence_adjustment(frame_count: usize) -> f32 {
+    const MIN_FRAMES_FOR_FULL_CONFIDENCE: usize = 50;
+    const MIN_FRAMES_FOR_REDUCED: usize = 10;
+    if frame_count >= MIN_FRAMES_FOR_FULL_CONFIDENCE {
+        1.0
+    } else if frame_count >= MIN_FRAMES_FOR_REDUCED {
+        0.85 + (0.15 * (frame_count - MIN_FRAMES_FOR_REDUCED) as f32
+            / (MIN_FRAMES_FOR_FULL_CONFIDENCE - MIN_FRAMES_FOR_REDUCED) as f32)
+    } else {
+        0.85 * (frame_count as f32 / MIN_FRAMES_FOR_REDUCED as f32)
+    }
 }
 
 fn confidence_for_range(

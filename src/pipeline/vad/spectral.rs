@@ -74,55 +74,57 @@ fn classify_spectral(
     let energy_term = ((frame.rms - threshold) / threshold).clamp(-2.0, 2.0) * 0.25;
 
     let in_speech_freq = (250.0..=4500.0).contains(&frame.centroid_hz);
-    let centroid_term = if in_speech_freq { 0.18 } else { -0.22 };
+    let centroid_term = if in_speech_freq { 0.12 } else { -0.25 };
 
     let zcr_term = if (0.05..=0.35).contains(&frame.zcr) {
-        0.12
+        0.10
     } else if frame.zcr > 0.45 {
-        -0.15
+        -0.18
     } else if frame.zcr < 0.02 {
-        -0.08
+        -0.10
     } else {
         0.0
     };
 
     let flux_term = (frame.spectral_flux - 0.003).clamp(-0.015, 0.025) * 4.0;
 
-    let flatness_term = if frame.spectral_flatness > flatness_max {
-        -0.20
-    } else if frame.spectral_flatness > flatness_max * 0.67 {
+    let flatness_term = if frame.spectral_flatness > flatness_max + 0.1 {
+        -0.30
+    } else if frame.spectral_flatness > flatness_max {
+        -0.22
+    } else if frame.spectral_flatness > flatness_max * 0.6 {
         -0.10
-    } else if frame.spectral_flatness < flatness_max * 0.33 {
-        0.08
+    } else if frame.spectral_flatness < flatness_max * 0.25 {
+        0.10
     } else {
         0.0
     };
 
-    let entropy_term = if frame.spectral_entropy < entropy_min {
-        0.20
-    } else if frame.spectral_entropy < entropy_min + 1.0 {
-        0.10
-    } else if frame.spectral_entropy > entropy_min + 3.0 {
-        -0.25
-    } else if frame.spectral_entropy > entropy_min + 2.0 {
-        -0.12
+    let entropy_term = if frame.spectral_entropy < entropy_min - 0.5 {
+        0.25
+    } else if frame.spectral_entropy < entropy_min {
+        0.12
+    } else if frame.spectral_entropy > entropy_min + 3.5 {
+        -0.30
+    } else if frame.spectral_entropy > entropy_min + 2.5 {
+        -0.15
     } else {
         0.0
     };
 
     let music_indicator = frame.low_band_ratio > 0.5 && frame.high_band_ratio < 0.15;
-    let music_penalty = if music_indicator { -0.28 } else { 0.0 };
+    let music_penalty = if music_indicator { -0.35 } else { 0.0 };
 
     let hiss_indicator = frame.high_band_ratio > 0.4 && frame.zcr > 0.35;
-    let hiss_penalty = if hiss_indicator { -0.18 } else { 0.0 };
+    let hiss_penalty = if hiss_indicator { -0.20 } else { 0.0 };
 
     let voice_indicator = frame.zcr > 0.02
         && frame.zcr < 0.4
         && frame.centroid_hz > centroid_min
         && frame.centroid_hz < centroid_max
-        && frame.spectral_flatness < flatness_max
-        && frame.spectral_entropy < entropy_min + 2.5;
-    let voice_bonus = if voice_indicator { 0.10 } else { 0.0 };
+        && frame.spectral_flatness < flatness_max - 0.1
+        && frame.spectral_entropy < entropy_min + 2.0;
+    let voice_bonus = if voice_indicator { 0.08 } else { 0.0 };
 
     let raw = 0.5
         + energy_term

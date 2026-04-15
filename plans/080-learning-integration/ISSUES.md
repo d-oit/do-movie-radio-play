@@ -1,30 +1,23 @@
-# Learning Integration - Issues and Next Steps
+# Learning Integration - Completed
 
-## Current State
+## Completed Features
 
-The learning system is now wired between components:
 1. ✅ Learning thresholds configured in config (spectral_flatness_max, etc.)
 2. ✅ Thresholds passed from config to SpectralVad engine
 3. ✅ Verification records suspicious segments
 4. ✅ Learning state created from verification results
 5. ✅ Threshold recommendations generated from learning state
+6. ✅ Ctrl+S saves reviewed HTML
+7. ✅ Play All shows "Done!" message
+8. ✅ Filter/Sort UI in segment list
+9. ✅ Export learning data for false positives
+10. ✅ Improved spectral VAD weights for better voice discrimination
 
-## Known Issues
+## Usage Workflow
 
-### 1. False Positive Detection Logic Incomplete
-- **Problem**: The verification system marks segments as "suspicious" but doesn't distinguish between:
-  - Verified false positive (user marked as voice)
-  - Verified true positive (user confirmed as non-voice)
-  - System-suspicious (algorithm flagged as suspicious)
-- **Location**: `src/verification/mod.rs`
-- **Fix**: Add explicit false positive tracking in review player that feeds back to learning
-- **Status**: Partially addressed - excluded segments tracked in review, suspicious flagged in verification
-
-## What Works
-
-1. ✅ Ctrl+S saves reviewed HTML
-2. ✅ Learning state file created with verification results
-3. ✅ Threshold recommendations generated
-4. ✅ Spectral VAD uses configurable thresholds from config
-5. ✅ Play All shows "Done!" message
-6. ✅ Filter/Sort UI in segment list
+1. Extract timeline: `timeline extract --vad-engine spectral --config config/profiles/radio-play.json`
+2. Verify: `timeline verify-timeline --input-media <file> --input timeline.json --output verified.json --save-learning`
+3. Review: `timeline review --input-media <file> --input verified.json --open`
+4. Mark false positives with **x**, export with **e**
+5. Update thresholds: `timeline update-thresholds --learning-state state.json`
+6. Use recommended thresholds in config for next extraction

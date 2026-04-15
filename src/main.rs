@@ -435,6 +435,59 @@ fn run() -> Result<()> {
                 "merged timeline"
             );
         }
+        Commands::Export {
+            input,
+            output,
+            format,
+            verified,
+        } => {
+            let timeline = read_timeline(&input)?;
+            let verified_segments: Option<std::collections::HashSet<(u64, u64)>> =
+                if let Some(verified_path) = &verified {
+                    let report: crate::verification::VerificationReport = read_json(verified_path)
+                        .with_context(|| {
+                            format!("failed to read verified file: {}", verified_path.display())
+                        })?;
+                    let keys: std::collections::HashSet<(u64, u64)> = report
+                        .segment_results
+                        .into_iter()
+                        .filter(|r| {
+                            matches!(
+                                r.verification_status,
+                                crate::verification::VerificationStatus::Verified
+                            )
+                        })
+                        .map(|r| (r.start_ms, r.end_ms))
+                        .collect();
+                    Some(keys)
+                } else {
+                    None
+                };
+
+            match format.as_str() {
+                "json" => {
+                    let export_data = crate::io::json::ExportData::from_timeline(
+                        &timeline,
+                        verified_segments.as_ref(),
+                    );
+                    write_json_pretty(&output, &export_data)?;
+                    info!(format = "json", output = %output.display(), "exported timeline");
+                }
+                "edl" => {
+                    let edl_content =
+                        crate::io::edl::export_edl(&timeline, verified_segments.as_ref());
+                    std::fs::write(&output, edl_content)?;
+                    info!(format = "edl", output = %output.display(), "exported timeline");
+                }
+                "vtt" => {
+                    let vtt_content =
+                        crate::io::vtt::export_vtt(&timeline, verified_segments.as_ref());
+                    std::fs::write(&output, vtt_content)?;
+                    info!(format = "vtt", output = %output.display(), "exported timeline");
+                }
+                _ => bail!("unknown format: {format}"),
+            }
+        }
     }
 
     info!("timeline command end");

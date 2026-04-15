@@ -174,4 +174,13 @@ pub enum Commands {
         #[arg(long)]
         verified: Option<PathBuf>,
     },
+    Export {
+        input: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long, value_parser = ["json", "edl", "vtt"])]
+        format: String,
+        #[arg(long)]
+        verified: Option<PathBuf>,
+    },
 }

@@ -56,6 +56,8 @@ const DEFAULT_FLATNESS_MAX: f32 = 0.45;
 const DEFAULT_ENERGY_MIN: f32 = 0.001;
 const DEFAULT_CENTROID_MIN: f32 = 100.0;
 const DEFAULT_CENTROID_MAX: f32 = 6000.0;
+const VERIFICATION_HIGH_CONFIDENCE_THRESHOLD: f32 = 0.62;
+const VERIFICATION_LOW_CONFIDENCE_THRESHOLD: f32 = 0.45;
 
 #[allow(clippy::too_many_arguments)]
 pub fn verify_timeline(
@@ -106,26 +108,28 @@ pub fn verify_timeline(
         }
 
         let analysis = if media_exists {
-            match analyze_segment(&media_path_buf, segment) {
-                Ok(a) => a,
-                Err(e) => {
-                    warn!(
-                        segment_ms = format!("{}-{}", segment.start_ms, segment.end_ms),
-                        error = %e,
-                        "segment analysis failed, marking as suspicious"
-                    );
-                    SegmentAnalysis {
-                        status: VerificationStatus::Inconclusive,
-                        features: SpectralFeatures::default(),
-                        reason: Some(format!("analysis failed: {e}")),
-                    }
-                }
-            }
+            analyze_segment(&media_path_buf, segment, &thresholds)
         } else {
-            SegmentAnalysis {
+            Ok(SegmentAnalysis {
                 status: VerificationStatus::Inconclusive,
                 features: SpectralFeatures::default(),
                 reason: Some("media not available".to_string()),
+            })
+        };
+
+        let analysis = match analysis {
+            Ok(a) => a,
+            Err(e) => {
+                warn!(
+                    segment_ms = format!("{}-{}", segment.start_ms, segment.end_ms),
+                    error = %e,
+                    "segment analysis failed, marking as suspicious"
+                );
+                SegmentAnalysis {
+                    status: VerificationStatus::Inconclusive,
+                    features: SpectralFeatures::default(),
+                    reason: Some(format!("analysis failed: {e}")),
+                }
             }
         };
 
@@ -211,7 +215,11 @@ pub fn verify_timeline(
     Ok(report)
 }
 
-fn analyze_segment(media_path: &Path, segment: &Segment) -> Result<SegmentAnalysis> {
+fn analyze_segment(
+    media_path: &Path,
+    segment: &Segment,
+    thresholds: &AppliedThresholds,
+) -> Result<SegmentAnalysis> {
     let temp_wav = tempfile::Builder::new()
         .prefix("segment_")
         .suffix(".wav")
@@ -225,7 +233,7 @@ fn analyze_segment(media_path: &Path, segment: &Segment) -> Result<SegmentAnalys
 
     let features = analyze_audio_features(&samples.0)?;
 
-    let status = determine_verification_status(&features, segment.confidence);
+    let status = determine_verification_status(&features, segment.confidence, thresholds);
 
     Ok(SegmentAnalysis {
         status,
@@ -237,24 +245,36 @@ fn analyze_segment(media_path: &Path, segment: &Segment) -> Result<SegmentAnalys
 fn determine_verification_status(
     features: &SpectralFeatures,
     original_confidence: f32,
+    thresholds: &AppliedThresholds,
 ) -> VerificationStatus {
     let entropy_ok =
-        (DEFAULT_ENTROPY_MIN..=DEFAULT_ENTROPY_MAX).contains(&features.spectral_entropy);
-    let flatness_ok = features.spectral_flatness < DEFAULT_FLATNESS_MAX;
-    let energy_ok = features.rms > DEFAULT_ENERGY_MIN;
-    let centroid_ok = (DEFAULT_CENTROID_MIN..=DEFAULT_CENTROID_MAX).contains(&features.centroid_hz);
+        (thresholds.entropy_min..=thresholds.entropy_max).contains(&features.spectral_entropy);
+    let flatness_ok = features.spectral_flatness < thresholds.flatness_max;
+    let energy_ok = features.rms > thresholds.energy_min;
+    let centroid_ok =
+        (thresholds.centroid_min..=thresholds.centroid_max).contains(&features.centroid_hz);
 
     let verified_indicators = [entropy_ok, flatness_ok, centroid_ok]
         .into_iter()
         .filter(|&b| b)
         .count();
 
-    let combined_confidence =
-        (original_confidence * 0.4) + ((verified_indicators as f32 / 3.0) * 0.6);
+    let feature_score = verified_indicators as f32 / 3.0;
+    let combined_confidence = (original_confidence * 0.4) + (feature_score * 0.6);
+    let has_hard_fail = !energy_ok && verified_indicators == 0;
 
-    if verified_indicators >= 2 && (combined_confidence > 0.5 || energy_ok) {
+    if has_hard_fail {
+        return VerificationStatus::Rejected;
+    }
+
+    if (verified_indicators >= 2 && energy_ok)
+        || combined_confidence >= VERIFICATION_HIGH_CONFIDENCE_THRESHOLD
+    {
         VerificationStatus::Verified
-    } else if verified_indicators == 1 || (verified_indicators == 0 && energy_ok) {
+    } else if combined_confidence >= VERIFICATION_LOW_CONFIDENCE_THRESHOLD
+        || verified_indicators >= 1
+        || energy_ok
+    {
         VerificationStatus::Suspicious
     } else {
         VerificationStatus::Rejected
@@ -298,7 +318,16 @@ mod tests {
             high_band_ratio: 0.4,
         };
 
-        let status = determine_verification_status(&features, 0.9);
+        let thresholds = AppliedThresholds {
+            entropy_min: DEFAULT_ENTROPY_MIN,
+            entropy_max: DEFAULT_ENTROPY_MAX,
+            flatness_max: DEFAULT_FLATNESS_MAX,
+            energy_min: DEFAULT_ENERGY_MIN,
+            centroid_min: DEFAULT_CENTROID_MIN,
+            centroid_max: DEFAULT_CENTROID_MAX,
+        };
+
+        let status = determine_verification_status(&features, 0.9, &thresholds);
         assert!(matches!(
             status,
             VerificationStatus::Verified | VerificationStatus::Suspicious

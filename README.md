@@ -18,6 +18,7 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 - `timeline verify-timeline <media> --timeline timeline.json --output verified.json [--save-learning --learning-db analysis/thresholds/learning.db]`
 - `timeline update-thresholds [--learning-state state.json | --learning-db analysis/thresholds/learning.db]`
 - `timeline learning-stats [--learning-db analysis/thresholds/learning.db] [--output analysis/thresholds/learning-stats.json]`
+- `python3 scripts/optimize_fp_sweep.py --output analysis/optimization/fp-sweep-ranked.json`
 - `timeline merge-timeline --input timeline.json --output merged.json`
 - `timeline export --input timeline.json --output out.json --format json|edl|vtt [--verified verified.json]`
 
@@ -165,4 +166,12 @@ timeline export --input timeline.json --output out.edl --format edl --verified v
 
 # WebVTT for web players
 timeline export --input timeline.json --output out.vtt --format vtt --verified verified.json
+```
+
+## FP Optimization Sweep
+
+Run the built-in candidate sweep (spectral extract + verify) and rank configurations by weighted false-positive rate:
+
+```bash
+python3 scripts/optimize_fp_sweep.py --output analysis/optimization/fp-sweep-ranked.json
 ```

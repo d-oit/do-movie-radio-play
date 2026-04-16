@@ -1,0 +1,276 @@
+{
+  "generated_at_unix": 1776364595,
+  "elapsed_ms": 243420,
+  "ranked_candidates": [
+    {
+      "candidate": {
+        "name": "baseline",
+        "extract": {
+          "threshold": null,
+          "min_silence_ms": null
+        },
+        "verify": {
+          "entropy_min": null,
+          "flatness_max": null,
+          "energy_min": null,
+          "centroid_min": null
+        }
+      },
+      "weighted_false_positive_rate": 0.6478261143913043,
+      "evaluated_non_voice_segments": 230,
+      "per_media": [
+        {
+          "media": "testdata/raw/elephants_dream_2006.mp4",
+          "false_positive_rate": 0.025,
+          "verified_count": 39,
+          "suspicious_count": 1,
+          "total_non_voice": 40
+        },
+        {
+          "media": "testdata/raw/the_hole_1962.mp4",
+          "false_positive_rate": 0.94392526,
+          "verified_count": 6,
+          "suspicious_count": 101,
+          "total_non_voice": 107
+        },
+        {
+          "media": "testdata/raw/windy_day_1967.mp4",
+          "false_positive_rate": 0.5540541,
+          "verified_count": 33,
+          "suspicious_count": 41,
+          "total_non_voice": 74
+        },
+        {
+          "media": "testdata/raw/elephantsdream_teaser.mp4",
+          "false_positive_rate": 0.0,
+          "verified_count": 2,
+          "suspicious_count": 0,
+          "total_non_voice": 2
+        },
+        {
+          "media": "testdata/raw/caminandes_gran_dillama.mp4",
+          "false_positive_rate": 0.85714287,
+          "verified_count": 1,
+          "suspicious_count": 6,
+          "total_non_voice": 7
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "name": "low_threshold",
+        "extract": {
+          "threshold": 0.0135,
+          "min_silence_ms": null
+        },
+        "verify": {
+          "entropy_min": 3.4,
+          "flatness_max": 0.44,
+          "energy_min": 0.001,
+          "centroid_min": 120.0
+        }
+      },
+      "weighted_false_positive_rate": 0.6913043499565217,
+      "evaluated_non_voice_segments": 230,
+      "per_media": [
+        {
+          "media": "testdata/raw/elephants_dream_2006.mp4",
+          "false_positive_rate": 0.025,
+          "verified_count": 39,
+          "suspicious_count": 1,
+          "total_non_voice": 40
+        },
+        {
+          "media": "testdata/raw/the_hole_1962.mp4",
+          "false_positive_rate": 0.9626168,
+          "verified_count": 4,
+          "suspicious_count": 103,
+          "total_non_voice": 107
+        },
+        {
+          "media": "testdata/raw/windy_day_1967.mp4",
+          "false_positive_rate": 0.6621622,
+          "verified_count": 25,
+          "suspicious_count": 49,
+          "total_non_voice": 74
+        },
+        {
+          "media": "testdata/raw/elephantsdream_teaser.mp4",
+          "false_positive_rate": 0.0,
+          "verified_count": 2,
+          "suspicious_count": 0,
+          "total_non_voice": 2
+        },
+        {
+          "media": "testdata/raw/caminandes_gran_dillama.mp4",
+          "false_positive_rate": 0.85714287,
+          "verified_count": 1,
+          "suspicious_count": 6,
+          "total_non_voice": 7
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "name": "legacy_guard_v2",
+        "extract": {
+          "threshold": 0.0125,
+          "min_silence_ms": 1800
+        },
+        "verify": {
+          "entropy_min": 3.0,
+          "flatness_max": 0.38,
+          "energy_min": 0.0015,
+          "centroid_min": 200.0
+        }
+      },
+      "weighted_false_positive_rate": 0.743589741025641,
+      "evaluated_non_voice_segments": 39,
+      "per_media": [
+        {
+          "media": "testdata/raw/elephants_dream_2006.mp4",
+          "false_positive_rate": 0.0,
+          "verified_count": 5,
+          "suspicious_count": 0,
+          "total_non_voice": 5
+        },
+        {
+          "media": "testdata/raw/the_hole_1962.mp4",
+          "false_positive_rate": 0.9047619,
+          "verified_count": 2,
+          "suspicious_count": 19,
+          "total_non_voice": 21
+        },
+        {
+          "media": "testdata/raw/windy_day_1967.mp4",
+          "false_positive_rate": 0.875,
+          "verified_count": 1,
+          "suspicious_count": 7,
+          "total_non_voice": 8
+        },
+        {
+          "media": "testdata/raw/elephantsdream_teaser.mp4",
+          "false_positive_rate": 0.0,
+          "verified_count": 1,
+          "suspicious_count": 0,
+          "total_non_voice": 1
+        },
+        {
+          "media": "testdata/raw/caminandes_gran_dillama.mp4",
+          "false_positive_rate": 0.75,
+          "verified_count": 1,
+          "suspicious_count": 3,
+          "total_non_voice": 4
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "name": "legacy_guard_v1",
+        "extract": {
+          "threshold": 0.0135,
+          "min_silence_ms": 1200
+        },
+        "verify": {
+          "entropy_min": 3.2,
+          "flatness_max": 0.4,
+          "energy_min": 0.0012,
+          "centroid_min": 160.0
+        }
+      },
+      "weighted_false_positive_rate": 0.7887324,
+      "evaluated_non_voice_segments": 71,
+      "per_media": [
+        {
+          "media": "testdata/raw/elephants_dream_2006.mp4",
+          "false_positive_rate": 0.0,
+          "verified_count": 9,
+          "suspicious_count": 0,
+          "total_non_voice": 9
+        },
+        {
+          "media": "testdata/raw/the_hole_1962.mp4",
+          "false_positive_rate": 0.974359,
+          "verified_count": 1,
+          "suspicious_count": 38,
+          "total_non_voice": 39
+        },
+        {
+          "media": "testdata/raw/windy_day_1967.mp4",
+          "false_positive_rate": 0.8333333,
+          "verified_count": 3,
+          "suspicious_count": 15,
+          "total_non_voice": 18
+        },
+        {
+          "media": "testdata/raw/elephantsdream_teaser.mp4",
+          "false_positive_rate": 0.0,
+          "verified_count": 1,
+          "suspicious_count": 0,
+          "total_non_voice": 1
+        },
+        {
+          "media": "testdata/raw/caminandes_gran_dillama.mp4",
+          "false_positive_rate": 0.75,
+          "verified_count": 1,
+          "suspicious_count": 3,
+          "total_non_voice": 4
+        }
+      ]
+    }
+  ],
+  "best_candidate": {
+    "candidate": {
+      "name": "baseline",
+      "extract": {
+        "threshold": null,
+        "min_silence_ms": null
+      },
+      "verify": {
+        "entropy_min": null,
+        "flatness_max": null,
+        "energy_min": null,
+        "centroid_min": null
+      }
+    },
+    "weighted_false_positive_rate": 0.6478261143913043,
+    "evaluated_non_voice_segments": 230,
+    "per_media": [
+      {
+        "media": "testdata/raw/elephants_dream_2006.mp4",
+        "false_positive_rate": 0.025,
+        "verified_count": 39,
+        "suspicious_count": 1,
+        "total_non_voice": 40
+      },
+      {
+        "media": "testdata/raw/the_hole_1962.mp4",
+        "false_positive_rate": 0.94392526,
+        "verified_count": 6,
+        "suspicious_count": 101,
+        "total_non_voice": 107
+      },
+      {
+        "media": "testdata/raw/windy_day_1967.mp4",
+        "false_positive_rate": 0.5540541,
+        "verified_count": 33,
+        "suspicious_count": 41,
+        "total_non_voice": 74
+      },
+      {
+        "media": "testdata/raw/elephantsdream_teaser.mp4",
+        "false_positive_rate": 0.0,
+        "verified_count": 2,
+        "suspicious_count": 0,
+        "total_non_voice": 2
+      },
+      {
+        "media": "testdata/raw/caminandes_gran_dillama.mp4",
+        "false_positive_rate": 0.85714287,
+        "verified_count": 1,
+        "suspicious_count": 6,
+        "total_non_voice": 7
+      }
+    ]
+  }
+}

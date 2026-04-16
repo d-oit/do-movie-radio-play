@@ -217,3 +217,11 @@ Benchmark and eval artifacts from this optimization pass:
 - `analysis/benchmarks/elephantsdream_teaser.json`
 - `analysis/benchmarks/caminandes_gran_dillama.json`
 - `analysis/validation/full-sweep-summary-2026-04-16.json`
+
+## 7. Verification and Sweep Optimization
+
+- Verification now applies runtime threshold overrides for entropy/flatness/energy/centroid during status decisioning.
+- Added double-threshold confidence hysteresis in verification (`high=0.62`, `low=0.45`) to reduce unstable borderline classification.
+- Added sweep script: `scripts/optimize_fp_sweep.py`
+  - Runs candidate matrix across modern + legacy fixtures
+  - Produces ranked output: `analysis/optimization/fp-sweep-ranked.json`

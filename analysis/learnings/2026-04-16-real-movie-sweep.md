@@ -52,3 +52,8 @@
 - Current spectral defaults generalize well for modern clean CGI audio.
 - Older film/noisy mixes need dedicated profile(s) and stricter heuristics.
 - Keep modern and legacy content separated during auto-learning updates.
+
+## FP Sweep Snapshot
+
+- Ranked sweep report: `analysis/optimization/fp-sweep-ranked.json`
+- After wiring verification threshold overrides + hysteresis, the current best weighted FP candidate in this sweep is `baseline` (`~64.78%`) against the tested matrix.

@@ -41,8 +41,9 @@ Choose your coordination strategy:
 1. **Choose strategy** based on task structure
 2. **Select agents** matching required capabilities
 3. **Execute** with quality gates between phases
-4. **Validate** outputs before proceeding
-5. **Synthesize** results
+4. **Write handoff** notes to `analysis/handoffs/` with ownership and next action
+5. **Validate** outputs before proceeding
+6. **Synthesize** results into a single result
 
 ## Language Support
 
@@ -91,3 +92,5 @@ Between each phase, verify:
 ## Next Steps
 
 Read the specific coordination pattern that matches your task structure. Each pattern includes detailed workflows, examples, and quality criteria.
+
+For this repository, keep implementation notes synced in `plans/090-recent-improvements/RECENT.md` after coordinated work lands.

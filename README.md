@@ -15,8 +15,8 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 - `timeline validate <input_media> --subtitles in.srt --total-ms 120000 --profile movie`
 - `timeline validate <input_media> --dataset-manifest speech.csv --total-ms 120000 --profile dataset`
 - `timeline bench <input_media> --output analysis/benchmarks/latest.json`
-- `timeline verify-timeline <media> --timeline timeline.json --output verified.json [--save-learning]`
-- `timeline update-thresholds --learning-state state.json`
+- `timeline verify-timeline <media> --timeline timeline.json --output verified.json [--save-learning --learning-db analysis/thresholds/learning.db]`
+- `timeline update-thresholds [--learning-state state.json | --learning-db analysis/thresholds/learning.db]`
 - `timeline merge-timeline --input timeline.json --output merged.json`
 - `timeline export --input timeline.json --output out.json --format json|edl|vtt [--verified verified.json]`
 
@@ -110,7 +110,7 @@ Review workflow improvements in the HTML player:
 ## Limitations
 Current VAD uses deterministic energy thresholding and conservative smoothing; it is intended for robust non-voice extraction, not transcript-grade speech detection.
 
-Only the `energy` VAD engine is currently exposed in the CLI.
+Both `energy` and `spectral` VAD engines are exposed in the CLI.
 
 ## Spectral VAD
 
@@ -139,11 +139,11 @@ The system can learn from verification results to improve detection:
 1. **Extract** with spectral VAD
 2. **Verify** segments and save learning state:
    ```bash
-   timeline verify-timeline --media input.mp4 --timeline timeline.json --output verified.json --save-learning
+   timeline verify-timeline --media input.mp4 --timeline timeline.json --output verified.json --save-learning --learning-db analysis/thresholds/learning.db
    ```
 3. **Update thresholds** based on learned patterns:
    ```bash
-   timeline update-thresholds --learning-state analysis/thresholds/learning-state.json
+   timeline update-thresholds --learning-db analysis/thresholds/learning.db
    ```
 4. **Re-extract** with optimized thresholds
 

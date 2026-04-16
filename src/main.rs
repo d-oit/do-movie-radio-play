@@ -317,6 +317,7 @@ fn run() -> Result<()> {
             centroid_min,
             centroid_max,
             learning_state,
+            learning_db,
             save_learning,
         } => {
             let timeline_data = read_timeline(&timeline)?;
@@ -358,31 +359,77 @@ fn run() -> Result<()> {
                     );
                 }
                 learning::adaptive_thresholds::save_learning_state(&state, &state_path)?;
+
+                let db_path = learning_db
+                    .unwrap_or_else(|| std::path::PathBuf::from("analysis/thresholds/learning.db"));
+                if let Some(parent) = db_path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .context("failed to create async runtime for learning db")?;
+                let learning_db = rt.block_on(learning::database::LearningDb::new(&db_path))?;
+                for result in &report.segment_results {
+                    let segment = learning::database::VerifiedSegment {
+                        start_ms: result.start_ms as i64,
+                        end_ms: result.end_ms as i64,
+                        confidence: result.original_confidence as f64,
+                        spectral_features: learning::database::SpectralFeatures {
+                            rms: result.spectral_features.rms as f64,
+                            zcr: result.spectral_features.zcr as f64,
+                            spectral_flux: result.spectral_features.spectral_flux as f64,
+                            spectral_flatness: result.spectral_features.spectral_flatness as f64,
+                            spectral_entropy: result.spectral_features.spectral_entropy as f64,
+                            centroid_hz: result.spectral_features.centroid_hz as f64,
+                            low_band_ratio: result.spectral_features.low_band_ratio as f64,
+                            high_band_ratio: result.spectral_features.high_band_ratio as f64,
+                        },
+                        was_false_positive: result.is_suspicious,
+                    };
+                    rt.block_on(learning_db.record_verification(segment))?;
+                }
+                info!(path = %db_path.display(), "saved learning data to database");
             }
         }
         Commands::UpdateThresholds {
             learning_state,
+            learning_db,
             output,
         } => {
-            let mut state = learning::adaptive_thresholds::load_learning_state(&learning_state)?;
-            learning::adaptive_thresholds::adjust_thresholds_for_fp_rate(&mut state);
-
-            let recommendations =
-                learning::adaptive_thresholds::generate_threshold_recommendations(&state);
+            let recommendations_json = if let Some(db_path) = learning_db {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .context("failed to create async runtime for learning db")?;
+                let learning_db = rt.block_on(learning::database::LearningDb::new(&db_path))?;
+                let recommendations = rt.block_on(learning_db.get_threshold_recommendations())?;
+                rt.block_on(learning_db.record_threshold(
+                    recommendations.suggested_flatness_max,
+                    recommendations.suggested_entropy_min,
+                    recommendations.suggested_centroid_min,
+                    recommendations.suggested_centroid_max,
+                ))?;
+                serde_json::to_vec_pretty(&recommendations)?
+            } else {
+                let mut state =
+                    learning::adaptive_thresholds::load_learning_state(&learning_state)?;
+                learning::adaptive_thresholds::adjust_thresholds_for_fp_rate(&mut state);
+                let recommendations =
+                    learning::adaptive_thresholds::generate_threshold_recommendations(&state);
+                learning::adaptive_thresholds::save_learning_state(&state, &learning_state)?;
+                serde_json::to_vec_pretty(&recommendations)?
+            };
 
             let output_path = output.unwrap_or_else(|| {
                 std::path::PathBuf::from("analysis/thresholds/recommendations.json")
             });
-            let json = serde_json::to_vec_pretty(&recommendations)?;
             if let Some(parent) = output_path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
-            std::fs::write(&output_path, json)?;
-
-            learning::adaptive_thresholds::save_learning_state(&state, &learning_state)?;
+            std::fs::write(&output_path, recommendations_json)?;
 
             info!(
-                recommendations = ?recommendations,
                 output = %output_path.display(),
                 "threshold recommendations generated"
             );

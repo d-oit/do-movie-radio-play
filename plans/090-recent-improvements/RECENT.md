@@ -63,6 +63,7 @@ timeline verify-timeline input.mp4 --timeline timeline.json --output verified.js
 | `--timeline` | Input timeline JSON |
 | `--output` | Output path for verified timeline |
 | `--save-learning` | Save learning data to `analysis/thresholds/learning-state.json` |
+| `--learning-db` | Also persist verification results to libsql database |
 
 ---
 
@@ -85,6 +86,16 @@ timeline update-thresholds --learning-state analysis/thresholds/learning-state.j
 | Option | Description |
 |--------|-------------|
 | `--learning-state` | Path to learning state JSON from verify-timeline |
+| `--learning-db` | Path to libsql database for recommendation generation |
+
+### Database-backed Learning
+
+Learning data is now persisted in `analysis/thresholds/learning.db` when `--learning-db` is provided.
+
+- `verified_segments` table: per-segment verification outcomes + spectral features
+- `threshold_history` table: generated threshold recommendations over time
+
+This enables queryable, cumulative learning across runs instead of single JSON snapshots.
 
 ### Output
 Generates updated configuration in `analysis/thresholds/updated-config.json`.

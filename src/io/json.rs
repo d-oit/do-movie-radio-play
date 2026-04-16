@@ -1,5 +1,3 @@
-#![allow(unused_imports)]
-
 use anyhow::{Context, Result};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{collections::HashSet, fs, path::Path};

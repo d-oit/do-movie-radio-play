@@ -158,7 +158,7 @@ bash scripts/quality_gate.sh && git add -A && git commit
 | `src/pipeline/` | Core pipeline stages (VAD, framing, segmentation, features, tags, prompts) |
 | `src/pipeline/vad/` | VAD engine trait and current energy implementation |
 | `src/io/` | Audio I/O (WAV reader, ffmpeg decoder) |
-| `src/learning/` | Calibration and profile system |
+| `src/learning/` | Calibration, adaptive thresholds, and libsql learning database |
 | `src/types/` | Shared types (Frame, Segment, Metrics, FeatureSet) |
 | `src/validation/` | Validation layers (synthetic, dataset CSV, SRT subtitles) |
 | `tests/` | Integration tests |
@@ -207,3 +207,9 @@ Documented in `plans/010-architecture/`:
 
 Track in `plans/050-status-report/STATUS.md`. Current items:
 - Benchmark regression checks use the checked-in real-media baseline, so intentional performance shifts should update `analysis/benchmarks/latest.json`.
+
+## Agent Coordination References
+
+- Use `.agents/skills/agent-coordination/SKILL.md` to choose orchestration strategy.
+- Use `.agents/skills/agent-coordination/PARALLEL.md` for independent parallel workstreams with handoff convergence.
+- Write coordination handoffs to `analysis/handoffs/` for multi-agent traceability.

@@ -153,11 +153,15 @@ pub enum Commands {
         #[arg(long)]
         learning_state: Option<PathBuf>,
         #[arg(long)]
+        learning_db: Option<PathBuf>,
+        #[arg(long)]
         save_learning: bool,
     },
     UpdateThresholds {
         #[arg(long, default_value = "analysis/thresholds/learning-state.json")]
         learning_state: PathBuf,
+        #[arg(long)]
+        learning_db: Option<PathBuf>,
         #[arg(long)]
         output: Option<PathBuf>,
     },

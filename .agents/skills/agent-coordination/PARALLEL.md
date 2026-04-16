@@ -191,3 +191,17 @@ Converge:
 - Aggregate DB stats with `timeline learning-stats`
 - Record compact learnings in plans + skill reference notes
 ```
+
+### Example 7: FP Optimization + Profile Generation
+```
+Goal: Reduce FP with reproducible policy output
+
+Parallel:
+- Agent A: run `scripts/optimize_fp_sweep.py`
+- Agent B: refresh docs/plans with compact learnings
+- Agent C: validate generated profiles on modern + legacy smoke fixtures
+
+Converge:
+- run `scripts/generate_optimized_profiles.py`
+- publish `modern-optimized` and `legacy-optimized` profiles
+```

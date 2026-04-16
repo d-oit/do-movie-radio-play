@@ -93,4 +93,4 @@ Between each phase, verify:
 
 Read the specific coordination pattern that matches your task structure. Each pattern includes detailed workflows, examples, and quality criteria.
 
-For this repository, keep implementation notes synced in `plans/090-recent-improvements/RECENT.md` after coordinated work lands.
+For this repository, keep implementation notes synced in `plans/090-recent-improvements/RECENT.md` and compact outcomes in `analysis/learnings/2026-04-16-real-movie-sweep.md` after coordinated work lands.

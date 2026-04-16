@@ -1,10 +1,10 @@
 ---
 name: audio-vad-cpu
-description: Voice Activity Detection using energy-based RMS thresholding on CPU
+description: Voice Activity Detection on CPU using energy and spectral engines
 ---
 
 ## When to use
-Use when implementing or debugging the VAD stage of the audio pipeline. Applies to any task involving energy threshold calibration, frame classification, or noise floor estimation.
+Use when implementing or debugging the VAD stage of the audio pipeline. Applies to energy threshold calibration, spectral threshold tuning, frame classification, and noise floor estimation.
 
 ## Domain model
 
@@ -13,6 +13,7 @@ Use when implementing or debugging the VAD stage of the audio pipeline. Applies 
 - **Threshold**: RMS value that separates speech from non-voice (default: 0.015)
 - **Classification**: Simple `rms >= threshold` boolean per frame
 - **Hangover**: Post-speech frames appended to avoid clipping consonant endings
+- **Spectral engine**: entropy/flatness/centroid-informed classification for music/noise discrimination
 
 ### Constants (from config.rs)
 | Parameter | Default | Purpose |
@@ -106,3 +107,9 @@ let threshold = noise_floor * 4.0;
 - Deterministic outputs (seeded random if used)
 - Keep `classify_frames()` pure: same input → same output
 - No online learning that changes threshold during processing
+
+## Current tuning guidance
+
+- Run cohort-aware sweep: `python3 scripts/optimize_fp_sweep.py`
+- Enforce coverage guard (`--min-coverage-ratio`) to avoid low-coverage candidates.
+- Generate deployable profiles from policy: `python3 scripts/generate_optimized_profiles.py`

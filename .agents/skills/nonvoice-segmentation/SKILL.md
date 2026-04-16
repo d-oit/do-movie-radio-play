@@ -72,7 +72,7 @@ pub fn speech_segments(smoothed: &[bool], frame_ms: u32, min_speech_ms: u32) -> 
 | Parameter | Default | Purpose |
 |-----------|---------|---------|
 | `min_speech_ms` | 120ms | Minimum speech segment duration |
-| `min_non_voice_ms` | 1000ms | Minimum non-voice segment duration |
+| `min_non_voice_ms` | profile-driven (default 10000ms, radio-play 500ms) | Minimum non-voice segment duration |
 
 ### Step 4: Gap merging
 Purpose: Reconnect speech separated by brief pauses (pauses, breaths)
@@ -100,7 +100,7 @@ pub fn invert_to_non_voice(speech: &[Segment], total_ms: u64, min_non_voice_ms: 
 
 Key behavior:
 - All gaps between speech segments become non-voice
-- Gaps shorter than `min_non_voice_ms` (1000ms) are discarded
+- Gaps shorter than `min_non_voice_ms` are discarded (value is profile/config driven)
 - Edge cases: Leading non-voice (before first speech), trailing non-voice (after last speech)
 
 ## Common failure modes
@@ -134,7 +134,7 @@ if let Some(s) = start {
 ## Success metrics
 
 ### Quality gate checks
-- All non-voice segments >= `min_non_voice_ms` (1000ms)
+- All non-voice segments >= `min_non_voice_ms` for selected profile
 - No overlapping segments in output
 - Segment list is sorted by `start_ms`
 - Total coverage equals `total_ms` (no gaps)

@@ -99,6 +99,23 @@ timeline update-thresholds \
 
 Use DB mode for multi-movie accumulation; use JSON learning-state for compatibility.
 
+### Cohort-aware optimization and profile generation
+
+```bash
+# 4) rank candidates with coverage guard
+python3 scripts/optimize_fp_sweep.py \
+  --output analysis/optimization/fp-sweep-ranked.json \
+  --min-coverage-ratio 0.7
+
+# 5) generate modern/legacy profiles from recommended policy
+python3 scripts/generate_optimized_profiles.py \
+  --sweep-report analysis/optimization/fp-sweep-ranked.json
+```
+
+Generated profiles:
+- `config/profiles/modern-optimized.json`
+- `config/profiles/legacy-optimized.json`
+
 ### Running calibration
 ```bash
 cargo run --bin calibrate -- corrections/ documentary

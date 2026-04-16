@@ -3,3 +3,5 @@
 - Spectral VAD is now available in CLI (`--vad-engine spectral`).
 - Modern CGI fixture (`elephants_dream_2006`) validates well under spectral defaults.
 - Legacy film fixtures require stricter profile tuning and likely separate threshold bands.
+- Cohort-aware sweep ranking is available in `analysis/optimization/fp-sweep-ranked.json`.
+- Coverage guard (`--min-coverage-ratio`) prevents low-coverage candidate selection.

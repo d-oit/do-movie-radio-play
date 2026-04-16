@@ -111,7 +111,7 @@ Review workflow improvements in the HTML player:
 - WSL2: `wslview` first, then Windows interop openers via `cmd.exe`/PowerShell
 
 ## Limitations
-Current VAD uses deterministic energy thresholding and conservative smoothing; it is intended for robust non-voice extraction, not transcript-grade speech detection.
+Current VAD is deterministic (energy + spectral) with conservative smoothing; it is intended for robust non-voice extraction, not transcript-grade speech detection.
 
 Both `energy` and `spectral` VAD engines are exposed in the CLI.
 
@@ -189,3 +189,9 @@ python3 scripts/generate_optimized_profiles.py \
   --modern-output config/profiles/modern-optimized.json \
   --legacy-output config/profiles/legacy-optimized.json
 ```
+
+Compact latest learnings:
+- Verification now uses runtime threshold overrides (`verify-timeline` flags are active in status decisioning).
+- Verification uses confidence hysteresis (`high=0.62`, `low=0.45`) to reduce borderline flips.
+- Sweep ranking includes a coverage guard (`--min-coverage-ratio`) to avoid low-coverage false wins.
+- Current sweep policy recommends baseline for both modern and legacy cohorts on available fixtures.

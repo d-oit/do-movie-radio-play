@@ -2,6 +2,15 @@
 
 Features implemented in recent releases.
 
+## Compact Operator Summary
+
+1. Run sweep: `python3 scripts/optimize_fp_sweep.py --output analysis/optimization/fp-sweep-ranked.json`
+2. Generate profiles: `python3 scripts/generate_optimized_profiles.py --sweep-report analysis/optimization/fp-sweep-ranked.json`
+3. Use output profiles:
+   - `config/profiles/modern-optimized.json`
+   - `config/profiles/legacy-optimized.json`
+4. Verify learning health: `timeline learning-stats --learning-db analysis/thresholds/learning.db`
+
 ## 1. Spectral VAD Engine
 
 Added alternative spectral-based VAD engine with configurable thresholds.

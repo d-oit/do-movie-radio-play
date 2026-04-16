@@ -156,7 +156,7 @@ bash scripts/quality_gate.sh && git add -A && git commit
 |-----------|---------|
 | `src/` | Production CLI and pipeline code |
 | `src/pipeline/` | Core pipeline stages (VAD, framing, segmentation, features, tags, prompts) |
-| `src/pipeline/vad/` | VAD engine trait and current energy implementation |
+| `src/pipeline/vad/` | VAD engine trait and implementations (`energy`, `spectral`) |
 | `src/io/` | Audio I/O (WAV reader, ffmpeg decoder) |
 | `src/learning/` | Calibration, adaptive thresholds, and libsql learning database |
 | `src/types/` | Shared types (Frame, Segment, Metrics, FeatureSet) |
@@ -214,6 +214,15 @@ Documented in `plans/010-architecture/`:
 
 Track in `plans/050-status-report/STATUS.md`. Current items:
 - Benchmark regression checks use the checked-in real-media baseline, so intentional performance shifts should update `analysis/benchmarks/latest.json`.
+
+## Optimization Artifacts
+
+- FP sweep ranking report: `analysis/optimization/fp-sweep-ranked.json`
+- Sweep runner: `scripts/optimize_fp_sweep.py`
+- Profile generator: `scripts/generate_optimized_profiles.py`
+- Generated profiles:
+  - `config/profiles/modern-optimized.json`
+  - `config/profiles/legacy-optimized.json`
 
 ## Agent Coordination References
 

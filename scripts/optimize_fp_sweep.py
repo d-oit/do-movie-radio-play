@@ -6,6 +6,20 @@ import time
 from pathlib import Path
 
 
+DEFAULT_MEDIA = [
+    "testdata/raw/elephants_dream_2006.mp4",
+    "testdata/raw/the_hole_1962.mp4",
+    "testdata/raw/windy_day_1967.mp4",
+    "testdata/raw/elephantsdream_teaser.mp4",
+    "testdata/raw/caminandes_gran_dillama.mp4",
+]
+
+DEFAULT_LEGACY_MEDIA = {
+    "testdata/raw/the_hole_1962.mp4",
+    "testdata/raw/windy_day_1967.mp4",
+}
+
+
 def run(cmd: list[str]) -> None:
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -77,6 +91,20 @@ def candidate_matrix() -> list[dict]:
     ]
 
 
+def cohort_for_media(media: Path, legacy_media: set[str]) -> str:
+    return "legacy" if str(media) in legacy_media else "modern"
+
+
+def calc_weighted_fp(entries: list[dict]) -> tuple[float, int]:
+    denominator = sum(item["total_non_voice"] for item in entries)
+    if denominator == 0:
+        return 0.0, 0
+    numerator = sum(
+        item["false_positive_rate"] * item["total_non_voice"] for item in entries
+    )
+    return numerator / denominator, denominator
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run FP optimization sweep with ranked candidates"
@@ -84,14 +112,14 @@ def main() -> int:
     parser.add_argument(
         "--media",
         action="append",
-        default=[
-            "testdata/raw/elephants_dream_2006.mp4",
-            "testdata/raw/the_hole_1962.mp4",
-            "testdata/raw/windy_day_1967.mp4",
-            "testdata/raw/elephantsdream_teaser.mp4",
-            "testdata/raw/caminandes_gran_dillama.mp4",
-        ],
+        default=DEFAULT_MEDIA,
         help="Input media path (repeatable)",
+    )
+    parser.add_argument(
+        "--legacy-media",
+        action="append",
+        default=sorted(DEFAULT_LEGACY_MEDIA),
+        help="Subset treated as legacy cohort (repeatable)",
     )
     parser.add_argument(
         "--output",
@@ -103,9 +131,16 @@ def main() -> int:
         default="analysis/optimization/fp-sweep-runs",
         help="Directory for per-candidate artifacts",
     )
+    parser.add_argument(
+        "--min-coverage-ratio",
+        type=float,
+        default=0.7,
+        help="Minimum coverage vs baseline non-voice segment count",
+    )
     args = parser.parse_args()
 
     media_paths = [Path(p) for p in args.media]
+    legacy_media = {str(Path(p)) for p in args.legacy_media}
     for media_path in media_paths:
         if not media_path.exists():
             raise FileNotFoundError(f"missing media fixture: {media_path}")
@@ -208,13 +243,83 @@ def main() -> int:
             }
         )
 
-    ranked = sorted(sweep_results, key=lambda r: r["weighted_false_positive_rate"])
+    baseline = next(
+        (r for r in sweep_results if r["candidate"]["name"] == "baseline"), None
+    )
+    baseline_coverage = baseline["evaluated_non_voice_segments"] if baseline else 0
+    coverage_floor = int(baseline_coverage * args.min_coverage_ratio)
+
+    for result in sweep_results:
+        coverage = result["evaluated_non_voice_segments"]
+        result["coverage_ratio_vs_baseline"] = (
+            (coverage / baseline_coverage) if baseline_coverage else 0.0
+        )
+        result["coverage_pass"] = coverage >= coverage_floor
+
+        legacy_items = [
+            item
+            for item in result["per_media"]
+            if cohort_for_media(Path(item["media"]), legacy_media) == "legacy"
+        ]
+        modern_items = [
+            item
+            for item in result["per_media"]
+            if cohort_for_media(Path(item["media"]), legacy_media) == "modern"
+        ]
+        legacy_fp, legacy_count = calc_weighted_fp(legacy_items)
+        modern_fp, modern_count = calc_weighted_fp(modern_items)
+        result["cohorts"] = {
+            "legacy": {
+                "weighted_false_positive_rate": legacy_fp,
+                "evaluated_non_voice_segments": legacy_count,
+            },
+            "modern": {
+                "weighted_false_positive_rate": modern_fp,
+                "evaluated_non_voice_segments": modern_count,
+            },
+        }
+
+    ranked = sorted(
+        sweep_results,
+        key=lambda r: (
+            0 if r["coverage_pass"] else 1,
+            r["weighted_false_positive_rate"],
+        ),
+    )
+
+    coverage_pass_candidates = [r for r in ranked if r["coverage_pass"]]
+    ranked_legacy = sorted(
+        coverage_pass_candidates,
+        key=lambda r: r["cohorts"]["legacy"]["weighted_false_positive_rate"],
+    )
+    ranked_modern = sorted(
+        coverage_pass_candidates,
+        key=lambda r: r["cohorts"]["modern"]["weighted_false_positive_rate"],
+    )
 
     final_report = {
         "generated_at_unix": int(time.time()),
         "elapsed_ms": int((time.time() - started) * 1000),
+        "coverage_guard": {
+            "min_coverage_ratio": args.min_coverage_ratio,
+            "baseline_non_voice_segments": baseline_coverage,
+            "coverage_floor": coverage_floor,
+        },
         "ranked_candidates": ranked,
         "best_candidate": ranked[0] if ranked else None,
+        "best_per_cohort": {
+            "legacy": ranked_legacy[0] if ranked_legacy else None,
+            "modern": ranked_modern[0] if ranked_modern else None,
+        },
+        "recommended_policy": {
+            "legacy_candidate": ranked_legacy[0]["candidate"]["name"]
+            if ranked_legacy
+            else None,
+            "modern_candidate": ranked_modern[0]["candidate"]["name"]
+            if ranked_modern
+            else None,
+            "note": "Use per-cohort candidates when modern and legacy optima diverge.",
+        },
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

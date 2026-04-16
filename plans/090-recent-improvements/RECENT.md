@@ -225,3 +225,4 @@ Benchmark and eval artifacts from this optimization pass:
 - Added sweep script: `scripts/optimize_fp_sweep.py`
   - Runs candidate matrix across modern + legacy fixtures
   - Produces ranked output: `analysis/optimization/fp-sweep-ranked.json`
+  - Adds cohort split (`modern` vs `legacy`) and coverage guard to avoid low-coverage "wins"

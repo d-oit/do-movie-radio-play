@@ -175,3 +175,7 @@ Run the built-in candidate sweep (spectral extract + verify) and rank configurat
 ```bash
 python3 scripts/optimize_fp_sweep.py --output analysis/optimization/fp-sweep-ranked.json
 ```
+
+Optional controls:
+- `--legacy-media <path>` (repeatable) to define legacy cohort explicitly
+- `--min-coverage-ratio 0.7` to require candidate coverage vs baseline

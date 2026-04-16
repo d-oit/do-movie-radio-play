@@ -1,0 +1,216 @@
+{
+  "verified_timeline": {
+    "file": "caminandes_gran_dillama.mp4",
+    "analysis_sample_rate": 16000,
+    "frame_ms": 20,
+    "segments": [
+      {
+        "start_ms": 0,
+        "end_ms": 1860,
+        "kind": "non_voice",
+        "confidence": 0.9702641,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 55460,
+        "end_ms": 56440,
+        "kind": "non_voice",
+        "confidence": 0.86486894,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 56800,
+        "end_ms": 57880,
+        "kind": "non_voice",
+        "confidence": 0.8579919,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 111840,
+        "end_ms": 114820,
+        "kind": "non_voice",
+        "confidence": 0.8402375,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 116920,
+        "end_ms": 117440,
+        "kind": "non_voice",
+        "confidence": 0.7879876,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 128920,
+        "end_ms": 131320,
+        "kind": "non_voice",
+        "confidence": 0.74225605,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 143840,
+        "end_ms": 146048,
+        "kind": "non_voice",
+        "confidence": 0.9175795,
+        "tags": [],
+        "prompt": null
+      }
+    ]
+  },
+  "segment_results": [
+    {
+      "start_ms": 0,
+      "end_ms": 1860,
+      "original_confidence": 0.9702641,
+      "verification_status": "verified",
+      "spectral_features": {
+        "rms": 0.00048266255,
+        "zcr": 0.11035317,
+        "spectral_entropy": -0.0,
+        "spectral_flatness": 0.28071368,
+        "spectral_flux": 0.1904475,
+        "centroid_hz": 3998.3958,
+        "low_band_ratio": 0.19669014,
+        "high_band_ratio": 0.4997996
+      },
+      "is_verified": true,
+      "is_suspicious": false,
+      "reason": null
+    },
+    {
+      "start_ms": 55460,
+      "end_ms": 56440,
+      "original_confidence": 0.86486894,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0055155247,
+        "zcr": 0.1258371,
+        "spectral_entropy": -0.0,
+        "spectral_flatness": 0.5911444,
+        "spectral_flux": 6.8540635,
+        "centroid_hz": 3999.7585,
+        "low_band_ratio": 0.11186809,
+        "high_band_ratio": 0.49997002
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 56800,
+      "end_ms": 57880,
+      "original_confidence": 0.8579919,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0040341746,
+        "zcr": 0.09867469,
+        "spectral_entropy": -0.0,
+        "spectral_flatness": 0.5695265,
+        "spectral_flux": 4.4236975,
+        "centroid_hz": 4000.1318,
+        "low_band_ratio": 0.18102126,
+        "high_band_ratio": 0.5000095
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 111840,
+      "end_ms": 114820,
+      "original_confidence": 0.8402375,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0038249188,
+        "zcr": 0.1640974,
+        "spectral_entropy": -0.0,
+        "spectral_flatness": 0.6232378,
+        "spectral_flux": 3.682857,
+        "centroid_hz": 4000.1194,
+        "low_band_ratio": 0.12937675,
+        "high_band_ratio": 0.5000118
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 116920,
+      "end_ms": 117440,
+      "original_confidence": 0.7879876,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0020078032,
+        "zcr": 0.25495854,
+        "spectral_entropy": -0.0,
+        "spectral_flatness": 0.59769994,
+        "spectral_flux": 3.5534859,
+        "centroid_hz": 3999.853,
+        "low_band_ratio": 0.065187015,
+        "high_band_ratio": 0.49997643
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 128920,
+      "end_ms": 131320,
+      "original_confidence": 0.74225605,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0058335797,
+        "zcr": 0.201099,
+        "spectral_entropy": -0.0,
+        "spectral_flatness": 0.576431,
+        "spectral_flux": 6.052337,
+        "centroid_hz": 4000.025,
+        "low_band_ratio": 0.09308597,
+        "high_band_ratio": 0.50000215
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 143840,
+      "end_ms": 146048,
+      "original_confidence": 0.9175795,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.000033492,
+        "zcr": 0.078212135,
+        "spectral_entropy": -0.0,
+        "spectral_flatness": 0.53290087,
+        "spectral_flux": 0.029090414,
+        "centroid_hz": 3986.6902,
+        "low_band_ratio": 0.20222756,
+        "high_band_ratio": 0.49833453
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    }
+  ],
+  "summary": {
+    "total_segments": 7,
+    "verified_count": 1,
+    "suspicious_count": 6,
+    "rejected_count": 0,
+    "false_positive_rate": 0.85714287,
+    "average_confidence": 0.8544551,
+    "thresholds_applied": {
+      "entropy_min": 3.5,
+      "entropy_max": 7.0,
+      "flatness_max": 0.45,
+      "energy_min": 0.001,
+      "centroid_min": 100.0,
+      "centroid_max": 6000.0
+    }
+  }
+}

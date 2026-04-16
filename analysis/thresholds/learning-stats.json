@@ -1,18 +1,25 @@
 {
-  "latest_threshold": null,
+  "latest_threshold": {
+    "centroid_max": 6000.33251953125,
+    "centroid_min": 1997.0518798828125,
+    "created_at": "2026-04-16 17:54:59",
+    "entropy_min": 1.0,
+    "flatness_max": 0.7059963518922978,
+    "id": 1
+  },
   "learning_db": "analysis/thresholds/learning.db",
   "recommendations": {
     "confidence": "high",
-    "sample_size": 143,
+    "sample_size": 149,
     "suggested_centroid_max": 6000.33251953125,
-    "suggested_centroid_min": 1997.0518798828125,
+    "suggested_centroid_min": 1993.3450927734375,
     "suggested_entropy_max": 7.0,
     "suggested_entropy_min": 1.0,
-    "suggested_flatness_max": 0.7059963518922978
+    "suggested_flatness_max": 0.7056819252519799
   },
   "statistics": {
-    "false_positive_rate": 0.6470588235294118,
-    "total_false_positives": 143,
-    "total_verifications": 221
+    "false_positive_rate": 0.6478260869565218,
+    "total_false_positives": 149,
+    "total_verifications": 230
   }
 }

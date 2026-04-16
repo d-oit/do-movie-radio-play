@@ -204,3 +204,16 @@ Aggregated DB learning stats (`analysis/thresholds/learning-stats.json`):
 - recommendation confidence: high (sample_size=143)
 
 Takeaway: spectral defaults perform well on modern CGI fixture (`elephants_dream_2006`) but need profile specialization for older/noisier films.
+
+Additional modern fixtures (Blender, legally redistributable) tested:
+
+| Movie | Verified | Suspicious | FP Rate |
+|------|----------|------------|---------|
+| elephantsdream_teaser | 2 | 0 | 0.00% |
+| caminandes_gran_dillama | 1 | 6 | 85.71% |
+
+Benchmark and eval artifacts from this optimization pass:
+- `analysis/benchmarks/elephants_dream_2006.json`
+- `analysis/benchmarks/elephantsdream_teaser.json`
+- `analysis/benchmarks/caminandes_gran_dillama.json`
+- `analysis/validation/full-sweep-summary-2026-04-16.json`

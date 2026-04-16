@@ -1,0 +1,92 @@
+{
+  "manifest": "testdata/validation/manifest.json",
+  "selected_tiers": [
+    "A",
+    "B",
+    "C"
+  ],
+  "entry_count": 4,
+  "elapsed_ms": 43653,
+  "results": [
+    {
+      "id": "synthetic_alternating",
+      "tier": "A",
+      "input_media": "testdata/generated/alternating.wav",
+      "truth_type": "truth_json",
+      "truth_path": "testdata/generated/alternating.truth.json",
+      "profile": "synthetic",
+      "output_report": "testdata/validation/validate_against_synthetic.json",
+      "elapsed_ms": 799,
+      "metrics": {
+        "overlap_ratio": 0.0,
+        "boundary_error_ms": 0.0,
+        "speech_precision": 1.0,
+        "speech_recall": 0.0,
+        "non_voice_precision": 1.0,
+        "non_voice_recall": 0.0,
+        "expected_segments": 3,
+        "predicted_segments": 0
+      }
+    },
+    {
+      "id": "elephants_dream_2006_de",
+      "tier": "A",
+      "input_media": "testdata/raw/elephants_dream_2006.mp4",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/elephants_dream_2006.de.srt",
+      "profile": "movie",
+      "output_report": "testdata/validation/elephants_dream_2006_de_validation.json",
+      "elapsed_ms": 12596,
+      "metrics": {
+        "overlap_ratio": 0.0,
+        "boundary_error_ms": 0.0,
+        "speech_precision": 1.0,
+        "speech_recall": 1.0,
+        "non_voice_precision": 1.0,
+        "non_voice_recall": 0.0,
+        "expected_segments": 10,
+        "predicted_segments": 0
+      }
+    },
+    {
+      "id": "elephants_dream_2006_es",
+      "tier": "B",
+      "input_media": "testdata/raw/elephants_dream_2006.mp4",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/elephants_dream_2006.es.srt",
+      "profile": "movie",
+      "output_report": "testdata/validation/elephants_dream_2006_es_validation.json",
+      "elapsed_ms": 10901,
+      "metrics": {
+        "overlap_ratio": 0.0,
+        "boundary_error_ms": 0.0,
+        "speech_precision": 1.0,
+        "speech_recall": 1.0,
+        "non_voice_precision": 1.0,
+        "non_voice_recall": 0.0,
+        "expected_segments": 10,
+        "predicted_segments": 0
+      }
+    },
+    {
+      "id": "the_hole_1962_subtitles",
+      "tier": "C",
+      "input_media": "testdata/raw/the_hole_1962.mp4",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/the_hole_1962.srt",
+      "profile": "movie",
+      "output_report": "testdata/validation/the_hole_1962_validation.json",
+      "elapsed_ms": 19353,
+      "metrics": {
+        "overlap_ratio": 0.17828685,
+        "boundary_error_ms": 180745.0,
+        "speech_precision": 1.0,
+        "speech_recall": 1.0,
+        "non_voice_precision": 0.0,
+        "non_voice_recall": 0.0,
+        "expected_segments": 1,
+        "predicted_segments": 2
+      }
+    }
+  ]
+}

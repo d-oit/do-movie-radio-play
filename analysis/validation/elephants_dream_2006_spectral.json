@@ -1,0 +1,327 @@
+{
+  "file": "elephants_dream_2006.mp4",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 2760,
+      "kind": "non_voice",
+      "confidence": 0.83969367,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 8300,
+      "end_ms": 10780,
+      "kind": "non_voice",
+      "confidence": 0.84167624,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 12720,
+      "end_ms": 13240,
+      "kind": "non_voice",
+      "confidence": 0.69186294,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 14100,
+      "end_ms": 14980,
+      "kind": "non_voice",
+      "confidence": 0.75813967,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 83400,
+      "end_ms": 84100,
+      "kind": "non_voice",
+      "confidence": 0.6167056,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 87160,
+      "end_ms": 87740,
+      "kind": "non_voice",
+      "confidence": 0.63732576,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 151900,
+      "end_ms": 152820,
+      "kind": "non_voice",
+      "confidence": 0.7886706,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 153880,
+      "end_ms": 155020,
+      "kind": "non_voice",
+      "confidence": 0.79950184,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 156240,
+      "end_ms": 157140,
+      "kind": "non_voice",
+      "confidence": 0.7768053,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 158520,
+      "end_ms": 159660,
+      "kind": "non_voice",
+      "confidence": 0.7986482,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 160900,
+      "end_ms": 161900,
+      "kind": "non_voice",
+      "confidence": 0.84372514,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 163120,
+      "end_ms": 164260,
+      "kind": "non_voice",
+      "confidence": 0.86347616,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 165380,
+      "end_ms": 166440,
+      "kind": "non_voice",
+      "confidence": 0.87284005,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 167640,
+      "end_ms": 168240,
+      "kind": "non_voice",
+      "confidence": 0.7715021,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 195920,
+      "end_ms": 198200,
+      "kind": "non_voice",
+      "confidence": 0.77771866,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 202540,
+      "end_ms": 203040,
+      "kind": "non_voice",
+      "confidence": 0.7818709,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 203680,
+      "end_ms": 204280,
+      "kind": "non_voice",
+      "confidence": 0.6648091,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 204600,
+      "end_ms": 205960,
+      "kind": "non_voice",
+      "confidence": 0.684453,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 206660,
+      "end_ms": 209380,
+      "kind": "non_voice",
+      "confidence": 0.6574314,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 209700,
+      "end_ms": 210500,
+      "kind": "non_voice",
+      "confidence": 0.6734806,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 211560,
+      "end_ms": 213000,
+      "kind": "non_voice",
+      "confidence": 0.6404896,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 213400,
+      "end_ms": 214700,
+      "kind": "non_voice",
+      "confidence": 0.7009754,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 218720,
+      "end_ms": 219400,
+      "kind": "non_voice",
+      "confidence": 0.73314077,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 220060,
+      "end_ms": 223580,
+      "kind": "non_voice",
+      "confidence": 0.85463464,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 241600,
+      "end_ms": 242840,
+      "kind": "non_voice",
+      "confidence": 0.69658095,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 302120,
+      "end_ms": 302660,
+      "kind": "non_voice",
+      "confidence": 0.6397838,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 306740,
+      "end_ms": 307440,
+      "kind": "non_voice",
+      "confidence": 0.76041806,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 358880,
+      "end_ms": 359580,
+      "kind": "non_voice",
+      "confidence": 0.6796656,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 362380,
+      "end_ms": 362920,
+      "kind": "non_voice",
+      "confidence": 0.5932823,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 363240,
+      "end_ms": 363840,
+      "kind": "non_voice",
+      "confidence": 0.578308,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 365760,
+      "end_ms": 366340,
+      "kind": "non_voice",
+      "confidence": 0.5981965,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 372540,
+      "end_ms": 373040,
+      "kind": "non_voice",
+      "confidence": 0.5903427,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 386220,
+      "end_ms": 387320,
+      "kind": "non_voice",
+      "confidence": 0.9233107,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 397120,
+      "end_ms": 398460,
+      "kind": "non_voice",
+      "confidence": 0.6981972,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 426040,
+      "end_ms": 426640,
+      "kind": "non_voice",
+      "confidence": 0.6787181,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 461520,
+      "end_ms": 463780,
+      "kind": "non_voice",
+      "confidence": 0.74535656,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 530240,
+      "end_ms": 531000,
+      "kind": "non_voice",
+      "confidence": 0.736378,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 555020,
+      "end_ms": 555620,
+      "kind": "non_voice",
+      "confidence": 0.7547302,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 555940,
+      "end_ms": 565680,
+      "kind": "non_voice",
+      "confidence": 0.8727815,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 653140,
+      "end_ms": 653696,
+      "kind": "non_voice",
+      "confidence": 0.8421845,
+      "tags": [],
+      "prompt": null
+    }
+  ]
+}

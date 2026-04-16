@@ -21,6 +21,11 @@ No medium-or-higher runtime gaps are currently open in the shipped CLI flow.
 
 No active hardening gaps are currently open beyond future feature work.
 
+GitHub queue scan (2026-04-16):
+- Open issues: 0
+- Open PRs: 0
+- Recent merged PRs: #1, #3, #4 (baseline hardening and validation infrastructure)
+
 ## Production Evaluation Correctness
 
 - Manifest-based eval coverage is now implemented in `testdata/validation/manifest.json`.

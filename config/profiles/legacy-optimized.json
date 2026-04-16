@@ -1,0 +1,24 @@
+{
+  "name": "legacy-optimized",
+  "description": "Auto-generated from FP sweep candidate 'baseline'",
+  "sample_rate_hz": 16000,
+  "frame_ms": 20,
+  "speech_hangover_ms": 300,
+  "merge_gap_ms": 250,
+  "min_speech_ms": 300,
+  "min_non_voice_ms": 500,
+  "max_non_voice_ms": null,
+  "energy_threshold": 0.015,
+  "vad_threshold_delta": 0.0,
+  "prompt_min_duration_ms": 2500,
+  "prompt_min_confidence": 0.65,
+  "vad_engine": "spectral",
+  "merge_options": {
+    "min_gap_to_merge": 400,
+    "merge_strategy": "all",
+    "min_speech_duration": 250,
+    "min_silence_duration": 300,
+    "silence_threshold_db": -42
+  },
+  "spectral_centroid_max": 6000.0
+}

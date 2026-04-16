@@ -226,3 +226,11 @@ Benchmark and eval artifacts from this optimization pass:
   - Runs candidate matrix across modern + legacy fixtures
   - Produces ranked output: `analysis/optimization/fp-sweep-ranked.json`
   - Adds cohort split (`modern` vs `legacy`) and coverage guard to avoid low-coverage "wins"
+
+## 8. Profile Generation from Sweep Policy
+
+- Added profile generator: `scripts/generate_optimized_profiles.py`
+- Reads `analysis/optimization/fp-sweep-ranked.json` and emits:
+  - `config/profiles/modern-optimized.json`
+  - `config/profiles/legacy-optimized.json`
+- Ensures generated profiles set `vad_engine: spectral` and carry selected threshold fields.

@@ -19,6 +19,7 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 - `timeline update-thresholds [--learning-state state.json | --learning-db analysis/thresholds/learning.db]`
 - `timeline learning-stats [--learning-db analysis/thresholds/learning.db] [--output analysis/thresholds/learning-stats.json]`
 - `python3 scripts/optimize_fp_sweep.py --output analysis/optimization/fp-sweep-ranked.json`
+- `python3 scripts/generate_optimized_profiles.py --sweep-report analysis/optimization/fp-sweep-ranked.json`
 - `timeline merge-timeline --input timeline.json --output merged.json`
 - `timeline export --input timeline.json --output out.json --format json|edl|vtt [--verified verified.json]`
 
@@ -179,3 +180,12 @@ python3 scripts/optimize_fp_sweep.py --output analysis/optimization/fp-sweep-ran
 Optional controls:
 - `--legacy-media <path>` (repeatable) to define legacy cohort explicitly
 - `--min-coverage-ratio 0.7` to require candidate coverage vs baseline
+
+Generate profile files from sweep policy:
+
+```bash
+python3 scripts/generate_optimized_profiles.py \
+  --sweep-report analysis/optimization/fp-sweep-ranked.json \
+  --modern-output config/profiles/modern-optimized.json \
+  --legacy-output config/profiles/legacy-optimized.json
+```

@@ -97,6 +97,13 @@ Learning data is now persisted in `analysis/thresholds/learning.db` when `--lear
 
 This enables queryable, cumulative learning across runs instead of single JSON snapshots.
 
+Inspect database learning health:
+
+```bash
+timeline learning-stats --learning-db analysis/thresholds/learning.db
+timeline learning-stats --learning-db analysis/thresholds/learning.db --output analysis/thresholds/learning-stats.json
+```
+
 ### Output
 Generates updated configuration in `analysis/thresholds/updated-config.json`.
 
@@ -164,3 +171,36 @@ Improved review player with filter/sort controls, keyboard shortcuts, and learni
 ```bash
 timeline review input.mp4 --input segments.json --output report.html --open
 ```
+
+---
+
+## 6. Real-Movie Learning Sweep (2026-04-16)
+
+Executed spectral extract + verify + DB learning on real fixtures:
+
+```bash
+timeline extract testdata/raw/elephants_dream_2006.mp4 --output analysis/validation/elephants_dream_2006_spectral.json --config config/profiles/radio-play.json --vad-engine spectral
+timeline verify-timeline testdata/raw/elephants_dream_2006.mp4 --timeline analysis/validation/elephants_dream_2006_spectral.json --output analysis/validation/elephants_dream_2006_verified.json --save-learning --learning-db analysis/thresholds/learning.db
+
+timeline extract testdata/raw/the_hole_1962.mp4 --output analysis/validation/the_hole_1962_spectral.json --config config/profiles/radio-play.json --vad-engine spectral
+timeline verify-timeline testdata/raw/the_hole_1962.mp4 --timeline analysis/validation/the_hole_1962_spectral.json --output analysis/validation/the_hole_1962_verified.json --save-learning --learning-db analysis/thresholds/learning.db
+
+timeline extract testdata/raw/windy_day_1967.mp4 --output analysis/validation/windy_day_1967_spectral.json --config config/profiles/radio-play.json --vad-engine spectral
+timeline verify-timeline testdata/raw/windy_day_1967.mp4 --timeline analysis/validation/windy_day_1967_spectral.json --output analysis/validation/windy_day_1967_verified.json --save-learning --learning-db analysis/thresholds/learning.db
+```
+
+Observed verification outcomes:
+
+| Movie | Verified | Suspicious | FP Rate |
+|------|----------|------------|---------|
+| elephants_dream_2006 | 39 | 1 | 2.50% |
+| the_hole_1962 | 6 | 101 | 94.39% |
+| windy_day_1967 | 33 | 41 | 55.41% |
+
+Aggregated DB learning stats (`analysis/thresholds/learning-stats.json`):
+- total verifications: 221
+- false positives: 143
+- false positive rate: 64.71%
+- recommendation confidence: high (sample_size=143)
+
+Takeaway: spectral defaults perform well on modern CGI fixture (`elephants_dream_2006`) but need profile specialization for older/noisier films.

@@ -434,6 +434,36 @@ fn run() -> Result<()> {
                 "threshold recommendations generated"
             );
         }
+        Commands::LearningStats {
+            learning_db,
+            output,
+        } => {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .context("failed to create async runtime for learning db")?;
+            let db = rt.block_on(learning::database::LearningDb::new(&learning_db))?;
+            let stats = rt.block_on(db.get_statistics())?;
+            let recommendations = rt.block_on(db.get_threshold_recommendations())?;
+            let latest_threshold = rt.block_on(db.get_latest_threshold())?;
+
+            let report = serde_json::json!({
+                "learning_db": learning_db,
+                "statistics": stats,
+                "recommendations": recommendations,
+                "latest_threshold": latest_threshold,
+            });
+
+            if let Some(output_path) = output {
+                if let Some(parent) = output_path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::write(&output_path, serde_json::to_vec_pretty(&report)?)?;
+                info!(output = %output_path.display(), "learning stats written");
+            } else {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            }
+        }
         Commands::MergeTimeline {
             input,
             output,

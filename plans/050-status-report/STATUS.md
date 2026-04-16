@@ -37,7 +37,7 @@ No active hardening gaps are currently open beyond future feature work.
 - Segment confidence is derived from frame likelihoods in `src/pipeline/segmenter.rs`.
 - `validate` and `bench` now accept runtime config, threshold, engine, and calibration inputs.
 - `calibrate` now closes the loop by writing a report and updating the active calibration profile.
-- The CLI now exposes only the implemented `energy` VAD engine.
+- The CLI now exposes both `energy` and `spectral` VAD engines.
 - Unsupported WAV direct decodes now fall back to `ffmpeg`.
 - Config and env override validation now fail clearly on malformed values and invalid ranges.
 - Dataset manifest parsing now fails fast on malformed rows instead of manufacturing timestamps.

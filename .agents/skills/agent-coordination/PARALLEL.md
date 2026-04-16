@@ -177,3 +177,17 @@ Parallel:
 
 Gate: All docs consistent
 ```
+
+### Example 6: Real-Movie Validation Sweep
+```
+Goal: Learn from multiple fixtures quickly
+
+Parallel:
+- Agent A: extract+verify elephants_dream_2006
+- Agent B: extract+verify windy_day_1967
+- Agent C: extract+verify the_hole_1962
+
+Converge:
+- Aggregate DB stats with `timeline learning-stats`
+- Record compact learnings in plans + skill reference notes
+```

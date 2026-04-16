@@ -341,6 +341,32 @@ impl LearningDb {
             false_positive_rate: fp_rate,
         })
     }
+
+    pub async fn get_latest_threshold(&self) -> Result<Option<ThresholdHistoryEntry>> {
+        let mut rows = self
+            .conn
+            .query(
+                "SELECT id, flatness_max, entropy_min, centroid_min, centroid_max, created_at
+                 FROM threshold_history
+                 ORDER BY id DESC
+                 LIMIT 1",
+                (),
+            )
+            .await?;
+
+        let Some(row) = rows.next().await? else {
+            return Ok(None);
+        };
+
+        Ok(Some(ThresholdHistoryEntry {
+            id: row.get(0)?,
+            flatness_max: row.get(1)?,
+            entropy_min: row.get(2)?,
+            centroid_min: row.get(3)?,
+            centroid_max: row.get(4)?,
+            created_at: row.get(5)?,
+        }))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -348,6 +374,16 @@ pub struct LearningStatistics {
     pub total_verifications: usize,
     pub total_false_positives: usize,
     pub false_positive_rate: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThresholdHistoryEntry {
+    pub id: i64,
+    pub flatness_max: f64,
+    pub entropy_min: f64,
+    pub centroid_min: f64,
+    pub centroid_max: f64,
+    pub created_at: String,
 }
 
 #[cfg(test)]

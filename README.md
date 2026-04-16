@@ -17,6 +17,7 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 - `timeline bench <input_media> --output analysis/benchmarks/latest.json`
 - `timeline verify-timeline <media> --timeline timeline.json --output verified.json [--save-learning --learning-db analysis/thresholds/learning.db]`
 - `timeline update-thresholds [--learning-state state.json | --learning-db analysis/thresholds/learning.db]`
+- `timeline learning-stats [--learning-db analysis/thresholds/learning.db] [--output analysis/thresholds/learning-stats.json]`
 - `timeline merge-timeline --input timeline.json --output merged.json`
 - `timeline export --input timeline.json --output out.json --format json|edl|vtt [--verified verified.json]`
 
@@ -146,6 +147,10 @@ The system can learn from verification results to improve detection:
    timeline update-thresholds --learning-db analysis/thresholds/learning.db
    ```
 4. **Re-extract** with optimized thresholds
+5. **Inspect learning quality**:
+   ```bash
+   timeline learning-stats --learning-db analysis/thresholds/learning.db
+   ```
 
 ## Export
 

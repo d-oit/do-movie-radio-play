@@ -1,0 +1,18 @@
+{
+  "latest_threshold": null,
+  "learning_db": "analysis/thresholds/learning.db",
+  "recommendations": {
+    "confidence": "high",
+    "sample_size": 143,
+    "suggested_centroid_max": 6000.33251953125,
+    "suggested_centroid_min": 1997.0518798828125,
+    "suggested_entropy_max": 7.0,
+    "suggested_entropy_min": 1.0,
+    "suggested_flatness_max": 0.7059963518922978
+  },
+  "statistics": {
+    "false_positive_rate": 0.6470588235294118,
+    "total_false_positives": 143,
+    "total_verifications": 221
+  }
+}

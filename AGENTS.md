@@ -203,6 +203,13 @@ Documented in `plans/010-architecture/`:
 - WAV reader currently supports 16-bit PCM only; other formats fall through to ffmpeg.
 - Prefer post-2000 downloaded movie assets in `testdata/raw/` for smoke tests, validation, and benchmarks when present; keep older fixtures only as fallback compatibility and keep deterministic generated-audio fallback when absent.
 
+## Media Sourcing Policy
+
+- Use legally redistributable media only (Blender/Open Movies, public domain, Creative Commons).
+- Do not add copyrighted commercial movie assets to the repository.
+- Avoid YouTube downloading for dataset ingestion unless explicit rights and platform terms allow it.
+- Prefer fixtures with aligned subtitles when available; keep source URL/license notes in `analysis/learnings/` when adding new assets.
+
 ## Known Limitations
 
 Track in `plans/050-status-report/STATUS.md`. Current items:

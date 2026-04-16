@@ -6,3 +6,4 @@ testdata/generated/*.wav
 *.tmp
 testdata/generated/*
 !testdata/generated/.gitkeep
+analysis/thresholds/*.db

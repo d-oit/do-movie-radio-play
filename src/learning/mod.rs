@@ -6,6 +6,6 @@ pub mod profiles;
 
 #[allow(unused_imports)]
 pub use database::{
-    FalsePositive, LearningDb, LearningStatistics, SpectralFeatures, ThresholdRecommendation,
-    VerifiedSegment,
+    FalsePositive, LearningDb, LearningStatistics, SpectralFeatures, ThresholdHistoryEntry,
+    ThresholdRecommendation, VerifiedSegment,
 };

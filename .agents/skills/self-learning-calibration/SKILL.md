@@ -78,6 +78,27 @@ let delta = compare_segments(&baseline.segments, &candidate.segments);
 
 ## Calibration procedure
 
+### Database-backed workflow (preferred)
+
+```bash
+# 1) verify and persist to DB
+timeline verify-timeline testdata/raw/elephants_dream_2006.mp4 \
+  --timeline analysis/validation/elephants_dream_2006_spectral.json \
+  --output analysis/validation/elephants_dream_2006_verified.json \
+  --save-learning \
+  --learning-db analysis/thresholds/learning.db
+
+# 2) inspect DB health
+timeline learning-stats --learning-db analysis/thresholds/learning.db
+
+# 3) generate recommendations from DB
+timeline update-thresholds \
+  --learning-db analysis/thresholds/learning.db \
+  --output analysis/thresholds/recommendations-db.json
+```
+
+Use DB mode for multi-movie accumulation; use JSON learning-state for compatibility.
+
 ### Running calibration
 ```bash
 cargo run --bin calibrate -- corrections/ documentary

@@ -188,13 +188,13 @@ timeline review input.mp4 --input segments.json --output report.html --open
 Executed spectral extract + verify + DB learning on real fixtures:
 
 ```bash
-timeline extract testdata/raw/elephants_dream_2006.mp4 --output analysis/validation/elephants_dream_2006_spectral.json --config config/profiles/radio-play.json --vad-engine spectral
+timeline extract testdata/raw/elephants_dream_2006.mp4 --output analysis/validation/elephants_dream_2006_spectral.json --config config/profiles/modern-optimized.json --vad-engine spectral
 timeline verify-timeline testdata/raw/elephants_dream_2006.mp4 --timeline analysis/validation/elephants_dream_2006_spectral.json --output analysis/validation/elephants_dream_2006_verified.json --save-learning --learning-db analysis/thresholds/learning.db
 
-timeline extract testdata/raw/the_hole_1962.mp4 --output analysis/validation/the_hole_1962_spectral.json --config config/profiles/radio-play.json --vad-engine spectral
+timeline extract testdata/raw/the_hole_1962.mp4 --output analysis/validation/the_hole_1962_spectral.json --config config/profiles/legacy-optimized.json --vad-engine spectral
 timeline verify-timeline testdata/raw/the_hole_1962.mp4 --timeline analysis/validation/the_hole_1962_spectral.json --output analysis/validation/the_hole_1962_verified.json --save-learning --learning-db analysis/thresholds/learning.db
 
-timeline extract testdata/raw/windy_day_1967.mp4 --output analysis/validation/windy_day_1967_spectral.json --config config/profiles/radio-play.json --vad-engine spectral
+timeline extract testdata/raw/windy_day_1967.mp4 --output analysis/validation/windy_day_1967_spectral.json --config config/profiles/legacy-optimized.json --vad-engine spectral
 timeline verify-timeline testdata/raw/windy_day_1967.mp4 --timeline analysis/validation/windy_day_1967_spectral.json --output analysis/validation/windy_day_1967_verified.json --save-learning --learning-db analysis/thresholds/learning.db
 ```
 
@@ -230,7 +230,7 @@ Benchmark and eval artifacts from this optimization pass:
 ## 7. Verification and Sweep Optimization
 
 - Verification now applies runtime threshold overrides for entropy/flatness/energy/centroid during status decisioning.
-- Added double-threshold confidence hysteresis in verification (`high=0.62`, `low=0.45`) to reduce unstable borderline classification.
+- Added non-voice confidence hysteresis in verification (`high=0.55`) with conservative suspicious fallback for borderline cases.
 - Added sweep script: `scripts/optimize_fp_sweep.py`
   - Runs candidate matrix across modern + legacy fixtures
   - Produces ranked output: `analysis/optimization/fp-sweep-ranked.json`

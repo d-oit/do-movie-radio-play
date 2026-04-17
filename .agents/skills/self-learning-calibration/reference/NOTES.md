@@ -5,5 +5,5 @@
   - elephants_dream_2006: FP 2.50% (good baseline)
   - windy_day_1967: FP 55.41% (needs profile tuning)
   - the_hole_1962: FP 94.39% (legacy/noisy content failure mode)
-- Verification thresholds are now applied at runtime and use confidence hysteresis (`high=0.62`, `low=0.45`).
+- Verification thresholds are now applied at runtime and use non-voice confidence hysteresis (`high=0.55`) with conservative suspicious fallback.
 - Use `analysis/optimization/fp-sweep-ranked.json` + `generate_optimized_profiles.py` for deployable profile updates.

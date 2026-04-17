@@ -207,6 +207,10 @@ Documented in `plans/010-architecture/`:
 - ffmpeg must be on PATH for non-WAV media decoding.
 - WAV reader currently supports 16-bit PCM only; other formats fall through to ffmpeg.
 - Prefer post-2000 downloaded movie assets in `testdata/raw/` for smoke tests, validation, and benchmarks when present; keep older fixtures only as fallback compatibility and keep deterministic generated-audio fallback when absent.
+- For docs/examples and default runs, prefer:
+  - `config/profiles/modern-optimized.json` for modern fixtures/content
+  - `config/profiles/legacy-optimized.json` for legacy/noisy fixtures/content
+  - keep `config/profiles/radio-play.json` as baseline comparison profile
 
 ## Media Sourcing Policy
 

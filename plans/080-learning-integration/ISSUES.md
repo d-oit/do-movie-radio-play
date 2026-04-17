@@ -15,7 +15,7 @@
 
 ## Usage Workflow
 
-1. Extract timeline: `timeline extract --vad-engine spectral --config config/profiles/radio-play.json`
+1. Extract timeline: `timeline extract --vad-engine spectral --config config/profiles/modern-optimized.json` (or `legacy-optimized.json` for noisy/legacy content)
 2. Verify: `timeline verify-timeline --input-media <file> --input timeline.json --output verified.json --save-learning`
 3. Review: `timeline review --input-media <file> --input verified.json --open`
 4. Mark false positives with **x**, export with **e**

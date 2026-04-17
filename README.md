@@ -123,6 +123,19 @@ The spectral VAD engine uses spectral features (entropy, flatness, centroid) to 
 timeline extract input.mp4 --output timeline.json --vad-engine spectral
 ```
 
+Recommended default profiles for examples/runs:
+
+```bash
+# Modern fixtures/content
+timeline extract input.mp4 --config config/profiles/modern-optimized.json --output timeline.json --vad-engine spectral
+
+# Legacy/noisy fixtures/content
+timeline extract input.mp4 --config config/profiles/legacy-optimized.json --output timeline.json --vad-engine spectral
+```
+
+Baseline profile remains available for comparison:
+- `config/profiles/radio-play.json`
+
 Configurable thresholds in profiles:
 
 ```json
@@ -196,6 +209,6 @@ python3 scripts/generate_optimized_profiles.py \
 
 Compact latest learnings:
 - Verification now uses runtime threshold overrides (`verify-timeline` flags are active in status decisioning).
-- Verification uses confidence hysteresis (`high=0.62`, `low=0.45`) to reduce borderline flips.
+- Verification uses non-voice confidence scoring with tuned hysteresis (`high=0.55`) and conservative suspicious fallback.
 - Sweep ranking includes a coverage guard (`--min-coverage-ratio`) to avoid low-coverage false wins.
-- Current sweep policy recommends baseline for both modern and legacy cohorts on available fixtures.
+- Current expanded/overnight sweep policy recommends `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0015_c120` for both modern and legacy cohorts on available fixtures.

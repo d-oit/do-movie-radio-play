@@ -3,7 +3,8 @@
 ## Scope
 
 - Engine: `spectral`
-- Profile base: `config/profiles/radio-play.json`
+- Profile defaults: `config/profiles/modern-optimized.json` (modern), `config/profiles/legacy-optimized.json` (legacy)
+- Baseline comparison profile: `config/profiles/radio-play.json`
 - Flow: `extract -> verify-timeline --save-learning --learning-db`
 
 ## Movies

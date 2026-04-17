@@ -58,3 +58,11 @@
 - Ranked sweep report: `analysis/optimization/fp-sweep-ranked.json`
 - Sweep now includes modern/legacy cohort ranking and a baseline coverage guard (`min_coverage_ratio=0.7`).
 - After wiring verification threshold overrides + hysteresis, the current best weighted FP candidate in this sweep is `baseline` (`~64.78%`) against the tested matrix.
+
+## Expanded Sweep Refresh
+
+- Expanded run report: `analysis/optimization/fp-sweep-ranked-expanded.json`
+- Latest recommended candidate: `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0015_c120`
+- Regenerated profiles:
+  - `config/profiles/modern-optimized.json`
+  - `config/profiles/legacy-optimized.json`

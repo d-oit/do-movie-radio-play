@@ -66,3 +66,9 @@
 - Regenerated profiles:
   - `config/profiles/modern-optimized.json`
   - `config/profiles/legacy-optimized.json`
+
+## Overnight Stability Check
+
+- Longer run report: `analysis/optimization/fp-sweep-ranked-overnight.json` (`max-candidates=30`)
+- Winner remained unchanged: `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0015_c120`
+- Conclusion: current best candidate is stable under a broader search window.

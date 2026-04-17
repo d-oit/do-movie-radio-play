@@ -21,6 +21,12 @@ No medium-or-higher runtime gaps are currently open in the shipped CLI flow.
 
 No active hardening gaps are currently open beyond future feature work.
 
+Dependency security note (GitHub Dependabot, 2026-04-16):
+- Open advisories on default branch: 5 (1 moderate, 4 low)
+- Tracking URL: `https://github.com/d-oit/do-movie-radio-play/security/dependabot`
+- Impact: dependency hygiene risk; no runtime exploit confirmed in current offline CLI usage
+- Next action: triage and patch dependency versions in next dependency-maintenance pass
+
 GitHub queue scan (2026-04-16):
 - Open issues: 0
 - Open PRs: 0

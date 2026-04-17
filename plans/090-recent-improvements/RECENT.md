@@ -243,3 +243,12 @@ Benchmark and eval artifacts from this optimization pass:
   - `config/profiles/modern-optimized.json`
   - `config/profiles/legacy-optimized.json`
 - Ensures generated profiles set `vad_engine: spectral` and carry selected threshold fields.
+
+## 9. Verification + Sweep Robustness Updates
+
+- Verification scoring now explicitly models non-voice confidence (instead of voice-oriented indicator counting).
+- Runtime threshold overrides remain active in verification status decisioning.
+- Sweep reports now include:
+  - `false_positive_risk_rate` (counts suspicious + rejected)
+  - `assessed_non_voice_segments`
+  - coverage guard against assessed baseline to prevent metric gaming via rejection-only behavior.

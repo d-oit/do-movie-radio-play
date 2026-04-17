@@ -56,8 +56,9 @@ const DEFAULT_FLATNESS_MAX: f32 = 0.45;
 const DEFAULT_ENERGY_MIN: f32 = 0.001;
 const DEFAULT_CENTROID_MIN: f32 = 100.0;
 const DEFAULT_CENTROID_MAX: f32 = 6000.0;
-const VERIFICATION_HIGH_CONFIDENCE_THRESHOLD: f32 = 0.62;
-const VERIFICATION_LOW_CONFIDENCE_THRESHOLD: f32 = 0.45;
+const VERIFICATION_HIGH_CONFIDENCE_THRESHOLD: f32 = 0.55;
+const SPEECH_ZCR_MIN: f32 = 0.02;
+const SPEECH_ZCR_MAX: f32 = 0.35;
 
 #[allow(clippy::too_many_arguments)]
 pub fn verify_timeline(
@@ -247,37 +248,48 @@ fn determine_verification_status(
     original_confidence: f32,
     thresholds: &AppliedThresholds,
 ) -> VerificationStatus {
-    let entropy_ok =
+    let entropy_voice =
         (thresholds.entropy_min..=thresholds.entropy_max).contains(&features.spectral_entropy);
-    let flatness_ok = features.spectral_flatness < thresholds.flatness_max;
-    let energy_ok = features.rms > thresholds.energy_min;
-    let centroid_ok =
+    let flatness_voice = features.spectral_flatness < thresholds.flatness_max;
+    let energy_voice = features.rms > thresholds.energy_min;
+    let centroid_voice =
         (thresholds.centroid_min..=thresholds.centroid_max).contains(&features.centroid_hz);
+    let zcr_voice = (SPEECH_ZCR_MIN..=SPEECH_ZCR_MAX).contains(&features.zcr);
 
-    let verified_indicators = [entropy_ok, flatness_ok, centroid_ok]
-        .into_iter()
-        .filter(|&b| b)
-        .count();
+    let voice_indicators = [
+        entropy_voice,
+        flatness_voice,
+        energy_voice,
+        centroid_voice,
+        zcr_voice,
+    ]
+    .into_iter()
+    .filter(|&b| b)
+    .count() as f32;
+    let voice_score =
+        (((1.0 - original_confidence) * 0.3) + ((voice_indicators / 5.0) * 0.7)).clamp(0.0, 1.0);
 
-    let feature_score = verified_indicators as f32 / 3.0;
-    let combined_confidence = (original_confidence * 0.4) + (feature_score * 0.6);
-    let has_hard_fail = !energy_ok && verified_indicators == 0;
+    let nonvoice_indicators = [
+        features.rms < thresholds.energy_min * 1.2,
+        features.spectral_flatness > thresholds.flatness_max,
+        !(thresholds.entropy_min..=thresholds.entropy_max).contains(&features.spectral_entropy),
+        !(thresholds.centroid_min..=thresholds.centroid_max).contains(&features.centroid_hz),
+        features.high_band_ratio > 0.4 && features.zcr > SPEECH_ZCR_MAX,
+    ]
+    .into_iter()
+    .filter(|&b| b)
+    .count() as f32;
+    let nonvoice_score = (nonvoice_indicators / 5.0).clamp(0.0, 1.0);
 
-    if has_hard_fail {
-        return VerificationStatus::Rejected;
-    }
+    let nonvoice_confidence =
+        (((1.0 - voice_score) * 0.7) + (nonvoice_score * 0.3)).clamp(0.0, 1.0);
 
-    if (verified_indicators >= 2 && energy_ok)
-        || combined_confidence >= VERIFICATION_HIGH_CONFIDENCE_THRESHOLD
-    {
+    if nonvoice_confidence >= VERIFICATION_HIGH_CONFIDENCE_THRESHOLD {
         VerificationStatus::Verified
-    } else if combined_confidence >= VERIFICATION_LOW_CONFIDENCE_THRESHOLD
-        || verified_indicators >= 1
-        || energy_ok
-    {
-        VerificationStatus::Suspicious
-    } else {
+    } else if voice_score >= 0.8 && nonvoice_score <= 0.2 {
         VerificationStatus::Rejected
+    } else {
+        VerificationStatus::Suspicious
     }
 }
 
@@ -307,7 +319,7 @@ mod tests {
 
     #[test]
     fn verification_status_determination() {
-        let features = SpectralFeatures {
+        let speech_like_features = SpectralFeatures {
             rms: 0.02,
             zcr: 0.15,
             spectral_entropy: 5.0,
@@ -327,11 +339,25 @@ mod tests {
             centroid_max: DEFAULT_CENTROID_MAX,
         };
 
-        let status = determine_verification_status(&features, 0.9, &thresholds);
+        let status = determine_verification_status(&speech_like_features, 0.9, &thresholds);
         assert!(matches!(
             status,
-            VerificationStatus::Verified | VerificationStatus::Suspicious
+            VerificationStatus::Suspicious | VerificationStatus::Rejected
         ));
+
+        let nonvoice_like_features = SpectralFeatures {
+            rms: 0.0004,
+            zcr: 0.46,
+            spectral_entropy: 8.0,
+            spectral_flatness: 0.72,
+            spectral_flux: 0.002,
+            centroid_hz: 7200.0,
+            low_band_ratio: 0.1,
+            high_band_ratio: 0.52,
+        };
+        let nonvoice_status =
+            determine_verification_status(&nonvoice_like_features, 0.6, &thresholds);
+        assert!(matches!(nonvoice_status, VerificationStatus::Verified));
     }
 
     #[test]

@@ -34,6 +34,10 @@ bash scripts/fetch_test_assets.sh  # optional: download smoke media
 
 Run before every commit. All checks must pass with zero warnings.
 
+Minimum enforcement:
+- At least one relevant automated test must pass in every coding session (`cargo test <name>` or broader).
+- Prefer full `bash scripts/quality_gate.sh` before commit.
+
 ```bash
 # Full gate (fmt + clippy + test):
 bash scripts/quality_gate.sh
@@ -83,6 +87,7 @@ gh run watch --exit-status
 Required outcome before considering work complete:
 - no clippy warnings
 - no failing tests
+- at least one test executed and passed in this session
 - benchmark regression check passes
 - GitHub Actions `Quality Gate` passes
 

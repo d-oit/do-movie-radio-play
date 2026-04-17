@@ -85,6 +85,7 @@ Loop with performance-optimizer until:
 Between each phase, verify:
 - Code compiles/parses correctly
 - Tests pass with adequate coverage
+- At least one relevant automated test is executed and passing per coding session
 - Security scans clean
 - Performance acceptable
 - No regressions introduced

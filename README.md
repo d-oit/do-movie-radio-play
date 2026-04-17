@@ -181,6 +181,10 @@ Optional controls:
 - `--legacy-media <path>` (repeatable) to define legacy cohort explicitly
 - `--min-coverage-ratio 0.7` to require candidate coverage vs baseline
 
+Sweep report now includes both:
+- `weighted_false_positive_rate` (legacy metric)
+- `weighted_false_positive_risk_rate` (counts suspicious + rejected)
+
 Generate profile files from sweep policy:
 
 ```bash

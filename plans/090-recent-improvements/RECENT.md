@@ -274,3 +274,4 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
 - Runs weekly + manual dispatch:
   - executes `optimize_and_publish_profiles.sh` with bounded candidate count
   - uploads optimization reports and generated optimized profiles as artifacts
+  - enforces drift guard with `check_sweep_drift.py` (fails on FP/risk regression over configured thresholds)

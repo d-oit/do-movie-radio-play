@@ -233,6 +233,7 @@ python3 scripts/compare_sweeps.py \
 
 CI automation:
 - `.github/workflows/optimization-sweep.yml` runs scheduled/manual wrapper smoke and uploads optimization artifacts.
+- CI also enforces a drift guard via `scripts/check_sweep_drift.py` (fails on FP/risk regressions over threshold).
 
 Compact latest learnings:
 - Verification now uses runtime threshold overrides (`verify-timeline` flags are active in status decisioning).

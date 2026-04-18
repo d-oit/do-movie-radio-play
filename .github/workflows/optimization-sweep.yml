@@ -25,6 +25,13 @@ jobs:
             analysis/optimization/fp-sweep-ranked-latest.json \
             8 \
             0.7
+      - name: Check optimization drift guard
+        run: |
+          chmod +x scripts/check_sweep_drift.py
+          python3 scripts/check_sweep_drift.py \
+            --comparison analysis/optimization/fp-sweep-comparison.json \
+            --max-fp-delta 0.02 \
+            --max-risk-delta 0.02
       - uses: actions/upload-artifact@v4
         with:
           name: optimization-reports

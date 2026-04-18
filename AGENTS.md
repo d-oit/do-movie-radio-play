@@ -237,6 +237,7 @@ Track in `plans/050-status-report/STATUS.md`. Current items:
 - Compact latest note: `analysis/learnings/latest-optimization-note.md`
 - Sweep runner: `scripts/optimize_fp_sweep.py`
 - Sweep comparator: `scripts/compare_sweeps.py`
+- Sweep drift guard: `scripts/check_sweep_drift.py`
 - Profile generator: `scripts/generate_optimized_profiles.py`
 - End-to-end wrapper: `scripts/optimize_and_publish_profiles.sh`
 - Generated profiles:

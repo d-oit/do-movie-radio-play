@@ -267,3 +267,10 @@ Example:
 ```bash
 bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ranked-latest.json 20 0.7
 ```
+
+## 11. Optimization Sweep CI Workflow
+
+- Added `.github/workflows/optimization-sweep.yml`
+- Runs weekly + manual dispatch:
+  - executes `optimize_and_publish_profiles.sh` with bounded candidate count
+  - uploads optimization reports and generated optimized profiles as artifacts

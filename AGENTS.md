@@ -176,6 +176,9 @@ bash scripts/quality_gate.sh && git add -A && git commit
 | `.agents/skills/` | Reusable skill playbooks for agent workflows |
 | `.github/workflows/` | CI pipeline (GitHub Actions) |
 
+Optimization workflow:
+- `.github/workflows/optimization-sweep.yml` runs scheduled/manual sweep-publish smoke and uploads optimization artifacts.
+
 ## Domain Concepts
 
 - **Frame**: 20ms audio window with computed RMS energy (320 samples at 16kHz).

@@ -231,6 +231,9 @@ python3 scripts/compare_sweeps.py \
   --output analysis/optimization/fp-sweep-comparison.json
 ```
 
+CI automation:
+- `.github/workflows/optimization-sweep.yml` runs scheduled/manual wrapper smoke and uploads optimization artifacts.
+
 Compact latest learnings:
 - Verification now uses runtime threshold overrides (`verify-timeline` flags are active in status decisioning).
 - Verification uses non-voice confidence scoring with tuned hysteresis (`high=0.55`) and conservative suspicious fallback.

@@ -1,0 +1,40 @@
+name: Optimization Sweep
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 4 * * 3"
+
+permissions:
+  contents: read
+
+jobs:
+  optimize_publish_smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bash scripts/fetch_test_assets.sh
+      - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
+      - run: chmod +x scripts/optimize_and_publish_profiles.sh scripts/compare_sweeps.py scripts/generate_optimized_profiles.py scripts/optimize_fp_sweep.py
+      - name: Run optimization wrapper
+        run: |
+          bash scripts/optimize_and_publish_profiles.sh \
+            analysis/optimization/fp-sweep-ranked-latest.json \
+            8 \
+            0.7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: optimization-reports
+          path: |
+            analysis/optimization/fp-sweep-ranked-latest.json
+            analysis/optimization/fp-sweep-comparison.json
+            analysis/learnings/latest-optimization-note.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: optimized-profiles
+          path: |
+            config/profiles/modern-optimized.json
+            config/profiles/legacy-optimized.json

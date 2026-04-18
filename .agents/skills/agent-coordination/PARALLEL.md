@@ -205,3 +205,16 @@ Converge:
 - run `scripts/generate_optimized_profiles.py`
 - publish `modern-optimized` and `legacy-optimized` profiles
 ```
+
+### Example 8: Radio-Play Readiness Gate
+```
+Goal: enforce >=95% holdout readiness before promotion
+
+Parallel:
+- Agent A: run validation manifest sweep tiers A/B/C
+- Agent B: run `check_radio_play_readiness.py` on tier C summary
+- Agent C: update plans + compact learning note with gate outcome
+
+Converge:
+- block release if holdout gate fails
+```

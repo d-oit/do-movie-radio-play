@@ -9,3 +9,5 @@
 - Use `analysis/optimization/fp-sweep-ranked.json` + `generate_optimized_profiles.py` for deployable profile updates.
 - Graph-inspired structure confidence is blended in verifier scoring to reduce speech-over-music false positives.
 - Latest sweep winner: `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120` (see `analysis/optimization/fp-sweep-ranked-latest.json`).
+- Use holdout gate script before release promotion:
+  - `python3 scripts/check_radio_play_readiness.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95`

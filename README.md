@@ -234,6 +234,7 @@ python3 scripts/compare_sweeps.py \
 CI automation:
 - `.github/workflows/optimization-sweep.yml` runs scheduled/manual wrapper smoke and uploads optimization artifacts.
 - CI also enforces a drift guard via `scripts/check_sweep_drift.py` (fails on FP/risk regressions over threshold).
+- `.github/workflows/validation-sweep.yml` enforces radio-play holdout readiness via `scripts/check_radio_play_readiness.py` (`tier C`, min precision/recall/overlap = `0.95`).
 
 Compact latest learnings:
 - Verification now uses runtime threshold overrides (`verify-timeline` flags are active in status decisioning).
@@ -244,3 +245,14 @@ Compact latest learnings:
 
 Recovery plan for radio-play >=95% success:
 - `plans/100-radio-play-95/ROADMAP.md`
+
+Manual holdout readiness gate:
+
+```bash
+python3 scripts/check_radio_play_readiness.py \
+  --summary analysis/validation/full-sweep-summary.json \
+  --holdout-tier C \
+  --min-non-voice-precision 0.95 \
+  --min-non-voice-recall 0.95 \
+  --min-overlap 0.95
+```

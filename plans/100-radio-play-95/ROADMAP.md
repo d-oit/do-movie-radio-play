@@ -50,6 +50,11 @@ Use a **two-stage cascade**:
 - Add holdout-first scoring script and CI gate for radio-play KPI.
 - Add failure breakdown output by content type.
 
+Status update:
+- ✅ holdout-first scoring script added: `scripts/check_radio_play_readiness.py`
+- ✅ validation sweep CI now enforces holdout KPI gate
+- ⏳ content-type failure breakdown pending
+
 ### Milestone C (1-2 weeks)
 - Add optional ONNX verifier stage for ambiguous segments.
 - Calibrate thresholds using verified holdout labels.

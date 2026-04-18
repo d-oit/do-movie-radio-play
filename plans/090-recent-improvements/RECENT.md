@@ -290,3 +290,13 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
   - `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120`
 - Weighted FP improved from `0.7391` to `0.1814` (`analysis/optimization/fp-sweep-comparison.json`)
 - Profiles regenerated and compact note refreshed.
+
+## 14. Radio-Play Holdout Readiness Gate
+
+- Added `scripts/check_radio_play_readiness.py` to enforce holdout KPI gates from validation summary.
+- Wired into `.github/workflows/validation-sweep.yml` after manifest execution.
+- Current CI thresholds:
+  - `--holdout-tier C`
+  - `--min-non-voice-precision 0.95`
+  - `--min-non-voice-recall 0.95`
+  - `--min-overlap 0.95`

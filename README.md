@@ -207,6 +207,30 @@ python3 scripts/generate_optimized_profiles.py \
   --legacy-output config/profiles/legacy-optimized.json
 ```
 
+One-command automation (sweep + compare + publish profiles + compact note):
+
+```bash
+bash scripts/optimize_and_publish_profiles.sh \
+  analysis/optimization/fp-sweep-ranked-latest.json \
+  20 \
+  0.7
+```
+
+This writes:
+- `analysis/optimization/fp-sweep-ranked-latest.json`
+- `analysis/optimization/fp-sweep-comparison.json`
+- `analysis/learnings/latest-optimization-note.md`
+- refreshed `config/profiles/modern-optimized.json` and `config/profiles/legacy-optimized.json`
+
+Standalone report comparison:
+
+```bash
+python3 scripts/compare_sweeps.py \
+  --previous analysis/optimization/fp-sweep-ranked.json \
+  --current analysis/optimization/fp-sweep-ranked-latest.json \
+  --output analysis/optimization/fp-sweep-comparison.json
+```
+
 Compact latest learnings:
 - Verification now uses runtime threshold overrides (`verify-timeline` flags are active in status decisioning).
 - Verification uses non-voice confidence scoring with tuned hysteresis (`high=0.55`) and conservative suspicious fallback.

@@ -252,3 +252,18 @@ Benchmark and eval artifacts from this optimization pass:
   - `false_positive_risk_rate` (counts suspicious + rejected)
   - `assessed_non_voice_segments`
   - coverage guard against assessed baseline to prevent metric gaming via rejection-only behavior.
+
+## 10. Wrapper Automation for Optimization Publishing
+
+- Added `scripts/optimize_and_publish_profiles.sh`:
+  - runs expanded sweep
+  - compares with previous report (`scripts/compare_sweeps.py`)
+  - regenerates optimized profiles
+  - writes compact note: `analysis/learnings/latest-optimization-note.md`
+- Added `scripts/compare_sweeps.py` for report-to-report winner/metric deltas.
+
+Example:
+
+```bash
+bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ranked-latest.json 20 0.7
+```

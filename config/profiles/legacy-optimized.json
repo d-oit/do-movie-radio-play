@@ -1,6 +1,6 @@
 {
   "name": "legacy-optimized",
-  "description": "Auto-generated from FP sweep candidate 'grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0015_c120'",
+  "description": "Auto-generated from FP sweep candidate 'low_threshold'",
   "sample_rate_hz": 16000,
   "frame_ms": 20,
   "speech_hangover_ms": 300,
@@ -8,7 +8,7 @@
   "min_speech_ms": 300,
   "min_non_voice_ms": 500,
   "max_non_voice_ms": null,
-  "energy_threshold": 0.0125,
+  "energy_threshold": 0.0135,
   "vad_threshold_delta": 0.0,
   "prompt_min_duration_ms": 2500,
   "prompt_min_confidence": 0.65,
@@ -20,8 +20,8 @@
     "min_silence_duration": 300,
     "silence_threshold_db": -42
   },
-  "spectral_entropy_min": 3.0,
-  "spectral_flatness_max": 0.38,
+  "spectral_entropy_min": 3.4,
+  "spectral_flatness_max": 0.44,
   "spectral_centroid_min": 120.0,
   "spectral_centroid_max": 6000.0
 }

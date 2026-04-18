@@ -227,8 +227,15 @@ Track in `plans/050-status-report/STATUS.md`. Current items:
 ## Optimization Artifacts
 
 - FP sweep ranking report: `analysis/optimization/fp-sweep-ranked.json`
+- FP sweep latest/overnight reports:
+  - `analysis/optimization/fp-sweep-ranked-latest.json`
+  - `analysis/optimization/fp-sweep-ranked-overnight.json`
+- Sweep comparison report: `analysis/optimization/fp-sweep-comparison.json`
+- Compact latest note: `analysis/learnings/latest-optimization-note.md`
 - Sweep runner: `scripts/optimize_fp_sweep.py`
+- Sweep comparator: `scripts/compare_sweeps.py`
 - Profile generator: `scripts/generate_optimized_profiles.py`
+- End-to-end wrapper: `scripts/optimize_and_publish_profiles.sh`
 - Generated profiles:
   - `config/profiles/modern-optimized.json`
   - `config/profiles/legacy-optimized.json`

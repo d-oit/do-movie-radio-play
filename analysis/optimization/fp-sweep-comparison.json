@@ -1,0 +1,13 @@
+{
+  "previous_report": "analysis/optimization/fp-sweep-ranked.json",
+  "current_report": "analysis/optimization/fp-sweep-ranked-latest.json",
+  "winner_changed": false,
+  "previous_winner": "low_threshold",
+  "current_winner": "low_threshold",
+  "previous_weighted_false_positive_rate": 0.7391304301304348,
+  "current_weighted_false_positive_rate": 0.7391304301304348,
+  "weighted_false_positive_rate_delta": 0.0,
+  "previous_weighted_false_positive_risk_rate": 0.7391304347826086,
+  "current_weighted_false_positive_risk_rate": 0.7391304347826086,
+  "weighted_false_positive_risk_rate_delta": 0.0
+}

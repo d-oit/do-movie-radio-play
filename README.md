@@ -260,4 +260,9 @@ python3 scripts/check_radio_play_lb95.py \
   --summary analysis/validation/full-sweep-summary.json \
   --holdout-tier C \
   --min-lb95 0.95
+
+python3 scripts/build_radio_play_failure_breakdown.py \
+  --summary analysis/validation/full-sweep-summary.json \
+  --output-json analysis/validation/radio-play-failure-breakdown.json \
+  --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
 ```

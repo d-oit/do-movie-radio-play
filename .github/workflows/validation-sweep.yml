@@ -18,9 +18,10 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
       - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
-      - run: chmod +x scripts/check_validation_coverage.py scripts/run_validation_manifest.py scripts/check_radio_play_readiness.py scripts/check_radio_play_lb95.py
+      - run: chmod +x scripts/check_validation_coverage.py scripts/run_validation_manifest.py scripts/check_radio_play_readiness.py scripts/check_radio_play_lb95.py scripts/build_radio_play_failure_breakdown.py
       - run: python3 scripts/check_validation_coverage.py --tier A --tier B --tier C --strict-files
       - run: python3 scripts/run_validation_manifest.py --manifest testdata/validation/manifest.json --tier A --tier B --tier C --summary analysis/validation/full-sweep-summary.json
+      - run: python3 scripts/build_radio_play_failure_breakdown.py --summary analysis/validation/full-sweep-summary.json --output-json analysis/validation/radio-play-failure-breakdown.json --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
       - run: python3 scripts/check_radio_play_readiness.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95
       - run: python3 scripts/check_radio_play_lb95.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-lb95 0.95
       - uses: actions/upload-artifact@v4
@@ -31,3 +32,9 @@ jobs:
         with:
           name: validation-reports
           path: testdata/validation/*.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radio-play-failure-breakdown
+          path: |
+            analysis/validation/radio-play-failure-breakdown.json
+            analysis/learnings/latest-radio-play-failure-breakdown.md

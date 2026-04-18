@@ -218,3 +218,16 @@ Parallel:
 Converge:
 - block release if holdout gate fails
 ```
+
+### Example 9: Failure Breakdown Triage
+```
+Goal: identify where holdout gate fails fastest
+
+Parallel:
+- Agent A: run validation sweep summary
+- Agent B: run `check_radio_play_lb95.py`
+- Agent C: run `build_radio_play_failure_breakdown.py`
+
+Converge:
+- prioritize fixes by cohort and top failing entries from generated breakdown
+```

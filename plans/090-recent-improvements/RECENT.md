@@ -306,3 +306,11 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
 - Added `scripts/check_radio_play_lb95.py` to enforce Wilson lower bound readiness.
 - Integrated into `.github/workflows/validation-sweep.yml`.
 - Current threshold: `--min-lb95 0.95` on holdout tier `C`.
+
+## 16. Radio-Play Failure Breakdown Artifact
+
+- Added `scripts/build_radio_play_failure_breakdown.py`.
+- Produces:
+  - `analysis/validation/radio-play-failure-breakdown.json`
+  - `analysis/learnings/latest-radio-play-failure-breakdown.md`
+- Integrated into validation sweep CI and uploaded as workflow artifacts.

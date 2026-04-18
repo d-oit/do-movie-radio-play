@@ -13,3 +13,5 @@
   - `python3 scripts/check_radio_play_readiness.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95`
 - Enforce confidence-bound release gate:
   - `python3 scripts/check_radio_play_lb95.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-lb95 0.95`
+- Generate compact failure breakdown for triage:
+  - `python3 scripts/build_radio_play_failure_breakdown.py --summary analysis/validation/full-sweep-summary.json --output-json analysis/validation/radio-play-failure-breakdown.json --output-md analysis/learnings/latest-radio-play-failure-breakdown.md`

@@ -569,8 +569,8 @@ When creating skills that work with agents:
 Skills can reference other skills:
 ```markdown
 ## Related Skills
-- **[task-decomposition](../task-decomposition/SKILL.md)** - Use before implementing
-- **[code-reviewer](../code-reviewer/SKILL.md)** - Use after implementing
+- **[task-decomposition](../../task-decomposition/SKILL.md)** - Use before implementing
+- **[code-review-assistant](../../code-review-assistant/SKILL.md)** - Use after implementing
 ```
 
 ### Skill Hierarchies
@@ -587,7 +587,7 @@ Organize related skills:
 
 Link between skills:
 ```markdown
-See also: **[parallel-execution](../parallel-execution/SKILL.md)** for concurrent task patterns.
+See also: **[parallel-execution](../../parallel-execution/SKILL.md)** for concurrent task patterns.
 ```
 
 ## Metrics

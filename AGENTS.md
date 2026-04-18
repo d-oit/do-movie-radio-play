@@ -50,6 +50,26 @@ cargo test
 # Benchmark smoke:
 bash scripts/benchmark.sh
 python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/latest.json
+
+# Repo docs/workflow integrity checks:
+python3 scripts/check_sweep_drift.py --comparison analysis/optimization/fp-sweep-comparison.json --max-fp-delta 0.02 --max-risk-delta 0.02
+python3 - <<'PY'
+import re
+from pathlib import Path
+root = Path('.')
+rx = re.compile(r'\[[^\]]+\]\(([^)]+)\)')
+ignore = {'link', 'path'}
+for md in root.rglob('*.md'):
+    text = md.read_text(encoding='utf-8', errors='ignore')
+    for raw in rx.findall(text):
+        link = raw.strip().split(' ')[0].strip('<>').split('#')[0]
+        if not link or link in ignore or link.startswith(('http://','https://','mailto:','#')):
+            continue
+        target = (md.parent / link).resolve()
+        if not target.exists():
+            raise SystemExit(f'missing markdown link target: {md} -> {link}')
+print('markdown local links: OK')
+PY
 ```
 
 ## Dependency Hygiene

@@ -32,6 +32,10 @@ GitHub queue scan (2026-04-16):
 - Open PRs: 0
 - Recent merged PRs: #1, #3, #4 (baseline hardening and validation infrastructure)
 
+Repository integrity sweep (2026-04-18):
+- All `.github/workflows/*.yml` files parse and are registered in GitHub Actions.
+- Markdown local-link audit passes after fixing stale skill-reference relative paths.
+
 ## Production Evaluation Correctness
 
 - Manifest-based eval coverage is now implemented in `testdata/validation/manifest.json`.

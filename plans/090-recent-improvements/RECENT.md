@@ -314,3 +314,11 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
   - `analysis/validation/radio-play-failure-breakdown.json`
   - `analysis/learnings/latest-radio-play-failure-breakdown.md`
 - Integrated into validation sweep CI and uploaded as workflow artifacts.
+
+## 17. Consolidated Radio-Play Readiness Report
+
+- Added `scripts/build_radio_play_readiness_report.py`.
+- Produces unified artifacts combining threshold gate + LB95 gate + cohort summary:
+  - `analysis/validation/radio-play-readiness-report.json`
+  - `analysis/learnings/latest-radio-play-readiness-report.md`
+- Integrated into validation sweep CI and uploaded as workflow artifacts.

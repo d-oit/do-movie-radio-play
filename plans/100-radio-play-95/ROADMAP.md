@@ -55,6 +55,7 @@ Status update:
 - ✅ validation sweep CI now enforces holdout KPI gate
 - ✅ Wilson LB95 gate added: `scripts/check_radio_play_lb95.py`
 - ✅ content-type/cohort failure breakdown added: `scripts/build_radio_play_failure_breakdown.py`
+- ✅ consolidated readiness report added: `scripts/build_radio_play_readiness_report.py`
 
 ### Milestone C (1-2 weeks)
 - Add optional ONNX verifier stage for ambiguous segments.

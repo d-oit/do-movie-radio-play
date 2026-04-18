@@ -231,3 +231,17 @@ Parallel:
 Converge:
 - prioritize fixes by cohort and top failing entries from generated breakdown
 ```
+
+### Example 10: Release Readiness Consolidation
+```
+Goal: one artifact for release/no-release decision
+
+Parallel:
+- Agent A: run threshold gate script
+- Agent B: run LB95 gate script
+- Agent C: run breakdown script
+
+Converge:
+- generate unified report via `build_radio_play_readiness_report.py`
+- attach readiness JSON/MD to release review
+```

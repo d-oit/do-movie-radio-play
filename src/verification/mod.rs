@@ -59,6 +59,7 @@ const DEFAULT_CENTROID_MAX: f32 = 6000.0;
 const VERIFICATION_HIGH_CONFIDENCE_THRESHOLD: f32 = 0.55;
 const SPEECH_ZCR_MIN: f32 = 0.02;
 const SPEECH_ZCR_MAX: f32 = 0.35;
+const GRAPH_STRUCTURE_WEIGHT: f32 = 0.25;
 
 #[allow(clippy::too_many_arguments)]
 pub fn verify_timeline(
@@ -281,8 +282,12 @@ fn determine_verification_status(
     .count() as f32;
     let nonvoice_score = (nonvoice_indicators / 5.0).clamp(0.0, 1.0);
 
-    let nonvoice_confidence =
+    let graph_nonvoice_confidence = graph_structure_nonvoice_confidence(features, thresholds);
+    let base_nonvoice_confidence =
         (((1.0 - voice_score) * 0.7) + (nonvoice_score * 0.3)).clamp(0.0, 1.0);
+    let nonvoice_confidence = ((base_nonvoice_confidence * (1.0 - GRAPH_STRUCTURE_WEIGHT))
+        + (graph_nonvoice_confidence * GRAPH_STRUCTURE_WEIGHT))
+        .clamp(0.0, 1.0);
 
     if nonvoice_confidence >= VERIFICATION_HIGH_CONFIDENCE_THRESHOLD {
         VerificationStatus::Verified
@@ -291,6 +296,35 @@ fn determine_verification_status(
     } else {
         VerificationStatus::Suspicious
     }
+}
+
+fn graph_structure_nonvoice_confidence(
+    features: &SpectralFeatures,
+    thresholds: &AppliedThresholds,
+) -> f32 {
+    let speech_region_score = [
+        (thresholds.centroid_min..=thresholds.centroid_max).contains(&features.centroid_hz),
+        (SPEECH_ZCR_MIN..=SPEECH_ZCR_MAX).contains(&features.zcr),
+        features.spectral_flatness < thresholds.flatness_max,
+        (thresholds.entropy_min..=thresholds.entropy_max).contains(&features.spectral_entropy),
+    ]
+    .into_iter()
+    .filter(|&x| x)
+    .count() as f32
+        / 4.0;
+
+    let nonvoice_region_score = [
+        features.spectral_flatness > thresholds.flatness_max,
+        features.spectral_entropy > thresholds.entropy_max,
+        features.high_band_ratio > 0.4,
+        features.spectral_flux > 0.02,
+    ]
+    .into_iter()
+    .filter(|&x| x)
+    .count() as f32
+        / 4.0;
+
+    ((nonvoice_region_score * 0.7) + ((1.0 - speech_region_score) * 0.3)).clamp(0.0, 1.0)
 }
 
 fn write_verification_report(path: &Path, report: &VerificationReport) -> Result<()> {

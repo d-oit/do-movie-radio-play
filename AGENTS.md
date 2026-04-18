@@ -264,6 +264,11 @@ Track in `plans/050-status-report/STATUS.md`. Current items:
   - `config/profiles/modern-optimized.json`
   - `config/profiles/legacy-optimized.json`
 
+## Radio-Play 95% Plan
+
+- Active roadmap: `plans/100-radio-play-95/ROADMAP.md`
+- Use this as the primary execution plan for recovery to >=95% success before release promotion.
+
 ## Agent Coordination References
 
 - Use `.agents/skills/agent-coordination/SKILL.md` to choose orchestration strategy.

@@ -172,7 +172,7 @@ fn compute_spectral_entropy(spectrum: &[f32]) -> f32 {
     let entropy: f32 = normalized
         .iter()
         .filter(|&&p| p > 0.0)
-        .map(|&p| -p * p.log2().max(0.0))
+        .map(|&p| -p * p.log2())
         .sum();
 
     entropy

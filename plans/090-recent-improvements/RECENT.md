@@ -275,3 +275,18 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
   - executes `optimize_and_publish_profiles.sh` with bounded candidate count
   - uploads optimization reports and generated optimized profiles as artifacts
   - enforces drift guard with `check_sweep_drift.py` (fails on FP/risk regression over configured thresholds)
+
+## 12. Radio-Play 95% Recovery Track
+
+- Added dedicated roadmap: `plans/100-radio-play-95/ROADMAP.md`
+- Verification feature correctness fixed (spectral entropy computation)
+- Added graph-inspired structure confidence signal into verifier scoring for ambiguous segments
+
+## 13. Latest Optimization Refresh
+
+- Ran wrapper automation after verifier update:
+  - `scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ranked-latest.json 8 0.7`
+- New winner:
+  - `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120`
+- Weighted FP improved from `0.7391` to `0.1814` (`analysis/optimization/fp-sweep-comparison.json`)
+- Profiles regenerated and compact note refreshed.

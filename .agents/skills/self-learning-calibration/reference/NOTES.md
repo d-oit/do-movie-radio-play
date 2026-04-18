@@ -7,3 +7,5 @@
   - the_hole_1962: FP 94.39% (legacy/noisy content failure mode)
 - Verification thresholds are now applied at runtime and use non-voice confidence hysteresis (`high=0.55`) with conservative suspicious fallback.
 - Use `analysis/optimization/fp-sweep-ranked.json` + `generate_optimized_profiles.py` for deployable profile updates.
+- Graph-inspired structure confidence is blended in verifier scoring to reduce speech-over-music false positives.
+- Latest sweep winner: `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120` (see `analysis/optimization/fp-sweep-ranked-latest.json`).

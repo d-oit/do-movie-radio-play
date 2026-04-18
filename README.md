@@ -238,5 +238,9 @@ CI automation:
 Compact latest learnings:
 - Verification now uses runtime threshold overrides (`verify-timeline` flags are active in status decisioning).
 - Verification uses non-voice confidence scoring with tuned hysteresis (`high=0.55`) and conservative suspicious fallback.
+- Verification now blends a graph-inspired structure confidence signal to better suppress speech-over-music false positives.
 - Sweep ranking includes a coverage guard (`--min-coverage-ratio`) to avoid low-coverage false wins.
-- Current expanded/overnight sweep policy recommends `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0015_c120` for both modern and legacy cohorts on available fixtures.
+- Current latest sweep policy recommends `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120`.
+
+Recovery plan for radio-play >=95% success:
+- `plans/100-radio-play-95/ROADMAP.md`

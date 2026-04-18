@@ -2,12 +2,12 @@
   "previous_report": "analysis/optimization/fp-sweep-ranked.json",
   "current_report": "analysis/optimization/fp-sweep-ranked-latest.json",
   "winner_changed": false,
-  "previous_winner": "low_threshold",
-  "current_winner": "low_threshold",
-  "previous_weighted_false_positive_rate": 0.7391304301304348,
-  "current_weighted_false_positive_rate": 0.7391304301304348,
+  "previous_winner": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120",
+  "current_winner": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120",
+  "previous_weighted_false_positive_rate": 0.18141593079646012,
+  "current_weighted_false_positive_rate": 0.18141593079646012,
   "weighted_false_positive_rate_delta": 0.0,
-  "previous_weighted_false_positive_risk_rate": 0.7391304347826086,
-  "current_weighted_false_positive_risk_rate": 0.7391304347826086,
+  "previous_weighted_false_positive_risk_rate": 0.18141592920353983,
+  "current_weighted_false_positive_risk_rate": 0.18141592920353983,
   "weighted_false_positive_risk_rate_delta": 0.0
 }

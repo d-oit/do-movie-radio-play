@@ -5,3 +5,4 @@
 - Legacy film fixtures require stricter profile tuning and likely separate threshold bands.
 - Cohort-aware sweep ranking is available in `analysis/optimization/fp-sweep-ranked.json`.
 - Coverage guard (`--min-coverage-ratio`) prevents low-coverage candidate selection.
+- Radio-play recovery execution plan is tracked in `plans/100-radio-play-95/ROADMAP.md`.

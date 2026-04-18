@@ -11,3 +11,5 @@
 - Latest sweep winner: `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120` (see `analysis/optimization/fp-sweep-ranked-latest.json`).
 - Use holdout gate script before release promotion:
   - `python3 scripts/check_radio_play_readiness.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95`
+- Enforce confidence-bound release gate:
+  - `python3 scripts/check_radio_play_lb95.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-lb95 0.95`

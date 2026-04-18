@@ -300,3 +300,9 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
   - `--min-non-voice-precision 0.95`
   - `--min-non-voice-recall 0.95`
   - `--min-overlap 0.95`
+
+## 15. Radio-Play LB95 Confidence Gate
+
+- Added `scripts/check_radio_play_lb95.py` to enforce Wilson lower bound readiness.
+- Integrated into `.github/workflows/validation-sweep.yml`.
+- Current threshold: `--min-lb95 0.95` on holdout tier `C`.

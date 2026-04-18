@@ -255,4 +255,9 @@ python3 scripts/check_radio_play_readiness.py \
   --min-non-voice-precision 0.95 \
   --min-non-voice-recall 0.95 \
   --min-overlap 0.95
+
+python3 scripts/check_radio_play_lb95.py \
+  --summary analysis/validation/full-sweep-summary.json \
+  --holdout-tier C \
+  --min-lb95 0.95
 ```

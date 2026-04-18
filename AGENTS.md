@@ -54,6 +54,7 @@ python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/lat
 # Repo docs/workflow integrity checks:
 python3 scripts/check_sweep_drift.py --comparison analysis/optimization/fp-sweep-comparison.json --max-fp-delta 0.02 --max-risk-delta 0.02
 python3 scripts/check_radio_play_readiness.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95
+python3 scripts/check_radio_play_lb95.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-lb95 0.95
 python3 - <<'PY'
 import re
 from pathlib import Path
@@ -260,6 +261,7 @@ Track in `plans/050-status-report/STATUS.md`. Current items:
 - Sweep comparator: `scripts/compare_sweeps.py`
 - Sweep drift guard: `scripts/check_sweep_drift.py`
 - Radio-play readiness gate: `scripts/check_radio_play_readiness.py`
+- Radio-play LB95 gate: `scripts/check_radio_play_lb95.py`
 - Profile generator: `scripts/generate_optimized_profiles.py`
 - End-to-end wrapper: `scripts/optimize_and_publish_profiles.sh`
 - Generated profiles:

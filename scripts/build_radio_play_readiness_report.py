@@ -59,6 +59,11 @@ def main() -> int:
         default="analysis/learnings/latest-radio-play-readiness-report.md",
         help="Output markdown path",
     )
+    parser.add_argument(
+        "--require-pass",
+        action="store_true",
+        help="Exit non-zero when consolidated readiness does not pass",
+    )
     args = parser.parse_args()
 
     summary_path = Path(args.summary)
@@ -222,6 +227,8 @@ def main() -> int:
 
     print(f"wrote readiness json: {output_json}")
     print(f"wrote readiness markdown: {output_md}")
+    if args.require_pass and not readiness_pass:
+        return 1
     return 0
 
 

@@ -273,6 +273,7 @@ python3 scripts/build_radio_play_readiness_report.py \
   --min-non-voice-recall 0.95 \
   --min-overlap 0.95 \
   --min-lb95 0.95 \
+  --require-pass \
   --output-json analysis/validation/radio-play-readiness-report.json \
   --output-md analysis/learnings/latest-radio-play-readiness-report.md
 ```

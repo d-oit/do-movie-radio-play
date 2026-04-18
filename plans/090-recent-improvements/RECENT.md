@@ -321,4 +321,4 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
 - Produces unified artifacts combining threshold gate + LB95 gate + cohort summary:
   - `analysis/validation/radio-play-readiness-report.json`
   - `analysis/learnings/latest-radio-play-readiness-report.md`
-- Integrated into validation sweep CI and uploaded as workflow artifacts.
+- Integrated into validation sweep CI with `--require-pass` and uploaded as workflow artifacts.

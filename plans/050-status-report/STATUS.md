@@ -38,12 +38,14 @@ Repository integrity sweep (2026-04-18):
 
 ## Production Evaluation Correctness
 
-- Manifest-based eval coverage is now implemented in `testdata/validation/manifest.json`.
+- Manifest-based eval coverage is now implemented in:
+  - `testdata/validation/manifest.json` (general)
+  - `testdata/validation/radio-play-manifest.json` (release-readiness)
 - Tier A coverage is enforced in PR CI via `.github/workflows/ci.yml`.
 - Scheduled full sweeps are implemented in `.github/workflows/validation-sweep.yml`.
 - Coverage and artifact integrity checks are enforced by `scripts/check_validation_coverage.py`.
 - Full manifest execution and summary emission are implemented in
-  `scripts/run_validation_manifest.py` and `analysis/validation/full-sweep-summary.json`.
+  `scripts/run_validation_manifest.py` and `analysis/validation/radio-play-sweep-summary.json` for release-readiness.
 
 ## Completed Since Earlier Plan Drafts
 

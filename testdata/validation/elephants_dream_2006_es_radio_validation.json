@@ -1,0 +1,12 @@
+{
+  "profile": "modern-optimized",
+  "tolerance_ms": 400,
+  "expected_segments": 10,
+  "predicted_segments": 0,
+  "overlap_ratio": 0.0,
+  "boundary_error_ms": 0.0,
+  "speech_precision": 1.0,
+  "speech_recall": 1.0,
+  "non_voice_precision": 1.0,
+  "non_voice_recall": 0.0
+}

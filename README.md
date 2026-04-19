@@ -236,6 +236,7 @@ CI automation:
 - CI also enforces a drift guard via `scripts/check_sweep_drift.py` (fails on FP/risk regressions over threshold).
 - `.github/workflows/validation-sweep.yml` enforces radio-play holdout readiness via `scripts/check_radio_play_readiness.py` (`tier C`, min precision/recall/overlap = `0.95`).
 - `.github/workflows/validation-sweep.yml` now treats `build_radio_play_readiness_report.py --require-pass` as the single release-readiness gate source in CI.
+- Validation sweep CI runs `testdata/validation/radio-play-manifest.json` and emits `analysis/validation/radio-play-sweep-summary.json`.
 
 Compact latest learnings:
 - Verification now uses runtime threshold overrides (`verify-timeline` flags are active in status decisioning).
@@ -251,24 +252,24 @@ Manual holdout readiness gate:
 
 ```bash
 python3 scripts/check_radio_play_readiness.py \
-  --summary analysis/validation/full-sweep-summary.json \
+  --summary analysis/validation/radio-play-sweep-summary.json \
   --holdout-tier C \
   --min-non-voice-precision 0.95 \
   --min-non-voice-recall 0.95 \
   --min-overlap 0.95
 
 python3 scripts/check_radio_play_lb95.py \
-  --summary analysis/validation/full-sweep-summary.json \
+  --summary analysis/validation/radio-play-sweep-summary.json \
   --holdout-tier C \
   --min-lb95 0.95
 
 python3 scripts/build_radio_play_failure_breakdown.py \
-  --summary analysis/validation/full-sweep-summary.json \
+  --summary analysis/validation/radio-play-sweep-summary.json \
   --output-json analysis/validation/radio-play-failure-breakdown.json \
   --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
 
 python3 scripts/build_radio_play_readiness_report.py \
-  --summary analysis/validation/full-sweep-summary.json \
+  --summary analysis/validation/radio-play-sweep-summary.json \
   --holdout-tier C \
   --min-non-voice-precision 0.95 \
   --min-non-voice-recall 0.95 \

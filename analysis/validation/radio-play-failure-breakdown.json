@@ -1,17 +1,17 @@
 {
-  "summary": "analysis/validation/full-sweep-summary.json",
+  "summary": "analysis/validation/radio-play-sweep-summary.json",
   "entry_count": 4,
   "failure_count": 4,
   "cohort_summary": {
     "modern": {
       "count": 3,
-      "avg_overlap_ratio": 0.28026435666666666,
-      "avg_non_voice_precision": 0.16666666666666666,
-      "avg_non_voice_recall": 0.16666666666666666
+      "avg_overlap_ratio": 0.0,
+      "avg_non_voice_precision": 1.0,
+      "avg_non_voice_recall": 0.0
     },
     "legacy": {
       "count": 1,
-      "avg_overlap_ratio": 0.14363398,
+      "avg_overlap_ratio": 0.17828685,
       "avg_non_voice_precision": 0.0,
       "avg_non_voice_recall": 0.0
     }
@@ -22,34 +22,34 @@
       "tier": "A",
       "media": "testdata/generated/alternating.wav",
       "cohort": "modern",
-      "overlap_ratio": 0.7368421,
-      "non_voice_precision": 0.5,
-      "non_voice_recall": 0.5
+      "overlap_ratio": 0.0,
+      "non_voice_precision": 1.0,
+      "non_voice_recall": 0.0
     },
     {
-      "id": "elephants_dream_2006_de",
+      "id": "elephants_dream_2006_de_radio",
       "tier": "A",
       "media": "testdata/raw/elephants_dream_2006.mp4",
       "cohort": "modern",
-      "overlap_ratio": 0.051975485,
-      "non_voice_precision": 0.0,
+      "overlap_ratio": 0.0,
+      "non_voice_precision": 1.0,
       "non_voice_recall": 0.0
     },
     {
-      "id": "elephants_dream_2006_es",
+      "id": "elephants_dream_2006_es_radio",
       "tier": "B",
       "media": "testdata/raw/elephants_dream_2006.mp4",
       "cohort": "modern",
-      "overlap_ratio": 0.051975485,
-      "non_voice_precision": 0.0,
+      "overlap_ratio": 0.0,
+      "non_voice_precision": 1.0,
       "non_voice_recall": 0.0
     },
     {
-      "id": "the_hole_1962_subtitles",
+      "id": "the_hole_1962_radio",
       "tier": "C",
       "media": "testdata/raw/the_hole_1962.mp4",
       "cohort": "legacy",
-      "overlap_ratio": 0.14363398,
+      "overlap_ratio": 0.17828685,
       "non_voice_precision": 0.0,
       "non_voice_recall": 0.0
     }

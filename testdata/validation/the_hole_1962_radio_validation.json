@@ -1,0 +1,12 @@
+{
+  "profile": "legacy-optimized",
+  "tolerance_ms": 400,
+  "expected_segments": 1,
+  "predicted_segments": 2,
+  "overlap_ratio": 0.17828685,
+  "boundary_error_ms": 180745.0,
+  "speech_precision": 1.0,
+  "speech_recall": 1.0,
+  "non_voice_precision": 0.0,
+  "non_voice_recall": 0.0
+}

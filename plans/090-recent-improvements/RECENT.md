@@ -323,3 +323,10 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
   - `analysis/learnings/latest-radio-play-readiness-report.md`
 - Integrated into validation sweep CI with `--require-pass` and uploaded as workflow artifacts.
 - Validation workflow now uses this consolidated report as the single gate source; standalone readiness/LB95 checks are retained for local diagnostics.
+
+## 18. Radio-Play Manifest Separation
+
+- Added dedicated readiness manifest: `testdata/validation/radio-play-manifest.json`.
+- Validation sweep workflow now runs against radio-play manifest and emits:
+  - `analysis/validation/radio-play-sweep-summary.json`
+- Coverage check now runs after manifest execution to validate generated report artifacts.

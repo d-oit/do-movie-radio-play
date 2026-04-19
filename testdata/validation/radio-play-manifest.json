@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "synthetic_alternating",
+      "tier": "A",
+      "input_media": "testdata/generated/alternating.wav",
+      "truth_type": "truth_json",
+      "truth_path": "testdata/generated/alternating.truth.json",
+      "profile": "synthetic",
+      "output_report": "testdata/validation/validate_against_synthetic.json"
+    },
+    {
+      "id": "elephants_dream_2006_de_radio",
+      "tier": "A",
+      "input_media": "testdata/raw/elephants_dream_2006.mp4",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/elephants_dream_2006.de.srt",
+      "total_ms": 653791,
+      "profile": "modern-optimized",
+      "output_report": "testdata/validation/elephants_dream_2006_de_radio_validation.json"
+    },
+    {
+      "id": "elephants_dream_2006_es_radio",
+      "tier": "B",
+      "input_media": "testdata/raw/elephants_dream_2006.mp4",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/elephants_dream_2006.es.srt",
+      "total_ms": 653791,
+      "profile": "modern-optimized",
+      "output_report": "testdata/validation/elephants_dream_2006_es_radio_validation.json"
+    },
+    {
+      "id": "the_hole_1962_radio",
+      "tier": "C",
+      "input_media": "testdata/raw/the_hole_1962.mp4",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/the_hole_1962.srt",
+      "total_ms": 937900,
+      "profile": "legacy-optimized",
+      "output_report": "testdata/validation/the_hole_1962_radio_validation.json"
+    }
+  ]
+}

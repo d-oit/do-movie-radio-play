@@ -1,17 +1,25 @@
 {
-  "summary": "analysis/validation/full-sweep-summary.json",
+  "summary": "analysis/validation/radio-play-sweep-summary.json",
   "holdout_tier": "C",
   "thresholds": {
-    "min_non_voice_precision": 0.0,
-    "min_non_voice_recall": 0.0,
-    "min_overlap": 0.0,
-    "min_lb95": 0.0
+    "min_non_voice_precision": 0.95,
+    "min_non_voice_recall": 0.95,
+    "min_overlap": 0.95,
+    "min_lb95": 0.95
   },
-  "readiness_pass": true,
-  "threshold_gate_pass": true,
-  "lb95_gate_pass": true,
-  "threshold_failures": [],
-  "lb95_failures": [],
+  "readiness_pass": false,
+  "threshold_gate_pass": false,
+  "lb95_gate_pass": false,
+  "threshold_failures": [
+    "the_hole_1962_radio: non_voice_precision=0.0000 < 0.9500",
+    "the_hole_1962_radio: non_voice_recall=0.0000 < 0.9500",
+    "the_hole_1962_radio: overlap_ratio=0.1783 < 0.9500"
+  ],
+  "lb95_failures": [
+    "the_hole_1962_radio: precision_lb95=0.0000 < 0.9500",
+    "the_hole_1962_radio: recall_lb95=0.0000 < 0.9500",
+    "the_hole_1962_radio: overlap_lb95=0.0076 < 0.9500"
+  ],
   "cohort_summary": {
     "modern": {
       "count": 0,
@@ -24,13 +32,28 @@
     },
     "legacy": {
       "count": 1,
-      "avg_overlap_ratio": 0.14363398,
+      "avg_overlap_ratio": 0.17828685,
       "avg_non_voice_precision": 0.0,
       "avg_non_voice_recall": 0.0,
-      "avg_overlap_ratio_lb95": 0.005026326438178016,
+      "avg_overlap_ratio_lb95": 0.007638728497780732,
       "avg_non_voice_precision_lb95": 0.0,
       "avg_non_voice_recall_lb95": 0.0
     }
   },
-  "failing_entries": []
+  "failing_entries": [
+    {
+      "id": "the_hole_1962_radio",
+      "media": "testdata/raw/the_hole_1962.mp4",
+      "tier": "C",
+      "cohort": "legacy",
+      "non_voice_precision": 0.0,
+      "non_voice_recall": 0.0,
+      "overlap_ratio": 0.17828685,
+      "non_voice_precision_lb95": 0.0,
+      "non_voice_recall_lb95": 0.0,
+      "overlap_ratio_lb95": 0.007638728497780732,
+      "expected_segments": 1,
+      "predicted_segments": 2
+    }
+  ]
 }

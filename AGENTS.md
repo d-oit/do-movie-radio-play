@@ -53,10 +53,10 @@ python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/lat
 
 # Repo docs/workflow integrity checks:
 python3 scripts/check_sweep_drift.py --comparison analysis/optimization/fp-sweep-comparison.json --max-fp-delta 0.02 --max-risk-delta 0.02
-python3 scripts/build_radio_play_failure_breakdown.py --summary analysis/validation/full-sweep-summary.json --output-json analysis/validation/radio-play-failure-breakdown.json --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
-python3 scripts/build_radio_play_readiness_report.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95 --min-lb95 0.95 --require-pass --output-json analysis/validation/radio-play-readiness-report.json --output-md analysis/learnings/latest-radio-play-readiness-report.md
-python3 scripts/check_radio_play_readiness.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95
-python3 scripts/check_radio_play_lb95.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-lb95 0.95
+python3 scripts/build_radio_play_failure_breakdown.py --summary analysis/validation/radio-play-sweep-summary.json --output-json analysis/validation/radio-play-failure-breakdown.json --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
+python3 scripts/build_radio_play_readiness_report.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95 --min-lb95 0.95 --require-pass --output-json analysis/validation/radio-play-readiness-report.json --output-md analysis/learnings/latest-radio-play-readiness-report.md
+python3 scripts/check_radio_play_readiness.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95
+python3 scripts/check_radio_play_lb95.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-lb95 0.95
 python3 - <<'PY'
 import re
 from pathlib import Path
@@ -270,6 +270,10 @@ Track in `plans/050-status-report/STATUS.md`. Current items:
 CI source of truth:
 - Validation workflow uses `build_radio_play_readiness_report.py --require-pass` as the single release-readiness gate.
 - Keep individual gate scripts for local diagnostics and root-cause analysis.
+
+Validation manifests:
+- `testdata/validation/manifest.json` for general sweep coverage.
+- `testdata/validation/radio-play-manifest.json` for radio-play release readiness.
 - Profile generator: `scripts/generate_optimized_profiles.py`
 - End-to-end wrapper: `scripts/optimize_and_publish_profiles.sh`
 - Generated profiles:

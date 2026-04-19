@@ -17,3 +17,4 @@
   - `python3 scripts/build_radio_play_failure_breakdown.py --summary analysis/validation/full-sweep-summary.json --output-json analysis/validation/radio-play-failure-breakdown.json --output-md analysis/learnings/latest-radio-play-failure-breakdown.md`
 - Generate consolidated release-readiness report:
   - `python3 scripts/build_radio_play_readiness_report.py --summary analysis/validation/full-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95 --min-lb95 0.95 --require-pass --output-json analysis/validation/radio-play-readiness-report.json --output-md analysis/learnings/latest-radio-play-readiness-report.md`
+- In CI, treat the consolidated readiness report as the single pass/fail source for release readiness.

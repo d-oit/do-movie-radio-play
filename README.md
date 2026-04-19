@@ -235,6 +235,7 @@ CI automation:
 - `.github/workflows/optimization-sweep.yml` runs scheduled/manual wrapper smoke and uploads optimization artifacts.
 - CI also enforces a drift guard via `scripts/check_sweep_drift.py` (fails on FP/risk regressions over threshold).
 - `.github/workflows/validation-sweep.yml` enforces radio-play holdout readiness via `scripts/check_radio_play_readiness.py` (`tier C`, min precision/recall/overlap = `0.95`).
+- `.github/workflows/validation-sweep.yml` now treats `build_radio_play_readiness_report.py --require-pass` as the single release-readiness gate source in CI.
 
 Compact latest learnings:
 - Verification now uses runtime threshold overrides (`verify-timeline` flags are active in status decisioning).

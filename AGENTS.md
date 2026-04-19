@@ -266,6 +266,10 @@ Track in `plans/050-status-report/STATUS.md`. Current items:
 - Radio-play LB95 gate: `scripts/check_radio_play_lb95.py`
 - Radio-play failure breakdown: `scripts/build_radio_play_failure_breakdown.py`
 - Radio-play consolidated readiness report: `scripts/build_radio_play_readiness_report.py`
+
+CI source of truth:
+- Validation workflow uses `build_radio_play_readiness_report.py --require-pass` as the single release-readiness gate.
+- Keep individual gate scripts for local diagnostics and root-cause analysis.
 - Profile generator: `scripts/generate_optimized_profiles.py`
 - End-to-end wrapper: `scripts/optimize_and_publish_profiles.sh`
 - Generated profiles:

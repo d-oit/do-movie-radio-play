@@ -322,3 +322,4 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
   - `analysis/validation/radio-play-readiness-report.json`
   - `analysis/learnings/latest-radio-play-readiness-report.md`
 - Integrated into validation sweep CI with `--require-pass` and uploaded as workflow artifacts.
+- Validation workflow now uses this consolidated report as the single gate source; standalone readiness/LB95 checks are retained for local diagnostics.

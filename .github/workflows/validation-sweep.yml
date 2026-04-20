@@ -23,21 +23,21 @@ jobs:
       - run: python3 scripts/check_validation_coverage.py --manifest testdata/validation/radio-play-manifest.json --tier A --tier B --tier C
       - run: python3 scripts/build_radio_play_failure_breakdown.py --summary analysis/validation/radio-play-sweep-summary.json --output-json analysis/validation/radio-play-failure-breakdown.json --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
       - run: python3 scripts/build_radio_play_readiness_report.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95 --min-lb95 0.95 --output-json analysis/validation/radio-play-readiness-report.json --output-md analysis/learnings/latest-radio-play-readiness-report.md --require-pass
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: validation-sweep-summary
           path: analysis/validation/radio-play-sweep-summary.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: validation-reports
           path: testdata/validation/*.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: radio-play-failure-breakdown
           path: |
             analysis/validation/radio-play-failure-breakdown.json
             analysis/learnings/latest-radio-play-failure-breakdown.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: radio-play-readiness-report
           path: |

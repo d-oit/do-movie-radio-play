@@ -32,14 +32,14 @@ jobs:
             --comparison analysis/optimization/fp-sweep-comparison.json \
             --max-fp-delta 0.02 \
             --max-risk-delta 0.02
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: optimization-reports
           path: |
             analysis/optimization/fp-sweep-ranked-latest.json
             analysis/optimization/fp-sweep-comparison.json
             analysis/learnings/latest-optimization-note.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: optimized-profiles
           path: |

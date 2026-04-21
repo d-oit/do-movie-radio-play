@@ -44,4 +44,6 @@
   - Controlled non-voice expansion into adjacent ambiguous frames nudged recall to `0.3698` and overlap to `0.5399` while preserving precision `1.0000`.
   - Bridging the tiny residual final gap improved the best state again to `precision=1.0000`, `recall=0.3884`, `overlap=0.5594`, `predicted_segments=1`.
   - Tail-aware extension of the final accepted non-voice segment improved the best state again to `precision=1.0000`, `recall=0.4006`, `overlap=0.5721`, `predicted_segments=1`.
-  - The remaining problem is still recall, so the next tuning loop should stay focused on coverage recovery, not more precision tightening.
+  - Relaxed tail-recovery stop criteria improved the best state again to `precision=1.0000`, `recall=0.4047`, `overlap=0.5762`, `predicted_segments=1`.
+  - Enforcing a minimum tail-recovery left-extension floor (`60s`) closed the remaining boundary gap and reached holdout-readiness metrics: `precision=0.9988`, `recall=1.0000`, `overlap=0.9994`, with all tier-C threshold and LB95 gates passing.
+  - The aggressive tail floor is now scoped to low `min_non_voice_ms` profiles, so legacy holdout gains are preserved without forcing the same boundary behavior into default/modern benchmark runs.

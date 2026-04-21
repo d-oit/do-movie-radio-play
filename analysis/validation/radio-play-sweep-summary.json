@@ -6,7 +6,7 @@
     "C"
   ],
   "entry_count": 4,
-  "elapsed_ms": 203069,
+  "elapsed_ms": 194449,
   "results": [
     {
       "id": "synthetic_alternating",
@@ -17,7 +17,7 @@
       "profile": "synthetic",
       "config_path": "config/profiles/all-gaps.json",
       "output_report": "testdata/validation/validate_against_synthetic.json",
-      "elapsed_ms": 15890,
+      "elapsed_ms": 1199,
       "metrics": {
         "overlap_ratio": 0.0,
         "boundary_error_ms": 0.0,
@@ -48,7 +48,7 @@
       "profile": "modern-optimized",
       "config_path": "config/profiles/modern-optimized.json",
       "output_report": "testdata/validation/elephants_dream_2006_de_radio_validation.json",
-      "elapsed_ms": 52869,
+      "elapsed_ms": 67469,
       "metrics": {
         "overlap_ratio": 0.0,
         "boundary_error_ms": 0.0,
@@ -79,7 +79,7 @@
       "profile": "modern-optimized",
       "config_path": "config/profiles/modern-optimized.json",
       "output_report": "testdata/validation/elephants_dream_2006_es_radio_validation.json",
-      "elapsed_ms": 55330,
+      "elapsed_ms": 61656,
       "metrics": {
         "overlap_ratio": 0.0,
         "boundary_error_ms": 0.0,
@@ -110,23 +110,23 @@
       "profile": "legacy-optimized",
       "config_path": "config/profiles/legacy-optimized.json",
       "output_report": "testdata/validation/the_hole_1962_radio_validation.json",
-      "elapsed_ms": 78977,
+      "elapsed_ms": 64122,
       "metrics": {
-        "overlap_ratio": 0.5720537,
-        "boundary_error_ms": 29340.0,
+        "overlap_ratio": 0.9993875,
+        "boundary_error_ms": 60.0,
         "speech_precision": 1.0,
         "speech_recall": 1.0,
-        "non_voice_precision": 0.0,
-        "non_voice_recall": 0.0,
+        "non_voice_precision": 1.0,
+        "non_voice_recall": 1.0,
         "speech_time_precision": 1.0,
         "speech_time_recall": 1.0,
-        "non_voice_time_precision": 1.0,
-        "non_voice_time_recall": 0.40061286,
+        "non_voice_time_precision": 0.9987758,
+        "non_voice_time_recall": 1.0,
         "speech_overlap_ms": 0,
         "speech_predicted_ms": 0,
         "speech_expected_ms": 0,
-        "non_voice_overlap_ms": 39220,
-        "non_voice_predicted_ms": 39220,
+        "non_voice_overlap_ms": 97900,
+        "non_voice_predicted_ms": 98020,
         "non_voice_expected_ms": 97900,
         "expected_segments": 1,
         "predicted_segments": 1

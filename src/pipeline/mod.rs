@@ -273,6 +273,7 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
         &frame_likelihoods,
         cfg.frame_ms,
         total_audio_ms,
+        cfg.min_non_voice_ms,
     );
     stage_ms.invert_ms += verification_filter_start.elapsed().as_millis();
     info!(

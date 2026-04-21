@@ -1,0 +1,50 @@
+   Compiling movie-nonvoice-timeline v0.1.0 (/app)
+    Finished `bench` profile [optimized] target(s) in 40.93s
+     Running benches/pipeline_bench.rs (target/release/deps/pipeline_bench-05304223f2467918)
+Gnuplot not found, using plotters backend
+Benchmarking framing
+Benchmarking framing: Warming up for 3.0000 s
+Benchmarking framing: Collecting 50 samples in estimated 8.4163 s (23k iterations)
+Benchmarking framing: Analyzing
+framing                 time:   [362.60 µs 363.19 µs 363.81 µs]
+                        change: [-32.539% -31.707% -31.024%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 1 outliers among 50 measurements (2.00%)
+  1 (2.00%) high mild
+
+Benchmarking feature_extraction
+Benchmarking feature_extraction: Warming up for 3.0000 s
+Benchmarking feature_extraction: Collecting 50 samples in estimated 8.4997 s (18k iterations)
+Benchmarking feature_extraction: Analyzing
+feature_extraction      time:   [488.00 µs 556.47 µs 631.96 µs]
+                        change: [-42.095% -36.574% -30.444%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 4 outliers among 50 measurements (8.00%)
+  4 (8.00%) high severe
+
+Benchmarking energy_vad
+Benchmarking energy_vad: Warming up for 3.0000 s
+Benchmarking energy_vad: Collecting 50 samples in estimated 8.0008 s (8.9M iterations)
+Benchmarking energy_vad: Analyzing
+energy_vad              time:   [913.49 ns 919.23 ns 926.79 ns]
+                        change: [-8.3253% -7.3656% -5.7883%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 2 outliers among 50 measurements (4.00%)
+  1 (2.00%) high mild
+  1 (2.00%) high severe
+
+Benchmarking speech_segments
+Benchmarking speech_segments: Warming up for 3.0000 s
+Benchmarking speech_segments: Collecting 50 samples in estimated 8.0001 s (54M iterations)
+Benchmarking speech_segments: Analyzing
+speech_segments         time:   [144.61 ns 145.04 ns 145.58 ns]
+                        change: [-21.741% -21.393% -21.054%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
+Benchmarking invert_to_non_voice
+Benchmarking invert_to_non_voice: Warming up for 3.0000 s
+Benchmarking invert_to_non_voice: Collecting 50 samples in estimated 8.0000 s (515M iterations)
+Benchmarking invert_to_non_voice: Analyzing
+invert_to_non_voice     time:   [14.948 ns 14.975 ns 15.011 ns]
+                        change: [-0.1704% +0.2261% +0.5975%] (p = 0.25 > 0.05)
+                        No change in performance detected.

@@ -6,7 +6,7 @@
     "C"
   ],
   "entry_count": 4,
-  "elapsed_ms": 47102,
+  "elapsed_ms": 203069,
   "results": [
     {
       "id": "synthetic_alternating",
@@ -15,8 +15,9 @@
       "truth_type": "truth_json",
       "truth_path": "testdata/generated/alternating.truth.json",
       "profile": "synthetic",
+      "config_path": "config/profiles/all-gaps.json",
       "output_report": "testdata/validation/validate_against_synthetic.json",
-      "elapsed_ms": 788,
+      "elapsed_ms": 15890,
       "metrics": {
         "overlap_ratio": 0.0,
         "boundary_error_ms": 0.0,
@@ -24,6 +25,16 @@
         "speech_recall": 0.0,
         "non_voice_precision": 1.0,
         "non_voice_recall": 0.0,
+        "speech_time_precision": 1.0,
+        "speech_time_recall": 0.0,
+        "non_voice_time_precision": 1.0,
+        "non_voice_time_recall": 0.0,
+        "speech_overlap_ms": 0,
+        "speech_predicted_ms": 0,
+        "speech_expected_ms": 2200,
+        "non_voice_overlap_ms": 0,
+        "non_voice_predicted_ms": 0,
+        "non_voice_expected_ms": 3800,
         "expected_segments": 3,
         "predicted_segments": 0
       }
@@ -35,8 +46,9 @@
       "truth_type": "subtitles",
       "truth_path": "testdata/raw/elephants_dream_2006.de.srt",
       "profile": "modern-optimized",
+      "config_path": "config/profiles/modern-optimized.json",
       "output_report": "testdata/validation/elephants_dream_2006_de_radio_validation.json",
-      "elapsed_ms": 13588,
+      "elapsed_ms": 52869,
       "metrics": {
         "overlap_ratio": 0.0,
         "boundary_error_ms": 0.0,
@@ -44,7 +56,17 @@
         "speech_recall": 1.0,
         "non_voice_precision": 1.0,
         "non_voice_recall": 0.0,
-        "expected_segments": 10,
+        "speech_time_precision": 1.0,
+        "speech_time_recall": 1.0,
+        "non_voice_time_precision": 1.0,
+        "non_voice_time_recall": 0.0,
+        "speech_overlap_ms": 0,
+        "speech_predicted_ms": 0,
+        "speech_expected_ms": 0,
+        "non_voice_overlap_ms": 0,
+        "non_voice_predicted_ms": 0,
+        "non_voice_expected_ms": 481741,
+        "expected_segments": 78,
         "predicted_segments": 0
       }
     },
@@ -55,8 +77,9 @@
       "truth_type": "subtitles",
       "truth_path": "testdata/raw/elephants_dream_2006.es.srt",
       "profile": "modern-optimized",
+      "config_path": "config/profiles/modern-optimized.json",
       "output_report": "testdata/validation/elephants_dream_2006_es_radio_validation.json",
-      "elapsed_ms": 13154,
+      "elapsed_ms": 55330,
       "metrics": {
         "overlap_ratio": 0.0,
         "boundary_error_ms": 0.0,
@@ -64,7 +87,17 @@
         "speech_recall": 1.0,
         "non_voice_precision": 1.0,
         "non_voice_recall": 0.0,
-        "expected_segments": 10,
+        "speech_time_precision": 1.0,
+        "speech_time_recall": 1.0,
+        "non_voice_time_precision": 1.0,
+        "non_voice_time_recall": 0.0,
+        "speech_overlap_ms": 0,
+        "speech_predicted_ms": 0,
+        "speech_expected_ms": 0,
+        "non_voice_overlap_ms": 0,
+        "non_voice_predicted_ms": 0,
+        "non_voice_expected_ms": 481741,
+        "expected_segments": 78,
         "predicted_segments": 0
       }
     },
@@ -75,17 +108,28 @@
       "truth_type": "subtitles",
       "truth_path": "testdata/raw/the_hole_1962.srt",
       "profile": "legacy-optimized",
+      "config_path": "config/profiles/legacy-optimized.json",
       "output_report": "testdata/validation/the_hole_1962_radio_validation.json",
-      "elapsed_ms": 19519,
+      "elapsed_ms": 78977,
       "metrics": {
-        "overlap_ratio": 0.17828685,
-        "boundary_error_ms": 180745.0,
+        "overlap_ratio": 0.5720537,
+        "boundary_error_ms": 29340.0,
         "speech_precision": 1.0,
         "speech_recall": 1.0,
         "non_voice_precision": 0.0,
         "non_voice_recall": 0.0,
+        "speech_time_precision": 1.0,
+        "speech_time_recall": 1.0,
+        "non_voice_time_precision": 1.0,
+        "non_voice_time_recall": 0.40061286,
+        "speech_overlap_ms": 0,
+        "speech_predicted_ms": 0,
+        "speech_expected_ms": 0,
+        "non_voice_overlap_ms": 39220,
+        "non_voice_predicted_ms": 39220,
+        "non_voice_expected_ms": 97900,
         "expected_segments": 1,
-        "predicted_segments": 2
+        "predicted_segments": 1
       }
     }
   ]

@@ -18,3 +18,15 @@
 - Generate consolidated release-readiness report:
   - `python3 scripts/build_radio_play_readiness_report.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95 --min-lb95 0.95 --require-pass --output-json analysis/validation/radio-play-readiness-report.json --output-md analysis/learnings/latest-radio-play-readiness-report.md`
 - In CI, treat the consolidated readiness report as the single pass/fail source for release readiness.
+- Extra modern fixtures are now part of benchmark/eval tracking:
+  - `testdata/raw/elephantsdream_teaser.mp4` (2006)
+  - `testdata/raw/caminandes_gran_dillama.mp4` (2013)
+- For intentional performance shifts, refresh benchmark baseline with:
+  - `bash scripts/refresh_benchmark_baseline.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/latest.json`
+- For intentional sweep policy shifts, refresh sweep baseline with:
+  - `bash scripts/refresh_sweep_baseline.sh analysis/optimization/fp-sweep-ranked.json analysis/optimization/fp-sweep-ranked-latest.json`
+- External repo/process references with real fit:
+  - `d-o-hub/github-template-ai-agents`: single-source agent contract, fixed validation workflow, skill discipline
+  - `d-o-hub/chaotic_semantic_memory`: explicit benchmark/development gates and deterministic Rust-first architecture docs
+  - `ruvnet/musica`: structure-first DSP design, benchmark-heavy development, interpretable graph-based audio logic
+- Reuse only workflow patterns or minimal deterministic Rust-portable logic; do not import non-Rust runtime stacks.

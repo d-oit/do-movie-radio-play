@@ -8,6 +8,7 @@
       "truth_type": "truth_json",
       "truth_path": "testdata/generated/alternating.truth.json",
       "profile": "synthetic",
+      "config_path": "config/profiles/all-gaps.json",
       "output_report": "testdata/validation/validate_against_synthetic.json"
     },
     {
@@ -18,6 +19,7 @@
       "truth_path": "testdata/raw/elephants_dream_2006.de.srt",
       "total_ms": 653791,
       "profile": "movie",
+      "config_path": "config/profiles/radio-play.json",
       "output_report": "testdata/validation/elephants_dream_2006_de_validation.json"
     },
     {
@@ -28,6 +30,7 @@
       "truth_path": "testdata/raw/elephants_dream_2006.es.srt",
       "total_ms": 653791,
       "profile": "movie",
+      "config_path": "config/profiles/radio-play.json",
       "output_report": "testdata/validation/elephants_dream_2006_es_validation.json"
     },
     {
@@ -38,6 +41,7 @@
       "truth_path": "testdata/raw/the_hole_1962.srt",
       "total_ms": 937900,
       "profile": "movie",
+      "config_path": "config/profiles/radio-play.json",
       "output_report": "testdata/validation/the_hole_1962_validation.json"
     }
   ]

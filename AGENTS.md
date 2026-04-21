@@ -50,13 +50,16 @@ cargo test
 # Benchmark smoke:
 bash scripts/benchmark.sh
 python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/latest.json
+bash scripts/refresh_benchmark_baseline.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/latest.json
 
 # Repo docs/workflow integrity checks:
 python3 scripts/check_sweep_drift.py --comparison analysis/optimization/fp-sweep-comparison.json --max-fp-delta 0.02 --max-risk-delta 0.02
+bash scripts/refresh_sweep_baseline.sh analysis/optimization/fp-sweep-ranked.json analysis/optimization/fp-sweep-ranked-latest.json
 python3 scripts/build_radio_play_failure_breakdown.py --summary analysis/validation/radio-play-sweep-summary.json --output-json analysis/validation/radio-play-failure-breakdown.json --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
 python3 scripts/build_radio_play_readiness_report.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95 --min-lb95 0.95 --require-pass --output-json analysis/validation/radio-play-readiness-report.json --output-md analysis/learnings/latest-radio-play-readiness-report.md
 python3 scripts/check_radio_play_readiness.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95
 python3 scripts/check_radio_play_lb95.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-lb95 0.95
+python3 scripts/check_media_intake.py --input analysis/media/modern-multilang-intake.json --min-sub-langs 2 --strict-license
 python3 - <<'PY'
 import re
 from pathlib import Path
@@ -85,6 +88,10 @@ PY
 
 Use this exact sequence for every non-trivial change:
 
+- Do not reorder or skip steps unless explicitly blocked by missing external dependencies.
+- If blocked, record the blocker and run every remaining unblocked step in the same order.
+- Treat this sequence as the default anti-regression protocol for local runs and CI updates.
+
 ```bash
 # 1) Sync fixtures and deterministic inputs
 bash scripts/fetch_test_assets.sh
@@ -93,7 +100,7 @@ bash scripts/fetch_test_assets.sh
 bash scripts/quality_gate.sh
 
 # 3) Benchmark artifact generation + regression check
-bash scripts/benchmark.sh testdata/raw/sintel_trailer_2010.mp4 analysis/benchmarks/ci.json
+bash scripts/benchmark.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/ci.json
 python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/ci.json
 
 # 4) Bench harness (performance visibility)
@@ -108,11 +115,51 @@ git push
 gh run watch --exit-status
 ```
 
+Preferred single-command entrypoint for local anti-regression runs:
+
+```bash
+bash scripts/run_standard_workflow.sh
+```
+
+Fast planning/dry-run:
+
+```bash
+bash scripts/run_standard_workflow.sh --dry-run
+```
+
+## Skill Activation Policy (On Demand)
+
+Always load and follow the matching agent skill when a task maps to an existing skill under `.agents/skills/`.
+
+- If a task matches a skill scope, use that skill workflow first; do not improvise a parallel process.
+- Keep outputs aligned with the skill's expected artifacts, checks, and handoff notes.
+- If multiple skills apply, use the most specific skill first, then compose with broader coordination skills.
+- If no skill applies, fall back to this AGENTS.md workflow.
+
+Minimum mapping to enforce:
+
+- Multi-step coordination -> `.agents/skills/agent-coordination/SKILL.md`
+- Parallelizable independent workstreams -> `.agents/skills/agent-coordination/PARALLEL.md`
+- Calibration and threshold learning updates -> `.agents/skills/self-learning-calibration/`
+- VAD engine tuning -> `.agents/skills/audio-vad-cpu/`
+- Non-voice segmentation behavior changes -> `.agents/skills/nonvoice-segmentation/`
+
+External research usage rule:
+
+- Academic papers and non-Rust repos are reference inputs only.
+- Reuse only logic that can be translated into deterministic offline Rust with clear accuracy impact.
+- Capture reusable findings in `analysis/learnings/` and the relevant `.agents/skills/*/reference/*.md` notes.
+- Prefer reference patterns that improve operator discipline too:
+  - single-source instructions,
+  - explicit validation/benchmark gates,
+  - benchmark-first and interpretable DSP workflows.
+
 Required outcome before considering work complete:
 - no clippy warnings
 - no failing tests
 - at least one test executed and passed in this session
 - benchmark regression check passes
+- if accuracy-related code changed, re-run `testdata/validation/radio-play-manifest.json` and refresh readiness artifacts before concluding impact
 - GitHub Actions `Quality Gate` passes
 
 ## Commit Policy

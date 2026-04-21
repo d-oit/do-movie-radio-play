@@ -34,6 +34,18 @@ def media_key(path: Path) -> str:
     return path.stem.replace(".", "_").replace("-", "_")
 
 
+def unique_paths(items: list[str]) -> list[Path]:
+    seen: set[str] = set()
+    ordered: list[Path] = []
+    for item in items:
+        normalized = str(Path(item))
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        ordered.append(Path(normalized))
+    return ordered
+
+
 def candidate_matrix() -> list[dict]:
     return [
         {
@@ -176,13 +188,13 @@ def main() -> int:
     parser.add_argument(
         "--media",
         action="append",
-        default=DEFAULT_MEDIA,
+        default=None,
         help="Input media path (repeatable)",
     )
     parser.add_argument(
         "--legacy-media",
         action="append",
-        default=sorted(DEFAULT_LEGACY_MEDIA),
+        default=None,
         help="Subset treated as legacy cohort (repeatable)",
     )
     parser.add_argument(
@@ -214,8 +226,12 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    media_paths = [Path(p) for p in args.media]
-    legacy_media = {str(Path(p)) for p in args.legacy_media}
+    media_inputs = args.media if args.media else DEFAULT_MEDIA
+    legacy_inputs = (
+        args.legacy_media if args.legacy_media else sorted(DEFAULT_LEGACY_MEDIA)
+    )
+    media_paths = unique_paths(media_inputs)
+    legacy_media = {str(path) for path in unique_paths(legacy_inputs)}
     for media_path in media_paths:
         if not media_path.exists():
             raise FileNotFoundError(f"missing media fixture: {media_path}")

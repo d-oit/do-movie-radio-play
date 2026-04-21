@@ -9,6 +9,14 @@ def load_summary(path: Path) -> dict:
 
 
 def metric_value(metrics: dict, key: str) -> float:
+    aliases = {
+        "non_voice_precision": ["non_voice_time_precision", "non_voice_precision"],
+        "non_voice_recall": ["non_voice_time_recall", "non_voice_recall"],
+    }
+    for candidate in aliases.get(key, [key]):
+        value = metrics.get(candidate)
+        if value is not None:
+            return float(value)
     value = metrics.get(key)
     if value is None:
         return 0.0

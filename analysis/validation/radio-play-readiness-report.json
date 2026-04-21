@@ -11,14 +11,12 @@
   "threshold_gate_pass": false,
   "lb95_gate_pass": false,
   "threshold_failures": [
-    "the_hole_1962_radio: non_voice_precision=0.0000 < 0.9500",
-    "the_hole_1962_radio: non_voice_recall=0.0000 < 0.9500",
-    "the_hole_1962_radio: overlap_ratio=0.1783 < 0.9500"
+    "the_hole_1962_radio: non_voice_recall=0.4006 < 0.9500",
+    "the_hole_1962_radio: overlap_ratio=0.5721 < 0.9500"
   ],
   "lb95_failures": [
-    "the_hole_1962_radio: precision_lb95=0.0000 < 0.9500",
-    "the_hole_1962_radio: recall_lb95=0.0000 < 0.9500",
-    "the_hole_1962_radio: overlap_lb95=0.0076 < 0.9500"
+    "the_hole_1962_radio: recall_lb95=0.3704 < 0.9500",
+    "the_hole_1962_radio: overlap_lb95=0.5408 < 0.9500"
   ],
   "cohort_summary": {
     "modern": {
@@ -32,12 +30,12 @@
     },
     "legacy": {
       "count": 1,
-      "avg_overlap_ratio": 0.17828685,
-      "avg_non_voice_precision": 0.0,
-      "avg_non_voice_recall": 0.0,
-      "avg_overlap_ratio_lb95": 0.007638728497780732,
-      "avg_non_voice_precision_lb95": 0.0,
-      "avg_non_voice_recall_lb95": 0.0
+      "avg_overlap_ratio": 0.5720537,
+      "avg_non_voice_precision": 1.0,
+      "avg_non_voice_recall": 0.40061286,
+      "avg_overlap_ratio_lb95": 0.540837406429058,
+      "avg_non_voice_precision_lb95": 0.9902951079421666,
+      "avg_non_voice_recall_lb95": 0.370362981260109
     }
   },
   "failing_entries": [
@@ -46,14 +44,16 @@
       "media": "testdata/raw/the_hole_1962.mp4",
       "tier": "C",
       "cohort": "legacy",
-      "non_voice_precision": 0.0,
-      "non_voice_recall": 0.0,
-      "overlap_ratio": 0.17828685,
-      "non_voice_precision_lb95": 0.0,
-      "non_voice_recall_lb95": 0.0,
-      "overlap_ratio_lb95": 0.007638728497780732,
+      "non_voice_precision": 1.0,
+      "non_voice_recall": 0.40061286,
+      "overlap_ratio": 0.5720537,
+      "non_voice_precision_lb95": 0.9902951079421666,
+      "non_voice_recall_lb95": 0.370362981260109,
+      "overlap_ratio_lb95": 0.540837406429058,
       "expected_segments": 1,
-      "predicted_segments": 2
+      "predicted_segments": 1,
+      "expected_non_voice_samples": 979,
+      "predicted_non_voice_samples": 392
     }
   ]
 }

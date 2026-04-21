@@ -198,6 +198,27 @@ timeline extract testdata/raw/windy_day_1967.mp4 --output analysis/validation/wi
 timeline verify-timeline testdata/raw/windy_day_1967.mp4 --timeline analysis/validation/windy_day_1967_spectral.json --output analysis/validation/windy_day_1967_verified.json --save-learning --learning-db analysis/thresholds/learning.db
 ```
 
+---
+
+## 10. Modern Fixture CI Expansion + Compact Digest (2026-04-19)
+
+Added two post-2000 modern fixtures to routine benchmark/eval coverage:
+
+- `testdata/raw/elephantsdream_teaser.mp4` (2006)
+- `testdata/raw/caminandes_gran_dillama.mp4` (2013)
+
+CI benchmark job now emits:
+
+- per-movie benchmark artifacts,
+- focused FP eval sweep for those two fixtures,
+- compact markdown digest `analysis/optimization/modern-extra-ci-summary.md`.
+
+Manual benchmark baseline refresh script added:
+
+```bash
+bash scripts/refresh_benchmark_baseline.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/latest.json
+```
+
 Observed verification outcomes:
 
 | Movie | Verified | Suspicious | FP Rate |
@@ -226,6 +247,32 @@ Benchmark and eval artifacts from this optimization pass:
 - `analysis/benchmarks/elephantsdream_teaser.json`
 - `analysis/benchmarks/caminandes_gran_dillama.json`
 - `analysis/validation/full-sweep-summary-2026-04-16.json`
+
+## 11. External Workflow / DSP Reference Review (2026-04-19)
+
+Reviewed possible reuse from:
+
+- `d-o-hub/github-template-ai-agents`
+- `d-o-hub/chaotic_semantic_memory`
+- `ruvnet/musica`
+
+Adopted/reinforced patterns with concrete fit:
+
+- single-source agent contract in `AGENTS.md`
+- fixed-order anti-regression workflow runner (`scripts/run_standard_workflow.sh`)
+- benchmark/sweep baseline refresh helpers as explicit operator actions
+- benchmark-first / interpretable DSP development discipline
+
+Potential Rust-portable logic retained as future references:
+
+- structure-first graph/audio grouping ideas from `musica`
+- stricter contract-regeneration and validation discipline from Rust-first repos
+
+Rejected for direct reuse:
+
+- non-Rust runtime stacks,
+- heavyweight neural/audio frameworks as default execution path,
+- any workflow pattern that weakens deterministic offline execution.
 
 ## 7. Verification and Sweep Optimization
 

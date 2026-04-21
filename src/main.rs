@@ -258,7 +258,7 @@ fn run() -> Result<()> {
                         cfg.frame_ms,
                         &speech,
                         total,
-                        cfg.min_non_voice_ms,
+                        cfg.frame_ms,
                     );
                     let predicted = extract_timeline(&input_media, &cfg)?;
                     let report = validation::validate_against_timeline(
@@ -277,7 +277,7 @@ fn run() -> Result<()> {
                         cfg.sample_rate_hz,
                         cfg.frame_ms,
                         total,
-                        cfg.min_non_voice_ms,
+                        cfg.frame_ms,
                     )?;
                     let predicted = extract_timeline(&input_media, &cfg)?;
                     let report = validation::validate_against_timeline(

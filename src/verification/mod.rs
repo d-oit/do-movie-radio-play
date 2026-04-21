@@ -60,6 +60,7 @@ const VERIFICATION_HIGH_CONFIDENCE_THRESHOLD: f32 = 0.55;
 const SPEECH_ZCR_MIN: f32 = 0.02;
 const SPEECH_ZCR_MAX: f32 = 0.35;
 const GRAPH_STRUCTURE_WEIGHT: f32 = 0.25;
+const DEFAULT_FILTER_SEGMENT_CONFIDENCE_CEILING: f32 = 0.55;
 
 #[allow(clippy::too_many_arguments)]
 pub fn verify_timeline(
@@ -79,14 +80,14 @@ pub fn verify_timeline(
         bail!("Media file not found: {}", media_path_buf.display());
     }
 
-    let thresholds = AppliedThresholds {
-        entropy_min: entropy_min.unwrap_or(DEFAULT_ENTROPY_MIN),
-        entropy_max: entropy_max.unwrap_or(DEFAULT_ENTROPY_MAX),
-        flatness_max: flatness_max.unwrap_or(DEFAULT_FLATNESS_MAX),
-        energy_min: energy_min.unwrap_or(DEFAULT_ENERGY_MIN),
-        centroid_min: centroid_min.unwrap_or(DEFAULT_CENTROID_MIN),
-        centroid_max: centroid_max.unwrap_or(DEFAULT_CENTROID_MAX),
-    };
+    let thresholds = build_thresholds(
+        entropy_min,
+        entropy_max,
+        flatness_max,
+        energy_min,
+        centroid_min,
+        centroid_max,
+    );
 
     let mut segment_results = Vec::new();
     let mut verified_segments = Vec::new();
@@ -215,6 +216,60 @@ pub fn verify_timeline(
     );
 
     Ok(report)
+}
+
+pub fn filter_low_confidence_non_voice_segments(
+    media_path: &Path,
+    segments: &[Segment],
+    confidence_ceiling: f32,
+) -> Vec<Segment> {
+    if !media_path.exists() {
+        return segments.to_vec();
+    }
+
+    let thresholds = build_thresholds(None, None, None, None, None, None);
+    segments
+        .iter()
+        .filter(|segment| {
+            if segment.kind != SegmentKind::NonVoice || segment.confidence > confidence_ceiling {
+                return true;
+            }
+            match analyze_segment(media_path, segment, &thresholds) {
+                Ok(analysis) => matches!(analysis.status, VerificationStatus::Verified),
+                Err(err) => {
+                    warn!(
+                        segment_ms = format!("{}-{}", segment.start_ms, segment.end_ms),
+                        error = %err,
+                        "verification filter failed, keeping segment"
+                    );
+                    true
+                }
+            }
+        })
+        .cloned()
+        .collect()
+}
+
+pub fn default_filter_segment_confidence_ceiling() -> f32 {
+    DEFAULT_FILTER_SEGMENT_CONFIDENCE_CEILING
+}
+
+fn build_thresholds(
+    entropy_min: Option<f32>,
+    entropy_max: Option<f32>,
+    flatness_max: Option<f32>,
+    energy_min: Option<f32>,
+    centroid_min: Option<f32>,
+    centroid_max: Option<f32>,
+) -> AppliedThresholds {
+    AppliedThresholds {
+        entropy_min: entropy_min.unwrap_or(DEFAULT_ENTROPY_MIN),
+        entropy_max: entropy_max.unwrap_or(DEFAULT_ENTROPY_MAX),
+        flatness_max: flatness_max.unwrap_or(DEFAULT_FLATNESS_MAX),
+        energy_min: energy_min.unwrap_or(DEFAULT_ENERGY_MIN),
+        centroid_min: centroid_min.unwrap_or(DEFAULT_CENTROID_MIN),
+        centroid_max: centroid_max.unwrap_or(DEFAULT_CENTROID_MAX),
+    }
 }
 
 fn analyze_segment(
@@ -414,5 +469,12 @@ mod tests {
         };
 
         assert_eq!(summary.false_positive_rate, 0.2);
+    }
+
+    #[test]
+    fn build_thresholds_uses_defaults() {
+        let thresholds = build_thresholds(None, None, None, None, None, None);
+        assert_eq!(thresholds.entropy_min, DEFAULT_ENTROPY_MIN);
+        assert_eq!(thresholds.centroid_max, DEFAULT_CENTROID_MAX);
     }
 }

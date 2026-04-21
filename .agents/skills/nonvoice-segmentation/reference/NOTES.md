@@ -2,5 +2,19 @@
 - Determinism and testability first.
 - Use `min_non_voice_ms >= 500` for radio-play/movie review sweeps.
 - Segment confidence now includes duration adjustment; very short segments are down-weighted.
+- Pipeline now includes anti-fragmentation safeguards:
+  - prune short low-confidence speech segments before inversion,
+  - bridge adjacent non-voice windows across short speech interruptions.
+- A first selective verifier-filter pass was wired for low-confidence non-voice segments, but it showed no measurable readiness gain on the current holdout; treat verifier integration as a precision lever only if ambiguity selection is expanded or confidence calibration is improved.
+- Extraction now honors merge-policy strategy during the main pipeline; if metrics stay flat, do not keep searching inactive knobs.
+- A first tri-state temporal smoothing pass (`speech / ambiguous / non_voice`) is now in the pipeline; current holdout metrics regressed slightly, so do not double down on this heuristic without adding stronger ambiguity evidence.
+- A first segment-level speech-evidence filter is also in the pipeline; current holdout metrics stayed flat, so this specific evidence rule set is not enough on its own.
+- Hard non-speech frame-state enforcement (`music_like` / `noise_like`) combined with segment-level speech-evidence filtering is the first structural path that materially improved the holdout: much higher precision and lower fragmentation, but recall now needs recovery.
+- Controlled expansion of accepted non-voice spans into adjacent ambiguous frames provides a small recall recovery without giving up the precision/fragmentation win.
+- Bridging tiny residual post-filter gaps can further improve recall/overlap while preserving the structural precision win; prefer this kind of narrow repair over broad threshold loosening.
+- Tail-aware extension of the final accepted non-voice span can recover additional recall/overlap while preserving near-perfect precision; keep this bounded and shape-aware.
+- Reusable external logic to port into Rust:
+  - `auditok`: leading/trailing silence trim and pause normalization,
+  - `inaSpeechSegmenter`: stronger temporal grouping for speech/music/noise segmentation.
 - Use review flow (`x`, `e`, `Ctrl+S`) to capture false positives and feed learning DB.
 - For production runs, prefer generated profiles from sweep policy (`modern-optimized`, `legacy-optimized`).

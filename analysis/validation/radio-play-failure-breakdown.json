@@ -11,9 +11,9 @@
     },
     "legacy": {
       "count": 1,
-      "avg_overlap_ratio": 0.17828685,
-      "avg_non_voice_precision": 0.0,
-      "avg_non_voice_recall": 0.0
+      "avg_overlap_ratio": 0.5720537,
+      "avg_non_voice_precision": 1.0,
+      "avg_non_voice_recall": 0.40061286
     }
   },
   "failures": [
@@ -49,9 +49,9 @@
       "tier": "C",
       "media": "testdata/raw/the_hole_1962.mp4",
       "cohort": "legacy",
-      "overlap_ratio": 0.17828685,
-      "non_voice_precision": 0.0,
-      "non_voice_recall": 0.0
+      "overlap_ratio": 0.5720537,
+      "non_voice_precision": 1.0,
+      "non_voice_recall": 0.40061286
     }
   ]
 }

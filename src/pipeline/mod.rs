@@ -1,10 +1,14 @@
 pub mod decode;
 pub mod features;
 pub mod framing;
+pub mod nonvoice_expand;
 pub mod prompts;
 pub mod resample;
 pub mod segmenter;
+pub mod speech_evidence;
 pub mod tags;
+pub mod tail_recovery;
+pub mod tri_state;
 pub mod vad;
 
 use std::{path::Path, time::Instant};
@@ -13,8 +17,11 @@ use anyhow::Result;
 use tracing::info;
 
 use crate::config::AnalysisConfig;
-use crate::pipeline::vad::{create_engine, VadEngine};
+use crate::pipeline::vad::{adapt_spectral_thresholds, create_engine, VadEngine};
 use crate::types::{BenchmarkResult, StageDurations, TimelineOutput};
+use crate::verification::{
+    default_filter_segment_confidence_ceiling, filter_low_confidence_non_voice_segments,
+};
 
 struct PipelineArtifacts {
     timeline: TimelineOutput,
@@ -46,16 +53,6 @@ pub fn extract_timeline(input: &Path, cfg: &AnalysisConfig) -> Result<TimelineOu
 
 fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts> {
     let effective_threshold = cfg.energy_threshold + cfg.vad_threshold_delta;
-    let vad_engine: Box<dyn VadEngine> = create_engine(
-        &cfg.vad_engine,
-        effective_threshold,
-        cfg.spectral_flatness_max,
-        cfg.spectral_entropy_min,
-        cfg.spectral_centroid_min,
-        cfg.spectral_centroid_max,
-    )?;
-
-    let vad_name = vad_engine.name();
     let mut stage_ms = StageDurations::default();
 
     let decode_start = Instant::now();
@@ -92,6 +89,53 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     );
     let frame_count = frames.len();
 
+    let (vad_threshold, vad_flatness_max, vad_entropy_min, vad_centroid_min, vad_centroid_max) =
+        if cfg.vad_engine == "spectral" {
+            let adapted = adapt_spectral_thresholds(
+                &frames,
+                effective_threshold,
+                cfg.spectral_flatness_max,
+                cfg.spectral_entropy_min,
+                cfg.spectral_centroid_min,
+                cfg.spectral_centroid_max,
+            );
+            info!(
+                stage = "vad_adapt",
+                threshold = adapted.threshold,
+                flatness_max = adapted.flatness_max,
+                entropy_min = adapted.entropy_min,
+                centroid_min = adapted.centroid_min,
+                centroid_max = adapted.centroid_max,
+                "adaptive spectral thresholds computed"
+            );
+            (
+                adapted.threshold,
+                Some(adapted.flatness_max),
+                Some(adapted.entropy_min),
+                Some(adapted.centroid_min),
+                Some(adapted.centroid_max),
+            )
+        } else {
+            (
+                effective_threshold,
+                cfg.spectral_flatness_max,
+                cfg.spectral_entropy_min,
+                cfg.spectral_centroid_min,
+                cfg.spectral_centroid_max,
+            )
+        };
+
+    let vad_engine: Box<dyn VadEngine> = create_engine(
+        &cfg.vad_engine,
+        vad_threshold,
+        vad_flatness_max,
+        vad_entropy_min,
+        vad_centroid_min,
+        vad_centroid_max,
+    )?;
+
+    let vad_name = vad_engine.name();
+
     let vad_start = Instant::now();
     let vad_output = vad_engine.classify(&frames);
     let speech = vad_output.decisions;
@@ -103,14 +147,20 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
         ms = stage_ms.vad_ms,
         engine = vad_name,
         speech_frames,
-        threshold = effective_threshold,
+        threshold = vad_threshold,
         base_threshold = cfg.energy_threshold,
         delta = cfg.vad_threshold_delta,
         "stage complete"
     );
 
     let smooth_start = Instant::now();
-    let smoothed = segmenter::smooth_speech(&speech, cfg.frame_ms, cfg.speech_hangover_ms);
+    let smoothed = tri_state::resolve_speech_with_ambiguity(
+        &speech,
+        &frames,
+        &frame_likelihoods,
+        cfg.frame_ms,
+        cfg.speech_hangover_ms,
+    );
     stage_ms.smooth_ms = smooth_start.elapsed().as_millis();
     let smoothed_frames = smoothed.iter().filter(|&&v| v).count();
     info!(
@@ -139,24 +189,52 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
 
     let merge_start = Instant::now();
     let merged_speech = segmenter::merge_close_segments(&speech_segments, cfg.merge_gap_ms);
+    let prune_floor_ms = cfg
+        .merge_options
+        .as_ref()
+        .map(|opts| opts.min_speech_duration)
+        .unwrap_or(cfg.min_speech_ms);
+    let pruned_speech = segmenter::prune_short_speech_segments(&merged_speech, prune_floor_ms);
+    let filtered_speech =
+        speech_evidence::filter_implausible_speech_segments(&pruned_speech, &frames, cfg.frame_ms);
     stage_ms.merge_ms = merge_start.elapsed().as_millis();
     info!(
         stage = "merge_segments",
         ms = stage_ms.merge_ms,
-        segments = merged_speech.len(),
+        segments_before_prune = merged_speech.len(),
+        segments_after_prune = pruned_speech.len(),
+        segments_after_evidence = filtered_speech.len(),
+        prune_floor_ms,
         merge_gap_ms = cfg.merge_gap_ms,
         "stage complete"
     );
-    let speech_segment_count = merged_speech.len();
+    let speech_segment_count = filtered_speech.len();
 
     let total_audio_ms = mono.len() as u64 * 1000 / cfg.sample_rate_hz as u64;
     let invert_start = Instant::now();
     let non_voice = segmenter::invert_to_non_voice(
-        &merged_speech,
+        &filtered_speech,
         total_audio_ms,
         cfg.min_non_voice_ms,
         cfg.frame_ms,
         &frame_likelihoods,
+    );
+    let segments_before_bridge = non_voice.len();
+    let bridge_speech_ms = cfg
+        .merge_options
+        .as_ref()
+        .map(|opts| opts.min_speech_duration)
+        .unwrap_or(0);
+    let non_voice = segmenter::bridge_non_voice_segments(&non_voice, bridge_speech_ms);
+    let non_voice = if let Some(merge_options) = cfg.merge_options.as_ref() {
+        segmenter::apply_non_voice_merge_policy(&non_voice, merge_options)
+    } else {
+        non_voice
+    };
+    let non_voice = nonvoice_expand::expand_non_voice_segments_into_ambiguous(
+        &non_voice,
+        &frame_likelihoods,
+        cfg.frame_ms,
     );
     stage_ms.invert_ms = invert_start.elapsed().as_millis();
     let segments_before_split = non_voice.len();
@@ -182,10 +260,28 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     } else {
         non_voice
     };
+    let verification_filter_start = Instant::now();
+    let segments_before_filter = segments.len();
+    let segments = filter_low_confidence_non_voice_segments(
+        input,
+        &segments,
+        default_filter_segment_confidence_ceiling(),
+    );
+    let segments = segmenter::bridge_residual_non_voice_gaps(&segments);
+    let segments = tail_recovery::extend_terminal_non_voice_segment(
+        &segments,
+        &frame_likelihoods,
+        cfg.frame_ms,
+        total_audio_ms,
+    );
+    stage_ms.invert_ms += verification_filter_start.elapsed().as_millis();
     info!(
         stage = "invert",
         ms = stage_ms.invert_ms,
         segments = segments.len(),
+        segments_before_bridge,
+        segments_before_filter,
+        bridge_speech_ms,
         total_ms = total_audio_ms,
         min_non_voice_ms = cfg.min_non_voice_ms,
         "stage complete"

@@ -23,6 +23,16 @@ pub struct ValidationReport {
     pub speech_recall: f32,
     pub non_voice_precision: f32,
     pub non_voice_recall: f32,
+    pub speech_time_precision: f32,
+    pub speech_time_recall: f32,
+    pub non_voice_time_precision: f32,
+    pub non_voice_time_recall: f32,
+    pub speech_overlap_ms: u64,
+    pub speech_predicted_ms: u64,
+    pub speech_expected_ms: u64,
+    pub non_voice_overlap_ms: u64,
+    pub non_voice_predicted_ms: u64,
+    pub non_voice_expected_ms: u64,
 }
 
 pub fn validate_against_timeline(
@@ -43,6 +53,16 @@ pub fn validate_against_timeline(
         speech_recall: metrics.speech_recall,
         non_voice_precision: metrics.non_voice_precision,
         non_voice_recall: metrics.non_voice_recall,
+        speech_time_precision: metrics.speech_time_precision,
+        speech_time_recall: metrics.speech_time_recall,
+        non_voice_time_precision: metrics.non_voice_time_precision,
+        non_voice_time_recall: metrics.non_voice_time_recall,
+        speech_overlap_ms: metrics.speech_overlap_ms,
+        speech_predicted_ms: metrics.speech_predicted_ms,
+        speech_expected_ms: metrics.speech_expected_ms,
+        non_voice_overlap_ms: metrics.non_voice_overlap_ms,
+        non_voice_predicted_ms: metrics.non_voice_predicted_ms,
+        non_voice_expected_ms: metrics.non_voice_expected_ms,
     }
 }
 

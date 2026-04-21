@@ -7,3 +7,4 @@ pub mod pipeline;
 pub mod review;
 pub mod types;
 pub mod validation;
+pub mod verification;

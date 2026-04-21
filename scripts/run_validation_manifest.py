@@ -18,11 +18,14 @@ def run_entry(entry: dict) -> dict:
     truth_path = Path(entry["truth_path"])
     output_report = Path(entry["output_report"])
     profile = entry["profile"]
+    config_path = Path(entry["config_path"]) if entry.get("config_path") else None
 
     if not input_media.exists():
         raise FileNotFoundError(f"{entry_id}: missing input_media {input_media}")
     if not truth_path.exists():
         raise FileNotFoundError(f"{entry_id}: missing truth_path {truth_path}")
+    if config_path is not None and not config_path.exists():
+        raise FileNotFoundError(f"{entry_id}: missing config_path {config_path}")
 
     output_report.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
@@ -39,6 +42,8 @@ def run_entry(entry: dict) -> dict:
         "--output",
         str(output_report),
     ]
+    if config_path is not None:
+        cmd.extend(["--config", str(config_path)])
 
     total_ms = entry.get("total_ms")
     if truth_type in {"subtitles", "dataset_manifest"}:
@@ -69,6 +74,7 @@ def run_entry(entry: dict) -> dict:
         "truth_type": truth_type,
         "truth_path": str(truth_path),
         "profile": profile,
+        "config_path": str(config_path) if config_path is not None else None,
         "output_report": str(output_report),
         "elapsed_ms": elapsed_ms,
         "metrics": {
@@ -78,6 +84,16 @@ def run_entry(entry: dict) -> dict:
             "speech_recall": report.get("speech_recall"),
             "non_voice_precision": report.get("non_voice_precision"),
             "non_voice_recall": report.get("non_voice_recall"),
+            "speech_time_precision": report.get("speech_time_precision"),
+            "speech_time_recall": report.get("speech_time_recall"),
+            "non_voice_time_precision": report.get("non_voice_time_precision"),
+            "non_voice_time_recall": report.get("non_voice_time_recall"),
+            "speech_overlap_ms": report.get("speech_overlap_ms"),
+            "speech_predicted_ms": report.get("speech_predicted_ms"),
+            "speech_expected_ms": report.get("speech_expected_ms"),
+            "non_voice_overlap_ms": report.get("non_voice_overlap_ms"),
+            "non_voice_predicted_ms": report.get("non_voice_predicted_ms"),
+            "non_voice_expected_ms": report.get("non_voice_expected_ms"),
             "expected_segments": report.get("expected_segments"),
             "predicted_segments": report.get("predicted_segments"),
         },

@@ -6,3 +6,10 @@
 - Cohort-aware sweep ranking is available in `analysis/optimization/fp-sweep-ranked.json`.
 - Coverage guard (`--min-coverage-ratio`) prevents low-coverage candidate selection.
 - Radio-play recovery execution plan is tracked in `plans/100-radio-play-95/ROADMAP.md`.
+- Holdout optimizer supports objective modes: `weighted`, `worst3`, `h3` via `scripts/optimize_radio_play_holdout.py`.
+- Prefer modern fixture checks on both `elephantsdream_teaser_2006` and `caminandes_gran_dillama_2013` in CI artifacts.
+- External references with Rust-portable ideas:
+  - `inaSpeechSegmenter` / InaGVAD: speech-vs-music-vs-noise framing plus TV/radio-specific evaluation,
+  - radio/TV SAD literature: per-recording adaptive calibration is more reliable than one global threshold band.
+- A first per-recording adaptive spectral threshold pass is now implemented before VAD classification; current radio-play holdout metrics did not improve, so treat further threshold-only work as low-confidence unless paired with a stronger state model.
+- Keep non-Rust repos/papers as design references only; port only minimal deterministic logic into Rust.

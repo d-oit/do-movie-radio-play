@@ -219,6 +219,31 @@ Converge:
 - block release if holdout gate fails
 ```
 
+### Regression-safe Baseline Workflow
+```
+Goal: keep runs consistent to avoid workflow drift
+
+Use fixed-order local workflow:
+- `bash scripts/run_standard_workflow.sh`
+
+Use dry-run when planning execution steps:
+- `bash scripts/run_standard_workflow.sh --dry-run`
+```
+
+### Example 9: Modern Fixture Benchmark + Eval Artifacts
+```
+Goal: Keep modern post-2000 fixture quality visible in CI
+
+Parallel:
+- Agent A: run benchmark for `elephantsdream_teaser_2006`
+- Agent B: run benchmark for `caminandes_gran_dillama_2013`
+- Agent C: run focused FP sweep on the two fixtures
+
+Converge:
+- build compact digest with `scripts/build_modern_ci_summary.py`
+- upload benchmark + eval + summary artifacts
+```
+
 ### Example 9: Failure Breakdown Triage
 ```
 Goal: identify where holdout gate fails fastest

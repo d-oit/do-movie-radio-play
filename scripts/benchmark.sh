@@ -16,6 +16,8 @@ pick_default_input(){
     testdata/raw/sintel_trailer_2010.mp4 \
     testdata/raw/big_buck_bunny_trailer_2008.mov \
     testdata/raw/elephants_dream_2006.mp4 \
+    testdata/raw/elephantsdream_teaser.mp4 \
+    testdata/raw/caminandes_gran_dillama.mp4 \
     testdata/raw/eggs_1970.mp4 \
     testdata/raw/windy_day_1967.mp4 \
     testdata/raw/the_hole_1962.mp4 \

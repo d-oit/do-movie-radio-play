@@ -6,10 +6,28 @@ from pathlib import Path
 
 
 def metric_value(metrics: dict, key: str) -> float:
+    aliases = {
+        "non_voice_precision": ["non_voice_time_precision", "non_voice_precision"],
+        "non_voice_recall": ["non_voice_time_recall", "non_voice_recall"],
+    }
+    for candidate in aliases.get(key, [key]):
+        value = metrics.get(candidate)
+        if value is not None:
+            return float(value)
     value = metrics.get(key)
     if value is None:
         return 0.0
     return float(value)
+
+
+def sample_size_from_ms(metrics: dict, key: str, fallback: int) -> int:
+    raw = metrics.get(key)
+    if raw is None:
+        return max(fallback, 1)
+    ms = int(raw)
+    if ms <= 0:
+        return max(fallback, 1)
+    return max(ms // 100, 1)
 
 
 def wilson_lower_bound(p: float, n: int, z: float = 1.96) -> float:
@@ -92,10 +110,16 @@ def main() -> int:
         overlap = metric_value(metrics, "overlap_ratio")
         expected_segments = int(metrics.get("expected_segments") or 0)
         predicted_segments = int(metrics.get("predicted_segments") or 0)
+        expected_n = sample_size_from_ms(
+            metrics, "non_voice_expected_ms", expected_segments
+        )
+        predicted_n = sample_size_from_ms(
+            metrics, "non_voice_predicted_ms", predicted_segments
+        )
 
-        precision_lb95 = wilson_lower_bound(precision, max(predicted_segments, 1))
-        recall_lb95 = wilson_lower_bound(recall, max(expected_segments, 1))
-        overlap_lb95 = wilson_lower_bound(overlap, max(expected_segments, 1))
+        precision_lb95 = wilson_lower_bound(precision, predicted_n)
+        recall_lb95 = wilson_lower_bound(recall, expected_n)
+        overlap_lb95 = wilson_lower_bound(overlap, expected_n)
 
         row = {
             "id": entry_id,
@@ -110,6 +134,8 @@ def main() -> int:
             "overlap_ratio_lb95": overlap_lb95,
             "expected_segments": expected_segments,
             "predicted_segments": predicted_segments,
+            "expected_non_voice_samples": expected_n,
+            "predicted_non_voice_samples": predicted_n,
         }
 
         if precision < args.min_non_voice_precision:

@@ -1,364 +1,12 @@
 {
-  "generated_at_unix": 1776527338,
-  "elapsed_ms": 483302,
+  "generated_at_unix": 1776604981,
+  "elapsed_ms": 219499,
   "coverage_guard": {
     "min_coverage_ratio": 0.7,
     "baseline_non_voice_segments": 230,
     "coverage_floor": 161
   },
   "ranked_candidates": [
-    {
-      "candidate": {
-        "name": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120",
-        "extract": {
-          "threshold": 0.0125,
-          "min_silence_ms": 500
-        },
-        "verify": {
-          "entropy_min": 3.0,
-          "entropy_max": 7.2,
-          "flatness_max": 0.38,
-          "energy_min": 0.001,
-          "centroid_min": 120.0
-        }
-      },
-      "weighted_false_positive_rate": 0.18141593079646012,
-      "weighted_false_positive_risk_rate": 0.18141592920353983,
-      "evaluated_non_voice_segments": 226,
-      "per_media": [
-        {
-          "media": "testdata/raw/elephants_dream_2006.mp4",
-          "false_positive_rate": 0.8918919,
-          "false_positive_risk_rate": 0.8918918918918919,
-          "verified_count": 4,
-          "suspicious_count": 33,
-          "rejected_count": 0,
-          "total_non_voice": 37,
-          "total_assessed_non_voice": 37
-        },
-        {
-          "media": "testdata/raw/the_hole_1962.mp4",
-          "false_positive_rate": 0.018867925,
-          "false_positive_risk_rate": 0.018867924528301886,
-          "verified_count": 104,
-          "suspicious_count": 2,
-          "rejected_count": 0,
-          "total_non_voice": 106,
-          "total_assessed_non_voice": 106
-        },
-        {
-          "media": "testdata/raw/windy_day_1967.mp4",
-          "false_positive_rate": 0.04054054,
-          "false_positive_risk_rate": 0.04054054054054054,
-          "verified_count": 71,
-          "suspicious_count": 3,
-          "rejected_count": 0,
-          "total_non_voice": 74,
-          "total_assessed_non_voice": 74
-        },
-        {
-          "media": "testdata/raw/elephantsdream_teaser.mp4",
-          "false_positive_rate": 1.0,
-          "false_positive_risk_rate": 1.0,
-          "verified_count": 0,
-          "suspicious_count": 2,
-          "rejected_count": 0,
-          "total_non_voice": 2,
-          "total_assessed_non_voice": 2
-        },
-        {
-          "media": "testdata/raw/caminandes_gran_dillama.mp4",
-          "false_positive_rate": 0.14285715,
-          "false_positive_risk_rate": 0.14285714285714285,
-          "verified_count": 6,
-          "suspicious_count": 1,
-          "rejected_count": 0,
-          "total_non_voice": 7,
-          "total_assessed_non_voice": 7
-        }
-      ],
-      "assessed_non_voice_segments": 226,
-      "coverage_ratio_vs_baseline": 0.9826086956521739,
-      "coverage_pass": true,
-      "cohorts": {
-        "legacy": {
-          "weighted_false_positive_rate": 0.027777777833333333,
-          "evaluated_non_voice_segments": 180,
-          "weighted_false_positive_risk_rate": 0.027777777777777776,
-          "assessed_non_voice_segments": 180
-        },
-        "modern": {
-          "weighted_false_positive_rate": 0.7826087032608694,
-          "evaluated_non_voice_segments": 46,
-          "weighted_false_positive_risk_rate": 0.782608695652174,
-          "assessed_non_voice_segments": 46
-        }
-      }
-    },
-    {
-      "candidate": {
-        "name": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c160",
-        "extract": {
-          "threshold": 0.0125,
-          "min_silence_ms": 500
-        },
-        "verify": {
-          "entropy_min": 3.0,
-          "entropy_max": 7.2,
-          "flatness_max": 0.38,
-          "energy_min": 0.001,
-          "centroid_min": 160.0
-        }
-      },
-      "weighted_false_positive_rate": 0.18141593079646012,
-      "weighted_false_positive_risk_rate": 0.18141592920353983,
-      "evaluated_non_voice_segments": 226,
-      "per_media": [
-        {
-          "media": "testdata/raw/elephants_dream_2006.mp4",
-          "false_positive_rate": 0.8918919,
-          "false_positive_risk_rate": 0.8918918918918919,
-          "verified_count": 4,
-          "suspicious_count": 33,
-          "rejected_count": 0,
-          "total_non_voice": 37,
-          "total_assessed_non_voice": 37
-        },
-        {
-          "media": "testdata/raw/the_hole_1962.mp4",
-          "false_positive_rate": 0.018867925,
-          "false_positive_risk_rate": 0.018867924528301886,
-          "verified_count": 104,
-          "suspicious_count": 2,
-          "rejected_count": 0,
-          "total_non_voice": 106,
-          "total_assessed_non_voice": 106
-        },
-        {
-          "media": "testdata/raw/windy_day_1967.mp4",
-          "false_positive_rate": 0.04054054,
-          "false_positive_risk_rate": 0.04054054054054054,
-          "verified_count": 71,
-          "suspicious_count": 3,
-          "rejected_count": 0,
-          "total_non_voice": 74,
-          "total_assessed_non_voice": 74
-        },
-        {
-          "media": "testdata/raw/elephantsdream_teaser.mp4",
-          "false_positive_rate": 1.0,
-          "false_positive_risk_rate": 1.0,
-          "verified_count": 0,
-          "suspicious_count": 2,
-          "rejected_count": 0,
-          "total_non_voice": 2,
-          "total_assessed_non_voice": 2
-        },
-        {
-          "media": "testdata/raw/caminandes_gran_dillama.mp4",
-          "false_positive_rate": 0.14285715,
-          "false_positive_risk_rate": 0.14285714285714285,
-          "verified_count": 6,
-          "suspicious_count": 1,
-          "rejected_count": 0,
-          "total_non_voice": 7,
-          "total_assessed_non_voice": 7
-        }
-      ],
-      "assessed_non_voice_segments": 226,
-      "coverage_ratio_vs_baseline": 0.9826086956521739,
-      "coverage_pass": true,
-      "cohorts": {
-        "legacy": {
-          "weighted_false_positive_rate": 0.027777777833333333,
-          "evaluated_non_voice_segments": 180,
-          "weighted_false_positive_risk_rate": 0.027777777777777776,
-          "assessed_non_voice_segments": 180
-        },
-        "modern": {
-          "weighted_false_positive_rate": 0.7826087032608694,
-          "evaluated_non_voice_segments": 46,
-          "weighted_false_positive_risk_rate": 0.782608695652174,
-          "assessed_non_voice_segments": 46
-        }
-      }
-    },
-    {
-      "candidate": {
-        "name": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c200",
-        "extract": {
-          "threshold": 0.0125,
-          "min_silence_ms": 500
-        },
-        "verify": {
-          "entropy_min": 3.0,
-          "entropy_max": 7.2,
-          "flatness_max": 0.38,
-          "energy_min": 0.001,
-          "centroid_min": 200.0
-        }
-      },
-      "weighted_false_positive_rate": 0.18141593079646012,
-      "weighted_false_positive_risk_rate": 0.18141592920353983,
-      "evaluated_non_voice_segments": 226,
-      "per_media": [
-        {
-          "media": "testdata/raw/elephants_dream_2006.mp4",
-          "false_positive_rate": 0.8918919,
-          "false_positive_risk_rate": 0.8918918918918919,
-          "verified_count": 4,
-          "suspicious_count": 33,
-          "rejected_count": 0,
-          "total_non_voice": 37,
-          "total_assessed_non_voice": 37
-        },
-        {
-          "media": "testdata/raw/the_hole_1962.mp4",
-          "false_positive_rate": 0.018867925,
-          "false_positive_risk_rate": 0.018867924528301886,
-          "verified_count": 104,
-          "suspicious_count": 2,
-          "rejected_count": 0,
-          "total_non_voice": 106,
-          "total_assessed_non_voice": 106
-        },
-        {
-          "media": "testdata/raw/windy_day_1967.mp4",
-          "false_positive_rate": 0.04054054,
-          "false_positive_risk_rate": 0.04054054054054054,
-          "verified_count": 71,
-          "suspicious_count": 3,
-          "rejected_count": 0,
-          "total_non_voice": 74,
-          "total_assessed_non_voice": 74
-        },
-        {
-          "media": "testdata/raw/elephantsdream_teaser.mp4",
-          "false_positive_rate": 1.0,
-          "false_positive_risk_rate": 1.0,
-          "verified_count": 0,
-          "suspicious_count": 2,
-          "rejected_count": 0,
-          "total_non_voice": 2,
-          "total_assessed_non_voice": 2
-        },
-        {
-          "media": "testdata/raw/caminandes_gran_dillama.mp4",
-          "false_positive_rate": 0.14285715,
-          "false_positive_risk_rate": 0.14285714285714285,
-          "verified_count": 6,
-          "suspicious_count": 1,
-          "rejected_count": 0,
-          "total_non_voice": 7,
-          "total_assessed_non_voice": 7
-        }
-      ],
-      "assessed_non_voice_segments": 226,
-      "coverage_ratio_vs_baseline": 0.9826086956521739,
-      "coverage_pass": true,
-      "cohorts": {
-        "legacy": {
-          "weighted_false_positive_rate": 0.027777777833333333,
-          "evaluated_non_voice_segments": 180,
-          "weighted_false_positive_risk_rate": 0.027777777777777776,
-          "assessed_non_voice_segments": 180
-        },
-        "modern": {
-          "weighted_false_positive_rate": 0.7826087032608694,
-          "evaluated_non_voice_segments": 46,
-          "weighted_false_positive_risk_rate": 0.782608695652174,
-          "assessed_non_voice_segments": 46
-        }
-      }
-    },
-    {
-      "candidate": {
-        "name": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0012_c120",
-        "extract": {
-          "threshold": 0.0125,
-          "min_silence_ms": 500
-        },
-        "verify": {
-          "entropy_min": 3.0,
-          "entropy_max": 7.2,
-          "flatness_max": 0.38,
-          "energy_min": 0.0012,
-          "centroid_min": 120.0
-        }
-      },
-      "weighted_false_positive_rate": 0.18141593079646012,
-      "weighted_false_positive_risk_rate": 0.18141592920353983,
-      "evaluated_non_voice_segments": 226,
-      "per_media": [
-        {
-          "media": "testdata/raw/elephants_dream_2006.mp4",
-          "false_positive_rate": 0.8918919,
-          "false_positive_risk_rate": 0.8918918918918919,
-          "verified_count": 4,
-          "suspicious_count": 33,
-          "rejected_count": 0,
-          "total_non_voice": 37,
-          "total_assessed_non_voice": 37
-        },
-        {
-          "media": "testdata/raw/the_hole_1962.mp4",
-          "false_positive_rate": 0.018867925,
-          "false_positive_risk_rate": 0.018867924528301886,
-          "verified_count": 104,
-          "suspicious_count": 2,
-          "rejected_count": 0,
-          "total_non_voice": 106,
-          "total_assessed_non_voice": 106
-        },
-        {
-          "media": "testdata/raw/windy_day_1967.mp4",
-          "false_positive_rate": 0.04054054,
-          "false_positive_risk_rate": 0.04054054054054054,
-          "verified_count": 71,
-          "suspicious_count": 3,
-          "rejected_count": 0,
-          "total_non_voice": 74,
-          "total_assessed_non_voice": 74
-        },
-        {
-          "media": "testdata/raw/elephantsdream_teaser.mp4",
-          "false_positive_rate": 1.0,
-          "false_positive_risk_rate": 1.0,
-          "verified_count": 0,
-          "suspicious_count": 2,
-          "rejected_count": 0,
-          "total_non_voice": 2,
-          "total_assessed_non_voice": 2
-        },
-        {
-          "media": "testdata/raw/caminandes_gran_dillama.mp4",
-          "false_positive_rate": 0.14285715,
-          "false_positive_risk_rate": 0.14285714285714285,
-          "verified_count": 6,
-          "suspicious_count": 1,
-          "rejected_count": 0,
-          "total_non_voice": 7,
-          "total_assessed_non_voice": 7
-        }
-      ],
-      "assessed_non_voice_segments": 226,
-      "coverage_ratio_vs_baseline": 0.9826086956521739,
-      "coverage_pass": true,
-      "cohorts": {
-        "legacy": {
-          "weighted_false_positive_rate": 0.027777777833333333,
-          "evaluated_non_voice_segments": 180,
-          "weighted_false_positive_risk_rate": 0.027777777777777776,
-          "assessed_non_voice_segments": 180
-        },
-        "modern": {
-          "weighted_false_positive_rate": 0.7826087032608694,
-          "evaluated_non_voice_segments": 46,
-          "weighted_false_positive_risk_rate": 0.782608695652174,
-          "assessed_non_voice_segments": 46
-        }
-      }
-    },
     {
       "candidate": {
         "name": "low_threshold",
@@ -714,49 +362,49 @@
   ],
   "best_candidate": {
     "candidate": {
-      "name": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120",
+      "name": "low_threshold",
       "extract": {
-        "threshold": 0.0125,
-        "min_silence_ms": 500
+        "threshold": 0.0135,
+        "min_silence_ms": null
       },
       "verify": {
-        "entropy_min": 3.0,
+        "entropy_min": 3.4,
         "entropy_max": 7.2,
-        "flatness_max": 0.38,
+        "flatness_max": 0.44,
         "energy_min": 0.001,
         "centroid_min": 120.0
       }
     },
-    "weighted_false_positive_rate": 0.18141593079646012,
-    "weighted_false_positive_risk_rate": 0.18141592920353983,
-    "evaluated_non_voice_segments": 226,
+    "weighted_false_positive_rate": 0.2956521742695652,
+    "weighted_false_positive_risk_rate": 0.2956521739130435,
+    "evaluated_non_voice_segments": 230,
     "per_media": [
       {
         "media": "testdata/raw/elephants_dream_2006.mp4",
-        "false_positive_rate": 0.8918919,
-        "false_positive_risk_rate": 0.8918918918918919,
-        "verified_count": 4,
-        "suspicious_count": 33,
+        "false_positive_rate": 0.975,
+        "false_positive_risk_rate": 0.975,
+        "verified_count": 1,
+        "suspicious_count": 39,
         "rejected_count": 0,
-        "total_non_voice": 37,
-        "total_assessed_non_voice": 37
+        "total_non_voice": 40,
+        "total_assessed_non_voice": 40
       },
       {
         "media": "testdata/raw/the_hole_1962.mp4",
-        "false_positive_rate": 0.018867925,
-        "false_positive_risk_rate": 0.018867924528301886,
-        "verified_count": 104,
-        "suspicious_count": 2,
+        "false_positive_rate": 0.037383176,
+        "false_positive_risk_rate": 0.037383177570093455,
+        "verified_count": 103,
+        "suspicious_count": 4,
         "rejected_count": 0,
-        "total_non_voice": 106,
-        "total_assessed_non_voice": 106
+        "total_non_voice": 107,
+        "total_assessed_non_voice": 107
       },
       {
         "media": "testdata/raw/windy_day_1967.mp4",
-        "false_positive_rate": 0.04054054,
-        "false_positive_risk_rate": 0.04054054054054054,
-        "verified_count": 71,
-        "suspicious_count": 3,
+        "false_positive_rate": 0.2972973,
+        "false_positive_risk_rate": 0.2972972972972973,
+        "verified_count": 52,
+        "suspicious_count": 22,
         "rejected_count": 0,
         "total_non_voice": 74,
         "total_assessed_non_voice": 74
@@ -782,70 +430,70 @@
         "total_assessed_non_voice": 7
       }
     ],
-    "assessed_non_voice_segments": 226,
-    "coverage_ratio_vs_baseline": 0.9826086956521739,
+    "assessed_non_voice_segments": 230,
+    "coverage_ratio_vs_baseline": 1.0,
     "coverage_pass": true,
     "cohorts": {
       "legacy": {
-        "weighted_false_positive_rate": 0.027777777833333333,
-        "evaluated_non_voice_segments": 180,
-        "weighted_false_positive_risk_rate": 0.027777777777777776,
-        "assessed_non_voice_segments": 180
+        "weighted_false_positive_rate": 0.14364640901657458,
+        "evaluated_non_voice_segments": 181,
+        "weighted_false_positive_risk_rate": 0.143646408839779,
+        "assessed_non_voice_segments": 181
       },
       "modern": {
-        "weighted_false_positive_rate": 0.7826087032608694,
-        "evaluated_non_voice_segments": 46,
-        "weighted_false_positive_risk_rate": 0.782608695652174,
-        "assessed_non_voice_segments": 46
+        "weighted_false_positive_rate": 0.8571428581632653,
+        "evaluated_non_voice_segments": 49,
+        "weighted_false_positive_risk_rate": 0.8571428571428571,
+        "assessed_non_voice_segments": 49
       }
     }
   },
   "best_per_cohort": {
     "legacy": {
       "candidate": {
-        "name": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120",
+        "name": "low_threshold",
         "extract": {
-          "threshold": 0.0125,
-          "min_silence_ms": 500
+          "threshold": 0.0135,
+          "min_silence_ms": null
         },
         "verify": {
-          "entropy_min": 3.0,
+          "entropy_min": 3.4,
           "entropy_max": 7.2,
-          "flatness_max": 0.38,
+          "flatness_max": 0.44,
           "energy_min": 0.001,
           "centroid_min": 120.0
         }
       },
-      "weighted_false_positive_rate": 0.18141593079646012,
-      "weighted_false_positive_risk_rate": 0.18141592920353983,
-      "evaluated_non_voice_segments": 226,
+      "weighted_false_positive_rate": 0.2956521742695652,
+      "weighted_false_positive_risk_rate": 0.2956521739130435,
+      "evaluated_non_voice_segments": 230,
       "per_media": [
         {
           "media": "testdata/raw/elephants_dream_2006.mp4",
-          "false_positive_rate": 0.8918919,
-          "false_positive_risk_rate": 0.8918918918918919,
-          "verified_count": 4,
-          "suspicious_count": 33,
+          "false_positive_rate": 0.975,
+          "false_positive_risk_rate": 0.975,
+          "verified_count": 1,
+          "suspicious_count": 39,
           "rejected_count": 0,
-          "total_non_voice": 37,
-          "total_assessed_non_voice": 37
+          "total_non_voice": 40,
+          "total_assessed_non_voice": 40
         },
         {
           "media": "testdata/raw/the_hole_1962.mp4",
-          "false_positive_rate": 0.018867925,
-          "false_positive_risk_rate": 0.018867924528301886,
-          "verified_count": 104,
-          "suspicious_count": 2,
+          "false_positive_rate": 0.037383176,
+          "false_positive_risk_rate": 0.037383177570093455,
+          "verified_count": 103,
+          "suspicious_count": 4,
           "rejected_count": 0,
-          "total_non_voice": 106,
-          "total_assessed_non_voice": 106
+          "total_non_voice": 107,
+          "total_assessed_non_voice": 107
         },
         {
           "media": "testdata/raw/windy_day_1967.mp4",
-          "false_positive_rate": 0.04054054,
-          "false_positive_risk_rate": 0.04054054054054054,
-          "verified_count": 71,
-          "suspicious_count": 3,
+          "false_positive_rate": 0.2972973,
+          "false_positive_risk_rate": 0.2972972972972973,
+          "verified_count": 52,
+          "suspicious_count": 22,
           "rejected_count": 0,
           "total_non_voice": 74,
           "total_assessed_non_voice": 74
@@ -871,69 +519,69 @@
           "total_assessed_non_voice": 7
         }
       ],
-      "assessed_non_voice_segments": 226,
-      "coverage_ratio_vs_baseline": 0.9826086956521739,
+      "assessed_non_voice_segments": 230,
+      "coverage_ratio_vs_baseline": 1.0,
       "coverage_pass": true,
       "cohorts": {
         "legacy": {
-          "weighted_false_positive_rate": 0.027777777833333333,
-          "evaluated_non_voice_segments": 180,
-          "weighted_false_positive_risk_rate": 0.027777777777777776,
-          "assessed_non_voice_segments": 180
+          "weighted_false_positive_rate": 0.14364640901657458,
+          "evaluated_non_voice_segments": 181,
+          "weighted_false_positive_risk_rate": 0.143646408839779,
+          "assessed_non_voice_segments": 181
         },
         "modern": {
-          "weighted_false_positive_rate": 0.7826087032608694,
-          "evaluated_non_voice_segments": 46,
-          "weighted_false_positive_risk_rate": 0.782608695652174,
-          "assessed_non_voice_segments": 46
+          "weighted_false_positive_rate": 0.8571428581632653,
+          "evaluated_non_voice_segments": 49,
+          "weighted_false_positive_risk_rate": 0.8571428571428571,
+          "assessed_non_voice_segments": 49
         }
       }
     },
     "modern": {
       "candidate": {
-        "name": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120",
+        "name": "low_threshold",
         "extract": {
-          "threshold": 0.0125,
-          "min_silence_ms": 500
+          "threshold": 0.0135,
+          "min_silence_ms": null
         },
         "verify": {
-          "entropy_min": 3.0,
+          "entropy_min": 3.4,
           "entropy_max": 7.2,
-          "flatness_max": 0.38,
+          "flatness_max": 0.44,
           "energy_min": 0.001,
           "centroid_min": 120.0
         }
       },
-      "weighted_false_positive_rate": 0.18141593079646012,
-      "weighted_false_positive_risk_rate": 0.18141592920353983,
-      "evaluated_non_voice_segments": 226,
+      "weighted_false_positive_rate": 0.2956521742695652,
+      "weighted_false_positive_risk_rate": 0.2956521739130435,
+      "evaluated_non_voice_segments": 230,
       "per_media": [
         {
           "media": "testdata/raw/elephants_dream_2006.mp4",
-          "false_positive_rate": 0.8918919,
-          "false_positive_risk_rate": 0.8918918918918919,
-          "verified_count": 4,
-          "suspicious_count": 33,
+          "false_positive_rate": 0.975,
+          "false_positive_risk_rate": 0.975,
+          "verified_count": 1,
+          "suspicious_count": 39,
           "rejected_count": 0,
-          "total_non_voice": 37,
-          "total_assessed_non_voice": 37
+          "total_non_voice": 40,
+          "total_assessed_non_voice": 40
         },
         {
           "media": "testdata/raw/the_hole_1962.mp4",
-          "false_positive_rate": 0.018867925,
-          "false_positive_risk_rate": 0.018867924528301886,
-          "verified_count": 104,
-          "suspicious_count": 2,
+          "false_positive_rate": 0.037383176,
+          "false_positive_risk_rate": 0.037383177570093455,
+          "verified_count": 103,
+          "suspicious_count": 4,
           "rejected_count": 0,
-          "total_non_voice": 106,
-          "total_assessed_non_voice": 106
+          "total_non_voice": 107,
+          "total_assessed_non_voice": 107
         },
         {
           "media": "testdata/raw/windy_day_1967.mp4",
-          "false_positive_rate": 0.04054054,
-          "false_positive_risk_rate": 0.04054054054054054,
-          "verified_count": 71,
-          "suspicious_count": 3,
+          "false_positive_rate": 0.2972973,
+          "false_positive_risk_rate": 0.2972972972972973,
+          "verified_count": 52,
+          "suspicious_count": 22,
           "rejected_count": 0,
           "total_non_voice": 74,
           "total_assessed_non_voice": 74
@@ -959,28 +607,28 @@
           "total_assessed_non_voice": 7
         }
       ],
-      "assessed_non_voice_segments": 226,
-      "coverage_ratio_vs_baseline": 0.9826086956521739,
+      "assessed_non_voice_segments": 230,
+      "coverage_ratio_vs_baseline": 1.0,
       "coverage_pass": true,
       "cohorts": {
         "legacy": {
-          "weighted_false_positive_rate": 0.027777777833333333,
-          "evaluated_non_voice_segments": 180,
-          "weighted_false_positive_risk_rate": 0.027777777777777776,
-          "assessed_non_voice_segments": 180
+          "weighted_false_positive_rate": 0.14364640901657458,
+          "evaluated_non_voice_segments": 181,
+          "weighted_false_positive_risk_rate": 0.143646408839779,
+          "assessed_non_voice_segments": 181
         },
         "modern": {
-          "weighted_false_positive_rate": 0.7826087032608694,
-          "evaluated_non_voice_segments": 46,
-          "weighted_false_positive_risk_rate": 0.782608695652174,
-          "assessed_non_voice_segments": 46
+          "weighted_false_positive_rate": 0.8571428581632653,
+          "evaluated_non_voice_segments": 49,
+          "weighted_false_positive_risk_rate": 0.8571428571428571,
+          "assessed_non_voice_segments": 49
         }
       }
     }
   },
   "recommended_policy": {
-    "legacy_candidate": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120",
-    "modern_candidate": "grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120",
+    "legacy_candidate": "low_threshold",
+    "modern_candidate": "low_threshold",
     "note": "Use per-cohort candidates when modern and legacy optima diverge."
   }
 }

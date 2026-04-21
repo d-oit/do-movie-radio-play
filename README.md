@@ -19,6 +19,7 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 - `timeline update-thresholds [--learning-state state.json | --learning-db analysis/thresholds/learning.db]`
 - `timeline learning-stats [--learning-db analysis/thresholds/learning.db] [--output analysis/thresholds/learning-stats.json]`
 - `python3 scripts/optimize_fp_sweep.py --output analysis/optimization/fp-sweep-ranked.json`
+- `python3 scripts/check_media_intake.py --input analysis/media/modern-multilang-intake.json --min-sub-langs 2 --strict-license`
 - `python3 scripts/generate_optimized_profiles.py --sweep-report analysis/optimization/fp-sweep-ranked.json`
 - `timeline merge-timeline --input timeline.json --output merged.json`
 - `timeline export --input timeline.json --output out.json --format json|edl|vtt [--verified verified.json]`
@@ -29,6 +30,16 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 ## Test
 `bash scripts/quality_gate.sh`
 
+Standard anti-regression workflow:
+`bash scripts/run_standard_workflow.sh`
+
+Workflow/design references currently informing this repo:
+- `d-o-hub/github-template-ai-agents`: single-source agent instructions + skill discipline
+- `d-o-hub/chaotic_semantic_memory`: benchmark/development gate rigor in a Rust-first codebase
+- `ruvnet/musica`: structure-first audio DSP ideas and benchmark-first development
+
+These are reference inputs only. Reused logic must be translated into deterministic offline Rust before adoption.
+
 ## Dependency Updates
 - Dependabot checks Cargo and GitHub Actions weekly.
 - Dependabot PRs use GitHub auto-merge once required checks are green.
@@ -37,7 +48,7 @@ CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows,
 `bash scripts/benchmark.sh`
 
 Benchmark input selection policy:
-- Primary (post-2000): `sintel_trailer_2010.mp4`, `big_buck_bunny_trailer_2008.mov`, `elephants_dream_2006.mp4`
+- Primary (post-2000): `sintel_trailer_2010.mp4`, `big_buck_bunny_trailer_2008.mov`, `elephants_dream_2006.mp4`, `elephantsdream_teaser.mp4`, `caminandes_gran_dillama.mp4`
 - Legacy fallback (optional/local compatibility): older pre-2000 fixtures if already present
 - Final fallback: generated deterministic fixture `testdata/generated/alternating.wav`
 
@@ -46,6 +57,9 @@ in `analysis/benchmarks/latest.json` before uploading benchmark artifacts.
 
 Manual regression check:
 `python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/latest.json`
+
+Manual baseline refresh (when performance shifts are intentional and validated):
+`bash scripts/refresh_benchmark_baseline.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/latest.json`
 
 ## Observability
 - `timeline extract` emits INFO logs per pipeline stage with elapsed milliseconds for decode, resample, framing, VAD, smoothing, segmentation, merging, and inversion.
@@ -57,6 +71,15 @@ Manual regression check:
 Assets are sourced from Blender Open Movies and permissively usable sources.
 Post-2000 fixtures are preferred; older files are still accepted as fallback if already present locally.
 The fetch script also downloads multilingual subtitle fixtures for non-English validation coverage.
+
+Candidate intake guard (before adding new movies from external catalogs):
+
+```bash
+python3 scripts/check_media_intake.py \
+  --input analysis/media/modern-multilang-intake.json \
+  --min-sub-langs 2 \
+  --strict-license
+```
 
 ## JSON schema
 Top-level fields:
@@ -231,9 +254,39 @@ python3 scripts/compare_sweeps.py \
   --output analysis/optimization/fp-sweep-comparison.json
 ```
 
+Manual sweep baseline refresh (only after intentional, validated sweep policy changes):
+
+```bash
+bash scripts/refresh_sweep_baseline.sh \
+  analysis/optimization/fp-sweep-ranked.json \
+  analysis/optimization/fp-sweep-ranked-latest.json
+```
+
+Targeted holdout search (radio-play tier C with modern guardrails):
+
+```bash
+python3 scripts/optimize_radio_play_holdout.py \
+  --manifest testdata/validation/radio-play-manifest.json \
+  --baseline-summary analysis/validation/radio-play-sweep-summary.json \
+  --holdout-id the_hole_1962_radio \
+  --modern-guard-id elephants_dream_2006_de_radio \
+  --modern-guard-id elephants_dream_2006_es_radio \
+  --apply-to-modern \
+  --search-mode extended \
+  --objective worst3 \
+  --precision-floor 0.25 \
+  --max-candidates 12 \
+  --output analysis/optimization/radio-play-holdout-search.json
+```
+
+This search now explores both detector thresholds and merge behavior
+(`merge_gap_ms`, `merge_options.min_gap_to_merge`, `merge_options.min_silence_duration`, `merge_options.merge_strategy`).
+
 CI automation:
 - `.github/workflows/optimization-sweep.yml` runs scheduled/manual wrapper smoke and uploads optimization artifacts.
 - CI also enforces a drift guard via `scripts/check_sweep_drift.py` (fails on FP/risk regressions over threshold).
+- `.github/workflows/ci.yml` benchmark job now runs + uploads benchmark artifacts for `elephantsdream_teaser.mp4` (2006) and `caminandes_gran_dillama.mp4` (2013), and uploads a focused FP eval sweep report for those two modern fixtures.
+- That benchmark job also uploads a compact markdown digest: `analysis/optimization/modern-extra-ci-summary.md`.
 - `.github/workflows/validation-sweep.yml` enforces radio-play holdout readiness via `scripts/check_radio_play_readiness.py` (`tier C`, min precision/recall/overlap = `0.95`).
 - `.github/workflows/validation-sweep.yml` now treats `build_radio_play_readiness_report.py --require-pass` as the single release-readiness gate source in CI.
 - Validation sweep CI runs `testdata/validation/radio-play-manifest.json` and emits `analysis/validation/radio-play-sweep-summary.json`.

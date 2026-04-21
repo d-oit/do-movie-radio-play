@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "notes": "Track legally usable modern films with multi-language subtitle availability before adding to validation corpus.",
+  "candidates": [
+    {
+      "title": "REPLACE_TITLE",
+      "source_url": "https://wikiflix.toolforge.org",
+      "catalog_url": "https://wikiflix.toolforge.org",
+      "license_status": "other_permissive",
+      "rights_notes": "Verify exact rights on the underlying Wikimedia source page before dataset ingestion.",
+      "subtitle_languages": [
+        "en",
+        "de"
+      ]
+    },
+    {
+      "title": "REPLACE_TITLE",
+      "source_url": "https://player.eyefilm.nl/en/all-films",
+      "catalog_url": "https://player.eyefilm.nl/en/all-films",
+      "license_status": "other_permissive",
+      "rights_notes": "Verify archival use terms and subtitle download rights for offline validation usage.",
+      "subtitle_languages": [
+        "en",
+        "nl"
+      ]
+    }
+  ]
+}

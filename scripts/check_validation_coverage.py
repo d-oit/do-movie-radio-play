@@ -16,6 +16,16 @@ REQUIRED_REPORT_FIELDS = [
     "speech_recall",
     "non_voice_precision",
     "non_voice_recall",
+    "speech_time_precision",
+    "speech_time_recall",
+    "non_voice_time_precision",
+    "non_voice_time_recall",
+    "speech_overlap_ms",
+    "speech_predicted_ms",
+    "speech_expected_ms",
+    "non_voice_overlap_ms",
+    "non_voice_predicted_ms",
+    "non_voice_expected_ms",
 ]
 
 
@@ -126,6 +136,14 @@ def main() -> int:
         truth_path = require_string(entry, "truth_path", failures, entry_id)
         output_report = require_string(entry, "output_report", failures, entry_id)
         profile = require_string(entry, "profile", failures, entry_id)
+        config_path = entry.get("config_path")
+        if config_path is not None and not (
+            isinstance(config_path, str) and config_path.strip()
+        ):
+            failures.append(
+                f"{entry_id}: config_path must be a non-empty string when set"
+            )
+            config_path = None
 
         if truth_type and truth_type not in VALID_TRUTH_TYPES:
             failures.append(f"{entry_id}: invalid truth_type '{truth_type}'")
@@ -149,6 +167,8 @@ def main() -> int:
                 failures.append(f"{entry_id}: input_media missing: {input_media}")
             if truth_path and not Path(truth_path).exists():
                 failures.append(f"{entry_id}: truth_path missing: {truth_path}")
+            if config_path and not Path(config_path).exists():
+                failures.append(f"{entry_id}: config_path missing: {config_path}")
 
         if output_report:
             validate_report(entry_id, Path(output_report), profile, failures)

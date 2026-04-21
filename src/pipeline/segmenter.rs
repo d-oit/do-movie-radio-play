@@ -1,5 +1,8 @@
+use crate::config::MergeOptions;
 use crate::types::{Segment, SegmentKind};
 
+const SHORT_SPEECH_CONFIDENCE_KEEP_FLOOR: f32 = 0.78;
+const POST_FILTER_BRIDGE_MAX_GAP_MS: u64 = 2_500;
 pub fn smooth_speech(raw: &[bool], frame_ms: u32, hangover_ms: u32) -> Vec<bool> {
     let mut out = raw.to_vec();
     let hang = (hangover_ms / frame_ms) as usize;
@@ -75,6 +78,21 @@ pub fn merge_close_segments(segments: &[Segment], merge_gap_ms: u32) -> Vec<Segm
     merged
 }
 
+pub fn prune_short_speech_segments(segments: &[Segment], min_speech_ms: u32) -> Vec<Segment> {
+    segments
+        .iter()
+        .filter(|seg| {
+            if seg.kind != SegmentKind::Speech {
+                return true;
+            }
+            let duration_ms = seg.end_ms.saturating_sub(seg.start_ms);
+            duration_ms >= min_speech_ms as u64
+                || seg.confidence >= SHORT_SPEECH_CONFIDENCE_KEEP_FLOOR
+        })
+        .cloned()
+        .collect()
+}
+
 pub fn invert_to_non_voice(
     speech: &[Segment],
     total_ms: u64,
@@ -108,6 +126,69 @@ pub fn invert_to_non_voice(
         );
     }
     out
+}
+
+pub fn bridge_non_voice_segments(segments: &[Segment], max_speech_bridge_ms: u32) -> Vec<Segment> {
+    if segments.is_empty() || max_speech_bridge_ms == 0 {
+        return segments.to_vec();
+    }
+    let mut merged = Vec::with_capacity(segments.len());
+    merged.push(segments[0].clone());
+
+    for seg in segments.iter().skip(1) {
+        if let Some(last) = merged.last_mut() {
+            let gap_ms = seg.start_ms.saturating_sub(last.end_ms);
+            if gap_ms <= max_speech_bridge_ms as u64 {
+                last.end_ms = seg.end_ms;
+                last.confidence = last.confidence.min(seg.confidence);
+                continue;
+            }
+        }
+        merged.push(seg.clone());
+    }
+    merged
+}
+
+pub fn apply_non_voice_merge_policy(segments: &[Segment], options: &MergeOptions) -> Vec<Segment> {
+    if segments.is_empty() {
+        return Vec::new();
+    }
+
+    match options.merge_strategy.as_str() {
+        "all" => merge_all_non_voice(segments),
+        "longest" => merge_by_gap_threshold(
+            segments,
+            options.min_gap_to_merge.max(options.min_silence_duration) as u64,
+        ),
+        "sparse" => merge_sparse_non_voice(
+            segments,
+            options.min_gap_to_merge.max(options.min_silence_duration) as u64,
+        ),
+        _ => segments.to_vec(),
+    }
+}
+
+pub fn bridge_residual_non_voice_gaps(segments: &[Segment]) -> Vec<Segment> {
+    if segments.is_empty() {
+        return Vec::new();
+    }
+
+    let mut merged = Vec::with_capacity(segments.len());
+    merged.push(segments[0].clone());
+
+    for segment in segments.iter().skip(1) {
+        if let Some(last) = merged.last_mut() {
+            let gap_ms = segment.start_ms.saturating_sub(last.end_ms);
+            if gap_ms <= POST_FILTER_BRIDGE_MAX_GAP_MS {
+                last.end_ms = segment.end_ms;
+                last.confidence = last.confidence.min(segment.confidence);
+                continue;
+            }
+        }
+        merged.push(segment.clone());
+    }
+
+    merged
 }
 
 pub fn split_long_segments(
@@ -195,6 +276,72 @@ fn push_nv(
     }
 }
 
+fn merge_all_non_voice(segments: &[Segment]) -> Vec<Segment> {
+    if segments.is_empty() {
+        return Vec::new();
+    }
+
+    let first_start = segments.first().map(|s| s.start_ms).unwrap_or(0);
+    let last_end = segments.last().map(|s| s.end_ms).unwrap_or(0);
+    let avg_confidence = segments.iter().map(|s| s.confidence).sum::<f32>() / segments.len() as f32;
+    let all_tags = segments.iter().flat_map(|s| s.tags.clone()).collect();
+
+    vec![Segment {
+        start_ms: first_start,
+        end_ms: last_end,
+        kind: SegmentKind::NonVoice,
+        confidence: avg_confidence,
+        tags: all_tags,
+        prompt: None,
+    }]
+}
+
+fn merge_by_gap_threshold(segments: &[Segment], min_gap_ms: u64) -> Vec<Segment> {
+    if segments.is_empty() {
+        return Vec::new();
+    }
+
+    let mut merged = Vec::new();
+    let mut current = segments[0].clone();
+
+    for segment in segments.iter().skip(1) {
+        let gap = segment.start_ms.saturating_sub(current.end_ms);
+        if gap >= min_gap_ms {
+            merged.push(current);
+            current = segment.clone();
+        } else {
+            current.end_ms = segment.end_ms;
+        }
+    }
+
+    merged.push(current);
+    merged
+}
+
+fn merge_sparse_non_voice(segments: &[Segment], min_gap_ms: u64) -> Vec<Segment> {
+    if segments.is_empty() {
+        return Vec::new();
+    }
+
+    let mut merged = Vec::new();
+    let mut current = segments[0].clone();
+
+    for segment in segments.iter().skip(1) {
+        let gap = segment.start_ms.saturating_sub(current.end_ms);
+        if gap >= min_gap_ms {
+            merged.push(current);
+            current = segment.clone();
+        } else {
+            current.end_ms = segment.end_ms;
+            current.confidence = (current.confidence + segment.confidence) / 2.0;
+            current.tags.extend(segment.tags.clone());
+        }
+    }
+
+    merged.push(current);
+    merged
+}
+
 fn slice_confidence(
     frame_likelihoods: &[f32],
     start_idx: usize,
@@ -274,5 +421,107 @@ mod tests {
         let speech = vec![fake_speech(0, 200), fake_speech(300, 500)];
         let merged = merge_close_segments(&speech, 120);
         assert_eq!(merged.len(), 1);
+    }
+
+    #[test]
+    fn prune_short_low_confidence_speech_segments() {
+        let mut short_low = fake_speech(100, 260);
+        short_low.confidence = 0.55;
+        let mut short_high = fake_speech(300, 450);
+        short_high.confidence = 0.9;
+        let long = fake_speech(600, 1200);
+
+        let pruned = prune_short_speech_segments(&[short_low, short_high, long], 300);
+        assert_eq!(pruned.len(), 2);
+        assert_eq!(pruned[0].start_ms, 300);
+        assert_eq!(pruned[1].start_ms, 600);
+    }
+
+    #[test]
+    fn bridges_non_voice_across_short_speech_gap() {
+        let nv = vec![
+            Segment {
+                start_ms: 0,
+                end_ms: 2000,
+                kind: SegmentKind::NonVoice,
+                confidence: 0.8,
+                tags: vec![],
+                prompt: None,
+            },
+            Segment {
+                start_ms: 2150,
+                end_ms: 4000,
+                kind: SegmentKind::NonVoice,
+                confidence: 0.7,
+                tags: vec![],
+                prompt: None,
+            },
+        ];
+
+        let bridged = bridge_non_voice_segments(&nv, 200);
+        assert_eq!(bridged.len(), 1);
+        assert_eq!(bridged[0].start_ms, 0);
+        assert_eq!(bridged[0].end_ms, 4000);
+    }
+
+    #[test]
+    fn sparse_merge_policy_merges_close_non_voice_segments() {
+        let opts = MergeOptions {
+            min_gap_to_merge: 400,
+            merge_strategy: "sparse".to_string(),
+            min_speech_duration: 500,
+            min_silence_duration: 300,
+            silence_threshold_db: -42,
+        };
+        let segments = vec![
+            Segment {
+                start_ms: 0,
+                end_ms: 1000,
+                kind: SegmentKind::NonVoice,
+                confidence: 0.8,
+                tags: vec![],
+                prompt: None,
+            },
+            Segment {
+                start_ms: 1200,
+                end_ms: 2000,
+                kind: SegmentKind::NonVoice,
+                confidence: 0.6,
+                tags: vec![],
+                prompt: None,
+            },
+        ];
+
+        let merged = apply_non_voice_merge_policy(&segments, &opts);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].start_ms, 0);
+        assert_eq!(merged[0].end_ms, 2000);
+    }
+
+    #[test]
+    fn residual_gap_bridge_merges_tiny_final_gap() {
+        let segments = vec![
+            Segment {
+                start_ms: 1000,
+                end_ms: 2000,
+                kind: SegmentKind::NonVoice,
+                confidence: 0.8,
+                tags: vec![],
+                prompt: None,
+            },
+            Segment {
+                start_ms: 3500,
+                end_ms: 5000,
+                kind: SegmentKind::NonVoice,
+                confidence: 0.7,
+                tags: vec![],
+                prompt: None,
+            },
+        ];
+
+        let bridged = bridge_residual_non_voice_gaps(&segments);
+        assert_eq!(bridged.len(), 1);
+        assert_eq!(bridged[0].start_ms, 1000);
+        assert_eq!(bridged[0].end_ms, 5000);
     }
 }

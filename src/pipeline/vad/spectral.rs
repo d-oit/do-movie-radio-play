@@ -73,8 +73,15 @@ fn classify_spectral(
 
     let energy_term = ((frame.rms - threshold) / threshold).clamp(-2.0, 2.0) * 0.25;
 
-    let in_speech_freq = (250.0..=4500.0).contains(&frame.centroid_hz);
-    let centroid_term = if in_speech_freq { 0.12 } else { -0.25 };
+    let relaxed_min = (centroid_min - 120.0).max(0.0);
+    let relaxed_max = centroid_max + 300.0;
+    let centroid_term = if (centroid_min..=centroid_max).contains(&frame.centroid_hz) {
+        0.14
+    } else if (relaxed_min..=relaxed_max).contains(&frame.centroid_hz) {
+        -0.05
+    } else {
+        -0.32
+    };
 
     let zcr_term = if (0.05..=0.35).contains(&frame.zcr) {
         0.10

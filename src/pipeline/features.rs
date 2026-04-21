@@ -5,6 +5,9 @@ pub struct SpectralAnalyzer {
     fft_len: usize,
     fft: Arc<dyn RealToComplex<f32>>,
     hann: Vec<f32>,
+    input_buf: Vec<f32>,
+    output_buf: Vec<realfft::num_complex::Complex<f32>>,
+    mag_buf: Vec<f32>,
 }
 
 impl SpectralAnalyzer {
@@ -16,28 +19,41 @@ impl SpectralAnalyzer {
                 0.5 * (1.0 - (2.0 * std::f32::consts::PI * i as f32 / (fft_len - 1) as f32).cos())
             })
             .collect();
-        Self { fft_len, fft, hann }
+        let input_buf = fft.make_input_vec();
+        let output_buf = fft.make_output_vec();
+        let mag_buf = vec![0.0; fft_len / 2];
+        Self {
+            fft_len,
+            fft,
+            hann,
+            input_buf,
+            output_buf,
+            mag_buf,
+        }
     }
 
-    pub fn analyze(&self, samples: &[f32]) -> Vec<f32> {
-        let mut input: Vec<f32> = samples.iter().take(self.fft_len).cloned().collect();
-        input.resize(self.fft_len, 0.0);
+    pub fn analyze(&mut self, samples: &[f32]) -> &[f32] {
+        let n = samples.len().min(self.fft_len);
+        self.input_buf[..n].copy_from_slice(&samples[..n]);
+        self.input_buf[n..].fill(0.0);
 
-        for (s, h) in input.iter_mut().zip(self.hann.iter()) {
+        for (s, h) in self.input_buf.iter_mut().zip(self.hann.iter()) {
             *s *= h;
         }
 
-        let mut spectrum = self.fft.make_output_vec();
-        let bin_count = self.fft_len / 2;
-        if self.fft.process(&mut input, &mut spectrum).is_err() {
-            return vec![0.0; bin_count];
+        if self
+            .fft
+            .process(&mut self.input_buf, &mut self.output_buf)
+            .is_err()
+        {
+            self.mag_buf.fill(0.0);
+            return &self.mag_buf;
         }
 
-        let mut magnitudes = Vec::with_capacity(bin_count);
-        for c in spectrum.iter().take(bin_count) {
-            magnitudes.push((c.re * c.re + c.im * c.im).sqrt());
+        for (c, m) in self.output_buf.iter().zip(self.mag_buf.iter_mut()) {
+            *m = (c.re * c.re + c.im * c.im).sqrt();
         }
-        magnitudes
+        &self.mag_buf
     }
 }
 
@@ -81,7 +97,7 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
     let zcr = zero_crosses as f32 / samples.len() as f32;
 
     let fft_len = 1024usize.next_power_of_two().max(256);
-    let analyzer = SpectralAnalyzer::new(fft_len);
+    let mut analyzer = SpectralAnalyzer::new(fft_len);
 
     let bin_width = sample_rate as f32 / fft_len as f32;
     let low_bin = (300.0 / bin_width) as usize;
@@ -94,7 +110,7 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
     let mut low = 0.0;
     let mut high = 0.0;
     let mut prev_mags: Option<Vec<f32>> = None;
-    let mut geometric_mean = 1.0f32;
+    let mut log_mag_sum = 0.0f32;
     let mut arithmetic_mean = 0.0f32;
     let mut valid_mag_count = 0usize;
 
@@ -104,27 +120,11 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
     {
         let mags = analyzer.analyze(chunk);
 
-        if let Some(prev) = prev_mags {
-            for (i, &m) in mags.iter().enumerate().take(half_bins) {
-                let diff = m - prev.get(i).copied().unwrap_or(0.0);
-                flux_acc += diff.max(0.0);
-            }
-        }
-
-        let chunk_mag_sum: f32 = mags.iter().take(half_bins).sum();
-        let mut chunk_entropy = 0.0f32;
-        if chunk_mag_sum > 0.0 {
-            for &m in mags.iter().take(half_bins) {
-                if m > 0.0 {
-                    let p = m / chunk_mag_sum;
-                    chunk_entropy -= p * p.log2().max(-20.0);
-                }
-            }
-        }
-        entropy_acc += chunk_entropy;
-        entropy_count += 1;
-
+        let mut chunk_mag_sum = 0.0f32;
         for (i, &m) in mags.iter().enumerate().take(half_bins) {
+            chunk_mag_sum += m;
+
+            // Centroid and band ratios
             let freq = i as f32 * bin_width;
             weighted_bin_sum += freq * m;
             mag_sum += m;
@@ -134,14 +134,39 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
             if i >= high_bin {
                 high += m;
             }
-            if m > 0.0 {
-                geometric_mean *= m.powf(1.0 / half_bins as f32);
+
+            // Flatness components
+            if m > 1e-10 {
+                log_mag_sum += m.ln();
                 arithmetic_mean += m;
                 valid_mag_count += 1;
             }
+
+            // Flux
+            if let Some(prev) = &prev_mags {
+                let diff = m - prev.get(i).copied().unwrap_or(0.0);
+                flux_acc += diff.max(0.0);
+            }
         }
 
-        prev_mags = Some(mags);
+        if chunk_mag_sum > 0.0 {
+            let mut chunk_entropy = 0.0f32;
+            let inv_chunk_mag_sum = 1.0 / chunk_mag_sum;
+            for &m in mags.iter().take(half_bins) {
+                if m > 0.0 {
+                    let p = m * inv_chunk_mag_sum;
+                    chunk_entropy -= p * p.log2().max(-20.0);
+                }
+            }
+            entropy_acc += chunk_entropy;
+            entropy_count += 1;
+        }
+
+        if let Some(ref mut prev) = prev_mags {
+            prev.copy_from_slice(mags);
+        } else {
+            prev_mags = Some(mags.to_vec());
+        }
     }
 
     let spectral_entropy = if entropy_count > 0 {
@@ -152,7 +177,7 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
 
     let spectral_flatness = if valid_mag_count > 0 && arithmetic_mean > 0.0 {
         let am = arithmetic_mean / valid_mag_count as f32;
-        let gm = geometric_mean.max(1e-10);
+        let gm = (log_mag_sum / half_bins as f32).exp();
         (gm / am).ln().max(-10.0).exp()
     } else {
         0.0

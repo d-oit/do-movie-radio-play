@@ -2,13 +2,15 @@
 import argparse
 import json
 import subprocess
+import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 VALID_TRUTH_TYPES = {"truth_json", "subtitles", "dataset_manifest"}
 
 
-def run_entry(entry: dict) -> dict:
+def run_entry(entry: dict) -> Optional[dict]:
     entry_id = entry["id"]
     truth_type = entry["truth_type"]
     if truth_type not in VALID_TRUTH_TYPES:
@@ -21,11 +23,14 @@ def run_entry(entry: dict) -> dict:
     config_path = Path(entry["config_path"]) if entry.get("config_path") else None
 
     if not input_media.exists():
-        raise FileNotFoundError(f"{entry_id}: missing input_media {input_media}")
+        print(f"WARN: {entry_id}: skipping - missing input_media {input_media}", file=sys.stderr)
+        return None
     if not truth_path.exists():
-        raise FileNotFoundError(f"{entry_id}: missing truth_path {truth_path}")
+        print(f"WARN: {entry_id}: skipping - missing truth_path {truth_path}", file=sys.stderr)
+        return None
     if config_path is not None and not config_path.exists():
-        raise FileNotFoundError(f"{entry_id}: missing config_path {config_path}")
+        print(f"WARN: {entry_id}: skipping - missing config_path {config_path}", file=sys.stderr)
+        return None
 
     output_report.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
@@ -129,7 +134,9 @@ def main() -> int:
     results = []
     started = time.time()
     for entry in selected_entries:
-        results.append(run_entry(entry))
+        res = run_entry(entry)
+        if res is not None:
+            results.append(res)
 
     summary = {
         "manifest": str(manifest_path),

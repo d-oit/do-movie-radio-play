@@ -145,7 +145,7 @@ pub fn write_review_html_with_options(
             .collect()
     };
 
-    let segments_json = serde_json::to_string(&segments)?;
+    let segments_json = serde_json::to_string(&segments)?.replace("</script>", "<\\/script>");
     let merged_json = serde_json::to_string(&merged)?;
     let html = format!(
         r#"<!doctype html>
@@ -302,6 +302,16 @@ pub fn write_review_html_with_options(
   </div>
   <script id="segments-data" type="application/json">{segments_json}</script>
   <script>
+    function esc(t) {{
+      if (!t) return "";
+      return String(t)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }}
+
     const mediaSrc = {media_json};
     const preRoll = {pre_roll_json};
     const postRoll = {post_roll_json};
@@ -449,7 +459,7 @@ pub fn write_review_html_with_options(
         if (seg.verification_status === 'suspicious') el.classList.add('suspicious');
         if (seg.verification_status === 'rejected') el.classList.add('rejected');
         el.dataset.index = String(i);
-        const tags = (seg.tags || []).map(t => `<span class="badge">${{t}}</span>`).join('');
+        const tags = (seg.tags || []).map(t => `<span class="badge">${{esc(t)}}</span>`).join('');
         let verificationBadge = '';
         if (seg.verification_status === 'verified') {{
           verificationBadge = '<span class="badge badge-verified">Verified</span>';
@@ -458,7 +468,7 @@ pub fn write_review_html_with_options(
         }} else if (seg.verification_status === 'rejected') {{
           verificationBadge = '<span class="badge badge-rejected">Rejected</span>';
         }}
-        const prompt = seg.prompt ? `<div class="meta">Prompt: ${{seg.prompt}}</div>` : '';
+        const prompt = seg.prompt ? `<div class="meta">Prompt: ${{esc(seg.prompt)}}</div>` : '';
         el.innerHTML = `
           <div><strong>#${{seg.index}}</strong> ${{seconds(seg.start_ms)}}s - ${{seconds(seg.end_ms)}}s ${{verificationBadge}}</div>
           <div class="meta">duration ${{seconds(seg.duration_ms)}}s | confidence ${{Number(seg.confidence).toFixed(2)}}</div>

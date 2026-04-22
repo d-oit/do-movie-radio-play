@@ -2,6 +2,7 @@
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
 
 
@@ -92,10 +93,15 @@ def main() -> int:
     holdout_tier = args.holdout_tier.upper()
     results = summary.get("results", [])
     holdout = [r for r in results if str(r.get("tier", "")).upper() == holdout_tier]
-    if not holdout:
-        raise ValueError(f"no holdout entries found for tier={holdout_tier}")
 
     threshold_failures = []
+    readiness_pass = True
+
+    if not holdout:
+        print(f"WARN: no holdout entries found for tier={holdout_tier}", file=sys.stderr)
+        threshold_failures.append(f"HOLDING_TIER_{holdout_tier}: missing (all entries skipped or manifest empty)")
+        readiness_pass = False
+
     lb95_failures = []
     failure_rows = []
     cohort_rows = {"modern": [], "legacy": []}
@@ -194,9 +200,9 @@ def main() -> int:
         for name, rows in cohort_rows.items()
     }
 
-    threshold_gate_pass = len(threshold_failures) == 0
-    lb95_gate_pass = len(lb95_failures) == 0
-    readiness_pass = threshold_gate_pass and lb95_gate_pass
+    threshold_gate_pass = (len(threshold_failures) == 0) if holdout else False
+    lb95_gate_pass = (len(lb95_failures) == 0) if holdout else False
+    readiness_pass = readiness_pass and threshold_gate_pass and lb95_gate_pass
 
     report = {
         "summary": str(summary_path),

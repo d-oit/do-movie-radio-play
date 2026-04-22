@@ -1,0 +1,57 @@
+    Finished `bench` profile [optimized] target(s) in 1.40s
+     Running benches/pipeline_bench.rs (target/release/deps/pipeline_bench-05304223f2467918)
+Gnuplot not found, using plotters backend
+Benchmarking framing
+Benchmarking framing: Warming up for 3.0000 s
+Benchmarking framing: Collecting 50 samples in estimated 8.2593 s (14k iterations)
+Benchmarking framing: Analyzing
+framing                 time:   [524.07 µs 527.10 µs 531.22 µs]
+                        change: [+1.1034% +2.1574% +3.4771%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 5 outliers among 50 measurements (10.00%)
+  1 (2.00%) high mild
+  4 (8.00%) high severe
+
+Benchmarking feature_extraction
+Benchmarking feature_extraction: Warming up for 3.0000 s
+Benchmarking feature_extraction: Collecting 50 samples in estimated 8.0654 s (11k iterations)
+Benchmarking feature_extraction: Analyzing
+feature_extraction      time:   [688.00 µs 700.73 µs 721.23 µs]
+                        change: [+10.893% +18.645% +25.738%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 7 outliers among 50 measurements (14.00%)
+  5 (10.00%) high mild
+  2 (4.00%) high severe
+
+Benchmarking energy_vad
+Benchmarking energy_vad: Warming up for 3.0000 s
+Benchmarking energy_vad: Collecting 50 samples in estimated 8.0010 s (8.1M iterations)
+Benchmarking energy_vad: Analyzing
+energy_vad              time:   [984.03 ns 988.23 ns 993.00 ns]
+                        change: [+8.7646% +9.2666% +9.8213%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 7 outliers among 50 measurements (14.00%)
+  7 (14.00%) high mild
+
+Benchmarking speech_segments
+Benchmarking speech_segments: Warming up for 3.0000 s
+Benchmarking speech_segments: Collecting 50 samples in estimated 8.0002 s (43M iterations)
+Benchmarking speech_segments: Analyzing
+speech_segments         time:   [184.30 ns 185.35 ns 186.64 ns]
+                        change: [+6.3726% +6.7546% +7.2286%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 4 outliers among 50 measurements (8.00%)
+  1 (2.00%) low mild
+  1 (2.00%) high mild
+  2 (4.00%) high severe
+
+Benchmarking invert_to_non_voice
+Benchmarking invert_to_non_voice: Warming up for 3.0000 s
+Benchmarking invert_to_non_voice: Collecting 50 samples in estimated 8.0000 s (529M iterations)
+Benchmarking invert_to_non_voice: Analyzing
+invert_to_non_voice     time:   [14.993 ns 15.062 ns 15.160 ns]
+                        change: [-3.6244% -1.8498% -0.3459%] (p = 0.03 < 0.05)
+                        Change within noise threshold.
+Found 2 outliers among 50 measurements (4.00%)
+  1 (2.00%) high mild
+  1 (2.00%) high severe

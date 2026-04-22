@@ -310,8 +310,8 @@ pub fn benchmark_file(input: &Path, cfg: &AnalysisConfig) -> Result<BenchmarkRes
     let PipelineArtifacts {
         timeline,
         frame_count,
-        speech_segment_count: _,
         stage_ms,
+        ..
     } = run_pipeline(input, cfg)?;
     let segment_count = timeline.segments.len();
     Ok(BenchmarkResult {

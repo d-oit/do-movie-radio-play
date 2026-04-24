@@ -1,0 +1,175 @@
+{
+  "file": "the_hole_1962.mp4",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 2500,
+      "kind": "non_voice",
+      "confidence": 0.93231744,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 2820,
+      "end_ms": 9060,
+      "kind": "non_voice",
+      "confidence": 0.9944571,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 150760,
+      "end_ms": 153240,
+      "kind": "non_voice",
+      "confidence": 0.9946726,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 167920,
+      "end_ms": 169840,
+      "kind": "non_voice",
+      "confidence": 0.99818784,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 170460,
+      "end_ms": 173620,
+      "kind": "non_voice",
+      "confidence": 0.9973976,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 211640,
+      "end_ms": 215240,
+      "kind": "non_voice",
+      "confidence": 0.9972222,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 216460,
+      "end_ms": 218360,
+      "kind": "non_voice",
+      "confidence": 0.9996483,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 235500,
+      "end_ms": 238600,
+      "kind": "non_voice",
+      "confidence": 0.9931141,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 506440,
+      "end_ms": 508520,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 511500,
+      "end_ms": 513760,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 540680,
+      "end_ms": 542500,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 544000,
+      "end_ms": 546020,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 565080,
+      "end_ms": 576960,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 589320,
+      "end_ms": 592460,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 727420,
+      "end_ms": 730660,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 731740,
+      "end_ms": 735300,
+      "kind": "non_voice",
+      "confidence": 0.99282956,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 853420,
+      "end_ms": 865560,
+      "kind": "non_voice",
+      "confidence": 0.9740856,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 878520,
+      "end_ms": 880380,
+      "kind": "non_voice",
+      "confidence": 0.897314,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 906160,
+      "end_ms": 908580,
+      "kind": "non_voice",
+      "confidence": 0.9693454,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 922940,
+      "end_ms": 931400,
+      "kind": "non_voice",
+      "confidence": 0.9971952,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 932700,
+      "end_ms": 937900,
+      "kind": "non_voice",
+      "confidence": 0.76932335,
+      "tags": [],
+      "prompt": null
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "file": "the_hole_1962.mp4",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 839880,
+      "end_ms": 937900,
+      "kind": "non_voice",
+      "confidence": 0.67993927,
+      "tags": [],
+      "prompt": null
+    }
+  ]
+}

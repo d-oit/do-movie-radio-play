@@ -1,0 +1,135 @@
+{
+  "verified_timeline": {
+    "file": "caminandes_gran_dillama.mp4",
+    "analysis_sample_rate": 16000,
+    "frame_ms": 20,
+    "segments": [
+      {
+        "start_ms": 0,
+        "end_ms": 1860,
+        "kind": "non_voice",
+        "confidence": 0.97002983,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 111860,
+        "end_ms": 114820,
+        "kind": "non_voice",
+        "confidence": 0.8354331,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 128920,
+        "end_ms": 131320,
+        "kind": "non_voice",
+        "confidence": 0.73256195,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 143840,
+        "end_ms": 146048,
+        "kind": "non_voice",
+        "confidence": 0.9175448,
+        "tags": [],
+        "prompt": null
+      }
+    ]
+  },
+  "segment_results": [
+    {
+      "start_ms": 0,
+      "end_ms": 1860,
+      "original_confidence": 0.97002983,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.00048266255,
+        "zcr": 0.11035317,
+        "spectral_entropy": 13.219039,
+        "spectral_flatness": 0.28071368,
+        "spectral_flux": 0.1904475,
+        "centroid_hz": 3998.3958,
+        "low_band_ratio": 0.19669014,
+        "high_band_ratio": 0.4997996
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 111860,
+      "end_ms": 114820,
+      "original_confidence": 0.8354331,
+      "verification_status": "verified",
+      "spectral_features": {
+        "rms": 0.0038007174,
+        "zcr": 0.1643827,
+        "spectral_entropy": 15.19152,
+        "spectral_flatness": 0.62380797,
+        "spectral_flux": 3.6044862,
+        "centroid_hz": 4000.1018,
+        "low_band_ratio": 0.12880924,
+        "high_band_ratio": 0.5000091
+      },
+      "is_verified": true,
+      "is_suspicious": false,
+      "reason": null
+    },
+    {
+      "start_ms": 128920,
+      "end_ms": 131320,
+      "original_confidence": 0.73256195,
+      "verification_status": "verified",
+      "spectral_features": {
+        "rms": 0.0058335797,
+        "zcr": 0.201099,
+        "spectral_entropy": 15.027021,
+        "spectral_flatness": 0.576431,
+        "spectral_flux": 6.052337,
+        "centroid_hz": 4000.025,
+        "low_band_ratio": 0.09308597,
+        "high_band_ratio": 0.50000215
+      },
+      "is_verified": true,
+      "is_suspicious": false,
+      "reason": null
+    },
+    {
+      "start_ms": 143840,
+      "end_ms": 146048,
+      "original_confidence": 0.9175448,
+      "verification_status": "verified",
+      "spectral_features": {
+        "rms": 0.000033492,
+        "zcr": 0.078212135,
+        "spectral_entropy": 14.808489,
+        "spectral_flatness": 0.53290087,
+        "spectral_flux": 0.029090414,
+        "centroid_hz": 3986.6902,
+        "low_band_ratio": 0.20222756,
+        "high_band_ratio": 0.49833453
+      },
+      "is_verified": true,
+      "is_suspicious": false,
+      "reason": null
+    }
+  ],
+  "summary": {
+    "total_segments": 4,
+    "verified_count": 3,
+    "suspicious_count": 1,
+    "rejected_count": 0,
+    "false_positive_rate": 0.25,
+    "average_confidence": 0.86389244,
+    "thresholds_applied": {
+      "entropy_min": 3.2,
+      "entropy_max": 7.4,
+      "flatness_max": 0.4,
+      "energy_min": 0.0012,
+      "centroid_min": 160.0,
+      "centroid_max": 6000.0
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "file": "caminandes_gran_dillama.mp4",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 1860,
+      "kind": "non_voice",
+      "confidence": 0.96984243,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 111940,
+      "end_ms": 114820,
+      "kind": "non_voice",
+      "confidence": 0.8270095,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 129240,
+      "end_ms": 131320,
+      "kind": "non_voice",
+      "confidence": 0.74058676,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 143840,
+      "end_ms": 146048,
+      "kind": "non_voice",
+      "confidence": 0.91751707,
+      "tags": [],
+      "prompt": null
+    }
+  ]
+}

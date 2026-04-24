@@ -1,0 +1,408 @@
+{
+  "manifest": "testdata/validation/radio-play-manifest.json",
+  "baseline_summary": "analysis/validation/radio-play-sweep-summary.json",
+  "holdout_id": "the_hole_1962_radio",
+  "modern_guard_ids": [
+    "elephants_dream_2006_de_radio",
+    "elephants_dream_2006_es_radio"
+  ],
+  "apply_to_modern": true,
+  "max_modern_drop": 0.01,
+  "search_mode": "basic",
+  "precision_floor": 0.25,
+  "objective": "h3",
+  "candidate_count": 8,
+  "elapsed_ms": 405909,
+  "ranked_candidates": [
+    {
+      "candidate": {
+        "name": "t0.0125_nv1500_sp1800_ent3.0_flat0.38_mg400_mmg600_msi800_mspd2500_mssparse",
+        "energy_threshold": 0.0125,
+        "min_non_voice_ms": 1500,
+        "min_speech_ms": 1800,
+        "spectral_entropy_min": 3.0,
+        "spectral_flatness_max": 0.38,
+        "merge_gap_ms": 400,
+        "merge_min_gap_to_merge": 600,
+        "merge_min_silence_duration": 800,
+        "merge_min_speech_duration": 2500,
+        "merge_strategy": "sparse"
+      },
+      "holdout": {
+        "id": "the_hole_1962_radio",
+        "non_voice_precision": 0.10438213,
+        "non_voice_recall": 1.0,
+        "overlap_ratio": 0.18903263,
+        "worst_of_three": 0.10438213,
+        "h3": 0.18903263086992722,
+        "score": 0.07892651459882703
+      },
+      "modern_guard_pass": true,
+      "modern_guard_failures": [],
+      "modern_checks": [
+        {
+          "id": "elephants_dream_2006_de_radio",
+          "non_voice_precision": 0.73680586,
+          "non_voice_recall": 0.9998111,
+          "overlap_ratio": 0.84839284
+        },
+        {
+          "id": "elephants_dream_2006_es_radio",
+          "non_voice_precision": 0.73680586,
+          "non_voice_recall": 0.9998111,
+          "overlap_ratio": 0.84839284
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "name": "t0.0150_nv4000_sp1800_ent3.0_flat0.38_mg400_mmg600_msi800_mspd2500_mssparse",
+        "energy_threshold": 0.015,
+        "min_non_voice_ms": 4000,
+        "min_speech_ms": 1800,
+        "spectral_entropy_min": 3.0,
+        "spectral_flatness_max": 0.38,
+        "merge_gap_ms": 400,
+        "merge_min_gap_to_merge": 600,
+        "merge_min_silence_duration": 800,
+        "merge_min_speech_duration": 2500,
+        "merge_strategy": "sparse"
+      },
+      "holdout": {
+        "id": "the_hole_1962_radio",
+        "non_voice_precision": 0.10438213,
+        "non_voice_recall": 1.0,
+        "overlap_ratio": 0.18903263,
+        "worst_of_three": 0.10438213,
+        "h3": 0.18903263086992722,
+        "score": 0.07892651459882703
+      },
+      "modern_guard_pass": true,
+      "modern_guard_failures": [],
+      "modern_checks": [
+        {
+          "id": "elephants_dream_2006_de_radio",
+          "non_voice_precision": 0.73680586,
+          "non_voice_recall": 0.9998111,
+          "overlap_ratio": 0.84839284
+        },
+        {
+          "id": "elephants_dream_2006_es_radio",
+          "non_voice_precision": 0.73680586,
+          "non_voice_recall": 0.9998111,
+          "overlap_ratio": 0.84839284
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "name": "t0.0100_nv300_sp200_ent2.6_flat0.32_mg200_mmg300_msi200_mspd300_msall",
+        "energy_threshold": 0.01,
+        "min_non_voice_ms": 300,
+        "min_speech_ms": 200,
+        "spectral_entropy_min": 2.6,
+        "spectral_flatness_max": 0.32,
+        "merge_gap_ms": 200,
+        "merge_min_gap_to_merge": 300,
+        "merge_min_silence_duration": 200,
+        "merge_min_speech_duration": 300,
+        "merge_strategy": "all"
+      },
+      "holdout": {
+        "id": "the_hole_1962_radio",
+        "non_voice_precision": 0.09363946,
+        "non_voice_recall": 0.88151175,
+        "overlap_ratio": 0.16929536,
+        "worst_of_three": 0.09363946,
+        "h3": 0.16929535545774668,
+        "score": 0.0634109026622858
+      },
+      "modern_guard_pass": false,
+      "modern_guard_failures": [
+        "elephants_dream_2006_de_radio: recall=0.9605 < floor=0.9898",
+        "elephants_dream_2006_de_radio: overlap=0.8294 < floor=0.8384",
+        "elephants_dream_2006_es_radio: recall=0.9605 < floor=0.9898",
+        "elephants_dream_2006_es_radio: overlap=0.8294 < floor=0.8384"
+      ],
+      "modern_checks": [
+        {
+          "id": "elephants_dream_2006_de_radio",
+          "non_voice_precision": 0.7298186,
+          "non_voice_recall": 0.960485,
+          "overlap_ratio": 0.82941294
+        },
+        {
+          "id": "elephants_dream_2006_es_radio",
+          "non_voice_precision": 0.7298186,
+          "non_voice_recall": 0.960485,
+          "overlap_ratio": 0.82941294
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "name": "t0.0125_nv800_sp200_ent2.6_flat0.32_mg200_mmg300_msi200_mspd300_msall",
+        "energy_threshold": 0.0125,
+        "min_non_voice_ms": 800,
+        "min_speech_ms": 200,
+        "spectral_entropy_min": 2.6,
+        "spectral_flatness_max": 0.32,
+        "merge_gap_ms": 200,
+        "merge_min_gap_to_merge": 300,
+        "merge_min_silence_duration": 200,
+        "merge_min_speech_duration": 300,
+        "merge_strategy": "all"
+      },
+      "holdout": {
+        "id": "the_hole_1962_radio",
+        "non_voice_precision": 0.09306375,
+        "non_voice_recall": 0.87354445,
+        "overlap_ratio": 0.16820739,
+        "worst_of_three": 0.09306375,
+        "h3": 0.16820739147786665,
+        "score": 0.06261604251459325
+      },
+      "modern_guard_pass": false,
+      "modern_guard_failures": [
+        "elephants_dream_2006_de_radio: recall=0.9519 < floor=0.9898",
+        "elephants_dream_2006_de_radio: overlap=0.8260 < floor=0.8384",
+        "elephants_dream_2006_es_radio: recall=0.9519 < floor=0.9898",
+        "elephants_dream_2006_es_radio: overlap=0.8260 < floor=0.8384"
+      ],
+      "modern_checks": [
+        {
+          "id": "elephants_dream_2006_de_radio",
+          "non_voice_precision": 0.7294484,
+          "non_voice_recall": 0.9519119,
+          "overlap_ratio": 0.8259629
+        },
+        {
+          "id": "elephants_dream_2006_es_radio",
+          "non_voice_precision": 0.7294484,
+          "non_voice_recall": 0.9519119,
+          "overlap_ratio": 0.8259629
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "name": "t0.0100_nv1000_sp200_ent2.6_flat0.32_mg200_mmg300_msi200_mspd300_msall",
+        "energy_threshold": 0.01,
+        "min_non_voice_ms": 1000,
+        "min_speech_ms": 200,
+        "spectral_entropy_min": 2.6,
+        "spectral_flatness_max": 0.32,
+        "merge_gap_ms": 200,
+        "merge_min_gap_to_merge": 300,
+        "merge_min_silence_duration": 200,
+        "merge_min_speech_duration": 300,
+        "merge_strategy": "all"
+      },
+      "holdout": {
+        "id": "the_hole_1962_radio",
+        "non_voice_precision": 0.092576,
+        "non_voice_recall": 0.86537284,
+        "overlap_ratio": 0.16725895,
+        "worst_of_three": 0.092576,
+        "h3": 0.16725894647828235,
+        "score": 0.06193665691669387
+      },
+      "modern_guard_pass": false,
+      "modern_guard_failures": [
+        "elephants_dream_2006_de_radio: recall=0.9389 < floor=0.9898",
+        "elephants_dream_2006_de_radio: overlap=0.8193 < floor=0.8384",
+        "elephants_dream_2006_es_radio: recall=0.9389 < floor=0.9898",
+        "elephants_dream_2006_es_radio: overlap=0.8193 < floor=0.8384"
+      ],
+      "modern_checks": [
+        {
+          "id": "elephants_dream_2006_de_radio",
+          "non_voice_precision": 0.7267184,
+          "non_voice_recall": 0.93887585,
+          "overlap_ratio": 0.8192852
+        },
+        {
+          "id": "elephants_dream_2006_es_radio",
+          "non_voice_precision": 0.7267184,
+          "non_voice_recall": 0.93887585,
+          "overlap_ratio": 0.8192852
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "name": "t0.0100_nv4000_sp200_ent2.6_flat0.32_mg200_mmg300_msi200_mspd300_msall",
+        "energy_threshold": 0.01,
+        "min_non_voice_ms": 4000,
+        "min_speech_ms": 200,
+        "spectral_entropy_min": 2.6,
+        "spectral_flatness_max": 0.32,
+        "merge_gap_ms": 200,
+        "merge_min_gap_to_merge": 300,
+        "merge_min_silence_duration": 200,
+        "merge_min_speech_duration": 300,
+        "merge_strategy": "all"
+      },
+      "holdout": {
+        "id": "the_hole_1962_radio",
+        "non_voice_precision": 0.06742988,
+        "non_voice_recall": 0.6016343,
+        "overlap_ratio": 0.12126827,
+        "worst_of_three": 0.06742988,
+        "h3": 0.12126827167218575,
+        "score": 0.03270842002665154
+      },
+      "modern_guard_pass": false,
+      "modern_guard_failures": [
+        "elephants_dream_2006_de_radio: recall=0.8804 < floor=0.9898",
+        "elephants_dream_2006_de_radio: overlap=0.7980 < floor=0.8384",
+        "elephants_dream_2006_es_radio: recall=0.8804 < floor=0.9898",
+        "elephants_dream_2006_es_radio: overlap=0.7980 < floor=0.8384"
+      ],
+      "modern_checks": [
+        {
+          "id": "elephants_dream_2006_de_radio",
+          "non_voice_precision": 0.7296353,
+          "non_voice_recall": 0.8804254,
+          "overlap_ratio": 0.7979692
+        },
+        {
+          "id": "elephants_dream_2006_es_radio",
+          "non_voice_precision": 0.7296353,
+          "non_voice_recall": 0.8804254,
+          "overlap_ratio": 0.7979692
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "name": "t0.0150_nv300_sp1800_ent3.0_flat0.38_mg400_mmg600_msi800_mspd2500_mssparse",
+        "energy_threshold": 0.015,
+        "min_non_voice_ms": 300,
+        "min_speech_ms": 1800,
+        "spectral_entropy_min": 3.0,
+        "spectral_flatness_max": 0.38,
+        "merge_gap_ms": 400,
+        "merge_min_gap_to_merge": 600,
+        "merge_min_silence_duration": 800,
+        "merge_min_speech_duration": 2500,
+        "merge_strategy": "sparse"
+      },
+      "holdout": {
+        "id": "the_hole_1962_radio",
+        "non_voice_precision": 1.0,
+        "non_voice_recall": 0.0,
+        "overlap_ratio": 0.0,
+        "worst_of_three": 0.0,
+        "h3": 0.0,
+        "score": 0.0
+      },
+      "modern_guard_pass": false,
+      "modern_guard_failures": [
+        "elephants_dream_2006_de_radio: recall=0.0000 < floor=0.9898",
+        "elephants_dream_2006_de_radio: overlap=0.0000 < floor=0.8384",
+        "elephants_dream_2006_es_radio: recall=0.0000 < floor=0.9898",
+        "elephants_dream_2006_es_radio: overlap=0.0000 < floor=0.8384"
+      ],
+      "modern_checks": [
+        {
+          "id": "elephants_dream_2006_de_radio",
+          "non_voice_precision": 1.0,
+          "non_voice_recall": 0.0,
+          "overlap_ratio": 0.0
+        },
+        {
+          "id": "elephants_dream_2006_es_radio",
+          "non_voice_precision": 1.0,
+          "non_voice_recall": 0.0,
+          "overlap_ratio": 0.0
+        }
+      ]
+    },
+    {
+      "candidate": {
+        "name": "t0.0150_nv1000_sp1800_ent3.0_flat0.38_mg400_mmg600_msi800_mspd2500_mssparse",
+        "energy_threshold": 0.015,
+        "min_non_voice_ms": 1000,
+        "min_speech_ms": 1800,
+        "spectral_entropy_min": 3.0,
+        "spectral_flatness_max": 0.38,
+        "merge_gap_ms": 400,
+        "merge_min_gap_to_merge": 600,
+        "merge_min_silence_duration": 800,
+        "merge_min_speech_duration": 2500,
+        "merge_strategy": "sparse"
+      },
+      "holdout": {
+        "id": "the_hole_1962_radio",
+        "non_voice_precision": 1.0,
+        "non_voice_recall": 0.0,
+        "overlap_ratio": 0.0,
+        "worst_of_three": 0.0,
+        "h3": 0.0,
+        "score": 0.0
+      },
+      "modern_guard_pass": false,
+      "modern_guard_failures": [
+        "elephants_dream_2006_de_radio: recall=0.0000 < floor=0.9898",
+        "elephants_dream_2006_de_radio: overlap=0.0000 < floor=0.8384",
+        "elephants_dream_2006_es_radio: recall=0.0000 < floor=0.9898",
+        "elephants_dream_2006_es_radio: overlap=0.0000 < floor=0.8384"
+      ],
+      "modern_checks": [
+        {
+          "id": "elephants_dream_2006_de_radio",
+          "non_voice_precision": 1.0,
+          "non_voice_recall": 0.0,
+          "overlap_ratio": 0.0
+        },
+        {
+          "id": "elephants_dream_2006_es_radio",
+          "non_voice_precision": 1.0,
+          "non_voice_recall": 0.0,
+          "overlap_ratio": 0.0
+        }
+      ]
+    }
+  ],
+  "best_candidate": {
+    "candidate": {
+      "name": "t0.0125_nv1500_sp1800_ent3.0_flat0.38_mg400_mmg600_msi800_mspd2500_mssparse",
+      "energy_threshold": 0.0125,
+      "min_non_voice_ms": 1500,
+      "min_speech_ms": 1800,
+      "spectral_entropy_min": 3.0,
+      "spectral_flatness_max": 0.38,
+      "merge_gap_ms": 400,
+      "merge_min_gap_to_merge": 600,
+      "merge_min_silence_duration": 800,
+      "merge_min_speech_duration": 2500,
+      "merge_strategy": "sparse"
+    },
+    "holdout": {
+      "id": "the_hole_1962_radio",
+      "non_voice_precision": 0.10438213,
+      "non_voice_recall": 1.0,
+      "overlap_ratio": 0.18903263,
+      "worst_of_three": 0.10438213,
+      "h3": 0.18903263086992722,
+      "score": 0.07892651459882703
+    },
+    "modern_guard_pass": true,
+    "modern_guard_failures": [],
+    "modern_checks": [
+      {
+        "id": "elephants_dream_2006_de_radio",
+        "non_voice_precision": 0.73680586,
+        "non_voice_recall": 0.9998111,
+        "overlap_ratio": 0.84839284
+      },
+      {
+        "id": "elephants_dream_2006_es_radio",
+        "non_voice_precision": 0.73680586,
+        "non_voice_recall": 0.9998111,
+        "overlap_ratio": 0.84839284
+      }
+    ]
+  }
+}

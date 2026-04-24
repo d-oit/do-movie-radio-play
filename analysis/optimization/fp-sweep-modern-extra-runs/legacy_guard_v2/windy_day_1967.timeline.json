@@ -1,0 +1,71 @@
+{
+  "file": "windy_day_1967.mp4",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 5140,
+      "kind": "non_voice",
+      "confidence": 0.97157454,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 61420,
+      "end_ms": 63280,
+      "kind": "non_voice",
+      "confidence": 0.9800909,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 115520,
+      "end_ms": 117420,
+      "kind": "non_voice",
+      "confidence": 0.8553793,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 301100,
+      "end_ms": 303080,
+      "kind": "non_voice",
+      "confidence": 0.70507944,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 407460,
+      "end_ms": 410000,
+      "kind": "non_voice",
+      "confidence": 0.9325487,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 441160,
+      "end_ms": 443260,
+      "kind": "non_voice",
+      "confidence": 0.8770503,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 530620,
+      "end_ms": 532800,
+      "kind": "non_voice",
+      "confidence": 0.71158993,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 558900,
+      "end_ms": 562967,
+      "kind": "non_voice",
+      "confidence": 0.93073905,
+      "tags": [],
+      "prompt": null
+    }
+  ]
+}

@@ -1,0 +1,540 @@
+{
+  "generated_at": 1777057048.5108583,
+  "elapsed_sec": 307.94,
+  "baseline_modern_min": {
+    "precision": 0.73300743,
+    "recall": 0.9805061,
+    "overlap": 0.8388825
+  },
+  "guard_thresholds": {
+    "min_recall": 0.9705061,
+    "min_overlap": 0.8288825
+  },
+  "holdout_legacy_check": {
+    "precision": 0.99897957,
+    "recall": 1.0,
+    "overlap": 0.99948955,
+    "predicted_segments": 1
+  },
+  "candidate_count": 12,
+  "ranked_candidates": [
+    {
+      "candidate": "all_high_floor_v3",
+      "config_patch": {
+        "energy_threshold": 0.014,
+        "min_non_voice_ms": 1500,
+        "min_speech_ms": 900,
+        "merge_gap_ms": 300,
+        "merge_options": {
+          "merge_strategy": "all",
+          "min_gap_to_merge": 300,
+          "min_silence_duration": 300,
+          "min_speech_duration": 900
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 0.73680586,
+          "recall": 0.9998111,
+          "overlap": 0.84839284,
+          "predicted_segments": 1
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 0.73680586,
+          "recall": 0.9998111,
+          "overlap": 0.84839284,
+          "predicted_segments": 1
+        }
+      },
+      "modern_min": {
+        "precision": 0.73680586,
+        "recall": 0.9998111,
+        "overlap": 0.84839284
+      },
+      "modern_avg": {
+        "precision": 0.73680586,
+        "recall": 0.9998111,
+        "overlap": 0.84839284
+      },
+      "guard_pass": true,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "precision_push_sparse_v1",
+      "config_patch": {
+        "energy_threshold": 0.0145,
+        "min_non_voice_ms": 1300,
+        "min_speech_ms": 900,
+        "merge_gap_ms": 450,
+        "merge_options": {
+          "merge_strategy": "sparse",
+          "min_gap_to_merge": 450,
+          "min_silence_duration": 400,
+          "min_speech_duration": 900
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 0.73680586,
+          "recall": 0.9998111,
+          "overlap": 0.84839284,
+          "predicted_segments": 1
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 0.73680586,
+          "recall": 0.9998111,
+          "overlap": 0.84839284,
+          "predicted_segments": 1
+        }
+      },
+      "modern_min": {
+        "precision": 0.73680586,
+        "recall": 0.9998111,
+        "overlap": 0.84839284
+      },
+      "modern_avg": {
+        "precision": 0.73680586,
+        "recall": 0.9998111,
+        "overlap": 0.84839284
+      },
+      "guard_pass": true,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "all_high_floor_v2",
+      "config_patch": {
+        "min_non_voice_ms": 1200,
+        "min_speech_ms": 700,
+        "merge_gap_ms": 250,
+        "merge_options": {
+          "merge_strategy": "all",
+          "min_gap_to_merge": 250,
+          "min_silence_duration": 250,
+          "min_speech_duration": 700
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 0.7364834,
+          "recall": 0.99815047,
+          "overlap": 0.84758085,
+          "predicted_segments": 2
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 0.7364834,
+          "recall": 0.99815047,
+          "overlap": 0.84758085,
+          "predicted_segments": 2
+        }
+      },
+      "modern_min": {
+        "precision": 0.7364834,
+        "recall": 0.99815047,
+        "overlap": 0.84758085
+      },
+      "modern_avg": {
+        "precision": 0.7364834,
+        "recall": 0.99815047,
+        "overlap": 0.84758085
+      },
+      "guard_pass": true,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "all_high_floor_v1",
+      "config_patch": {
+        "min_non_voice_ms": 900,
+        "min_speech_ms": 500,
+        "merge_gap_ms": 220,
+        "merge_options": {
+          "merge_strategy": "all",
+          "min_gap_to_merge": 220,
+          "min_silence_duration": 220,
+          "min_speech_duration": 500
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 0.7350305,
+          "recall": 0.9907191,
+          "overlap": 0.8439333,
+          "predicted_segments": 8
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 0.7350305,
+          "recall": 0.9907191,
+          "overlap": 0.8439333,
+          "predicted_segments": 8
+        }
+      },
+      "modern_min": {
+        "precision": 0.7350305,
+        "recall": 0.9907191,
+        "overlap": 0.8439333
+      },
+      "modern_avg": {
+        "precision": 0.7350305,
+        "recall": 0.9907191,
+        "overlap": 0.8439333
+      },
+      "guard_pass": true,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "baseline",
+      "config_patch": {},
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 0.73300743,
+          "recall": 0.9805061,
+          "overlap": 0.8388825,
+          "predicted_segments": 11
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 0.73300743,
+          "recall": 0.9805061,
+          "overlap": 0.8388825,
+          "predicted_segments": 11
+        }
+      },
+      "modern_min": {
+        "precision": 0.73300743,
+        "recall": 0.9805061,
+        "overlap": 0.8388825
+      },
+      "modern_avg": {
+        "precision": 0.73300743,
+        "recall": 0.9805061,
+        "overlap": 0.8388825
+      },
+      "guard_pass": true,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "tight_gap_all_v2",
+      "config_patch": {
+        "min_non_voice_ms": 700,
+        "min_speech_ms": 350,
+        "merge_gap_ms": 180,
+        "merge_options": {
+          "merge_strategy": "all",
+          "min_gap_to_merge": 180,
+          "min_silence_duration": 180,
+          "min_speech_duration": 350
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 0.7329581,
+          "recall": 0.9771537,
+          "overlap": 0.8376209,
+          "predicted_segments": 16
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 0.7329581,
+          "recall": 0.9771537,
+          "overlap": 0.8376209,
+          "predicted_segments": 16
+        }
+      },
+      "modern_min": {
+        "precision": 0.7329581,
+        "recall": 0.9771537,
+        "overlap": 0.8376209
+      },
+      "modern_avg": {
+        "precision": 0.7329581,
+        "recall": 0.9771537,
+        "overlap": 0.8376209
+      },
+      "guard_pass": true,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "tight_gap_all_v3",
+      "config_patch": {
+        "energy_threshold": 0.013,
+        "min_non_voice_ms": 650,
+        "min_speech_ms": 320,
+        "merge_gap_ms": 180,
+        "merge_options": {
+          "merge_strategy": "all",
+          "min_gap_to_merge": 180,
+          "min_silence_duration": 180,
+          "min_speech_duration": 320
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 0.73281664,
+          "recall": 0.97644794,
+          "overlap": 0.8372692,
+          "predicted_segments": 17
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 0.73281664,
+          "recall": 0.97644794,
+          "overlap": 0.8372692,
+          "predicted_segments": 17
+        }
+      },
+      "modern_min": {
+        "precision": 0.73281664,
+        "recall": 0.97644794,
+        "overlap": 0.8372692
+      },
+      "modern_avg": {
+        "precision": 0.73281664,
+        "recall": 0.97644794,
+        "overlap": 0.8372692
+      },
+      "guard_pass": true,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "tight_gap_all_v1",
+      "config_patch": {
+        "min_non_voice_ms": 600,
+        "min_speech_ms": 300,
+        "merge_gap_ms": 200,
+        "merge_options": {
+          "merge_strategy": "all",
+          "min_gap_to_merge": 200,
+          "min_silence_duration": 200,
+          "min_speech_duration": 300
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 0.73243314,
+          "recall": 0.9745382,
+          "overlap": 0.8363164,
+          "predicted_segments": 18
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 0.73243314,
+          "recall": 0.9745382,
+          "overlap": 0.8363164,
+          "predicted_segments": 18
+        }
+      },
+      "modern_min": {
+        "precision": 0.73243314,
+        "recall": 0.9745382,
+        "overlap": 0.8363164
+      },
+      "modern_avg": {
+        "precision": 0.73243314,
+        "recall": 0.9745382,
+        "overlap": 0.8363164
+      },
+      "guard_pass": true,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "sparse_modern_v1",
+      "config_patch": {
+        "min_non_voice_ms": 700,
+        "min_speech_ms": 500,
+        "merge_gap_ms": 350,
+        "merge_options": {
+          "merge_strategy": "sparse",
+          "min_gap_to_merge": 350,
+          "min_silence_duration": 300,
+          "min_speech_duration": 500
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 1.0,
+          "recall": 0.0,
+          "overlap": 0.0,
+          "predicted_segments": 0
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 1.0,
+          "recall": 0.0,
+          "overlap": 0.0,
+          "predicted_segments": 0
+        }
+      },
+      "modern_min": {
+        "precision": 1.0,
+        "recall": 0.0,
+        "overlap": 0.0
+      },
+      "modern_avg": {
+        "precision": 1.0,
+        "recall": 0.0,
+        "overlap": 0.0
+      },
+      "guard_pass": false,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "sparse_modern_v2",
+      "config_patch": {
+        "energy_threshold": 0.0135,
+        "min_non_voice_ms": 900,
+        "min_speech_ms": 600,
+        "merge_gap_ms": 400,
+        "merge_options": {
+          "merge_strategy": "sparse",
+          "min_gap_to_merge": 400,
+          "min_silence_duration": 350,
+          "min_speech_duration": 600
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 1.0,
+          "recall": 0.0,
+          "overlap": 0.0,
+          "predicted_segments": 0
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 1.0,
+          "recall": 0.0,
+          "overlap": 0.0,
+          "predicted_segments": 0
+        }
+      },
+      "modern_min": {
+        "precision": 1.0,
+        "recall": 0.0,
+        "overlap": 0.0
+      },
+      "modern_avg": {
+        "precision": 1.0,
+        "recall": 0.0,
+        "overlap": 0.0
+      },
+      "guard_pass": false,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "recall_guard_all_v1",
+      "config_patch": {
+        "energy_threshold": 0.012,
+        "min_non_voice_ms": 500,
+        "min_speech_ms": 250,
+        "merge_gap_ms": 220,
+        "merge_options": {
+          "merge_strategy": "all",
+          "min_gap_to_merge": 220,
+          "min_silence_duration": 220,
+          "min_speech_duration": 250
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 0.73152876,
+          "recall": 0.96826303,
+          "overlap": 0.8334106,
+          "predicted_segments": 31
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 0.73152876,
+          "recall": 0.96826303,
+          "overlap": 0.8334106,
+          "predicted_segments": 31
+        }
+      },
+      "modern_min": {
+        "precision": 0.73152876,
+        "recall": 0.96826303,
+        "overlap": 0.8334106
+      },
+      "modern_avg": {
+        "precision": 0.73152876,
+        "recall": 0.96826303,
+        "overlap": 0.8334106
+      },
+      "guard_pass": false,
+      "ceiling_target_pass": false
+    },
+    {
+      "candidate": "recall_guard_all_v2",
+      "config_patch": {
+        "energy_threshold": 0.0115,
+        "min_non_voice_ms": 450,
+        "min_speech_ms": 220,
+        "merge_gap_ms": 200,
+        "merge_options": {
+          "merge_strategy": "all",
+          "min_gap_to_merge": 200,
+          "min_silence_duration": 200,
+          "min_speech_duration": 220
+        }
+      },
+      "modern": {
+        "elephants_dream_2006_de_radio": {
+          "precision": 0.7308917,
+          "recall": 0.9585898,
+          "overlap": 0.82939684,
+          "predicted_segments": 42
+        },
+        "elephants_dream_2006_es_radio": {
+          "precision": 0.7308917,
+          "recall": 0.9585898,
+          "overlap": 0.82939684,
+          "predicted_segments": 42
+        }
+      },
+      "modern_min": {
+        "precision": 0.7308917,
+        "recall": 0.9585898,
+        "overlap": 0.82939684
+      },
+      "modern_avg": {
+        "precision": 0.7308917,
+        "recall": 0.9585898,
+        "overlap": 0.82939684
+      },
+      "guard_pass": false,
+      "ceiling_target_pass": false
+    }
+  ],
+  "best_under_guard": {
+    "candidate": "all_high_floor_v3",
+    "config_patch": {
+      "energy_threshold": 0.014,
+      "min_non_voice_ms": 1500,
+      "min_speech_ms": 900,
+      "merge_gap_ms": 300,
+      "merge_options": {
+        "merge_strategy": "all",
+        "min_gap_to_merge": 300,
+        "min_silence_duration": 300,
+        "min_speech_duration": 900
+      }
+    },
+    "modern": {
+      "elephants_dream_2006_de_radio": {
+        "precision": 0.73680586,
+        "recall": 0.9998111,
+        "overlap": 0.84839284,
+        "predicted_segments": 1
+      },
+      "elephants_dream_2006_es_radio": {
+        "precision": 0.73680586,
+        "recall": 0.9998111,
+        "overlap": 0.84839284,
+        "predicted_segments": 1
+      }
+    },
+    "modern_min": {
+      "precision": 0.73680586,
+      "recall": 0.9998111,
+      "overlap": 0.84839284
+    },
+    "modern_avg": {
+      "precision": 0.73680586,
+      "recall": 0.9998111,
+      "overlap": 0.84839284
+    },
+    "guard_pass": true,
+    "ceiling_target_pass": false
+  },
+  "target_95_any": false
+}

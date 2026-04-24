@@ -23,6 +23,11 @@ use crate::verification::{
     default_filter_segment_confidence_ceiling, filter_low_confidence_non_voice_segments,
 };
 
+const MAX_FILTER_MIN_NON_VOICE_MS: u32 = 1_000;
+const FILTER_MERGE_STRATEGY: &str = "sparse";
+const MAX_RESIDUAL_BRIDGE_GAP_MS: u64 = 2_500;
+const NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS: u64 = 400;
+
 struct PipelineArtifacts {
     timeline: TimelineOutput,
     frame_count: usize,
@@ -195,14 +200,18 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
         .map(|opts| opts.min_speech_duration)
         .unwrap_or(cfg.min_speech_ms);
     let pruned_speech = segmenter::prune_short_speech_segments(&merged_speech, prune_floor_ms);
-    let filtered_speech =
-        speech_evidence::filter_implausible_speech_segments(&pruned_speech, &frames, cfg.frame_ms);
+    let segments_after_prune = pruned_speech.len();
+    let filtered_speech = if should_apply_speech_evidence_filter(cfg) {
+        speech_evidence::filter_implausible_speech_segments(&pruned_speech, &frames, cfg.frame_ms)
+    } else {
+        pruned_speech
+    };
     stage_ms.merge_ms = merge_start.elapsed().as_millis();
     info!(
         stage = "merge_segments",
         ms = stage_ms.merge_ms,
         segments_before_prune = merged_speech.len(),
-        segments_after_prune = pruned_speech.len(),
+        segments_after_prune,
         segments_after_evidence = filtered_speech.len(),
         prune_floor_ms,
         merge_gap_ms = cfg.merge_gap_ms,
@@ -235,6 +244,7 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
         &non_voice,
         &frame_likelihoods,
         cfg.frame_ms,
+        ambiguous_expand_max_ms(cfg),
     );
     stage_ms.invert_ms = invert_start.elapsed().as_millis();
     let segments_before_split = non_voice.len();
@@ -262,12 +272,17 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     };
     let verification_filter_start = Instant::now();
     let segments_before_filter = segments.len();
-    let segments = filter_low_confidence_non_voice_segments(
-        input,
-        &segments,
-        default_filter_segment_confidence_ceiling(),
-    );
-    let segments = segmenter::bridge_residual_non_voice_gaps(&segments);
+    let segments = if should_apply_verification_filter(cfg) {
+        filter_low_confidence_non_voice_segments(
+            input,
+            &segments,
+            default_filter_segment_confidence_ceiling(),
+        )
+    } else {
+        segments
+    };
+    let segments =
+        segmenter::bridge_residual_non_voice_gaps(&segments, residual_bridge_gap_ms(cfg));
     let segments = tail_recovery::extend_terminal_non_voice_segment(
         &segments,
         &frame_likelihoods,
@@ -323,4 +338,161 @@ pub fn benchmark_file(input: &Path, cfg: &AnalysisConfig) -> Result<BenchmarkRes
         segment_count,
         stage_ms,
     })
+}
+
+fn should_apply_verification_filter(cfg: &AnalysisConfig) -> bool {
+    cfg.min_non_voice_ms <= MAX_FILTER_MIN_NON_VOICE_MS
+        && cfg
+            .merge_options
+            .as_ref()
+            .map(|opts| opts.merge_strategy == FILTER_MERGE_STRATEGY)
+            .unwrap_or(false)
+}
+
+fn residual_bridge_gap_ms(cfg: &AnalysisConfig) -> u64 {
+    let Some(options) = cfg.merge_options.as_ref() else {
+        return MAX_RESIDUAL_BRIDGE_GAP_MS;
+    };
+    if options.merge_strategy == FILTER_MERGE_STRATEGY {
+        MAX_RESIDUAL_BRIDGE_GAP_MS
+    } else {
+        options.min_gap_to_merge.max(options.min_silence_duration) as u64
+    }
+}
+
+fn ambiguous_expand_max_ms(cfg: &AnalysisConfig) -> Option<u64> {
+    let Some(options) = cfg.merge_options.as_ref() else {
+        return Some(NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS);
+    };
+    if options.merge_strategy == FILTER_MERGE_STRATEGY {
+        None
+    } else {
+        Some(NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS)
+    }
+}
+
+fn should_apply_speech_evidence_filter(cfg: &AnalysisConfig) -> bool {
+    cfg.merge_options
+        .as_ref()
+        .map(|opts| opts.merge_strategy == FILTER_MERGE_STRATEGY)
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::MergeOptions;
+
+    #[test]
+    fn verification_filter_applies_to_sparse_low_min_non_voice_profiles() {
+        let cfg = AnalysisConfig {
+            min_non_voice_ms: 800,
+            merge_options: Some(MergeOptions {
+                merge_strategy: "sparse".to_string(),
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert!(should_apply_verification_filter(&cfg));
+    }
+
+    #[test]
+    fn verification_filter_skips_non_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            min_non_voice_ms: 500,
+            merge_options: Some(MergeOptions {
+                merge_strategy: "all".to_string(),
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert!(!should_apply_verification_filter(&cfg));
+    }
+
+    #[test]
+    fn residual_bridge_gap_stays_wide_for_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: "sparse".to_string(),
+                min_gap_to_merge: 600,
+                min_silence_duration: 500,
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert_eq!(residual_bridge_gap_ms(&cfg), MAX_RESIDUAL_BRIDGE_GAP_MS);
+    }
+
+    #[test]
+    fn residual_bridge_gap_is_bounded_for_non_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: "all".to_string(),
+                min_gap_to_merge: 400,
+                min_silence_duration: 300,
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert_eq!(residual_bridge_gap_ms(&cfg), 400);
+    }
+
+    #[test]
+    fn ambiguous_expand_unbounded_for_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: "sparse".to_string(),
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert_eq!(ambiguous_expand_max_ms(&cfg), None);
+    }
+
+    #[test]
+    fn ambiguous_expand_bounded_for_non_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: "all".to_string(),
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert_eq!(
+            ambiguous_expand_max_ms(&cfg),
+            Some(NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS)
+        );
+    }
+
+    #[test]
+    fn speech_evidence_filter_enabled_for_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: "sparse".to_string(),
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert!(should_apply_speech_evidence_filter(&cfg));
+    }
+
+    #[test]
+    fn speech_evidence_filter_disabled_for_non_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: "all".to_string(),
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert!(!should_apply_speech_evidence_filter(&cfg));
+    }
 }

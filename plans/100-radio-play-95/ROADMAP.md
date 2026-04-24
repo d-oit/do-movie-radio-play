@@ -89,6 +89,18 @@ Status update:
   - broader hard non-speech frame-state thresholds collapsed output,
   - broader verifier review restored recall but destroyed precision/overlap
 - 🔄 likelihood-based non-voice growth was tested and reverted (no gain vs current best checkpoint)
+- ✅ verification filter scope was narrowed to sparse-merge low-min-non-voice profiles, removing zero-segment collapse in modern/synthetic runs while preserving holdout C pass
+- 🔄 post-fix modern status: recall recovered (`~0.9998`) and overlap improved (`~0.8484`), but precision remains below gate (`~0.7368`)
+- 🎯 swarm recommendation for next lift: replace unbounded `merge_strategy=all` collapse with bounded gap-aware non-voice merge behavior to recover modern precision without sacrificing holdout C
+- 🔄 bounded `merge_strategy=all` + bounded residual-gap bridge patch landed; modern fragmentation recovered (`predicted_segments 1 -> 11`) but precision did not improve, so merge-threshold tuning alone is likely insufficient
+- 🔄 speech-boundary ambiguity guard + bounded non-sparse ambiguous expansion landed; holdout remained stable but modern precision/overlap stayed flat, so this heuristic path is now deprioritized
+- 🔄 relaxed tri-state hard non-speech enforcement for non-sparse profiles was tested and rejected (modern precision up, but recall/overlap collapsed); rollback restored prior checkpoint
+- 🔄 speech-evidence filter gating (sparse-only) was tested; focused modern/holdout validation showed no material metric movement, so this path is deprioritized
+- 🔄 direct `Frame::speech_likelihood()` weight/threshold retune was tested and rolled back (no modern precision gain + slight holdout quality regression)
+- 🔄 non-sparse speech-boundary expansion using high-likelihood frame growth was tested and rolled back (modern precision/recall/overlap regressed)
+- 🔄 compact holdout+modern scripted sweep (`optimize_radio_play_holdout.py`, 8 candidates, strict modern-drop guard) completed with no acceptable candidate; search space/objective needs retargeting before next automated pass
+- ✅ bounded modern ceiling check completed (`analysis/optimization/modern-ceiling-check.json`): best guarded modern precision moved only `0.7330 -> 0.7368`, no candidate reached `>=0.95` P/R/O, holdout C stayed green
+- 🎯 next branch decision: pause profile-only micro-tuning and prioritize engine-level speech/non-speech discrimination improvement for modern precision recovery
 
 ### Milestone C (1-2 weeks)
 - Add optional ONNX verifier stage for ambiguous segments.

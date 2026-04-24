@@ -1,0 +1,81 @@
+{
+  "verified_timeline": {
+    "file": "elephantsdream_teaser.mp4",
+    "analysis_sample_rate": 16000,
+    "frame_ms": 20,
+    "segments": [
+      {
+        "start_ms": 0,
+        "end_ms": 1100,
+        "kind": "non_voice",
+        "confidence": 0.7071209,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 70920,
+        "end_ms": 75232,
+        "kind": "non_voice",
+        "confidence": 0.8242244,
+        "tags": [],
+        "prompt": null
+      }
+    ]
+  },
+  "segment_results": [
+    {
+      "start_ms": 0,
+      "end_ms": 1100,
+      "original_confidence": 0.7071209,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0011910887,
+        "zcr": 0.095289506,
+        "spectral_entropy": 13.173637,
+        "spectral_flatness": 0.13335839,
+        "spectral_flux": 1.4926243,
+        "centroid_hz": 4000.1558,
+        "low_band_ratio": 0.17771055,
+        "high_band_ratio": 0.5000217
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 70920,
+      "end_ms": 75232,
+      "original_confidence": 0.8242244,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0016305489,
+        "zcr": 0.008711281,
+        "spectral_entropy": 11.255845,
+        "spectral_flatness": 0.10073155,
+        "spectral_flux": 0.27317953,
+        "centroid_hz": 4000.0332,
+        "low_band_ratio": 0.45044127,
+        "high_band_ratio": 0.50000244
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    }
+  ],
+  "summary": {
+    "total_segments": 2,
+    "verified_count": 0,
+    "suspicious_count": 2,
+    "rejected_count": 0,
+    "false_positive_rate": 1.0,
+    "average_confidence": 0.7656727,
+    "thresholds_applied": {
+      "entropy_min": 3.4,
+      "entropy_max": 7.2,
+      "flatness_max": 0.44,
+      "energy_min": 0.001,
+      "centroid_min": 120.0,
+      "centroid_max": 6000.0
+    }
+  }
+}

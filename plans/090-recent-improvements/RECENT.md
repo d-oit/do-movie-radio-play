@@ -377,3 +377,18 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
 - Validation sweep workflow now runs against radio-play manifest and emits:
   - `analysis/validation/radio-play-sweep-summary.json`
 - Coverage check now runs after manifest execution to validate generated report artifacts.
+
+## 19. Compact Update: Swarm Triage + Filter Scope Fix (2026-04-23)
+
+- Applied a targeted pipeline guardrail in `src/pipeline/mod.rs`:
+  - low-confidence verification filtering now runs only for sparse-merge, low `min_non_voice_ms` profiles.
+- Re-ran radio-play manifest sweep (tiers A/B/C) and rebuilt readiness/failure artifacts.
+- Resulting shift:
+  - modern/synthetic no longer collapse to zero predicted non-voice segments,
+  - modern recall/overlap recovered strongly,
+  - holdout tier C readiness remains green.
+- Remaining gap:
+  - modern precision is still below release threshold.
+- Swarm-coordinated next best action:
+  - change non-voice merge behavior for `merge_strategy=all` from global collapse to bounded gap-aware merge,
+  - keep holdout protections (sparse-profile filter + tail-recovery floor) unchanged.

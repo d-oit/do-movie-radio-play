@@ -1,0 +1,319 @@
+{
+  "file": "the_hole_1962.mp4",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 9060,
+      "kind": "non_voice",
+      "confidence": 0.9760893,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 59620,
+      "end_ms": 61080,
+      "kind": "non_voice",
+      "confidence": 0.99713594,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 67660,
+      "end_ms": 68940,
+      "kind": "non_voice",
+      "confidence": 0.9902039,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 150760,
+      "end_ms": 153240,
+      "kind": "non_voice",
+      "confidence": 0.99529725,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 154920,
+      "end_ms": 156520,
+      "kind": "non_voice",
+      "confidence": 0.9831948,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 159860,
+      "end_ms": 161200,
+      "kind": "non_voice",
+      "confidence": 0.9709951,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 164800,
+      "end_ms": 166020,
+      "kind": "non_voice",
+      "confidence": 0.99933296,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 167920,
+      "end_ms": 169840,
+      "kind": "non_voice",
+      "confidence": 0.9982238,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 170460,
+      "end_ms": 173620,
+      "kind": "non_voice",
+      "confidence": 0.99747086,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 189820,
+      "end_ms": 191180,
+      "kind": "non_voice",
+      "confidence": 0.99505657,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 204080,
+      "end_ms": 205620,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 211640,
+      "end_ms": 215240,
+      "kind": "non_voice",
+      "confidence": 0.9974197,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 216460,
+      "end_ms": 218360,
+      "kind": "non_voice",
+      "confidence": 0.9996619,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 235500,
+      "end_ms": 238600,
+      "kind": "non_voice",
+      "confidence": 0.9940883,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 247180,
+      "end_ms": 248600,
+      "kind": "non_voice",
+      "confidence": 0.9984222,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 258420,
+      "end_ms": 260100,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 263000,
+      "end_ms": 264560,
+      "kind": "non_voice",
+      "confidence": 0.9969061,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 315900,
+      "end_ms": 317120,
+      "kind": "non_voice",
+      "confidence": 0.9914367,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 397900,
+      "end_ms": 399360,
+      "kind": "non_voice",
+      "confidence": 0.9963788,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 429460,
+      "end_ms": 431080,
+      "kind": "non_voice",
+      "confidence": 0.99593246,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 506440,
+      "end_ms": 508520,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 511500,
+      "end_ms": 513760,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 540680,
+      "end_ms": 542500,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 543980,
+      "end_ms": 546020,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 565080,
+      "end_ms": 576960,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 589320,
+      "end_ms": 592460,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 727420,
+      "end_ms": 730660,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 731740,
+      "end_ms": 735300,
+      "kind": "non_voice",
+      "confidence": 0.9931857,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 736540,
+      "end_ms": 738260,
+      "kind": "non_voice",
+      "confidence": 1.0,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 749440,
+      "end_ms": 750640,
+      "kind": "non_voice",
+      "confidence": 0.98582184,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 853420,
+      "end_ms": 865560,
+      "kind": "non_voice",
+      "confidence": 0.9746058,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 878520,
+      "end_ms": 880380,
+      "kind": "non_voice",
+      "confidence": 0.90005857,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 885020,
+      "end_ms": 886420,
+      "kind": "non_voice",
+      "confidence": 0.97133434,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 904060,
+      "end_ms": 905260,
+      "kind": "non_voice",
+      "confidence": 0.9798868,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 906120,
+      "end_ms": 908580,
+      "kind": "non_voice",
+      "confidence": 0.9704731,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 911020,
+      "end_ms": 912580,
+      "kind": "non_voice",
+      "confidence": 0.96082056,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 919400,
+      "end_ms": 920980,
+      "kind": "non_voice",
+      "confidence": 0.960325,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 922920,
+      "end_ms": 931400,
+      "kind": "non_voice",
+      "confidence": 0.9972205,
+      "tags": [],
+      "prompt": null
+    },
+    {
+      "start_ms": 932700,
+      "end_ms": 937900,
+      "kind": "non_voice",
+      "confidence": 0.76932335,
+      "tags": [],
+      "prompt": null
+    }
+  ]
+}

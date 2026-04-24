@@ -5,9 +5,9 @@
   "cohort_summary": {
     "modern": {
       "count": 3,
-      "avg_overlap_ratio": 0.0,
-      "avg_non_voice_precision": 1.0,
-      "avg_non_voice_recall": 0.0
+      "avg_overlap_ratio": 0.89892856,
+      "avg_non_voice_precision": 0.7023150066666667,
+      "avg_non_voice_recall": 0.9998740666666667
     },
     "legacy": {
       "count": 1,
@@ -22,27 +22,27 @@
       "tier": "A",
       "media": "testdata/generated/alternating.wav",
       "cohort": "modern",
-      "overlap_ratio": 0.0,
-      "non_voice_precision": 1.0,
-      "non_voice_recall": 0.0
+      "overlap_ratio": 1.0,
+      "non_voice_precision": 0.6333333,
+      "non_voice_recall": 1.0
     },
     {
       "id": "elephants_dream_2006_de_radio",
       "tier": "A",
       "media": "testdata/raw/elephants_dream_2006.mp4",
       "cohort": "modern",
-      "overlap_ratio": 0.0,
-      "non_voice_precision": 1.0,
-      "non_voice_recall": 0.0
+      "overlap_ratio": 0.84839284,
+      "non_voice_precision": 0.73680586,
+      "non_voice_recall": 0.9998111
     },
     {
       "id": "elephants_dream_2006_es_radio",
       "tier": "B",
       "media": "testdata/raw/elephants_dream_2006.mp4",
       "cohort": "modern",
-      "overlap_ratio": 0.0,
-      "non_voice_precision": 1.0,
-      "non_voice_recall": 0.0
+      "overlap_ratio": 0.84839284,
+      "non_voice_precision": 0.73680586,
+      "non_voice_recall": 0.9998111
     }
   ]
 }

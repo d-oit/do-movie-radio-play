@@ -1,0 +1,162 @@
+{
+  "verified_timeline": {
+    "file": "elephants_dream_2006.mp4",
+    "analysis_sample_rate": 16000,
+    "frame_ms": 20,
+    "segments": [
+      {
+        "start_ms": 0,
+        "end_ms": 2760,
+        "kind": "non_voice",
+        "confidence": 0.8374423,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 8300,
+        "end_ms": 10780,
+        "kind": "non_voice",
+        "confidence": 0.8337705,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 206940,
+        "end_ms": 209060,
+        "kind": "non_voice",
+        "confidence": 0.6376529,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 220060,
+        "end_ms": 223580,
+        "kind": "non_voice",
+        "confidence": 0.84994125,
+        "tags": [],
+        "prompt": null
+      },
+      {
+        "start_ms": 557180,
+        "end_ms": 565680,
+        "kind": "non_voice",
+        "confidence": 0.868654,
+        "tags": [],
+        "prompt": null
+      }
+    ]
+  },
+  "segment_results": [
+    {
+      "start_ms": 0,
+      "end_ms": 2760,
+      "original_confidence": 0.8374423,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0011505219,
+        "zcr": 0.028263092,
+        "spectral_entropy": 13.110232,
+        "spectral_flatness": 0.10463485,
+        "spectral_flux": 0.7067263,
+        "centroid_hz": 4000.2617,
+        "low_band_ratio": 0.34264117,
+        "high_band_ratio": 0.5000338
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 8300,
+      "end_ms": 10780,
+      "original_confidence": 0.8337705,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0027921905,
+        "zcr": 0.03082235,
+        "spectral_entropy": 13.079469,
+        "spectral_flatness": 0.10502611,
+        "spectral_flux": 2.3822987,
+        "centroid_hz": 4000.29,
+        "low_band_ratio": 0.35609847,
+        "high_band_ratio": 0.5000378
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 206940,
+      "end_ms": 209060,
+      "original_confidence": 0.6376529,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0043562627,
+        "zcr": 0.15557653,
+        "spectral_entropy": 14.519074,
+        "spectral_flatness": 0.2068851,
+        "spectral_flux": 5.318423,
+        "centroid_hz": 4000.1406,
+        "low_band_ratio": 0.1304426,
+        "high_band_ratio": 0.50001603
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 220060,
+      "end_ms": 223580,
+      "original_confidence": 0.84994125,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.0024375732,
+        "zcr": 0.19309647,
+        "spectral_entropy": 15.19944,
+        "spectral_flatness": 0.27485484,
+        "spectral_flux": 4.2315116,
+        "centroid_hz": 4000.089,
+        "low_band_ratio": 0.092183314,
+        "high_band_ratio": 0.5000126
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    },
+    {
+      "start_ms": 557180,
+      "end_ms": 565680,
+      "original_confidence": 0.868654,
+      "verification_status": "suspicious",
+      "spectral_features": {
+        "rms": 0.002286945,
+        "zcr": 0.029676689,
+        "spectral_entropy": 14.860348,
+        "spectral_flatness": 0.08472608,
+        "spectral_flux": 1.7290015,
+        "centroid_hz": 4000.35,
+        "low_band_ratio": 0.37955216,
+        "high_band_ratio": 0.5000451
+      },
+      "is_verified": false,
+      "is_suspicious": true,
+      "reason": null
+    }
+  ],
+  "summary": {
+    "total_segments": 5,
+    "verified_count": 0,
+    "suspicious_count": 5,
+    "rejected_count": 0,
+    "false_positive_rate": 1.0,
+    "average_confidence": 0.8054922,
+    "thresholds_applied": {
+      "entropy_min": 3.0,
+      "entropy_max": 7.6,
+      "flatness_max": 0.38,
+      "energy_min": 0.0015,
+      "centroid_min": 200.0,
+      "centroid_max": 6000.0
+    }
+  }
+}

@@ -19,7 +19,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 hound = "3"
 realfft = "3"
 tempfile = "3"
-libsql = "0.6"
+libsql = "0.9"
 
 [dev-dependencies]
 assert_cmd = "2"

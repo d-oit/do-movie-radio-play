@@ -56,14 +56,14 @@ jobs:
       - run: python3 scripts/optimize_fp_sweep.py --media testdata/raw/elephantsdream_teaser.mp4 --media testdata/raw/caminandes_gran_dillama.mp4 --output analysis/optimization/fp-sweep-modern-extra-ci.json --work-dir analysis/optimization/fp-sweep-modern-extra-ci-runs
       - run: python3 scripts/build_modern_ci_summary.py --benchmark analysis/benchmarks/ci-elephantsdream-teaser-2006.json --benchmark analysis/benchmarks/ci-caminandes-gran-dillama-2013.json --fp-sweep analysis/optimization/fp-sweep-modern-extra-ci.json --output-md analysis/optimization/modern-extra-ci-summary.md
       - run: cargo bench --bench pipeline_bench -- --noplot
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: benchmark-modern-movies
           path: |
             analysis/benchmarks/ci.json
             analysis/benchmarks/ci-elephantsdream-teaser-2006.json
             analysis/benchmarks/ci-caminandes-gran-dillama-2013.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: eval-modern-movies
           path: |

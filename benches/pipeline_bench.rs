@@ -1,10 +1,11 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use movie_nonvoice_timeline::pipeline::{
     decode,
     features::compute_features,
     framing, resample, segmenter,
     vad::{EnergyVad, VadEngine},
 };
+use std::hint::black_box;
 use std::{path::Path, sync::OnceLock, time::Duration};
 
 const BENCH_SAMPLE_RATE_HZ: u32 = 16000;

@@ -85,6 +85,7 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
 
     let mut entropy_acc = 0.0f32;
     let mut entropy_count = 0usize;
+    let inv_ln_2 = 1.0 / 2.0f32.ln();
 
     let rms = (samples.iter().map(|v| v * v).sum::<f32>() / samples.len() as f32).sqrt();
 
@@ -121,12 +122,15 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
         let mags = analyzer.analyze(chunk);
 
         let mut chunk_mag_sum = 0.0f32;
+        let mut chunk_sum_m_ln_m = 0.0f32;
+        let mut freq = 0.0f32;
+
         for (i, &m) in mags.iter().enumerate().take(half_bins) {
             chunk_mag_sum += m;
 
             // Centroid and band ratios
-            let freq = i as f32 * bin_width;
             weighted_bin_sum += freq * m;
+            freq += bin_width;
             mag_sum += m;
             if i < low_bin {
                 low += m;
@@ -135,11 +139,13 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
                 high += m;
             }
 
-            // Flatness components
+            // Flatness and Entropy components
             if m > 1e-10 {
-                log_mag_sum += m.ln();
+                let ln_m = m.ln();
+                log_mag_sum += ln_m;
                 arithmetic_mean += m;
                 valid_mag_count += 1;
+                chunk_sum_m_ln_m += m * ln_m;
             }
 
             // Flux
@@ -149,16 +155,9 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
             }
         }
 
-        if chunk_mag_sum > 0.0 {
-            let mut chunk_entropy = 0.0f32;
-            let inv_chunk_mag_sum = 1.0 / chunk_mag_sum;
-            for &m in mags.iter().take(half_bins) {
-                if m > 0.0 {
-                    let p = m * inv_chunk_mag_sum;
-                    chunk_entropy -= p * p.log2().max(-20.0);
-                }
-            }
-            entropy_acc += chunk_entropy;
+        if chunk_mag_sum > 1e-10 {
+            let chunk_entropy = (chunk_mag_sum.ln() - chunk_sum_m_ln_m / chunk_mag_sum) * inv_ln_2;
+            entropy_acc += chunk_entropy.max(0.0);
             entropy_count += 1;
         }
 
@@ -177,8 +176,9 @@ pub fn compute_features(samples: &[f32], sample_rate: u32) -> FeatureSet {
 
     let spectral_flatness = if valid_mag_count > 0 && arithmetic_mean > 0.0 {
         let am = arithmetic_mean / valid_mag_count as f32;
-        let gm = (log_mag_sum / half_bins as f32).exp();
-        (gm / am).ln().max(-10.0).exp()
+        ((log_mag_sum / half_bins as f32) - am.ln())
+            .max(-10.0)
+            .exp()
     } else {
         0.0
     };
@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn noise_has_high_flux() {
         use rand::rngs::StdRng;
-        use rand::Rng;
+        use rand::RngExt;
         use rand::SeedableRng;
         let mut rng = StdRng::seed_from_u64(42);
         let samples: Vec<f32> = (0..2048).map(|_| rng.random::<f32>() * 2.0 - 1.0).collect();

@@ -16,6 +16,8 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
     let low_bin = low_bin.min(half_bins);
     let high_bin = high_bin.min(half_bins);
     let mut prev_mags: Option<Vec<f32>> = None;
+    let inv_ln_2 = 1.0 / 2.0f32.ln();
+
     for chunk in samples.chunks(frame_len) {
         if chunk.is_empty() {
             continue;
@@ -40,10 +42,12 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
         let mut arithmetic_mean = 0.0f32;
         let mut valid_mag_count = 0usize;
         let mut spectral_flux = 0.0f32;
+        let mut sum_m_ln_m = 0.0f32;
+        let mut freq = 0.0f32;
 
         for (i, &m) in mags.iter().enumerate() {
-            let freq = i as f32 * bin_width;
             weighted += freq * m;
+            freq += bin_width;
             mag_sum += m;
             if i <= low_bin {
                 low += m;
@@ -53,9 +57,11 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
             }
 
             if m > 1e-10 {
-                log_mag_sum += m.ln();
+                let ln_m = m.ln();
+                log_mag_sum += ln_m;
                 arithmetic_mean += m;
                 valid_mag_count += 1;
+                sum_m_ln_m += m * ln_m;
             }
 
             if let Some(prev) = &prev_mags {
@@ -65,16 +71,8 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
             }
         }
 
-        let spectral_entropy = if mag_sum > 0.0 {
-            let mut entropy = 0.0f32;
-            let inv_mag_sum = 1.0 / mag_sum;
-            for &m in mags {
-                if m > 0.0 {
-                    let p: f32 = m * inv_mag_sum;
-                    entropy -= p * p.log2().max(-20.0);
-                }
-            }
-            entropy
+        let spectral_entropy = if mag_sum > 1e-10 {
+            ((mag_sum.ln() - sum_m_ln_m / mag_sum) * inv_ln_2).max(0.0)
         } else {
             0.0
         };
@@ -90,8 +88,9 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
 
         let spectral_flatness = if valid_mag_count > 0 && arithmetic_mean > 0.0 {
             let am = arithmetic_mean / valid_mag_count as f32;
-            let gm = (log_mag_sum / half_bins as f32).exp();
-            (gm / am).ln().max(-10.0).exp()
+            ((log_mag_sum / half_bins as f32) - am.ln())
+                .max(-10.0)
+                .exp()
         } else {
             0.0
         };

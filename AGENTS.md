@@ -1,339 +1,61 @@
 # AGENTS.md
 
 ## Named Constants
-
-| Constant | Value | Purpose |
-|----------|-------|---------|
-| `MAX_SOURCE_FILE_LOC` | 500 | Maximum lines of code per Rust source file |
-| `DEFAULT_SAMPLE_RATE_HZ` | 16000 | Standard audio processing sample rate |
-| `DEFAULT_FRAME_MS` | 20 | Frame window duration in milliseconds |
-| `DEFAULT_ENERGY_THRESHOLD` | 0.015 | RMS threshold for speech detection |
-| `MIN_NON_VOICE_MS` | 10000 | Minimum non-voice segment duration |
-| `MIN_SPEECH_MS` | 120 | Minimum speech segment duration |
-| `SPEECH_HANGOVER_MS` | 300 | Post-speech hangover buffer |
-
-## Environment Variables
-
-| Variable | Overrides | Example |
-|----------|-----------|---------|
-| `TIMELINE_SAMPLE_RATE` | `DEFAULT_SAMPLE_RATE_HZ` | `16000` |
-| `TIMELINE_FRAME_MS` | `DEFAULT_FRAME_MS` | `20` |
-| `TIMELINE_MIN_SPEECH_MS` | `MIN_SPEECH_MS` | `120` |
-| `TIMELINE_MIN_SILENCE_MS` | `MIN_NON_VOICE_MS` | `10000` |
-| `TIMELINE_ENERGY_THRESHOLD` | `DEFAULT_ENERGY_THRESHOLD` | `0.015` |
-| `RUST_LOG` | Tracing log level | `info`, `debug` |
-
-## Setup
-
-```bash
-cargo build
-bash scripts/fetch_test_assets.sh  # optional: download smoke media
+```bash readonly
+DEFAULT_SAMPLE_RATE_HZ=16000
+DEFAULT_FRAME_MS=20
+MAX_SOURCE_FILE_LOC=500
+MAX_LINES_AGENTS_MD=150
 ```
 
-## Quality Gate
-
-Run before every commit. All checks must pass with zero warnings.
-
-Minimum enforcement:
-- At least one relevant automated test must pass in every coding session (`cargo test <name>` or broader).
-- Prefer full `bash scripts/quality_gate.sh` before commit.
-
-```bash
-# Full gate (fmt + clippy + test):
-bash scripts/quality_gate.sh
-
-# Individual checks:
-cargo fmt --check
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test
-
-# Benchmark smoke:
-bash scripts/benchmark.sh
-python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/latest.json
-bash scripts/refresh_benchmark_baseline.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/latest.json
-
-# Repo docs/workflow integrity checks:
-python3 scripts/check_sweep_drift.py --comparison analysis/optimization/fp-sweep-comparison.json --max-fp-delta 0.02 --max-risk-delta 0.02
-bash scripts/refresh_sweep_baseline.sh analysis/optimization/fp-sweep-ranked.json analysis/optimization/fp-sweep-ranked-latest.json
-python3 scripts/build_radio_play_failure_breakdown.py --summary analysis/validation/radio-play-sweep-summary.json --output-json analysis/validation/radio-play-failure-breakdown.json --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
-python3 scripts/build_radio_play_readiness_report.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95 --min-lb95 0.95 --require-pass --output-json analysis/validation/radio-play-readiness-report.json --output-md analysis/learnings/latest-radio-play-readiness-report.md
-python3 scripts/check_radio_play_readiness.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-non-voice-precision 0.95 --min-non-voice-recall 0.95 --min-overlap 0.95
-python3 scripts/check_radio_play_lb95.py --summary analysis/validation/radio-play-sweep-summary.json --holdout-tier C --min-lb95 0.95
-python3 scripts/check_media_intake.py --input analysis/media/modern-multilang-intake.json --min-sub-langs 2 --strict-license
-python3 - <<'PY'
-import re
-from pathlib import Path
-root = Path('.')
-rx = re.compile(r'\[[^\]]+\]\(([^)]+)\)')
-ignore = {'link', 'path'}
-for md in root.rglob('*.md'):
-    text = md.read_text(encoding='utf-8', errors='ignore')
-    for raw in rx.findall(text):
-        link = raw.strip().split(' ')[0].strip('<>').split('#')[0]
-        if not link or link in ignore or link.startswith(('http://','https://','mailto:','#')):
-            continue
-        target = (md.parent / link).resolve()
-        if not target.exists():
-            raise SystemExit(f'missing markdown link target: {md} -> {link}')
-print('markdown local links: OK')
-PY
-```
-
-## Dependency Hygiene
-
-- Dependabot is configured for weekly Cargo and GitHub Actions updates.
-- Dependabot PRs are auto-merge enabled after required checks pass.
-
-## Standard Validation Workflow (Always Use)
-
-Use this exact sequence for every non-trivial change:
-
-- Do not reorder or skip steps unless explicitly blocked by missing external dependencies.
-- If blocked, record the blocker and run every remaining unblocked step in the same order.
-- Treat this sequence as the default anti-regression protocol for local runs and CI updates.
-
-```bash
-# 1) Sync fixtures and deterministic inputs
-bash scripts/fetch_test_assets.sh
-
-# 2) Local quality gate (must be warning-free)
-bash scripts/quality_gate.sh
-
-# 3) Benchmark artifact generation + regression check
-bash scripts/benchmark.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/ci.json
-python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/ci.json
-
-# 4) Bench harness (performance visibility)
-cargo bench --bench pipeline_bench -- --noplot
-
-# 5) Atomic commit and push
-git add -A
-git commit -m "<type(scope): message>"
-git push
-
-# 6) CI monitor to completion
-gh run watch --exit-status
-```
-
-Preferred single-command entrypoint for local anti-regression runs:
-
-```bash
-bash scripts/run_standard_workflow.sh
-```
-
-Fast planning/dry-run:
-
-```bash
-bash scripts/run_standard_workflow.sh --dry-run
-```
-
-## Skill Activation Policy (On Demand)
-
-Always load and follow the matching agent skill when a task maps to an existing skill under `.agents/skills/`.
-
-- If a task matches a skill scope, use that skill workflow first; do not improvise a parallel process.
-- Keep outputs aligned with the skill's expected artifacts, checks, and handoff notes.
-- If multiple skills apply, use the most specific skill first, then compose with broader coordination skills.
-- If no skill applies, fall back to this AGENTS.md workflow.
-
-Minimum mapping to enforce:
-
-- Multi-step coordination -> `.agents/skills/agent-coordination/SKILL.md`
-- Parallelizable independent workstreams -> `.agents/skills/agent-coordination/PARALLEL.md`
-- Calibration and threshold learning updates -> `.agents/skills/self-learning-calibration/`
-- VAD engine tuning -> `.agents/skills/audio-vad-cpu/`
-- Non-voice segmentation behavior changes -> `.agents/skills/nonvoice-segmentation/`
-
-External research usage rule:
-
-- Academic papers and non-Rust repos are reference inputs only.
-- Reuse only logic that can be translated into deterministic offline Rust with clear accuracy impact.
-- Capture reusable findings in `analysis/learnings/` and the relevant `.agents/skills/*/reference/*.md` notes.
-- Prefer reference patterns that improve operator discipline too:
-  - single-source instructions,
-  - explicit validation/benchmark gates,
-  - benchmark-first and interpretable DSP workflows.
-
-Required outcome before considering work complete:
-- no clippy warnings
-- no failing tests
-- at least one test executed and passed in this session
-- benchmark regression check passes
-- if accuracy-related code changed, re-run `testdata/validation/radio-play-manifest.json` and refresh readiness artifacts before concluding impact
-- GitHub Actions `Quality Gate` passes
-
-## Commit Policy
-
-Use atomic commits via the `atomic-commit` skill or manual equivalent.
-
-```bash
-# Preferred: use the atomic-commit skill
-/atomic-commit
-
-# Manual: validate then commit
-bash scripts/quality_gate.sh && git add -A && git commit
-```
-
-- Conventional commit format: `type(scope): description`
-- Types: `feat`, `fix`, `docs`, `refactor`, `test`, `perf`, `ci`, `chore`
-- Every commit must pass the full quality gate before push.
-
-## Pre-existing Issue Policy
-
-**Fix ALL pre-existing issues before completing any task.**
-
-- Lint warnings: fix immediately.
-- Test failures: fix immediately.
-- Clippy warnings: fix immediately.
-- Security vulnerabilities: fix or document with justification.
-- If a fix is not possible, document the issue in `plans/050-status-report/STATUS.md`
-  with file path, line number, reason it cannot be fixed, and a tracking reference.
-- Never use `#[allow(...)]` to silence warnings without a comment explaining why.
-- Never skip, ignore, or defer. Document and fix is the rule.
-
-### Agent and Skill Enforcement
-
-- Apply this policy to code, CI workflows, scripts, and skill docs.
-- If an issue is fixable in the current task scope, fix it before completion.
-- If not currently fixable, document it immediately in `plans/050-status-report/STATUS.md`
-  with owner, impact, and next action.
-- Do not ship new instructions or skills that normalize leaving warnings unresolved.
-
-## Code Style
-
-### Rust Rules
-- Edition 2021, stable toolchain only.
-- `cargo fmt` enforced (rustfmt defaults).
-- `cargo clippy -D warnings` -- zero warnings policy.
-- No `unwrap()` or `expect()` in production code (`src/`). Use `?` or `anyhow`.
-- `unwrap()` is allowed only in `tests/` and `benches/`.
-- No magic numbers. Extract to named constants in `config.rs` or module-level `const`.
-- No hardcoded settings or threshold values inline. All configurable values live in
-  `config.rs` and are overridable via CLI flags or environment variables.
-- Maximum 500 lines of code per source file. Split into submodules when approaching limit.
-- Prefer explicit error types over `anyhow` at module boundaries.
-- All pipeline functions must be deterministic: same input produces same output.
-- Semantic error mapping: `io::Error` maps to `IoError`, not `InvalidConfig`.
-
-### File Organization
-- One public type per file when the type has significant implementation.
-- Group related functions into `impl` blocks, not free functions.
-- Use `mod.rs` only for re-exports; logic goes in named files.
-
-### Testing
-- Deterministic tests only. No timing-dependent or network-dependent tests.
-- Synthetic fixtures generated via `gen-fixtures` command. No committed binary test data.
-- Integration tests in `tests/`. Unit tests in same file as code (`#[cfg(test)]`).
-- Test names describe the behavior: `silent_input_produces_no_segments`.
+## Versioning
+The `VERSION` file in the root is the single source of truth. Never edit version strings inline.
 
 ## Repository Map
-
 | Directory | Purpose |
 |-----------|---------|
-| `src/` | Production CLI and pipeline code |
-| `src/pipeline/` | Core pipeline stages (VAD, framing, segmentation, features, tags, prompts) |
-| `src/pipeline/vad/` | VAD engine trait and implementations (`energy`, `spectral`) |
-| `src/io/` | Audio I/O (WAV reader, ffmpeg decoder) |
-| `src/learning/` | Calibration, adaptive thresholds, and libsql learning database |
-| `src/types/` | Shared types (Frame, Segment, Metrics, FeatureSet) |
-| `src/validation/` | Validation layers (synthetic, dataset CSV, SRT subtitles) |
-| `tests/` | Integration tests |
-| `benches/` | Benchmark harness (stub -- not yet functional) |
-| `scripts/` | Quality gate, benchmark, test asset, and skill validation scripts |
-| `testdata/` | Generated fixtures and raw test assets (gitignored) |
-| `plans/` | ADRs, implementation phases, validation criteria, status reports |
-| `analysis/` | Recon notes, quality reports, benchmarks, learnings |
-| `reports/` | Validation reports output |
-| `.agents/skills/` | Reusable skill playbooks for agent workflows |
-| `.github/workflows/` | CI pipeline (GitHub Actions) |
-
-Optimization workflow:
-- `.github/workflows/optimization-sweep.yml` runs scheduled/manual sweep-publish smoke and uploads optimization artifacts.
+| `src/pipeline/` | VAD, framing, segmentation, features, tags, prompts |
+| `src/learning/` | Calibration, adaptive thresholds, and libsql database |
+| `src/types/` | Shared types (Frame, Segment, Metrics) |
+| `scripts/` | Quality gate, benchmarks, and validation |
+| `plans/` | ADRs, roadmaps, and status reports |
+| `.agents/skills/` | Reusable skill playbooks |
 
 ## Domain Concepts
+- **Frame**: 20ms audio window (320 samples at 16kHz).
+- **VAD**: Voice Activity Detection classifying frames as speech or non-voice.
+- **Segment**: Contiguous time range with kind, confidence, tags, and prompt.
+- **Calibration profile**: Genre-specific energy threshold deltas.
 
-- **Frame**: 20ms audio window with computed RMS energy (320 samples at 16kHz).
-- **VAD**: Voice Activity Detection -- classifies frames as speech or non-voice.
-- **Segment**: Contiguous time range with kind (Speech/NonVoice), confidence, tags, prompt.
-- **Smoothing**: Hangover + flicker removal applied to raw VAD output.
-- **Inversion**: Converting speech segments to their complement (non-voice segments).
-- **Tag**: Acoustic category (ambience, music_bed, impact_heavy, machinery_like, crowd_like, nature_like).
-- **Prompt**: Short deterministic text generated for eligible non-voice segments.
-- **Calibration profile**: Genre-specific energy threshold delta (action, documentary, animation, drama).
-
-## Architecture Decisions
-
-Documented in `plans/010-architecture/`:
-- ADR-001: Core pipeline (decode -> resample -> frame -> VAD -> smooth -> invert -> JSON).
-- ADR-002: Deterministic energy-based VAD as default; trait-friendly for future engines.
-- ADR-003: Stable JSON contract with snake_case enums, deterministic field ordering.
-- ADR-004: Offline calibration only via explicit correction records and versioned reports.
+## Skill Activation Policy
+Load skills from `.agents/skills/` before starting tasks:
+- `nonvoice-segmentation`: Segmentation behavior descriptions.
+- `audio-vad-cpu`: VAD parameter documentation.
+- `self-learning-calibration`: Learning system documentation.
+- `agent-coordination`: Coordination strategy and handoffs.
 
 ## Rules
+- **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.
+- **Fix ALL pre-existing issues** (lint, tests, clippy) before completing any task.
+- **No unwrap() or expect()** in `src/`. Use `Result` and `?`.
+- **Deterministic outputs**: Same input must produce identical JSON.
+- **Atomic Commits**: `bash scripts/quality_gate.sh && git add -A && git commit`.
+- **MAX_SOURCE_FILE_LOC**: Limit Rust source files to 500 lines.
+- **No magic numbers**: Extract to `config.rs` or module-level constants.
+- **Media Sourcing**: Use legally redistributable media only (Blender/Open Movies).
 
-- Deterministic outputs: same input must produce identical JSON across runs.
-- No heavy ML unless benchmark-justified against energy-based baseline.
-- No runtime network access. All processing is offline and CPU-only.
-- Store generated analysis artifacts under `analysis/`.
-- Post-task learning notes go under `analysis/learnings/` and stay concise.
-- When stuck: ask a clarifying question or propose a short plan. Do not guess.
-- Before adding new code, search for existing similar code to avoid duplication.
-- ffmpeg must be on PATH for non-WAV media decoding.
-- WAV reader currently supports 16-bit PCM only; other formats fall through to ffmpeg.
-- Prefer post-2000 downloaded movie assets in `testdata/raw/` for smoke tests, validation, and benchmarks when present; keep older fixtures only as fallback compatibility and keep deterministic generated-audio fallback when absent.
-- For docs/examples and default runs, prefer:
-  - `config/profiles/modern-optimized.json` for modern fixtures/content
-  - `config/profiles/legacy-optimized.json` for legacy/noisy fixtures/content
-  - keep `config/profiles/radio-play.json` as baseline comparison profile
-
-## Media Sourcing Policy
-
-- Use legally redistributable media only (Blender/Open Movies, public domain, Creative Commons).
-- Do not add copyrighted commercial movie assets to the repository.
-- Avoid YouTube downloading for dataset ingestion unless explicit rights and platform terms allow it.
-- Prefer fixtures with aligned subtitles when available; keep source URL/license notes in `analysis/learnings/` when adding new assets.
-
-## Known Limitations
-
-Track in `plans/050-status-report/STATUS.md`. Current items:
-- Benchmark regression checks use the checked-in real-media baseline, so intentional performance shifts should update `analysis/benchmarks/latest.json`.
-
-## Optimization Artifacts
-
-- FP sweep ranking report: `analysis/optimization/fp-sweep-ranked.json`
-- FP sweep latest/overnight reports:
-  - `analysis/optimization/fp-sweep-ranked-latest.json`
-  - `analysis/optimization/fp-sweep-ranked-overnight.json`
-- Sweep comparison report: `analysis/optimization/fp-sweep-comparison.json`
-- Compact latest note: `analysis/learnings/latest-optimization-note.md`
-- Sweep runner: `scripts/optimize_fp_sweep.py`
-- Sweep comparator: `scripts/compare_sweeps.py`
-- Sweep drift guard: `scripts/check_sweep_drift.py`
-- Radio-play readiness gate: `scripts/check_radio_play_readiness.py`
-- Radio-play LB95 gate: `scripts/check_radio_play_lb95.py`
-- Radio-play failure breakdown: `scripts/build_radio_play_failure_breakdown.py`
-- Radio-play consolidated readiness report: `scripts/build_radio_play_readiness_report.py`
-
-CI source of truth:
-- Validation workflow uses `build_radio_play_readiness_report.py --require-pass` as the single release-readiness gate.
-- Keep individual gate scripts for local diagnostics and root-cause analysis.
-
-Validation manifests:
-- `testdata/validation/manifest.json` for general sweep coverage.
-- `testdata/validation/radio-play-manifest.json` for radio-play release readiness.
-- Profile generator: `scripts/generate_optimized_profiles.py`
-- End-to-end wrapper: `scripts/optimize_and_publish_profiles.sh`
-- Generated profiles:
-  - `config/profiles/modern-optimized.json`
-  - `config/profiles/legacy-optimized.json`
-
-## Radio-Play 95% Plan
-
-- Active roadmap: `plans/100-radio-play-95/ROADMAP.md`
-- Use this as the primary execution plan for recovery to >=95% success before release promotion.
+## Template Sync
+| Pattern | Status | Notes |
+|---------|--------|-------|
+| Gitleaks Scan | Gap | `.gitleaks.toml` missing |
+| Named Constants | Adopted | `bash readonly` block above |
+| `ai-commit.sh` | Gap | Script missing; see `plans/050-status-report/STATUS.md` |
+| Single Source Version | Adopted | `VERSION` file |
+| `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines |
+| Skill Frontmatter | Adopted | Verified in `.agents/skills/` |
+| Agent Config Dirs | Gap | `.jules/`, `.opencode/`, `.qwen/` missing |
+| `update-all-docs.sh`| Gap | Script missing; see `plans/050-status-report/STATUS.md` |
 
 ## Agent Coordination References
-
-- Use `.agents/skills/agent-coordination/SKILL.md` to choose orchestration strategy.
-- Use `.agents/skills/agent-coordination/PARALLEL.md` for independent parallel workstreams with handoff convergence.
-- Write coordination handoffs to `analysis/handoffs/` for multi-agent traceability.
+Reference [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md) and
+[.agents/skills/agent-coordination/PARALLEL.md](.agents/skills/agent-coordination/PARALLEL.md).

@@ -45,9 +45,12 @@ fn extract_output_matches_schema() {
 
     let schema_value: Value =
         serde_json::from_str(include_str!("../schema/timeline.schema.json")).unwrap();
-    let compiled = Validator::new(&schema_value).expect("schema compiles");
+    let validator = Validator::new(&schema_value).expect("schema compiles");
     let data: Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
-    if let Err(error) = compiled.validate(&data) {
-        panic!("schema validation failed: {error:?}");
-    };
+
+    let mut errors = validator.iter_errors(&data).peekable();
+    if errors.peek().is_some() {
+        let messages: Vec<String> = errors.map(|e| e.to_string()).collect();
+        panic!("schema validation failed: {messages:?}");
+    }
 }

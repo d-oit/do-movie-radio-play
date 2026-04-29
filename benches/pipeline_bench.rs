@@ -5,8 +5,7 @@ use movie_nonvoice_timeline::pipeline::{
     framing, resample, segmenter,
     vad::{EnergyVad, VadEngine},
 };
-use std::hint::black_box;
-use std::{path::Path, sync::OnceLock, time::Duration};
+use std::{hint::black_box, path::Path, sync::OnceLock, time::Duration};
 
 const BENCH_SAMPLE_RATE_HZ: u32 = 16000;
 const BENCH_FRAME_MS: u32 = 20;

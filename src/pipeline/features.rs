@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn noise_has_high_flux() {
         use rand::rngs::StdRng;
-        use rand::Rng;
+        use rand::RngExt;
         use rand::SeedableRng;
         let mut rng = StdRng::seed_from_u64(42);
         let samples: Vec<f32> = (0..2048).map(|_| rng.random::<f32>() * 2.0 - 1.0).collect();

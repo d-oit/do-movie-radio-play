@@ -1,5 +1,5 @@
 use movie_nonvoice_timeline::pipeline::features::compute_features;
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{rngs::StdRng, RngExt, SeedableRng};
 use std::f32::consts::PI;
 
 fn generate_sine(freq_hz: f32, sample_rate: u32, duration_samples: usize) -> Vec<f32> {

@@ -1,5 +1,5 @@
 use assert_cmd::Command;
-use jsonschema::JSONSchema;
+use jsonschema::Validator;
 use serde_json::Value;
 use std::f32::consts::PI;
 use tempfile::tempdir;
@@ -45,10 +45,12 @@ fn extract_output_matches_schema() {
 
     let schema_value: Value =
         serde_json::from_str(include_str!("../schema/timeline.schema.json")).unwrap();
-    let compiled = JSONSchema::compile(&schema_value).expect("schema compiles");
+    let validator = Validator::new(&schema_value).expect("schema compiles");
     let data: Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
-    if let Err(errors) = compiled.validate(&data) {
+
+    let mut errors = validator.iter_errors(&data).peekable();
+    if errors.peek().is_some() {
         let messages: Vec<String> = errors.map(|e| e.to_string()).collect();
         panic!("schema validation failed: {messages:?}");
-    };
+    }
 }

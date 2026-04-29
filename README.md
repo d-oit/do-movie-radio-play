@@ -1,334 +1,67 @@
-# movie-nonvoice-timeline
+# do-movie-radio-play
 
-CPU-only Rust CLI to extract non-voice timeline windows from media, tag windows, and generate short deterministic listener-safe prompts.
+Extracts non-voice audio segments from movie files for radio play adaptation.
 
-## Commands
-- `timeline extract <input> --output out.json`
-- `timeline tag <input_media> --input segments.json --output tagged.json`
-- `timeline prompt <input_json> --output prompted.json`
-- `timeline review <input_media> --input segments.json --output reports/nonvoice-review.html [--open]`
-- `timeline calibrate <corrections_dir> --profile drama`
-- `timeline apply-calibration --report analysis/learnings/latest-calibration.json --output ~/.config/do-movie-radio-play/profiles/latest.json`
-- `timeline gen-fixtures --output-dir testdata/generated`
-- `timeline validate <input_media> --truth-json testdata/generated/alternating.truth.json --profile synthetic`
-- `timeline eval <input_media> --truth-json testdata/generated/alternating.truth.json --profile synthetic` (alias of `validate`)
-- `timeline validate <input_media> --subtitles in.srt --total-ms 120000 --profile movie`
-- `timeline validate <input_media> --dataset-manifest speech.csv --total-ms 120000 --profile dataset`
-- `timeline bench <input_media> --output analysis/benchmarks/latest.json`
-- `timeline verify-timeline <media> --timeline timeline.json --output verified.json [--save-learning --learning-db analysis/thresholds/learning.db]`
-- `timeline update-thresholds [--learning-state state.json | --learning-db analysis/thresholds/learning.db]`
-- `timeline learning-stats [--learning-db analysis/thresholds/learning.db] [--output analysis/thresholds/learning-stats.json]`
-- `python3 scripts/optimize_fp_sweep.py --output analysis/optimization/fp-sweep-ranked.json`
-- `python3 scripts/check_media_intake.py --input analysis/media/modern-multilang-intake.json --min-sub-langs 2 --strict-license`
-- `python3 scripts/generate_optimized_profiles.py --sweep-report analysis/optimization/fp-sweep-ranked.json`
-- `timeline merge-timeline --input timeline.json --output merged.json`
-- `timeline export --input timeline.json --output out.json --format json|edl|vtt [--verified verified.json]`
+## What it does
+This tool identifies segments in movie audio that do not contain speech (music, ambience, sound effects). It uses
+energy-based and spectral-based Voice Activity Detection (VAD) to generate a timeline of non-voice events. Results
+can be exported for use in audio editing software or used to generate descriptive prompts.
+
+## Prerequisites
+- Rust toolchain (Edition 2021)
+- ffmpeg (required on PATH for decoding non-WAV media)
 
 ## Build
-`cargo build`
-
-## Test
-`bash scripts/quality_gate.sh`
-
-Standard anti-regression workflow:
-`bash scripts/run_standard_workflow.sh`
-
-Workflow/design references currently informing this repo:
-- `d-o-hub/github-template-ai-agents`: single-source agent instructions + skill discipline
-- `d-o-hub/chaotic_semantic_memory`: benchmark/development gate rigor in a Rust-first codebase
-- `ruvnet/musica`: structure-first audio DSP ideas and benchmark-first development
-
-These are reference inputs only. Reused logic must be translated into deterministic offline Rust before adoption.
-
-## Dependency Updates
-- Dependabot checks Cargo and GitHub Actions weekly.
-- Dependabot PRs use GitHub auto-merge once required checks are green.
-
-## Bench
-`bash scripts/benchmark.sh`
-
-Benchmark input selection policy:
-- Primary (post-2000): `sintel_trailer_2010.mp4`, `big_buck_bunny_trailer_2008.mov`, `elephants_dream_2006.mp4`, `elephantsdream_teaser.mp4`, `caminandes_gran_dillama.mp4`
-- Legacy fallback (optional/local compatibility): older pre-2000 fixtures if already present
-- Final fallback: generated deterministic fixture `testdata/generated/alternating.wav`
-
-CI compares a fresh benchmark artifact against the checked-in real-media baseline
-in `analysis/benchmarks/latest.json` before uploading benchmark artifacts.
-
-Manual regression check:
-`python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/latest.json`
-
-Manual baseline refresh (when performance shifts are intentional and validated):
-`bash scripts/refresh_benchmark_baseline.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/latest.json`
-
-## Observability
-- `timeline extract` emits INFO logs per pipeline stage with elapsed milliseconds for decode, resample, framing, VAD, smoothing, segmentation, merging, and inversion.
-- `timeline bench` writes a JSON report that now includes `stage_ms` timing fields for each stage so benchmarking artifacts capture bottlenecks over time.
-
-## Fixtures
-`bash scripts/fetch_test_assets.sh`
-
-Assets are sourced from Blender Open Movies and permissively usable sources.
-Post-2000 fixtures are preferred; older files are still accepted as fallback if already present locally.
-The fetch script also downloads multilingual subtitle fixtures for non-English validation coverage.
-
-Candidate intake guard (before adding new movies from external catalogs):
-
 ```bash
-python3 scripts/check_media_intake.py \
-  --input analysis/media/modern-multilang-intake.json \
-  --min-sub-langs 2 \
-  --strict-license
+cargo build --release
 ```
+The binary is located at `target/release/timeline`.
 
-## JSON schema
-Top-level fields:
-- `file`
-- `analysis_sample_rate`
-- `frame_ms`
-- `segments[]` with `start_ms`, `end_ms`, `kind`, `confidence`, `tags`, `prompt`
+## Commands
+- `extract <INPUT> --output <JSON>`: Extract non-voice segments from media.
+- `tag <MEDIA> --input <JSON> --output <JSON>`: Categorize segments (ambience, music, etc.).
+- `prompt <JSON> --output <JSON>`: Generate deterministic text prompts for segments.
+- `review <MEDIA> --input <JSON> --output <HTML>`: Create an interactive HTML player for verification.
+- `calibrate <DIR> --profile <NAME>`: Adjust threshold deltas based on manual corrections.
+- `apply-calibration --report <JSON>`: Apply a calibration report to current profiles.
+- `bench <MEDIA> --output <JSON>`: Benchmark the pipeline performance.
+- `gen-fixtures`: Generate synthetic audio fixtures for testing.
+- `validate <MEDIA> --truth-json <JSON>`: Compare extraction against ground truth or SRT.
+- `ai-voice-extract <JSON> --output <JSON>`: Filter segments specifically for AI voice replacement.
+- `verify-timeline <MEDIA> --timeline <JSON>`: Validate segments against spectral feature bounds.
+- `update-thresholds`: Update adaptive thresholds using the learning database.
+- `learning-stats`: Display statistics from the learning database.
+- `merge-timeline <INPUT> --output <JSON>`: Combine adjacent segments based on gap thresholds.
+- `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Convert timeline to specific formats.
 
-Benchmark JSON fields:
-- `input_file`
-- `total_ms`
-- `decode_ms`
-- `frame_count`
-- `segment_count`
-- `stage_ms` with `decode_ms`, `resample_ms`, `frame_ms`, `vad_ms`, `smooth_ms`, `speech_ms`, `merge_ms`, `invert_ms`
+## Configuration
+Configuration is defined in JSON profiles (see `config/profiles/`). Overrides are available via CLI flags or
+environment variables (prefixed with `TIMELINE_`).
 
-## Calibration
-`timeline calibrate corrections/ --profile action` reads correction JSON files and writes a versioned calibration report to `analysis/learnings/latest-calibration.json`.
+Key fields in `AnalysisConfig`:
+- `sample_rate_hz`: Processing sample rate (default 16000).
+- `frame_ms`: Analysis window size (default 20ms).
+- `energy_threshold`: Baseline VAD sensitivity (0.0 to 1.0).
+- `vad_engine`: "energy" or "spectral".
+- `min_speech_ms`: Minimum duration to count as speech.
+- `min_non_voice_ms`: Minimum duration for non-voice segments.
+- `spectral_entropy_min`: Minimum spectral entropy for voice classification.
+- `spectral_flatness_max`: Maximum flatness for non-voice classification.
 
-## Real-Media Validation
-`timeline validate testdata/raw/sintel_trailer_2010.mp4 --subtitles testdata/raw/sintel_trailer_2010.srt --total-ms 53000 --profile movie --output analysis/validation/sintel_trailer_2010.json`
-
-Non-English subtitle validation example:
-`timeline validate testdata/raw/elephants_dream_2006.mp4 --subtitles testdata/raw/elephants_dream_2006.es.srt --total-ms 653696 --profile movie --output analysis/validation/elephants_dream_2006_es.json`
-
-Validation/eval guardrails:
-- Pass exactly one truth source: `--truth-json` or `--subtitles` or `--dataset-manifest`.
-- `--total-ms` is required when using `--subtitles` or `--dataset-manifest`.
-
-## Human Review Player
-
-Use the review player to manually confirm that extracted `non_voice` windows are actually non-voice:
-
-`timeline review testdata/raw/the_hole_1962.mp4 --input testdata/validation/the_hole_1962.json --output reports/nonvoice-review.html --open`
-
-Modern fixture example:
-
-`timeline review testdata/raw/elephants_dream_2006.mp4 --input testdata/validation/elephants_dream_2006_nonvoice.json --output reports/nonvoice-review-elephants-modern.html --open`
-
-Open the generated HTML file in a browser. It provides per-segment navigation with pre/post-roll playback.
-
-Review workflow improvements in the HTML player:
-- mark current segment as voice false-positive (`x`)
-- undo last review action (`u`)
-- save a fully reviewed standalone HTML (`Save Reviewed HTML`) without exporting a separate JSON file
-- toggle full-movie context mode (`f`) to inspect the rest of the movie while keeping non-voice markers visible
-
-`--open` uses OS-specific openers with fallback support:
-- macOS: `open`
-- Linux: `xdg-open` then `gio open`
-- Windows: `cmd /C start` then PowerShell `Start-Process`
-- WSL2: `wslview` first, then Windows interop openers via `cmd.exe`/PowerShell
-
-## Limitations
-Current VAD is deterministic (energy + spectral) with conservative smoothing; it is intended for robust non-voice extraction, not transcript-grade speech detection.
-
-Both `energy` and `spectral` VAD engines are exposed in the CLI.
-
-## Spectral VAD
-
-The spectral VAD engine uses spectral features (entropy, flatness, centroid) to better distinguish speech from music/effects:
-
-```bash
-timeline extract input.mp4 --output timeline.json --vad-engine spectral
-```
-
-Recommended default profiles for examples/runs:
-
-```bash
-# Modern fixtures/content
-timeline extract input.mp4 --config config/profiles/modern-optimized.json --output timeline.json --vad-engine spectral
-
-# Legacy/noisy fixtures/content
-timeline extract input.mp4 --config config/profiles/legacy-optimized.json --output timeline.json --vad-engine spectral
-```
-
-Baseline profile remains available for comparison:
-- `config/profiles/radio-play.json`
-
-Configurable thresholds in profiles:
-
-```json
-{
-  "vad_engine": "spectral",
-  "spectral_flatness_max": 0.5,
-  "spectral_entropy_min": 3.5,
-  "spectral_centroid_min": 100,
-  "spectral_centroid_max": 6000
-}
-```
-
-## Learning System
-
-The system can learn from verification results to improve detection:
-
-1. **Extract** with spectral VAD
-2. **Verify** segments and save learning state:
-   ```bash
-   timeline verify-timeline --media input.mp4 --timeline timeline.json --output verified.json --save-learning --learning-db analysis/thresholds/learning.db
-   ```
-3. **Update thresholds** based on learned patterns:
-   ```bash
-   timeline update-thresholds --learning-db analysis/thresholds/learning.db
-   ```
-4. **Re-extract** with optimized thresholds
-5. **Inspect learning quality**:
-   ```bash
-   timeline learning-stats --learning-db analysis/thresholds/learning.db
-   ```
+## Validation Workflow
+1. Run `python3 scripts/run_validation_manifest.py` to evaluate against the full dataset.
+2. Generate a readiness report: `python3 scripts/build_radio_play_readiness_report.py`.
+3. Check status: `bash scripts/quality_gate.sh`.
 
 ## Export
+- **JSON**: Native format containing timestamps, confidence, tags, and prompts.
+- **EDL**: CMX 3600 Edit Decision List for import into DAWs/NLEs.
+- **VTT**: WebVTT subtitle format for web players.
 
-Export timelines in various formats:
+## Known Limitations
+- Native WAV reader supports 16-bit PCM only; other formats require ffmpeg.
+- Processing is offline and CPU-only.
+- Large files may require significant memory for spectral analysis buffers.
 
-```bash
-# JSON with verification status
-timeline export --input timeline.json --output out.json --format json --verified verified.json
-
-# EDL for video editors
-timeline export --input timeline.json --output out.edl --format edl --verified verified.json
-
-# WebVTT for web players
-timeline export --input timeline.json --output out.vtt --format vtt --verified verified.json
-```
-
-## FP Optimization Sweep
-
-Run the built-in candidate sweep (spectral extract + verify) and rank configurations by weighted false-positive rate:
-
-```bash
-python3 scripts/optimize_fp_sweep.py --output analysis/optimization/fp-sweep-ranked.json
-```
-
-Optional controls:
-- `--legacy-media <path>` (repeatable) to define legacy cohort explicitly
-- `--min-coverage-ratio 0.7` to require candidate coverage vs baseline
-
-Sweep report now includes both:
-- `weighted_false_positive_rate` (legacy metric)
-- `weighted_false_positive_risk_rate` (counts suspicious + rejected)
-
-Generate profile files from sweep policy:
-
-```bash
-python3 scripts/generate_optimized_profiles.py \
-  --sweep-report analysis/optimization/fp-sweep-ranked.json \
-  --modern-output config/profiles/modern-optimized.json \
-  --legacy-output config/profiles/legacy-optimized.json
-```
-
-One-command automation (sweep + compare + publish profiles + compact note):
-
-```bash
-bash scripts/optimize_and_publish_profiles.sh \
-  analysis/optimization/fp-sweep-ranked-latest.json \
-  20 \
-  0.7
-```
-
-This writes:
-- `analysis/optimization/fp-sweep-ranked-latest.json`
-- `analysis/optimization/fp-sweep-comparison.json`
-- `analysis/learnings/latest-optimization-note.md`
-- refreshed `config/profiles/modern-optimized.json` and `config/profiles/legacy-optimized.json`
-
-Standalone report comparison:
-
-```bash
-python3 scripts/compare_sweeps.py \
-  --previous analysis/optimization/fp-sweep-ranked.json \
-  --current analysis/optimization/fp-sweep-ranked-latest.json \
-  --output analysis/optimization/fp-sweep-comparison.json
-```
-
-Manual sweep baseline refresh (only after intentional, validated sweep policy changes):
-
-```bash
-bash scripts/refresh_sweep_baseline.sh \
-  analysis/optimization/fp-sweep-ranked.json \
-  analysis/optimization/fp-sweep-ranked-latest.json
-```
-
-Targeted holdout search (radio-play tier C with modern guardrails):
-
-```bash
-python3 scripts/optimize_radio_play_holdout.py \
-  --manifest testdata/validation/radio-play-manifest.json \
-  --baseline-summary analysis/validation/radio-play-sweep-summary.json \
-  --holdout-id the_hole_1962_radio \
-  --modern-guard-id elephants_dream_2006_de_radio \
-  --modern-guard-id elephants_dream_2006_es_radio \
-  --apply-to-modern \
-  --search-mode extended \
-  --objective worst3 \
-  --precision-floor 0.25 \
-  --max-candidates 12 \
-  --output analysis/optimization/radio-play-holdout-search.json
-```
-
-This search now explores both detector thresholds and merge behavior
-(`merge_gap_ms`, `merge_options.min_gap_to_merge`, `merge_options.min_silence_duration`, `merge_options.merge_strategy`).
-
-CI automation:
-- `.github/workflows/optimization-sweep.yml` runs scheduled/manual wrapper smoke and uploads optimization artifacts.
-- CI also enforces a drift guard via `scripts/check_sweep_drift.py` (fails on FP/risk regressions over threshold).
-- `.github/workflows/ci.yml` benchmark job now runs + uploads benchmark artifacts for `elephantsdream_teaser.mp4` (2006) and `caminandes_gran_dillama.mp4` (2013), and uploads a focused FP eval sweep report for those two modern fixtures.
-- That benchmark job also uploads a compact markdown digest: `analysis/optimization/modern-extra-ci-summary.md`.
-- `.github/workflows/validation-sweep.yml` enforces radio-play holdout readiness via `scripts/check_radio_play_readiness.py` (`tier C`, min precision/recall/overlap = `0.95`).
-- `.github/workflows/validation-sweep.yml` now treats `build_radio_play_readiness_report.py --require-pass` as the single release-readiness gate source in CI.
-- Validation sweep CI runs `testdata/validation/radio-play-manifest.json` and emits `analysis/validation/radio-play-sweep-summary.json`.
-
-Compact latest learnings:
-- Verification now uses runtime threshold overrides (`verify-timeline` flags are active in status decisioning).
-- Verification uses non-voice confidence scoring with tuned hysteresis (`high=0.55`) and conservative suspicious fallback.
-- Verification now blends a graph-inspired structure confidence signal to better suppress speech-over-music false positives.
-- Sweep ranking includes a coverage guard (`--min-coverage-ratio`) to avoid low-coverage false wins.
-- Current latest sweep policy recommends `grid_t0.0125_ms500_e3.0_em7.2_f0.38_en0.0010_c120`.
-
-Recovery plan for radio-play >=95% success:
-- `plans/100-radio-play-95/ROADMAP.md`
-
-Manual holdout readiness gate:
-
-```bash
-python3 scripts/check_radio_play_readiness.py \
-  --summary analysis/validation/radio-play-sweep-summary.json \
-  --holdout-tier C \
-  --min-non-voice-precision 0.95 \
-  --min-non-voice-recall 0.95 \
-  --min-overlap 0.95
-
-python3 scripts/check_radio_play_lb95.py \
-  --summary analysis/validation/radio-play-sweep-summary.json \
-  --holdout-tier C \
-  --min-lb95 0.95
-
-python3 scripts/build_radio_play_failure_breakdown.py \
-  --summary analysis/validation/radio-play-sweep-summary.json \
-  --output-json analysis/validation/radio-play-failure-breakdown.json \
-  --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
-
-python3 scripts/build_radio_play_readiness_report.py \
-  --summary analysis/validation/radio-play-sweep-summary.json \
-  --holdout-tier C \
-  --min-non-voice-precision 0.95 \
-  --min-non-voice-recall 0.95 \
-  --min-overlap 0.95 \
-  --min-lb95 0.95 \
-  --require-pass \
-  --output-json analysis/validation/radio-play-readiness-report.json \
-  --output-md analysis/learnings/latest-radio-play-readiness-report.md
-```
+## Contributing
+See [AGENTS.md](AGENTS.md) for the development workflow and agent-specific instructions.

@@ -1,67 +1,65 @@
 # do-movie-radio-play
 
-Extracts non-voice audio segments from movie files for radio play adaptation.
+Extracts non-voice segments from movie audio to assist in radio play adaptation.
 
 ## What it does
-This tool identifies segments in movie audio that do not contain speech (music, ambience, sound effects). It uses
-energy-based and spectral-based Voice Activity Detection (VAD) to generate a timeline of non-voice events. Results
-can be exported for use in audio editing software or used to generate descriptive prompts.
+The tool identifies audio intervals without speech, such as music, sound effects, or ambience. It uses energy and
+spectral feature analysis to classify audio frames and clusters them into segments. Output is provided as JSON
+timelines, which can be exported to EDL or VTT formats.
 
 ## Prerequisites
-- Rust toolchain (Edition 2021)
-- ffmpeg (required on PATH for decoding non-WAV media)
+- Rust 1.75+ (2021 edition)
+- ffmpeg (must be on PATH for processing non-WAV media)
 
 ## Build
 ```bash
 cargo build --release
 ```
-The binary is located at `target/release/timeline`.
+The compiled binary is available at `target/release/timeline`.
 
 ## Commands
-- `extract <INPUT> --output <JSON>`: Extract non-voice segments from media.
-- `tag <MEDIA> --input <JSON> --output <JSON>`: Categorize segments (ambience, music, etc.).
-- `prompt <JSON> --output <JSON>`: Generate deterministic text prompts for segments.
-- `review <MEDIA> --input <JSON> --output <HTML>`: Create an interactive HTML player for verification.
-- `calibrate <DIR> --profile <NAME>`: Adjust threshold deltas based on manual corrections.
-- `apply-calibration --report <JSON>`: Apply a calibration report to current profiles.
-- `bench <MEDIA> --output <JSON>`: Benchmark the pipeline performance.
-- `gen-fixtures`: Generate synthetic audio fixtures for testing.
-- `validate <MEDIA> --truth-json <JSON>`: Compare extraction against ground truth or SRT.
-- `ai-voice-extract <JSON> --output <JSON>`: Filter segments specifically for AI voice replacement.
+- `extract <INPUT> --output <JSON>`: Run the extraction pipeline on a media file.
+- `tag <MEDIA> --input <JSON> --output <JSON>`: Apply acoustic tags (music, ambience) to segments.
+- `prompt <JSON> --output <JSON>`: Generate text prompts for identified segments.
+- `review <MEDIA> --input <JSON> --output <HTML>`: Generate an interactive review player.
+- `calibrate <DIR> --profile <NAME>`: Generate a calibration report from manual corrections.
+- `apply-calibration --report <JSON>`: Update the active profile with a calibration report.
+- `bench <MEDIA> --output <JSON>`: Measure pipeline performance and stage durations.
+- `gen-fixtures`: Create synthetic audio test cases.
+- `validate <MEDIA> --output <JSON>`: Compare extraction results against ground truth or SRT.
+- `ai-voice-extract <JSON> --output <JSON>`: Extract only speech segments for voice replacement workflows.
 - `verify-timeline <MEDIA> --timeline <JSON>`: Validate segments against spectral feature bounds.
-- `update-thresholds`: Update adaptive thresholds using the learning database.
-- `learning-stats`: Display statistics from the learning database.
+- `update-thresholds`: Adjust adaptive thresholds using the learning database.
+- `learning-stats`: Display statistics from the SQL-based learning database.
 - `merge-timeline <INPUT> --output <JSON>`: Combine adjacent segments based on gap thresholds.
-- `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Convert timeline to specific formats.
+- `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Convert timeline to external formats.
 
 ## Configuration
-Configuration is defined in JSON profiles (see `config/profiles/`). Overrides are available via CLI flags or
+Configuration is loaded from JSON profiles in `config/profiles/`. Options can be overridden via CLI flags or
 environment variables (prefixed with `TIMELINE_`).
 
-Key fields in `AnalysisConfig`:
-- `sample_rate_hz`: Processing sample rate (default 16000).
-- `frame_ms`: Analysis window size (default 20ms).
-- `energy_threshold`: Baseline VAD sensitivity (0.0 to 1.0).
-- `vad_engine`: "energy" or "spectral".
-- `min_speech_ms`: Minimum duration to count as speech.
-- `min_non_voice_ms`: Minimum duration for non-voice segments.
-- `spectral_entropy_min`: Minimum spectral entropy for voice classification.
-- `spectral_flatness_max`: Maximum flatness for non-voice classification.
+Key `AnalysisConfig` fields:
+- `sample_rate_hz`: Processing sample rate (default: 16000).
+- `frame_ms`: Analysis window size (default: 20).
+- `energy_threshold`: Baseline RMS sensitivity (0.0 to 1.0).
+- `vad_engine`: Classification engine ("energy" or "spectral").
+- `min_speech_ms`: Minimum duration for a speech cluster.
+- `min_non_voice_ms`: Minimum duration for a non-voice segment.
 
 ## Validation Workflow
-1. Run `python3 scripts/run_validation_manifest.py` to evaluate against the full dataset.
-2. Generate a readiness report: `python3 scripts/build_radio_play_readiness_report.py`.
-3. Check status: `bash scripts/quality_gate.sh`.
+1. Execute the validation manifest: `python3 scripts/run_validation_manifest.py`.
+2. Generate the readiness report: `python3 scripts/build_radio_play_readiness_report.py`.
+3. Verify codebase integrity: `bash scripts/quality_gate.sh`.
 
 ## Export
-- **JSON**: Native format containing timestamps, confidence, tags, and prompts.
-- **EDL**: CMX 3600 Edit Decision List for import into DAWs/NLEs.
+- **JSON**: Internal format with timestamps, confidence scores, and tags.
+- **EDL**: CMX 3600 Edit Decision List for DAW/NLE import.
 - **VTT**: WebVTT subtitle format for web players.
 
 ## Known Limitations
-- Native WAV reader supports 16-bit PCM only; other formats require ffmpeg.
-- Processing is offline and CPU-only.
-- Large files may require significant memory for spectral analysis buffers.
+- Direct WAV reading is restricted to 16-bit PCM; ffmpeg is used for all other formats.
+- Spectral analysis is CPU-bound and requires sequential processing for frame features.
+- Memory usage scales with segment count during HTML report generation.
 
 ## Contributing
-See [AGENTS.md](AGENTS.md) for the development workflow and agent-specific instructions.
+Refer to [AGENTS.md](AGENTS.md) for development workflows and agent coordination policies.

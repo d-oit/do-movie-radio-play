@@ -29,10 +29,10 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 
 ## Skill Activation Policy
 Load skills from `.agents/skills/` before starting tasks:
-- `nonvoice-segmentation`: Segmentation behavior descriptions.
-- `audio-vad-cpu`: VAD parameter documentation.
-- `self-learning-calibration`: Learning system documentation.
-- `agent-coordination`: Coordination strategy and handoffs.
+- `nonvoice-segmentation`: [SKILL.md](.agents/skills/nonvoice-segmentation/SKILL.md)
+- `audio-vad-cpu`: [SKILL.md](.agents/skills/audio-vad-cpu/SKILL.md)
+- `self-learning-calibration`: [SKILL.md](.agents/skills/self-learning-calibration/SKILL.md)
+- `agent-coordination`: [SKILL.md](.agents/skills/agent-coordination/SKILL.md)
 
 ## Rules
 - **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.
@@ -43,6 +43,7 @@ Load skills from `.agents/skills/` before starting tasks:
 - **MAX_SOURCE_FILE_LOC**: Limit Rust source files to 500 lines.
 - **No magic numbers**: Extract to `config.rs` or module-level constants.
 - **Media Sourcing**: Use legally redistributable media only (Blender/Open Movies).
+- **Secret Scanning**: Gitleaks enforcement is currently a gap (no `.gitleaks.toml`).
 
 ## Template Sync
 | Pattern | Status | Notes |
@@ -50,9 +51,9 @@ Load skills from `.agents/skills/` before starting tasks:
 | Gitleaks Scan | Gap | `.gitleaks.toml` missing |
 | Named Constants | Adopted | `bash readonly` block above |
 | `ai-commit.sh` | Gap | Script missing; see `plans/050-status-report/STATUS.md` |
-| Single Source Version | Adopted | `VERSION` file |
+| Single Source Version | Adopted | `VERSION` file is the source of truth |
 | `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines |
-| Skill Frontmatter | Adopted | Verified in `.agents/skills/` |
+| Skill Frontmatter | Adopted | Verified in all `.agents/skills/*.md` |
 | Agent Config Dirs | Gap | `.jules/`, `.opencode/`, `.qwen/` missing |
 | `update-all-docs.sh`| Gap | Script missing; see `plans/050-status-report/STATUS.md` |
 

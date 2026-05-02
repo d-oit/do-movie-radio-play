@@ -6,7 +6,7 @@ use crate::pipeline::features::compute_features;
 use crate::types::{SegmentKind, TimelineOutput};
 
 pub fn add_tags(input_media: &Path, timeline: &mut TimelineOutput) -> Result<()> {
-    let (samples, sr) = decode::decode_audio(input_media)?;
+    let (samples, sr) = decode::decode_audio(input_media, timeline.analysis_sample_rate)?;
     for seg in &mut timeline.segments {
         if seg.kind != SegmentKind::NonVoice {
             continue;

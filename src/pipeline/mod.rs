@@ -61,26 +61,17 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     let mut stage_ms = StageDurations::default();
 
     let decode_start = Instant::now();
-    let (samples, source_rate) = decode::decode_audio(input)?;
+    let (mono, source_rate) = decode::decode_audio(input, cfg.sample_rate_hz)?;
     stage_ms.decode_ms = decode_start.elapsed().as_millis();
     info!(
         stage = "decode",
         ms = stage_ms.decode_ms,
         source_rate,
-        samples = samples.len(),
-        "stage complete"
-    );
-
-    let resample_start = Instant::now();
-    let mono = resample::resample_linear(&samples, source_rate, cfg.sample_rate_hz);
-    stage_ms.resample_ms = resample_start.elapsed().as_millis();
-    info!(
-        stage = "resample",
-        ms = stage_ms.resample_ms,
-        target_rate = cfg.sample_rate_hz,
         samples = mono.len(),
         "stage complete"
     );
+
+    stage_ms.resample_ms = 0; // Resampling is now integrated into decode
 
     let frame_start = Instant::now();
     let frames = framing::build_frames(&mono, cfg.sample_rate_hz, cfg.frame_ms);

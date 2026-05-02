@@ -20,6 +20,7 @@ hound = "3"
 realfft = "3"
 tempfile = "3"
 libsql = "0.9"
+symphonia = { version = "0.5", features = ["mp3", "wav", "flac", "ogg", "pcm"] }
 
 [dev-dependencies]
 assert_cmd = "2"

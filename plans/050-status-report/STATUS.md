@@ -33,11 +33,19 @@ No medium-or-higher runtime gaps are currently open in the shipped CLI flow.
 
 No active hardening gaps are currently open beyond future feature work.
 
-Dependency security note (GitHub Dependabot, 2026-04-16):
-- Open advisories on default branch: 5 (1 moderate, 4 low)
+Dependency security note (GitHub Dependabot, 2026-05-02):
+- Open advisories on default branch: 6 (1 high, 1 moderate, 4 low)
 - Tracking URL: `https://github.com/d-oit/do-movie-radio-play/security/dependabot`
-- Impact: dependency hygiene risk; no runtime exploit confirmed in current offline CLI usage
-- Next action: triage and patch dependency versions in next dependency-maintenance pass
+- **HIGH**: GHSA-82j2-j2ch-gfr8 in rustls-webpki 0.102.8 (CVSS 7.5)
+  - Advisory: https://github.com/rustls/webpki/security/advisories/GHSA-82j2-j2ch-gfr8
+  - Plan: `plans/110-fix-high-cve-rustls-webpki.md`
+  - Impact: DoS via panic on malformed CRL BIT STRING
+  - Fix: upgrade to rustls-webpki >= 0.103.13
+- **MODERATE**: GHSA-pwjx-qhcg-rvj4 in rustls-webpki (CRL matching logic)
+- **LOW**: GHSA-965h-392x-2mh5, GHSA-xgp8-3hg3-c2mh in rustls-webpki (name constraints)
+- **LOW**: GHSA-cq8v-f236-94qc in rand (unsound with custom logger)
+- **LOW**: GHSA-8m95-fffc-h4c5 in libsql-sqlite3-parser (invalid UTF-8 crash)
+- Next action: **PRIORITIZE** high CVE fix (see `plans/110-fix-high-cve-rustls-webpki.md`)
 
 GitHub queue scan (2026-04-16):
 - Open issues: 0

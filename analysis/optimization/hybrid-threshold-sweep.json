@@ -1,0 +1,148 @@
+{
+  "generated_at": 1777058953.9688222,
+  "elapsed_sec": 573.92,
+  "baseline_energy": {
+    "modern": {
+      "overlap": 0.8388825,
+      "precision": 0.73300743,
+      "recall": 0.9805061,
+      "predicted_segments": 11
+    },
+    "holdout": {
+      "overlap": 0.99948955,
+      "precision": 0.99897957,
+      "recall": 1.0,
+      "predicted_segments": 1
+    }
+  },
+  "thresholds": [
+    {
+      "threshold": 0.01,
+      "modern": {
+        "overlap": 0.8384287,
+        "precision": 0.73282504,
+        "recall": 0.97959274,
+        "predicted_segments": 12
+      },
+      "holdout": {
+        "overlap": 0.99948955,
+        "precision": 0.99897957,
+        "recall": 1.0,
+        "predicted_segments": 1
+      },
+      "guard_pass": true
+    },
+    {
+      "threshold": 0.0115,
+      "modern": {
+        "overlap": 0.8388825,
+        "precision": 0.73300743,
+        "recall": 0.9805061,
+        "predicted_segments": 11
+      },
+      "holdout": {
+        "overlap": 0.99948955,
+        "precision": 0.99897957,
+        "recall": 1.0,
+        "predicted_segments": 1
+      },
+      "guard_pass": true
+    },
+    {
+      "threshold": 0.0125,
+      "modern": {
+        "overlap": 0.8388825,
+        "precision": 0.73300743,
+        "recall": 0.9805061,
+        "predicted_segments": 11
+      },
+      "holdout": {
+        "overlap": 0.99948955,
+        "precision": 0.99897957,
+        "recall": 1.0,
+        "predicted_segments": 1
+      },
+      "guard_pass": true
+    },
+    {
+      "threshold": 0.0135,
+      "modern": {
+        "overlap": 0.8388825,
+        "precision": 0.73300743,
+        "recall": 0.9805061,
+        "predicted_segments": 11
+      },
+      "holdout": {
+        "overlap": 0.99948955,
+        "precision": 0.99897957,
+        "recall": 1.0,
+        "predicted_segments": 1
+      },
+      "guard_pass": true
+    },
+    {
+      "threshold": 0.0145,
+      "modern": {
+        "overlap": 0.8388825,
+        "precision": 0.73300743,
+        "recall": 0.9805061,
+        "predicted_segments": 11
+      },
+      "holdout": {
+        "overlap": 0.9992855,
+        "precision": 0.998572,
+        "recall": 1.0,
+        "predicted_segments": 1
+      },
+      "guard_pass": true
+    },
+    {
+      "threshold": 0.0155,
+      "modern": {
+        "overlap": 0.8388825,
+        "precision": 0.73300743,
+        "recall": 0.9805061,
+        "predicted_segments": 11
+      },
+      "holdout": {
+        "overlap": 0.9992855,
+        "precision": 0.998572,
+        "recall": 1.0,
+        "predicted_segments": 1
+      },
+      "guard_pass": true
+    },
+    {
+      "threshold": 0.017,
+      "modern": {
+        "overlap": 0.8389444,
+        "precision": 0.7330323,
+        "recall": 0.9806307,
+        "predicted_segments": 11
+      },
+      "holdout": {
+        "overlap": 0.9992855,
+        "precision": 0.998572,
+        "recall": 1.0,
+        "predicted_segments": 1
+      },
+      "guard_pass": true
+    }
+  ],
+  "best_under_guard": {
+    "threshold": 0.017,
+    "modern": {
+      "overlap": 0.8389444,
+      "precision": 0.7330323,
+      "recall": 0.9806307,
+      "predicted_segments": 11
+    },
+    "holdout": {
+      "overlap": 0.9992855,
+      "precision": 0.998572,
+      "recall": 1.0,
+      "predicted_segments": 1
+    },
+    "guard_pass": true
+  }
+}

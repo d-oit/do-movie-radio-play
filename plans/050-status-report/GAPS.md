@@ -24,8 +24,20 @@ fixture) and keep scheduled sweep runtime within CI limits.
 **Spec:** Non-energy engines should either exist as real implementations or remain
 clearly unavailable.
 
-**Actual:** The shipped CLI now exposes only the implemented energy engine, but real
+**Actual:** The shipped CLI now exposes `energy`, `spectral`, and `hybrid` engines.
 WebRTC and Silero implementations still do not exist.
 
 **Fix:** Implement those engines behind explicit feature flags and reintroduce them to
 the CLI only when the implementations exist.
+
+## Benchmark Gap: HybridVad Not Benchmarked
+
+**Affected:** Performance visibility  
+**Location:** `benches/pipeline_bench.rs`
+
+**Spec:** All VAD engines should have benchmark coverage.
+
+**Actual:** Only `EnergyVad` is benchmarked. `SpectralVad` and `HybridVad` are not
+included in the benchmark harness.
+
+**Fix:** Extend `benches/pipeline_bench.rs` to benchmark all three engines.

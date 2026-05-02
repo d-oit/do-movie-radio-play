@@ -1,5 +1,6 @@
 mod energy;
 mod engine;
+mod hybrid;
 mod spectral;
 
 use anyhow::{bail, Result};
@@ -8,6 +9,7 @@ use crate::types::frame::Frame;
 
 pub use energy::EnergyVad;
 pub use engine::VadEngine;
+pub use hybrid::HybridVad;
 pub use spectral::SpectralVad;
 
 const MIN_ADAPTIVE_THRESHOLD: f32 = 0.0001;
@@ -38,6 +40,15 @@ pub fn create_engine(
                     SpectralVad::with_thresholds(threshold, f, e, c_min, c_max)
                 }
                 _ => SpectralVad::new(threshold),
+            };
+            Ok(Box::new(engine))
+        }
+        "hybrid" => {
+            let engine = match (flatness_max, entropy_min, centroid_min, centroid_max) {
+                (Some(f), Some(e), Some(c_min), Some(c_max)) => {
+                    HybridVad::with_thresholds(threshold, f, e, c_min, c_max)
+                }
+                _ => HybridVad::new(threshold),
             };
             Ok(Box::new(engine))
         }
@@ -138,5 +149,11 @@ mod tests {
         assert!(adapted.flatness_max >= 0.38);
         assert!(adapted.entropy_min >= 3.0);
         assert!(adapted.centroid_max >= 3800.0);
+    }
+
+    #[test]
+    fn create_engine_supports_hybrid() {
+        let engine = create_engine("hybrid", 0.015, None, None, None, None).unwrap();
+        assert_eq!(engine.name(), "hybrid");
     }
 }

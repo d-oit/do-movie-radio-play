@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{env, fs, path::PathBuf};
 
-const VALID_VAD_ENGINES: [&str; 2] = ["energy", "spectral"];
+const VALID_VAD_ENGINES: [&str; 3] = ["energy", "spectral", "hybrid"];
 pub const VALID_MERGE_STRATEGIES: [&str; 3] = ["all", "longest", "sparse"];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -242,6 +242,15 @@ mod tests {
         assert_eq!(cfg.max_non_voice_ms, Some(30000));
         assert_eq!(cfg.vad_engine, "energy");
         assert_eq!(cfg.vad_threshold_delta, 0.01);
+    }
+
+    #[test]
+    fn hybrid_vad_engine_is_accepted() {
+        let cfg = AnalysisConfig {
+            vad_engine: "hybrid".to_string(),
+            ..AnalysisConfig::default()
+        };
+        assert!(validate(&cfg).is_ok());
     }
 
     #[test]

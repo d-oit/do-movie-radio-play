@@ -17,6 +17,18 @@
 
 No medium-or-higher runtime gaps are currently open in the shipped CLI flow.
 
+## Uncommitted Work (2026-05-02)
+
+| File | Status | Notes |
+|------|--------|-------|
+| `src/pipeline/vad/hybrid.rs` | NEW | Hybrid VAD engine combining energy (0.4) and spectral (0.6) with veto logic |
+| `src/cli.rs` | MODIFIED | Added "hybrid" to vad_engine CLI options |
+| `src/config.rs` | MODIFIED | Added "hybrid" to VALID_VAD_ENGINES, added test |
+| `src/pipeline/vad/mod.rs` | MODIFIED | Added hybrid module, create_engine support, test |
+| `analysis/optimization/hybrid-threshold-sweep.json` | NEW | Optimization sweep results for hybrid engine |
+
+**Note:** Hybrid VAD engine is implemented and functional but not yet committed. Benchmarks do not yet cover HybridVad (only EnergyVad).
+
 ## Quality Issues
 
 No active hardening gaps are currently open beyond future feature work.

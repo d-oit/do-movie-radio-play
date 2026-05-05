@@ -1,0 +1,81 @@
+# Gitleaks configuration file
+# This file addresses the gap in secret scanning identified in AGENTS.md
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+    '''Cargo.lock''',
+    '''Cargo.toml''',
+    '''package-lock.json''',
+    '''go.sum''',
+]
+
+[[rules]]
+description = "Generic API Key"
+id = "generic-api-key"
+regex = '''(?i)(api[-|_| ]?key|access[-|_| ]?token|auth[-|_| ]?token)[-|_| ]?[:|=][-|_| ]?['"|`][0-9a-z]{16,128}['"|`][\s|;|,|\n]'''
+keywords = [
+    "api",
+    "key",
+    "token",
+]
+
+[[rules]]
+description = "Private Key"
+id = "private-key"
+regex = '''(?i)-----BEGIN[ A-Z0-9]*PRIVATE KEY-----'''
+keywords = [
+    "-----BEGIN",
+    "PRIVATE KEY-----",
+]
+
+[[rules]]
+description = "AWS Access Key ID"
+id = "aws-access-key-id"
+regex = '''(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}'''
+keywords = [
+    "AKIA",
+    "ASIA",
+]
+
+[[rules]]
+description = "AWS Secret Access Key"
+id = "aws-secret-access-key"
+regex = '''(?i)aws_(secret_)?access_key\s*[:|=]\s*['"]?([A-Za-z0-9/+=]{40})['"]?'''
+keywords = [
+    "aws_access_key",
+    "aws_secret_access_key",
+]
+
+[[rules]]
+description = "Google API Key"
+id = "google-api-key"
+regex = '''AIza[0-9A-Za-z\\-_]{35}'''
+keywords = [
+    "AIza",
+]
+
+[[rules]]
+description = "Slack Webhook"
+id = "slack-webhook"
+regex = '''https://hooks.slack.com/services/T[a-zA-Z0-9_]{8}/B[a-zA-Z0-9_]{8}/[a-zA-Z0-9_]{24}'''
+keywords = [
+    "hooks.slack.com",
+]
+
+[[rules]]
+description = "GitHub Personal Access Token"
+id = "github-pat"
+regex = '''ghp_[a-zA-Z0-9]{36}'''
+keywords = [
+    "ghp_",
+]
+
+[[rules]]
+description = "Stripe API Key"
+id = "stripe-api-key"
+regex = '''(?i)sk_(live|test)_[0-9a-z]{24}'''
+keywords = [
+    "sk_live",
+    "sk_test",
+]

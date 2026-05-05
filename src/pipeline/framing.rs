@@ -11,6 +11,7 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
     let mut analyzer = SpectralAnalyzer::new(fft_len);
     let bin_width = sample_rate as f32 / fft_len as f32;
     let half_bins = fft_len / 2;
+    let inv_half_bins = 1.0 / half_bins as f32;
     let low_bin = (300.0 / bin_width).round() as usize;
     let high_bin = (2000.0 / bin_width).round() as usize;
     let low_bin = low_bin.min(half_bins);
@@ -43,11 +44,10 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
         let mut valid_mag_count = 0usize;
         let mut spectral_flux = 0.0f32;
         let mut sum_m_ln_m = 0.0f32;
-        let mut freq = 0.0f32;
 
-        for (i, &m) in mags.iter().enumerate() {
+        for (i, &m) in mags.iter().enumerate().take(half_bins) {
+            let freq = i as f32 * bin_width;
             weighted += freq * m;
-            freq += bin_width;
             mag_sum += m;
             if i <= low_bin {
                 low += m;
@@ -65,9 +65,7 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
             }
 
             if let Some(prev) = &prev_mags {
-                if let Some(&p) = prev.get(i) {
-                    spectral_flux += (m - p).max(0.0);
-                }
+                spectral_flux += (m - prev[i]).max(0.0);
             }
         }
 
@@ -84,16 +82,15 @@ pub fn build_frames(samples: &[f32], sample_rate: u32, frame_ms: u32) -> Vec<Fra
         };
         let low_band_ratio = if mag_sum > 0.0 { low / mag_sum } else { 0.0 };
         let high_band_ratio = if mag_sum > 0.0 { high / mag_sum } else { 0.0 };
-        spectral_flux /= mags.len().max(1) as f32;
+        spectral_flux *= inv_half_bins;
 
         let spectral_flatness = if valid_mag_count > 0 && arithmetic_mean > 0.0 {
             let am = arithmetic_mean / valid_mag_count as f32;
-            ((log_mag_sum / half_bins as f32) - am.ln())
-                .max(-10.0)
-                .exp()
+            ((log_mag_sum * inv_half_bins) - am.ln()).max(-10.0).exp()
         } else {
             0.0
         };
+
         if let Some(ref mut prev) = prev_mags {
             prev.copy_from_slice(mags);
         } else {

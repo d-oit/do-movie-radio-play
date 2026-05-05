@@ -2,11 +2,12 @@ use anyhow::Result;
 use std::path::Path;
 
 use crate::pipeline::decode;
-use crate::pipeline::features::compute_features;
+use crate::pipeline::features::FeatureExtractor;
 use crate::types::{SegmentKind, TimelineOutput};
 
 pub fn add_tags(input_media: &Path, timeline: &mut TimelineOutput) -> Result<()> {
     let (samples, sr) = decode::decode_audio(input_media)?;
+    let mut extractor = FeatureExtractor::new(1024);
     for seg in &mut timeline.segments {
         if seg.kind != SegmentKind::NonVoice {
             continue;
@@ -14,7 +15,7 @@ pub fn add_tags(input_media: &Path, timeline: &mut TimelineOutput) -> Result<()>
         let start = (seg.start_ms * sr as u64 / 1000) as usize;
         let end = (seg.end_ms * sr as u64 / 1000) as usize;
         let clip = &samples[start.min(samples.len())..end.min(samples.len())];
-        let f = compute_features(clip, sr);
+        let f = extractor.extract(clip, sr);
         seg.tags = map_tags(f);
     }
     Ok(())

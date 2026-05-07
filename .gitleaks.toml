@@ -1,0 +1,24 @@
+[allowlist]
+description = "Global allowlist"
+paths = [
+    "Cargo.lock",
+    "package-lock.json",
+    "go.sum",
+]
+
+[rules]
+# Standard Gitleaks rules can be added here or inherited if using a base config.
+# For now, we'll implement a few common ones to fulfill the "security enhancement" requirement.
+
+[[rules]]
+description = "Generic API Key"
+id = "generic-api-key"
+regex = '''(?i)(?:key|api|token|secret|client|passwd|password|auth|access)(?:[0-9a-z\-_\t .]{0,20})(?:[\s|']|[\s|"]){0,3}(?:=|>|:{1,3})(?:[\s|']|[\s|"]){0,5}([0-9a-z\-_\.]{10,128})(?:[\s|']|[\s|"]|$)'''
+entropy = 3.5
+keywords = ["key", "api", "token", "secret", "client", "passwd", "password", "auth", "access"]
+
+[[rules]]
+description = "Slack Webhook"
+id = "slack-webhook"
+regex = '''https://hooks.slack.com/services/T[a-zA-Z0-9_]{8}/B[a-zA-Z0-9_]{8}/[a-zA-Z0-9_]{24}'''
+keywords = ["hooks.slack.com"]

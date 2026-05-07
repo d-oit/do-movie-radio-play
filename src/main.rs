@@ -909,15 +909,15 @@ fn merge_by_gap_threshold(
     segments: Vec<&crate::types::Segment>,
     min_gap_ms: u64,
 ) -> Vec<crate::types::Segment> {
-    if segments.is_empty() {
+    let Some(first) = segments.first() else {
         return vec![];
-    }
+    };
 
     let mut merged = Vec::new();
-    let mut current_start = segments.first().unwrap().start_ms;
-    let mut current_end = segments.first().unwrap().end_ms;
-    let mut current_confidence = segments.first().unwrap().confidence;
-    let mut current_tags: Vec<String> = segments.first().unwrap().tags.clone();
+    let mut current_start = first.start_ms;
+    let mut current_end = first.end_ms;
+    let mut current_confidence = first.confidence;
+    let mut current_tags: Vec<String> = first.tags.clone();
 
     for segment in segments.iter().skip(1) {
         let gap = segment.start_ms - current_end;
@@ -953,15 +953,15 @@ fn merge_sparse_segments(
     segments: Vec<&crate::types::Segment>,
     min_gap_ms: u64,
 ) -> Vec<crate::types::Segment> {
-    if segments.is_empty() {
+    let Some(first) = segments.first() else {
         return vec![];
-    }
+    };
 
     let mut merged = Vec::new();
-    let mut current_start = segments.first().unwrap().start_ms;
-    let mut current_end = segments.first().unwrap().end_ms;
-    let mut current_confidence = segments.first().unwrap().confidence;
-    let mut current_tags: Vec<String> = segments.first().unwrap().tags.clone();
+    let mut current_start = first.start_ms;
+    let mut current_end = first.end_ms;
+    let mut current_confidence = first.confidence;
+    let mut current_tags: Vec<String> = first.tags.clone();
 
     for segment in segments.iter().skip(1) {
         let gap = segment.start_ms - current_end;

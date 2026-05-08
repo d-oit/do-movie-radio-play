@@ -197,7 +197,7 @@ mod tests {
         writer.finalize().unwrap();
 
         let (samples, sr) = decode_audio(&wav_path, 8000).unwrap();
-        assert_eq!(sr, 16000); // Original source rate
+        assert_eq!(sr, 8000); // Should match the rate of the returned samples
         assert_eq!(samples.len(), 8000);
     }
 }

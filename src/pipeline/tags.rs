@@ -76,4 +76,41 @@ mod tests {
         };
         assert!(map_tags(f).contains(&"ambience".to_string()));
     }
+
+    #[test]
+    fn test_add_tags_indexing_safety() {
+        use crate::types::Segment;
+        let mut timeline = TimelineOutput {
+            file: "test".into(),
+            analysis_sample_rate: 16000,
+            frame_ms: 20,
+            segments: vec![Segment {
+                start_ms: 0,
+                end_ms: 2000, // 2 seconds
+                kind: SegmentKind::NonVoice,
+                confidence: 1.0,
+                tags: vec![],
+                prompt: None,
+            }],
+        };
+
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("short.wav");
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = hound::WavWriter::create(&wav_path, spec).unwrap();
+        // Only 1 second of audio
+        for _ in 0..16000 {
+            writer.write_sample(0i16).unwrap();
+        }
+        writer.finalize().unwrap();
+
+        // Should not panic even though segment (2s) > audio (1s)
+        add_tags(&wav_path, &mut timeline).unwrap();
+        assert!(!timeline.segments[0].tags.is_empty());
+    }
 }

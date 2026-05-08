@@ -208,4 +208,46 @@ mod tests {
         assert_eq!(sr, 8000); // Now always returns target rate
         assert_eq!(samples.len(), 8000);
     }
+
+    #[test]
+    fn test_decode_via_symphonia_stereo() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("stereo.wav");
+
+        // Create a 1 second stereo WAV file with 1.0 in left and -1.0 in right
+        // Downmix should be (1.0 + -1.0) / 2 = 0.0
+        let spec = WavSpec {
+            channels: 2,
+            sample_rate: 16000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        for _ in 0..16000 {
+            writer.write_sample(i16::MAX).unwrap();
+            writer.write_sample(i16::MIN + 1).unwrap();
+        }
+        writer.finalize().unwrap();
+
+        let (samples, _) = decode_via_symphonia(&wav_path, Some("wav"), 16000).unwrap();
+        assert_eq!(samples.len(), 16000);
+        for &s in &samples {
+            assert!(s.abs() < 1e-4);
+        }
+    }
+
+    #[test]
+    fn test_decode_audio_dispatch_ffmpeg() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mp4_path = temp_dir.path().join("test.mp4");
+        std::fs::write(&mp4_path, b"dummy content").unwrap();
+
+        // Should NOT call symphonia because of .mp4 extension
+        // Should attempt ffmpeg and fail because it's not a real mp4
+        let res = decode_audio(&mp4_path, 16000);
+        assert!(res.is_err());
+        let err = res.unwrap_err().to_string();
+        // ffmpeg error or "failed to execute ffmpeg" if not installed
+        assert!(err.contains("ffmpeg") || err.contains("No such file"));
+    }
 }

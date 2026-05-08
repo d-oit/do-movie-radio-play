@@ -161,19 +161,12 @@ mod tests {
         let wav_path = temp_dir.path().join("test.wav");
 
         // Create a 1 second silence WAV file
-        let spec = WavSpec {
-            channels: 1,
-            sample_rate: 16000,
-            bits_per_sample: 16,
-            sample_format: hound::SampleFormat::Int,
-        };
-        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
-        for _ in 0..16000 {
-            writer.write_sample(0i16).unwrap();
-        }
+    fn create_test_wav(path: &std::path::Path, sample_rate: u32) {
+        let spec = hound::WavSpec { channels: 1, sample_rate, bits_per_sample: 16, sample_format: hound::SampleFormat::Int };
+        let mut writer = hound::WavWriter::create(path, spec).unwrap();
+        for _ in 0..sample_rate { writer.write_sample(0i16).unwrap(); }
         writer.finalize().unwrap();
-
-        let (samples, _) = decode_via_symphonia(&wav_path, 16000).unwrap();
+    }
         assert_eq!(samples.len(), 16000);
         for &s in &samples {
             assert_eq!(s, 0.0);

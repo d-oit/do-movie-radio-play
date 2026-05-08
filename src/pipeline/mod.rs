@@ -61,26 +61,17 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     let mut stage_ms = StageDurations::default();
 
     let decode_start = Instant::now();
-    let (samples, source_rate) = decode::decode_audio(input)?;
+    let (mono, source_rate) = decode::decode_audio(input, cfg.sample_rate_hz)?;
     stage_ms.decode_ms = decode_start.elapsed().as_millis();
     info!(
         stage = "decode",
         ms = stage_ms.decode_ms,
         source_rate,
-        samples = samples.len(),
-        "stage complete"
-    );
-
-    let resample_start = Instant::now();
-    let mono = resample::resample_linear(&samples, source_rate, cfg.sample_rate_hz);
-    stage_ms.resample_ms = resample_start.elapsed().as_millis();
-    info!(
-        stage = "resample",
-        ms = stage_ms.resample_ms,
-        target_rate = cfg.sample_rate_hz,
         samples = mono.len(),
         "stage complete"
     );
+
+    stage_ms.resample_ms = 0; // Resampling is now integrated into decode
 
     let frame_start = Instant::now();
     let frames = framing::build_frames(&mono, cfg.sample_rate_hz, cfg.frame_ms);
@@ -494,5 +485,38 @@ mod tests {
         };
 
         assert!(!should_apply_speech_evidence_filter(&cfg));
+    }
+}
+
+#[cfg(test)]
+mod pipeline_tests {
+    use super::*;
+    use crate::config::AnalysisConfig;
+    use hound::{WavSpec, WavWriter};
+
+    #[test]
+    fn test_run_pipeline_smoke() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("test.wav");
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        // 1 second of silence
+        for _ in 0..16000 {
+            writer.write_sample(0i16).unwrap();
+        }
+        writer.finalize().unwrap();
+
+        let cfg = AnalysisConfig {
+            min_non_voice_ms: 100, // Small enough to detect silence in 1s
+            ..AnalysisConfig::default()
+        };
+        let result = run_pipeline(&wav_path, &cfg).unwrap();
+        assert!(!result.timeline.segments.is_empty());
+        assert_eq!(result.timeline.analysis_sample_rate, 16000);
     }
 }

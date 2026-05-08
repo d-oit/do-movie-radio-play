@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use movie_nonvoice_timeline::pipeline::{
     decode,
     features::compute_features,
-    framing, resample, segmenter,
+    framing, segmenter,
     vad::{EnergyVad, VadEngine},
 };
 use std::{hint::black_box, path::Path, sync::OnceLock, time::Duration};
@@ -47,11 +47,10 @@ fn load_bench_samples() -> Vec<f32> {
         return sample_audio();
     };
 
-    let Ok((samples, source_rate)) = decode::decode_audio(Path::new(path)) else {
+    let Ok((mut mono, _source_rate)) = decode::decode_audio(Path::new(path), BENCH_SAMPLE_RATE_HZ)
+    else {
         return sample_audio();
     };
-
-    let mut mono = resample::resample_linear(&samples, source_rate, BENCH_SAMPLE_RATE_HZ);
     mono.truncate(mono.len().min(MAX_BENCH_SAMPLES));
     if mono.is_empty() {
         sample_audio()

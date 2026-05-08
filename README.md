@@ -9,7 +9,7 @@ timelines, which can be exported to EDL or VTT formats.
 
 ## Prerequisites
 - Rust 1.75+ (2021 edition)
-- ffmpeg (must be on PATH for processing non-WAV media)
+- ffmpeg (optional; required only for video container inputs such as MKV, MP4, AVI)
 
 ## Build
 ```bash

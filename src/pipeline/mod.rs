@@ -487,3 +487,36 @@ mod tests {
         assert!(!should_apply_speech_evidence_filter(&cfg));
     }
 }
+
+#[cfg(test)]
+mod pipeline_tests {
+    use super::*;
+    use crate::config::AnalysisConfig;
+    use hound::{WavSpec, WavWriter};
+
+    #[test]
+    fn test_run_pipeline_smoke() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("test.wav");
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        // 1 second of silence
+        for _ in 0..16000 {
+            writer.write_sample(0i16).unwrap();
+        }
+        writer.finalize().unwrap();
+
+        let cfg = AnalysisConfig {
+            min_non_voice_ms: 100, // Small enough to detect silence in 1s
+            ..AnalysisConfig::default()
+        };
+        let result = run_pipeline(&wav_path, &cfg).unwrap();
+        assert!(!result.timeline.segments.is_empty());
+        assert_eq!(result.timeline.analysis_sample_rate, 16000);
+    }
+}

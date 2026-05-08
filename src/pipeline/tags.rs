@@ -14,7 +14,11 @@ pub fn add_tags(input_media: &Path, timeline: &mut TimelineOutput) -> Result<()>
         }
         let start = (seg.start_ms * sr as u64 / 1000) as usize;
         let end = (seg.end_ms * sr as u64 / 1000) as usize;
-        let clip = &samples[start.min(samples.len())..end.min(samples.len())];
+
+        let start = start.min(samples.len());
+        let end = end.clamp(start, samples.len());
+
+        let clip = &samples[start..end];
         let f = extractor.extract(clip, sr);
         seg.tags = map_tags(f);
     }
@@ -112,5 +116,11 @@ mod tests {
         // Should not panic even though segment (2s) > audio (1s)
         add_tags(&wav_path, &mut timeline).unwrap();
         assert!(!timeline.segments[0].tags.is_empty());
+
+        // Test with start > end (should be clamped and empty clip)
+        timeline.segments[0].start_ms = 3000;
+        timeline.segments[0].end_ms = 2000;
+        add_tags(&wav_path, &mut timeline).unwrap();
+        assert!(timeline.segments[0].tags.contains(&"ambience".to_string()));
     }
 }

@@ -247,7 +247,14 @@ mod tests {
         let res = decode_audio(&mp4_path, 16000);
         assert!(res.is_err());
         let err = res.unwrap_err().to_string();
-        // ffmpeg error or "failed to execute ffmpeg" if not installed
-        assert!(err.contains("ffmpeg") || err.contains("No such file"));
+        // Should fail because it's not a real mp4.
+        // We expect either an execution error or a decode error from ffmpeg.
+        assert!(
+            err.contains("ffmpeg")
+                || err.contains("No such file")
+                || err.contains("decode failure"),
+            "Error should be related to ffmpeg or decode failure, got: {}",
+            err
+        );
     }
 }

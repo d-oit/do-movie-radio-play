@@ -17,11 +17,15 @@ pub fn decode_audio(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u
     }
 
     let ext = path.extension().and_then(|e| e.to_str());
-    if matches!(ext, Some("mp3" | "wav" | "flac" | "ogg")) {
-        match decode_via_symphonia(path, target_sample_rate) {
-            Ok((samples, sr)) => return Ok((samples, sr)),
-            Err(err) => {
-                info!(input = %path.display(), error = %err, "symphonia decode failed, falling back to ffmpeg");
+    let ext_lower = ext.map(|s| s.to_lowercase());
+
+    if let Some(ext_str) = ext_lower.as_deref() {
+        if matches!(ext_str, "mp3" | "wav" | "flac" | "ogg") {
+            match decode_via_symphonia(path, ext, target_sample_rate) {
+                Ok((samples, sr)) => return Ok((samples, sr)),
+                Err(err) => {
+                    info!(input = %path.display(), error = %err, "symphonia decode failed, falling back to ffmpeg");
+                }
             }
         }
     }
@@ -29,11 +33,15 @@ pub fn decode_audio(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u
     decode_via_ffmpeg(path, target_sample_rate)
 }
 
-fn decode_via_symphonia(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u32)> {
+fn decode_via_symphonia(
+    path: &Path,
+    extension: Option<&str>,
+    target_sample_rate: u32,
+) -> Result<(Vec<f32>, u32)> {
     let file = std::fs::File::open(path)?;
     let mss = MediaSourceStream::new(Box::new(file), Default::default());
     let mut hint = Hint::new();
-    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+    if let Some(ext) = extension {
         hint.with_extension(ext);
     }
 
@@ -161,12 +169,19 @@ mod tests {
         let wav_path = temp_dir.path().join("test.wav");
 
         // Create a 1 second silence WAV file
-    fn create_test_wav(path: &std::path::Path, sample_rate: u32) {
-        let spec = hound::WavSpec { channels: 1, sample_rate, bits_per_sample: 16, sample_format: hound::SampleFormat::Int };
-        let mut writer = hound::WavWriter::create(path, spec).unwrap();
-        for _ in 0..sample_rate { writer.write_sample(0i16).unwrap(); }
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        for _ in 0..16000 {
+            writer.write_sample(0i16).unwrap();
+        }
         writer.finalize().unwrap();
-    }
+
+        let (samples, _) = decode_via_symphonia(&wav_path, Some("wav"), 16000).unwrap();
         assert_eq!(samples.len(), 16000);
         for &s in &samples {
             assert_eq!(s, 0.0);
@@ -190,7 +205,7 @@ mod tests {
         writer.finalize().unwrap();
 
         let (samples, sr) = decode_audio(&wav_path, 8000).unwrap();
-        assert_eq!(sr, 8000); // Should match the rate of the returned samples
+        assert_eq!(sr, 8000); // Now always returns target rate
         assert_eq!(samples.len(), 8000);
     }
 }

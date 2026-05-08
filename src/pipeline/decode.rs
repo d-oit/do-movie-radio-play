@@ -103,7 +103,7 @@ fn decode_via_symphonia(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32
         source_sample_rate,
         target_sample_rate,
     );
-    Ok((resampled, source_sample_rate))
+    Ok((resampled, target_sample_rate))
 }
 
 fn decode_via_ffmpeg(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u32)> {

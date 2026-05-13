@@ -9,12 +9,13 @@ use std::{hint::black_box, path::Path, sync::OnceLock, time::Duration};
 
 const BENCH_SAMPLE_RATE_HZ: u32 = 16000;
 const BENCH_FRAME_MS: u32 = 20;
-const MAX_BENCH_SECONDS: usize = 10;
+const MAX_BENCH_SECONDS: usize = 60;
 const MAX_BENCH_SAMPLES: usize = BENCH_SAMPLE_RATE_HZ as usize * MAX_BENCH_SECONDS;
 
 fn sample_audio() -> Vec<f32> {
-    let mut data = Vec::with_capacity(16000);
-    for i in 0..16000 {
+    let samples = 16000 * 30; // 30 seconds
+    let mut data = Vec::with_capacity(samples);
+    for i in 0..samples {
         let t = i as f32 / 16000.0;
         let speech = (2.0 * std::f32::consts::PI * 220.0 * t).sin() * 0.3;
         let noise = ((i * 17 % 37) as f32 / 50.0) - 0.3;
@@ -67,7 +68,24 @@ fn bench_samples() -> &'static [f32] {
 fn bench_framing(c: &mut Criterion) {
     let samples = bench_samples();
     c.bench_function("framing", |b| {
-        b.iter(|| framing::build_frames(black_box(samples), BENCH_SAMPLE_RATE_HZ, BENCH_FRAME_MS))
+        b.iter(|| {
+            framing::build_frames(
+                black_box(samples),
+                BENCH_SAMPLE_RATE_HZ,
+                BENCH_FRAME_MS,
+                false,
+            )
+        })
+    });
+    c.bench_function("framing_parallel", |b| {
+        b.iter(|| {
+            framing::build_frames(
+                black_box(samples),
+                BENCH_SAMPLE_RATE_HZ,
+                BENCH_FRAME_MS,
+                true,
+            )
+        })
     });
 }
 
@@ -79,7 +97,8 @@ fn bench_features(c: &mut Criterion) {
 }
 
 fn bench_vad(c: &mut Criterion) {
-    let frames = framing::build_frames(bench_samples(), BENCH_SAMPLE_RATE_HZ, BENCH_FRAME_MS);
+    let frames =
+        framing::build_frames(bench_samples(), BENCH_SAMPLE_RATE_HZ, BENCH_FRAME_MS, false);
     let vad = EnergyVad::new(0.015);
     c.bench_function("energy_vad", |b| {
         b.iter(|| vad.classify(black_box(&frames)))
@@ -87,7 +106,8 @@ fn bench_vad(c: &mut Criterion) {
 }
 
 fn bench_segmenter(c: &mut Criterion) {
-    let frames = framing::build_frames(bench_samples(), BENCH_SAMPLE_RATE_HZ, BENCH_FRAME_MS);
+    let frames =
+        framing::build_frames(bench_samples(), BENCH_SAMPLE_RATE_HZ, BENCH_FRAME_MS, false);
     let vad = EnergyVad::new(0.015);
     let result = vad.classify(&frames);
     let smoothed = segmenter::smooth_speech(&result.decisions, BENCH_FRAME_MS, 300);

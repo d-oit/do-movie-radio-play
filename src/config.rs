@@ -41,6 +41,8 @@ pub struct AnalysisConfig {
     pub prompt_min_duration_ms: u64,
     pub prompt_min_confidence: f32,
     pub vad_engine: String,
+    #[serde(default = "default_true")]
+    pub parallel_features: bool,
     #[serde(default)]
     pub merge_options: Option<MergeOptions>,
     #[serde(default)]
@@ -68,6 +70,7 @@ impl Default for AnalysisConfig {
             prompt_min_duration_ms: 2500,
             prompt_min_confidence: 0.65,
             vad_engine: "energy".to_string(),
+            parallel_features: true,
             merge_options: None,
             spectral_flatness_max: None,
             spectral_entropy_min: None,
@@ -78,6 +81,7 @@ impl Default for AnalysisConfig {
 }
 
 impl AnalysisConfig {
+    #[allow(clippy::too_many_arguments)]
     pub fn from_args(
         config_path: Option<PathBuf>,
         threshold_override: Option<f32>,
@@ -86,6 +90,7 @@ impl AnalysisConfig {
         max_non_voice_override: Option<u32>,
         vad_engine_override: Option<String>,
         threshold_delta_override: Option<f32>,
+        parallel_features_override: Option<bool>,
     ) -> Result<Self> {
         let cfg = if let Some(path) = config_path {
             let data = fs::read_to_string(&path).context("failed to read config file")?;
@@ -113,6 +118,9 @@ impl AnalysisConfig {
         if let Some(d) = threshold_delta_override {
             cfg.vad_threshold_delta = d;
         }
+        if let Some(p) = parallel_features_override {
+            cfg.parallel_features = p;
+        }
 
         validate(&cfg)?;
         Ok(cfg)
@@ -135,7 +143,14 @@ fn apply_env_overrides(mut cfg: AnalysisConfig) -> Result<AnalysisConfig> {
     if let Ok(v) = env::var("TIMELINE_ENERGY_THRESHOLD") {
         cfg.energy_threshold = parse_env_value("TIMELINE_ENERGY_THRESHOLD", &v)?;
     }
+    if let Ok(v) = env::var("TIMELINE_PARALLEL_FEATURES") {
+        cfg.parallel_features = parse_env_value("TIMELINE_PARALLEL_FEATURES", &v)?;
+    }
     Ok(cfg)
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn parse_env_value<T>(key: &str, value: &str) -> Result<T>
@@ -234,9 +249,11 @@ mod tests {
             Some(30000),
             Some("energy".to_string()),
             Some(0.01),
+            Some(false),
         )
         .unwrap();
         assert_eq!(cfg.energy_threshold, 0.5);
+        assert!(!cfg.parallel_features);
         assert_eq!(cfg.min_speech_ms, 500);
         assert_eq!(cfg.min_non_voice_ms, 2000);
         assert_eq!(cfg.max_non_voice_ms, Some(30000));

@@ -74,7 +74,12 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     stage_ms.resample_ms = 0; // Resampling is now integrated into decode
 
     let frame_start = Instant::now();
-    let frames = framing::build_frames(&mono, cfg.sample_rate_hz, cfg.frame_ms);
+    let frames = framing::build_frames(
+        &mono,
+        cfg.sample_rate_hz,
+        cfg.frame_ms,
+        cfg.parallel_features,
+    );
     stage_ms.frame_ms = frame_start.elapsed().as_millis();
     info!(
         stage = "frame",

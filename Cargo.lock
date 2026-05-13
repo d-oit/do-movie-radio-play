@@ -1889,6 +1889,7 @@ dependencies = [
  "libsql",
  "predicates",
  "rand 0.10.1",
+ "rayon",
  "realfft",
  "serde",
  "serde_json",

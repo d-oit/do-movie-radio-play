@@ -58,6 +58,11 @@ impl SpectralAnalyzer {
     }
 }
 
+pub struct ConstellationMap {
+    pub peaks: Vec<(usize, usize)>,
+    pub density: f32,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct FeatureSet {
     pub rms: f32,
@@ -68,6 +73,8 @@ pub struct FeatureSet {
     pub centroid_hz: f32,
     pub low_band_ratio: f32,
     pub high_band_ratio: f32,
+    pub constellation_density: f32,
+    pub constellation_speech_density: f32,
 }
 
 pub struct FeatureExtractor {
@@ -96,6 +103,8 @@ impl FeatureExtractor {
                 centroid_hz: 0.0,
                 low_band_ratio: 0.0,
                 high_band_ratio: 0.0,
+                constellation_density: 0.0,
+                constellation_speech_density: 0.0,
             };
         }
 
@@ -130,11 +139,14 @@ impl FeatureExtractor {
         let mut entropy_count = 0usize;
         let mut has_prev = false;
 
+        let mut all_mags = Vec::new();
+
         for chunk in samples
             .chunks(self.fft_len / 2)
             .take_while(|c| c.len() >= self.fft_len / 4)
         {
             let mags = self.analyzer.analyze(chunk);
+            all_mags.push(mags.to_vec());
 
             let mut chunk_mag_sum = 0.0f32;
             let mut chunk_sum_m_ln_m = 0.0f32;
@@ -190,6 +202,20 @@ impl FeatureExtractor {
             0.0
         };
 
+        let constellation = extract_constellation(&all_mags, 5, 10, 0.01);
+        let mut speech_peaks = 0;
+        for &(_, f) in &constellation.peaks {
+            let freq = f as f32 * bin_width;
+            if (300.0..=3000.0).contains(&freq) {
+                speech_peaks += 1;
+            }
+        }
+        let constellation_speech_density = if !all_mags.is_empty() {
+            speech_peaks as f32 * 5.0 / all_mags.len() as f32
+        } else {
+            0.0
+        };
+
         FeatureSet {
             rms,
             zcr,
@@ -203,20 +229,94 @@ impl FeatureExtractor {
             },
             low_band_ratio: if mag_sum > 0.0 { low / mag_sum } else { 0.0 },
             high_band_ratio: if mag_sum > 0.0 { high / mag_sum } else { 0.0 },
+            constellation_density: constellation.density,
+            constellation_speech_density,
+        }
+    }
+}
+
+pub fn extract_constellation(
+    spectrogram: &[Vec<f32>],
+    neighborhood_frames: usize,
+    neighborhood_bins: usize,
+    magnitude_threshold: f32,
+) -> ConstellationMap {
+    if spectrogram.is_empty() {
+        return ConstellationMap {
+            peaks: Vec::new(),
+            density: 0.0,
+        };
+    }
+
+    let num_frames = spectrogram.len();
+    let num_bins = spectrogram[0].len();
+
+    // Pass 1: max along frequency axis
+    let mut freq_max = vec![vec![0.0f32; num_bins]; num_frames];
+    for (t, frame_mags) in spectrogram.iter().enumerate() {
+        for (f, item) in freq_max[t].iter_mut().enumerate() {
+            let start = f.saturating_sub(neighborhood_bins);
+            let end = (f + neighborhood_bins).min(num_bins - 1);
+            let mut m = 0.0f32;
+            for mag in frame_mags.iter().take(end + 1).skip(start) {
+                if *mag > m {
+                    m = *mag;
+                }
+            }
+            *item = m;
         }
     }
 
-    pub fn extract_frame(
-        &mut self,
-        samples: &[f32],
-        sample_rate: u32,
-        prev_mags: Option<&[f32]>,
-    ) -> (FeatureSet, &[f32]) {
-        let mags = self.analyzer.analyze(samples);
-        let features =
-            compute_frame_features_impl(samples, mags, prev_mags, sample_rate, self.fft_len);
-        (features, mags)
+    // Pass 2: max along time axis
+    let mut peaks = Vec::new();
+    for f in 0..num_bins {
+        for (t, frame_mags) in spectrogram.iter().enumerate() {
+            let start = t.saturating_sub(neighborhood_frames);
+            let end = (t + neighborhood_frames).min(num_frames - 1);
+            let mut m = 0.0f32;
+            for row in freq_max.iter().take(end + 1).skip(start) {
+                if row[f] > m {
+                    m = row[f];
+                }
+            }
+
+            let val = frame_mags[f];
+            if val > magnitude_threshold && (val - m).abs() < 1e-6 {
+                peaks.push((t, f));
+            }
+        }
     }
+
+    // Density filter: max 50 peaks per 100ms window (5 frames)
+    let window_size = 5;
+    let mut filtered_peaks = Vec::new();
+    for window_start in (0..num_frames).step_by(window_size) {
+        let window_end = (window_start + window_size).min(num_frames);
+        let mut window_peaks: Vec<_> = peaks
+            .iter()
+            .filter(|(t, _)| *t >= window_start && *t < window_end)
+            .copied()
+            .collect();
+
+        if window_peaks.len() > 50 {
+            window_peaks.sort_by(|&(t1, f1), &(t2, f2)| {
+                spectrogram[t2][f2]
+                    .partial_cmp(&spectrogram[t1][f1])
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            window_peaks.truncate(50);
+        }
+        filtered_peaks.extend(window_peaks);
+    }
+    let peaks = filtered_peaks;
+
+    let density = if num_frames > 0 {
+        peaks.len() as f32 * 5.0 / num_frames as f32
+    } else {
+        0.0
+    };
+
+    ConstellationMap { peaks, density }
 }
 
 #[allow(dead_code)]
@@ -236,6 +336,8 @@ pub fn feature_set_to_frame(f: FeatureSet) -> crate::types::frame::Frame {
         centroid_hz: f.centroid_hz,
         low_band_ratio: f.low_band_ratio,
         high_band_ratio: f.high_band_ratio,
+        constellation_peaks: (f.constellation_density * 0.2).round() as u32, // peaks per 20ms frame
+        constellation_speech_peaks: (f.constellation_speech_density * 0.2).round() as u32,
     }
 }
 
@@ -259,6 +361,24 @@ pub fn compute_features_parallel(frames: &[&[f32]], sample_rate: u32) -> Vec<Fea
             },
         );
 
+    let spectrogram: Vec<Vec<f32>> = all_mags.chunks(half_bins).map(|c| c.to_vec()).collect();
+
+    let constellation = extract_constellation(&spectrogram, 5, 10, 0.01);
+    let mut frame_peak_counts = vec![0u32; frames.len()];
+    let mut frame_speech_peak_counts = vec![0u32; frames.len()];
+
+    let bin_width = sample_rate as f32 / fft_len as f32;
+
+    for &(t, f) in &constellation.peaks {
+        if t < frames.len() {
+            frame_peak_counts[t] += 1;
+            let freq = f as f32 * bin_width;
+            if (300.0..=3000.0).contains(&freq) {
+                frame_speech_peak_counts[t] += 1;
+            }
+        }
+    }
+
     frames
         .par_iter()
         .enumerate()
@@ -271,7 +391,11 @@ pub fn compute_features_parallel(frames: &[&[f32]], sample_rate: u32) -> Vec<Fea
             } else {
                 None
             };
-            compute_frame_features_impl(chunk, mags, prev_mags, sample_rate, fft_len)
+            let mut fset =
+                compute_frame_features_impl(chunk, mags, prev_mags, sample_rate, fft_len);
+            fset.constellation_density = frame_peak_counts[i] as f32 * 5.0; // scale to peaks per 100ms
+            fset.constellation_speech_density = frame_speech_peak_counts[i] as f32 * 5.0;
+            fset
         })
         .collect()
 }
@@ -364,6 +488,8 @@ fn compute_frame_features_impl(
         },
         low_band_ratio: if mag_sum > 0.0 { low / mag_sum } else { 0.0 },
         high_band_ratio: if mag_sum > 0.0 { high / mag_sum } else { 0.0 },
+        constellation_density: 0.0,
+        constellation_speech_density: 0.0,
     }
 }
 
@@ -410,5 +536,40 @@ mod tests {
             features.spectral_flux > 0.0,
             "Noise should produce spectral flux"
         );
+    }
+
+    #[test]
+    fn test_extract_constellation_basic() {
+        let mut spectrogram = vec![vec![0.0f32; 100]; 20];
+        // Create a clear peak at (5, 50)
+        spectrogram[5][50] = 1.0;
+        // Some noise below threshold
+        spectrogram[10][10] = 0.005;
+
+        let map = extract_constellation(&spectrogram, 5, 10, 0.01);
+        assert_eq!(map.peaks.len(), 1);
+        assert_eq!(map.peaks[0], (5, 50));
+    }
+
+    #[test]
+    fn test_extract_constellation_density_filter() {
+        let mut spectrogram = vec![vec![0.0f32; 100]; 5];
+        // Create 60 peaks in a single 5-frame window
+        for i in 0..60 {
+            spectrogram[i % 5][i] = 1.0 + i as f32 * 0.01;
+        }
+
+        // Use 0, 0 neighborhood to avoid interference between these close peaks
+        let map = extract_constellation(&spectrogram, 0, 0, 0.01);
+        // Should be limited to 50
+        assert_eq!(map.peaks.len(), 50);
+        // Should keep highest magnitudes (the ones with higher indices)
+        let mut min_idx = 100;
+        for &(_, f) in &map.peaks {
+            if f < min_idx {
+                min_idx = f;
+            }
+        }
+        assert!(min_idx >= 10);
     }
 }

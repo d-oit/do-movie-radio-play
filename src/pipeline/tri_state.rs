@@ -170,6 +170,8 @@ mod tests {
             centroid_hz,
             low_band_ratio: low,
             high_band_ratio: high,
+            constellation_peaks: 0,
+            constellation_speech_peaks: 0,
         }
     }
 }

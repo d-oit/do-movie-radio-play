@@ -59,6 +59,8 @@ impl From<SpectralFeatures> for FeatureSet {
             centroid_hz: sf.centroid_hz as f32,
             low_band_ratio: sf.low_band_ratio as f32,
             high_band_ratio: sf.high_band_ratio as f32,
+            constellation_density: 0.0,
+            constellation_speech_density: 0.0,
         }
     }
 }

@@ -53,6 +53,8 @@ pub struct AnalysisConfig {
     pub spectral_centroid_min: Option<f32>,
     #[serde(default)]
     pub spectral_centroid_max: Option<f32>,
+    #[serde(default = "default_constellation_threshold")]
+    pub constellation_magnitude_threshold: f32,
 }
 
 impl Default for AnalysisConfig {
@@ -76,6 +78,7 @@ impl Default for AnalysisConfig {
             spectral_entropy_min: None,
             spectral_centroid_min: None,
             spectral_centroid_max: None,
+            constellation_magnitude_threshold: 0.01,
         }
     }
 }
@@ -91,6 +94,7 @@ impl AnalysisConfig {
         vad_engine_override: Option<String>,
         threshold_delta_override: Option<f32>,
         parallel_features_override: Option<bool>,
+        constellation_threshold_override: Option<f32>,
     ) -> Result<Self> {
         let cfg = if let Some(path) = config_path {
             let data = fs::read_to_string(&path).context("failed to read config file")?;
@@ -121,6 +125,9 @@ impl AnalysisConfig {
         if let Some(p) = parallel_features_override {
             cfg.parallel_features = p;
         }
+        if let Some(t) = constellation_threshold_override {
+            cfg.constellation_magnitude_threshold = t;
+        }
 
         validate(&cfg)?;
         Ok(cfg)
@@ -146,11 +153,19 @@ fn apply_env_overrides(mut cfg: AnalysisConfig) -> Result<AnalysisConfig> {
     if let Ok(v) = env::var("TIMELINE_PARALLEL_FEATURES") {
         cfg.parallel_features = parse_env_value("TIMELINE_PARALLEL_FEATURES", &v)?;
     }
+    if let Ok(v) = env::var("TIMELINE_CONSTELLATION_THRESHOLD") {
+        cfg.constellation_magnitude_threshold =
+            parse_env_value("TIMELINE_CONSTELLATION_THRESHOLD", &v)?;
+    }
     Ok(cfg)
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_constellation_threshold() -> f32 {
+    0.01
 }
 
 fn parse_env_value<T>(key: &str, value: &str) -> Result<T>
@@ -205,6 +220,9 @@ fn validate(cfg: &AnalysisConfig) -> Result<()> {
     if let Some(ref merge_opts) = cfg.merge_options {
         validate_merge_options(merge_opts, cfg.frame_ms)?;
     }
+    if cfg.constellation_magnitude_threshold < 0.0 {
+        bail!("invalid config: constellation_magnitude_threshold must be >= 0");
+    }
     Ok(())
 }
 
@@ -250,6 +268,7 @@ mod tests {
             Some("energy".to_string()),
             Some(0.01),
             Some(false),
+            Some(0.05),
         )
         .unwrap();
         assert_eq!(cfg.energy_threshold, 0.5);

@@ -299,7 +299,11 @@ mod tests {
         let (entropy, _, _, _, _) = compute_spectral_features(&samples).unwrap();
         // For 512 bins (next_power_of_2 of 1024 is 1024, but realfft gives 513 bins),
         // max entropy is log2(513) approx 9.0.
-        assert!(entropy > 7.0, "White noise should have high entropy, got {}", entropy);
+        assert!(
+            entropy > 7.0,
+            "White noise should have high entropy, got {}",
+            entropy
+        );
     }
 
     #[test]
@@ -320,11 +324,24 @@ mod tests {
         let (_, flatness_sine, _, _, _) = compute_spectral_features(&sine).unwrap();
         let (_, flatness_noise, _, _, _) = compute_spectral_features(&noise).unwrap();
 
-        assert!(flatness_noise > flatness_sine, "Noise flatness {} should be > sine flatness {}", flatness_noise, flatness_sine);
+        assert!(
+            flatness_noise > flatness_sine,
+            "Noise flatness {} should be > sine flatness {}",
+            flatness_noise,
+            flatness_sine
+        );
         // Pure sine has 1 peak, white noise is flat. Flatness of noise should be close to 1.
         // Flatness of a pure sine should be low.
-        assert!(flatness_sine < 0.35, "Sine flatness too high: {}", flatness_sine);
-        assert!(flatness_noise > 0.45, "Noise flatness too low: {}", flatness_noise);
+        assert!(
+            flatness_sine < 0.35,
+            "Sine flatness too high: {}",
+            flatness_sine
+        );
+        assert!(
+            flatness_noise > 0.45,
+            "Noise flatness too low: {}",
+            flatness_noise
+        );
     }
 
     #[test]
@@ -342,6 +359,10 @@ mod tests {
             samples2[i] = 0.5; // Change second half
         }
         let flux = compute_spectral_flux(&samples2);
-        assert!(flux > 0.0, "Flux should be non-zero for 2 different windows, got {}", flux);
+        assert!(
+            flux > 0.0,
+            "Flux should be non-zero for 2 different windows, got {}",
+            flux
+        );
     }
 }

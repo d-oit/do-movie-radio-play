@@ -125,7 +125,7 @@ mod tests {
             spectral_entropy: entropy,
             centroid_hz,
             low_band_ratio: 0.2,
-            high_band_ratio: 0.2,
+            constellation_density: 0.0, high_band_ratio: 0.2,
         }
     }
 

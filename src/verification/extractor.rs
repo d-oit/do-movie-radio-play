@@ -94,7 +94,7 @@ pub fn extract_audio_chunk(
         end_ms,
         kind: crate::types::SegmentKind::NonVoice,
         confidence: 1.0,
-        tags: vec![],
+        constellation_density: None, tags: vec![],
         prompt: None,
     };
     extract_segment_audio(media_path, &segment, output_path)
@@ -111,7 +111,7 @@ mod tests {
             end_ms: 500,
             kind: crate::types::SegmentKind::NonVoice,
             confidence: 1.0,
-            tags: vec![],
+            constellation_density: None, tags: vec![],
             prompt: None,
         };
 

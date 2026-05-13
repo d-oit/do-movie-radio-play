@@ -416,7 +416,7 @@ mod tests {
             spectral_flux: 0.005,
             centroid_hz: 1500.0,
             low_band_ratio: 0.3,
-            high_band_ratio: 0.4,
+            constellation_density: 0.0, high_band_ratio: 0.4,
         };
 
         let thresholds = AppliedThresholds {
@@ -442,7 +442,7 @@ mod tests {
             spectral_flux: 0.002,
             centroid_hz: 7200.0,
             low_band_ratio: 0.1,
-            high_band_ratio: 0.52,
+            constellation_density: 0.0, high_band_ratio: 0.52,
         };
         let nonvoice_status =
             determine_verification_status(&nonvoice_like_features, 0.6, &thresholds);

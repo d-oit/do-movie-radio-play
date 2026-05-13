@@ -13,7 +13,7 @@ fn prompt_rule_applies() {
             end_ms: 5000,
             kind: SegmentKind::NonVoice,
             confidence: 0.9,
-            tags: vec!["ambience".into()],
+            constellation_density: None, tags: vec!["ambience".into()],
             prompt: None,
         }],
     };
@@ -35,7 +35,7 @@ fn crowd_and_machinery_have_unique_prompts() {
                 end_ms: 4000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.9,
-                tags: vec!["crowd_like".into()],
+                constellation_density: None, tags: vec!["crowd_like".into()],
                 prompt: None,
             },
             Segment {
@@ -43,7 +43,7 @@ fn crowd_and_machinery_have_unique_prompts() {
                 end_ms: 9000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.95,
-                tags: vec!["machinery_like".into()],
+                constellation_density: None, tags: vec!["machinery_like".into()],
                 prompt: None,
             },
         ],

@@ -95,7 +95,7 @@ mod tests {
                 end_ms: 1000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.9,
-                tags: vec!["ambience".to_string()],
+                constellation_density: None, tags: vec!["ambience".to_string()],
                 prompt: None,
             }],
         };

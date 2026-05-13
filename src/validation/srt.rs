@@ -23,7 +23,7 @@ pub fn parse_srt_segments(input: &str) -> Result<Vec<Segment>> {
             end_ms: end,
             kind: SegmentKind::Speech,
             confidence: 1.0,
-            tags: vec![],
+            constellation_density: None, tags: vec![],
             prompt: None,
         });
     }

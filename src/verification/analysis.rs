@@ -19,7 +19,7 @@ pub struct SpectralFeatures {
     pub spectral_flux: f32,
     pub centroid_hz: f32,
     pub low_band_ratio: f32,
-    pub high_band_ratio: f32,
+    pub constellation_density: 0.0, high_band_ratio: f32,
 }
 
 #[derive(Debug, Clone)]

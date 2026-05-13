@@ -53,6 +53,12 @@ pub struct AnalysisConfig {
     pub spectral_centroid_min: Option<f32>,
     #[serde(default)]
     pub spectral_centroid_max: Option<f32>,
+    #[serde(default = "default_music_density_threshold")]
+    pub music_density_threshold: f32,
+}
+
+fn default_music_density_threshold() -> f32 {
+    5.0
 }
 
 impl Default for AnalysisConfig {
@@ -76,6 +82,7 @@ impl Default for AnalysisConfig {
             spectral_entropy_min: None,
             spectral_centroid_min: None,
             spectral_centroid_max: None,
+            music_density_threshold: 5.0,
         }
     }
 }
@@ -195,6 +202,9 @@ fn validate(cfg: &AnalysisConfig) -> Result<()> {
     }
     if cfg.prompt_min_confidence <= 0.0 || cfg.prompt_min_confidence > 1.0 {
         bail!("invalid config: prompt_min_confidence must be in (0, 1]");
+    }
+    if cfg.music_density_threshold < 0.0 {
+        bail!("invalid config: music_density_threshold must be >= 0");
     }
     if !VALID_VAD_ENGINES.contains(&cfg.vad_engine.as_str()) {
         bail!(

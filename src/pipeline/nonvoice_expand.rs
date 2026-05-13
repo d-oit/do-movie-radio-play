@@ -79,7 +79,7 @@ mod tests {
             end_ms: 80,
             kind: SegmentKind::NonVoice,
             confidence: 0.8,
-            tags: vec![],
+            constellation_density: None, tags: vec![],
             prompt: None,
         }];
         let likelihoods = vec![0.2, 0.4, 0.1, 0.5, 0.8];
@@ -96,7 +96,7 @@ mod tests {
             end_ms: 80,
             kind: SegmentKind::NonVoice,
             confidence: 0.8,
-            tags: vec![],
+            constellation_density: None, tags: vec![],
             prompt: None,
         }];
         let likelihoods = vec![0.2, 0.6, 0.1, 0.58, 0.8];

@@ -76,7 +76,7 @@ mod tests {
             spectral_entropy: 5.0,
             centroid_hz: 0.0,
             low_band_ratio: 0.2,
-            high_band_ratio: 0.0,
+            constellation_density: 0.0, high_band_ratio: 0.0,
         };
         assert!(map_tags(f).contains(&"ambience".to_string()));
     }
@@ -93,7 +93,7 @@ mod tests {
                 end_ms: 2000, // 2 seconds
                 kind: SegmentKind::NonVoice,
                 confidence: 1.0,
-                tags: vec![],
+                constellation_density: None, tags: vec![],
                 prompt: None,
             }],
         };

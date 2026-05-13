@@ -182,7 +182,7 @@ fn segment(start_ms: u64, end_ms: u64, kind: SegmentKind) -> Segment {
         end_ms,
         kind,
         confidence: 1.0,
-        tags: vec![],
+        constellation_density: None, tags: vec![],
         prompt: None,
     }
 }

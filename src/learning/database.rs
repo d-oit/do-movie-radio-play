@@ -30,7 +30,7 @@ pub struct SpectralFeatures {
     pub spectral_entropy: f64,
     pub centroid_hz: f64,
     pub low_band_ratio: f64,
-    pub high_band_ratio: f64,
+    pub constellation_density: 0.0, high_band_ratio: f64,
 }
 
 impl From<FeatureSet> for SpectralFeatures {
@@ -43,7 +43,7 @@ impl From<FeatureSet> for SpectralFeatures {
             spectral_entropy: fs.spectral_entropy as f64,
             centroid_hz: fs.centroid_hz as f64,
             low_band_ratio: fs.low_band_ratio as f64,
-            high_band_ratio: fs.high_band_ratio as f64,
+            constellation_density: fs.constellation_density as f64, high_band_ratio: fs.high_band_ratio as f64,
         }
     }
 }
@@ -58,7 +58,7 @@ impl From<SpectralFeatures> for FeatureSet {
             spectral_entropy: sf.spectral_entropy as f32,
             centroid_hz: sf.centroid_hz as f32,
             low_band_ratio: sf.low_band_ratio as f32,
-            high_band_ratio: sf.high_band_ratio as f32,
+            constellation_density: sf.constellation_density as f64, high_band_ratio: sf.high_band_ratio as f64,
         }
     }
 }
@@ -420,7 +420,7 @@ mod tests {
                 spectral_entropy: 4.5,
                 centroid_hz: 1500.0,
                 low_band_ratio: 0.6,
-                high_band_ratio: 0.1,
+                constellation_density: 0.0, high_band_ratio: 0.1,
             },
             was_false_positive: false,
         };
@@ -450,7 +450,7 @@ mod tests {
                 spectral_entropy: 2.5,
                 centroid_hz: 800.0,
                 low_band_ratio: 0.8,
-                high_band_ratio: 0.05,
+                constellation_density: 0.0, high_band_ratio: 0.05,
             },
             was_false_positive: true,
         };
@@ -490,7 +490,7 @@ mod tests {
                     spectral_entropy: 3.0 + i as f64 * 0.1,
                     centroid_hz: 1200.0 + i as f64 * 50.0,
                     low_band_ratio: 0.65,
-                    high_band_ratio: 0.08,
+                    constellation_density: 0.0, high_band_ratio: 0.08,
                 },
                 was_false_positive: true,
             };

@@ -113,7 +113,7 @@ pub fn speech_segment(start_ms: u64, end_ms: u64) -> Segment {
         end_ms,
         kind: SegmentKind::Speech,
         confidence: 1.0,
-        tags: vec![],
+        constellation_density: None, tags: vec![],
         prompt: None,
     }
 }

@@ -248,7 +248,7 @@ fn speech_seg(
         end_ms,
         kind: SegmentKind::Speech,
         confidence,
-        tags: vec![],
+        constellation_density: None, tags: vec![],
         prompt: None,
     }
 }
@@ -268,7 +268,7 @@ fn push_nv(
             end_ms: end,
             kind: SegmentKind::NonVoice,
             confidence,
-            tags: vec![],
+            constellation_density: None, tags: vec![],
             prompt: None,
         });
     }
@@ -389,7 +389,7 @@ mod tests {
             end_ms,
             kind: SegmentKind::Speech,
             confidence: 0.8,
-            tags: vec![],
+            constellation_density: None, tags: vec![],
             prompt: None,
         }
     }
@@ -423,7 +423,7 @@ mod tests {
                 end_ms: 2000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.8,
-                tags: vec![],
+                constellation_density: None, tags: vec![],
                 prompt: None,
             },
             Segment {
@@ -431,7 +431,7 @@ mod tests {
                 end_ms: 4000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.7,
-                tags: vec![],
+                constellation_density: None, tags: vec![],
                 prompt: None,
             },
         ];
@@ -457,7 +457,7 @@ mod tests {
                 end_ms: 1000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.8,
-                tags: vec![],
+                constellation_density: None, tags: vec![],
                 prompt: None,
             },
             Segment {
@@ -465,7 +465,7 @@ mod tests {
                 end_ms: 2000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.6,
-                tags: vec![],
+                constellation_density: None, tags: vec![],
                 prompt: None,
             },
         ];
@@ -491,7 +491,7 @@ mod tests {
                 end_ms: 1000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.8,
-                tags: vec![],
+                constellation_density: None, tags: vec![],
                 prompt: None,
             },
             Segment {
@@ -499,7 +499,7 @@ mod tests {
                 end_ms: 2400,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.7,
-                tags: vec![],
+                constellation_density: None, tags: vec![],
                 prompt: None,
             },
         ];
@@ -520,7 +520,7 @@ mod tests {
                 end_ms: 2000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.8,
-                tags: vec![],
+                constellation_density: None, tags: vec![],
                 prompt: None,
             },
             Segment {
@@ -528,7 +528,7 @@ mod tests {
                 end_ms: 5000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.7,
-                tags: vec![],
+                constellation_density: None, tags: vec![],
                 prompt: None,
             },
         ];

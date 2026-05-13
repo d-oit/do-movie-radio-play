@@ -390,7 +390,7 @@ fn run() -> Result<()> {
                             spectral_entropy: result.spectral_features.spectral_entropy as f64,
                             centroid_hz: result.spectral_features.centroid_hz as f64,
                             low_band_ratio: result.spectral_features.low_band_ratio as f64,
-                            high_band_ratio: result.spectral_features.high_band_ratio as f64,
+                            constellation_density: 0.0, high_band_ratio: result.spectral_features.high_band_ratio as f64,
                         },
                         was_false_positive: result.is_suspicious,
                     };

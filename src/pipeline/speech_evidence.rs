@@ -32,7 +32,7 @@ struct AvgStats {
     entropy: f32,
     centroid_hz: f32,
     low_band_ratio: f32,
-    high_band_ratio: f32,
+    constellation_density: 0.0, high_band_ratio: f32,
 }
 
 fn average_frame_stats(frames: &[Frame], frame_ms: u32, start_ms: u64, end_ms: u64) -> AvgStats {
@@ -53,7 +53,7 @@ fn average_frame_stats(frames: &[Frame], frame_ms: u32, start_ms: u64, end_ms: u
         entropy: slice.iter().map(|f| f.spectral_entropy).sum::<f32>() / n,
         centroid_hz: slice.iter().map(|f| f.centroid_hz).sum::<f32>() / n,
         low_band_ratio: slice.iter().map(|f| f.low_band_ratio).sum::<f32>() / n,
-        high_band_ratio: slice.iter().map(|f| f.high_band_ratio).sum::<f32>() / n,
+        constellation_density: 0.0, high_band_ratio: slice.iter().map(|f| f.high_band_ratio).sum::<f32>() / n,
     }
 }
 
@@ -75,7 +75,7 @@ mod tests {
             end_ms,
             kind: SegmentKind::Speech,
             confidence,
-            tags: vec![],
+            constellation_density: None, tags: vec![],
             prompt: None,
         }
     }
@@ -96,7 +96,7 @@ mod tests {
             spectral_entropy: entropy,
             centroid_hz,
             low_band_ratio: low,
-            high_band_ratio: high,
+            constellation_density: 0.0, high_band_ratio: high,
         }
     }
 

@@ -66,7 +66,7 @@ mod tests {
                 end_ms: 5000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.9,
-                tags: vec![],
+                constellation_density: None, tags: vec![],
                 prompt: None,
             }],
         };

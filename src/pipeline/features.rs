@@ -58,6 +58,12 @@ impl SpectralAnalyzer {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ConstellationMap {
+    pub peaks: Vec<(usize, usize)>, // (frame_idx, bin_idx)
+    pub density: f32,               // peaks per 100ms
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct FeatureSet {
     pub rms: f32,
@@ -67,7 +73,8 @@ pub struct FeatureSet {
     pub spectral_entropy: f32,
     pub centroid_hz: f32,
     pub low_band_ratio: f32,
-    pub high_band_ratio: f32,
+    pub constellation_density: 0.0, high_band_ratio: f32,
+    pub constellation_density: f32,
 }
 
 pub struct FeatureExtractor {
@@ -95,7 +102,8 @@ impl FeatureExtractor {
                 spectral_entropy: 0.0,
                 centroid_hz: 0.0,
                 low_band_ratio: 0.0,
-                high_band_ratio: 0.0,
+                constellation_density: 0.0, high_band_ratio: 0.0,
+                constellation_density: 0.0,
             };
         }
 
@@ -129,12 +137,15 @@ impl FeatureExtractor {
         let mut entropy_acc = 0.0f32;
         let mut entropy_count = 0usize;
         let mut has_prev = false;
+        let mut spectrogram = Vec::new();
 
         for chunk in samples
             .chunks(self.fft_len / 2)
             .take_while(|c| c.len() >= self.fft_len / 4)
         {
-            let mags = self.analyzer.analyze(chunk);
+            let mags = self.analyzer.analyze(chunk).to_vec();
+            spectrogram.push(mags.clone());
+            let mags = &mags;
 
             let mut chunk_mag_sum = 0.0f32;
             let mut chunk_sum_m_ln_m = 0.0f32;
@@ -190,6 +201,8 @@ impl FeatureExtractor {
             0.0
         };
 
+        let constellation = compute_constellation_map(&spectrogram, samples.len(), sample_rate);
+
         FeatureSet {
             rms,
             zcr,
@@ -202,8 +215,151 @@ impl FeatureExtractor {
                 0.0
             },
             low_band_ratio: if mag_sum > 0.0 { low / mag_sum } else { 0.0 },
-            high_band_ratio: if mag_sum > 0.0 { high / mag_sum } else { 0.0 },
+            constellation_density: 0.0, high_band_ratio: if mag_sum > 0.0 { high / mag_sum } else { 0.0 },
+            constellation_density: constellation.density,
         }
+    }
+
+    pub fn extract_with_constellation(
+        &mut self,
+        samples: &[f32],
+        sample_rate: u32,
+    ) -> (FeatureSet, ConstellationMap) {
+        if samples.is_empty() {
+            return (
+                FeatureSet {
+                    rms: 0.0,
+                    zcr: 0.0,
+                    spectral_flux: 0.0,
+                    spectral_flatness: 0.0,
+                    spectral_entropy: 0.0,
+                    centroid_hz: 0.0,
+                    low_band_ratio: 0.0,
+                    constellation_density: 0.0, high_band_ratio: 0.0,
+                    constellation_density: 0.0,
+                },
+                ConstellationMap {
+                    peaks: vec![],
+                    density: 0.0,
+                },
+            );
+        }
+
+        let inv_ln_2 = 1.0 / 2.0f32.ln();
+
+        let sum_sq: f32 = samples.iter().map(|v| v * v).sum();
+        let rms = (sum_sq / samples.len() as f32).sqrt();
+
+        let mut zero_crosses = 0u32;
+        for w in samples.windows(2) {
+            if (w[0] >= 0.0) != (w[1] >= 0.0) {
+                zero_crosses += 1;
+            }
+        }
+        let zcr = zero_crosses as f32 / samples.len() as f32;
+
+        let bin_width = sample_rate as f32 / self.fft_len as f32;
+        let low_bin = (300.0 / bin_width) as usize;
+        let high_bin = (2000.0 / bin_width) as usize;
+        let half_bins = self.fft_len / 2;
+        let inv_half_bins = 1.0 / half_bins as f32;
+
+        let mut flux_acc = 0.0;
+        let mut weighted_bin_sum = 0.0;
+        let mut mag_sum = 0.0;
+        let mut low = 0.0;
+        let mut high = 0.0;
+        let mut log_mag_sum = 0.0f32;
+        let mut arithmetic_mean = 0.0f32;
+        let mut valid_mag_count = 0usize;
+        let mut entropy_acc = 0.0f32;
+        let mut entropy_count = 0usize;
+        let mut has_prev = false;
+
+        let mut spectrogram = Vec::new();
+
+        for chunk in samples
+            .chunks(self.fft_len / 2)
+            .take_while(|c| c.len() >= self.fft_len / 4)
+        {
+            let mags = self.analyzer.analyze(chunk).to_vec();
+            spectrogram.push(mags.clone());
+            let mags = &mags;
+
+            let mut chunk_mag_sum = 0.0f32;
+            let mut chunk_sum_m_ln_m = 0.0f32;
+
+            for (i, &m) in mags.iter().enumerate().take(half_bins) {
+                chunk_mag_sum += m;
+
+                let freq = i as f32 * bin_width;
+                weighted_bin_sum += freq * m;
+                mag_sum += m;
+                if i < low_bin {
+                    low += m;
+                }
+                if i >= high_bin {
+                    high += m;
+                }
+
+                if m > 1e-10 {
+                    let ln_m = m.ln();
+                    log_mag_sum += ln_m;
+                    arithmetic_mean += m;
+                    valid_mag_count += 1;
+                    chunk_sum_m_ln_m += m * ln_m;
+                }
+
+                if has_prev {
+                    let diff = m - self.prev_mags[i];
+                    flux_acc += diff.max(0.0);
+                }
+            }
+
+            if chunk_mag_sum > 1e-10 {
+                let chunk_entropy =
+                    (chunk_mag_sum.ln() - chunk_sum_m_ln_m / chunk_mag_sum) * inv_ln_2;
+                entropy_acc += chunk_entropy.max(0.0);
+                entropy_count += 1;
+            }
+
+            self.prev_mags.copy_from_slice(mags);
+            has_prev = true;
+        }
+
+        let spectral_entropy = if entropy_count > 0 {
+            entropy_acc / entropy_count as f32
+        } else {
+            0.0
+        };
+
+        let spectral_flatness = if valid_mag_count > 0 && arithmetic_mean > 0.0 {
+            let am = arithmetic_mean / valid_mag_count as f32;
+            ((log_mag_sum * inv_half_bins) - am.ln()).max(-10.0).exp()
+        } else {
+            0.0
+        };
+
+        let constellation = compute_constellation_map(&spectrogram, samples.len(), sample_rate);
+
+        (
+            FeatureSet {
+                rms,
+                zcr,
+                spectral_flux: flux_acc / samples.len().max(1) as f32 * 1000.0,
+                spectral_flatness,
+                spectral_entropy,
+                centroid_hz: if mag_sum > 0.0 {
+                    weighted_bin_sum / mag_sum
+                } else {
+                    0.0
+                },
+                low_band_ratio: if mag_sum > 0.0 { low / mag_sum } else { 0.0 },
+                constellation_density: 0.0, high_band_ratio: if mag_sum > 0.0 { high / mag_sum } else { 0.0 },
+                constellation_density: constellation.density,
+            },
+            constellation,
+        )
     }
 
     pub fn extract_frame(
@@ -235,7 +391,7 @@ pub fn feature_set_to_frame(f: FeatureSet) -> crate::types::frame::Frame {
         spectral_entropy: f.spectral_entropy,
         centroid_hz: f.centroid_hz,
         low_band_ratio: f.low_band_ratio,
-        high_band_ratio: f.high_band_ratio,
+        constellation_density: 0.0, high_band_ratio: f.high_band_ratio,
     }
 }
 
@@ -363,8 +519,62 @@ fn compute_frame_features_impl(
             0.0
         },
         low_band_ratio: if mag_sum > 0.0 { low / mag_sum } else { 0.0 },
-        high_band_ratio: if mag_sum > 0.0 { high / mag_sum } else { 0.0 },
+        constellation_density: 0.0, high_band_ratio: if mag_sum > 0.0 { high / mag_sum } else { 0.0 },
+            constellation_density: 0.0,
     }
+}
+
+pub fn compute_constellation_map(
+    spectrogram: &[Vec<f32>],
+    sample_count: usize,
+    sample_rate: u32,
+) -> ConstellationMap {
+    if spectrogram.is_empty() {
+        return ConstellationMap {
+            peaks: vec![],
+            density: 0.0,
+        };
+    }
+
+    let mut peaks = Vec::new();
+    let num_frames = spectrogram.len();
+    let num_bins = spectrogram[0].len();
+
+    // 2D local maximum search (3x3 window)
+    for t in 1..num_frames.saturating_sub(1) {
+        for f in 1..num_bins.saturating_sub(1) {
+            let val = spectrogram[t][f];
+            if val < 1e-6 {
+                continue;
+            }
+
+            let mut is_max = true;
+            'outer: for dt in -1..=1 {
+                for df in -1..=1 {
+                    if dt == 0 && df == 0 {
+                        continue;
+                    }
+                    if spectrogram[(t as isize + dt) as usize][(f as isize + df) as usize] >= val {
+                        is_max = false;
+                        break 'outer;
+                    }
+                }
+            }
+
+            if is_max {
+                peaks.push((t, f));
+            }
+        }
+    }
+
+    let duration_ms = sample_count as f32 * 1000.0 / sample_rate as f32;
+    let density = if duration_ms > 0.0 {
+        peaks.len() as f32 / (duration_ms / 100.0)
+    } else {
+        0.0
+    };
+
+    ConstellationMap { peaks, density }
 }
 
 #[cfg(test)]
@@ -410,5 +620,29 @@ mod tests {
             features.spectral_flux > 0.0,
             "Noise should produce spectral flux"
         );
+    }
+
+    #[test]
+    fn test_constellation_peaks_synthetic() {
+        // Create a 5x5 spectrogram with a single peak in the center
+        let mut spectrogram = vec![vec![0.0f32; 5]; 5];
+        spectrogram[2][2] = 1.0;
+
+        let constellation = compute_constellation_map(&spectrogram, 1600, 16000); // 100ms
+        assert_eq!(constellation.peaks.len(), 1);
+        assert_eq!(constellation.peaks[0], (2, 2));
+        assert!((constellation.density - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_constellation_multiple_peaks() {
+        let mut spectrogram = vec![vec![0.1f32; 10]; 10];
+        spectrogram[2][2] = 1.0;
+        spectrogram[2][7] = 1.0;
+        spectrogram[7][2] = 1.0;
+        spectrogram[7][7] = 1.0;
+
+        let constellation = compute_constellation_map(&spectrogram, 1600, 16000); // 100ms
+        assert_eq!(constellation.peaks.len(), 4);
     }
 }

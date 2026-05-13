@@ -51,7 +51,7 @@ mod tests {
                 end_ms: 4000,
                 kind: SegmentKind::NonVoice,
                 confidence: 0.9,
-                tags: vec!["ambience".into()],
+                constellation_density: None, tags: vec!["ambience".into()],
                 prompt: None,
             }],
         };

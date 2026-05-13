@@ -237,7 +237,7 @@ mod tests {
             end_ms,
             kind,
             confidence: 1.0,
-            tags: vec![],
+            constellation_density: None, tags: vec![],
             prompt: None,
         }
     }

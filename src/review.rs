@@ -811,7 +811,7 @@ mod tests {
                 end_ms: 1000,
                 kind: SegmentKind::NonVoice,
                 confidence: 1.0,
-                tags: vec!["<script>alert(2)</script>".to_string()],
+                constellation_density: None, tags: vec!["<script>alert(2)</script>".to_string()],
                 prompt: Some("</SCRIPT><script>alert(3)</script>".to_string()),
             }],
         };

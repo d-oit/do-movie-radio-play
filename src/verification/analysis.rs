@@ -309,8 +309,8 @@ mod tests {
     #[test]
     fn test_spectral_flatness_sine_vs_noise() {
         let mut sine = vec![0.0f32; 1024];
-        for i in 0..1024 {
-            sine[i] = (i as f32 * 0.1).sin();
+        for (i, s) in sine.iter_mut().enumerate() {
+            *s = (i as f32 * 0.1).sin();
         }
 
         let mut noise = vec![0.0f32; 1024];
@@ -355,8 +355,8 @@ mod tests {
         // If we use 0..512 (exclusive), it only sees 1 window.
         // If we use 0..=256, it sees 2 windows.
         let mut samples2 = vec![0.1f32; 768];
-        for i in 512..768 {
-            samples2[i] = 0.5; // Change second half
+        for s in samples2.iter_mut().skip(512) {
+            *s = 0.5; // Change second half
         }
         let flux = compute_spectral_flux(&samples2);
         assert!(

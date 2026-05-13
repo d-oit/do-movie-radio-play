@@ -97,7 +97,8 @@ fn bench_features(c: &mut Criterion) {
 }
 
 fn bench_vad(c: &mut Criterion) {
-    let frames = framing::build_frames(bench_samples(), BENCH_SAMPLE_RATE_HZ, BENCH_FRAME_MS, false);
+    let frames =
+        framing::build_frames(bench_samples(), BENCH_SAMPLE_RATE_HZ, BENCH_FRAME_MS, false);
     let vad = EnergyVad::new(0.015);
     c.bench_function("energy_vad", |b| {
         b.iter(|| vad.classify(black_box(&frames)))
@@ -105,7 +106,8 @@ fn bench_vad(c: &mut Criterion) {
 }
 
 fn bench_segmenter(c: &mut Criterion) {
-    let frames = framing::build_frames(bench_samples(), BENCH_SAMPLE_RATE_HZ, BENCH_FRAME_MS, false);
+    let frames =
+        framing::build_frames(bench_samples(), BENCH_SAMPLE_RATE_HZ, BENCH_FRAME_MS, false);
     let vad = EnergyVad::new(0.015);
     let result = vad.classify(&frames);
     let smoothed = segmenter::smooth_speech(&result.decisions, BENCH_FRAME_MS, 300);

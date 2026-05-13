@@ -586,6 +586,7 @@ fn tolerance_for_profile(profile: &str) -> u64 {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn load_analysis_config(
     config_path: Option<std::path::PathBuf>,
     threshold_override: Option<f32>,

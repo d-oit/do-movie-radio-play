@@ -41,6 +41,7 @@ pub struct AnalysisConfig {
     pub prompt_min_duration_ms: u64,
     pub prompt_min_confidence: f32,
     pub vad_engine: String,
+    #[serde(default = "default_true")]
     pub parallel_features: bool,
     #[serde(default)]
     pub merge_options: Option<MergeOptions>,
@@ -80,6 +81,7 @@ impl Default for AnalysisConfig {
 }
 
 impl AnalysisConfig {
+    #[allow(clippy::too_many_arguments)]
     pub fn from_args(
         config_path: Option<PathBuf>,
         threshold_override: Option<f32>,
@@ -145,6 +147,10 @@ fn apply_env_overrides(mut cfg: AnalysisConfig) -> Result<AnalysisConfig> {
         cfg.parallel_features = parse_env_value("TIMELINE_PARALLEL_FEATURES", &v)?;
     }
     Ok(cfg)
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn parse_env_value<T>(key: &str, value: &str) -> Result<T>
@@ -247,7 +253,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(cfg.energy_threshold, 0.5);
-        assert_eq!(cfg.parallel_features, false);
+        assert!(!cfg.parallel_features);
         assert_eq!(cfg.min_speech_ms, 500);
         assert_eq!(cfg.min_non_voice_ms, 2000);
         assert_eq!(cfg.max_non_voice_ms, Some(30000));

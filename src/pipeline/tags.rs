@@ -48,11 +48,10 @@ fn map_tags(f: crate::pipeline::features::FeatureSet) -> Vec<String> {
     if f.spectral_flatness > 0.35 && f.rms > 0.02 {
         tags.push("tonal".into());
     }
-    if f.spectral_entropy > 6.0 && f.low_band_ratio > 0.3 || f.constellation_density > 15.0 {
+    if f.spectral_entropy > 6.0 && f.low_band_ratio > 0.3 {
         tags.push("music_like".into());
     }
-    if f.spectral_entropy < 4.0 && f.spectral_flatness < 0.3 || f.constellation_speech_density > 8.0
-    {
+    if f.spectral_entropy < 4.0 && f.spectral_flatness < 0.3 {
         tags.push("speech_like".into());
     }
     if tags.is_empty() {
@@ -78,8 +77,6 @@ mod tests {
             centroid_hz: 0.0,
             low_band_ratio: 0.2,
             high_band_ratio: 0.0,
-            constellation_density: 0.0,
-            constellation_speech_density: 0.0,
         };
         assert!(map_tags(f).contains(&"ambience".to_string()));
     }

@@ -360,17 +360,7 @@ fn analyze_segment_with_fingerprints(
     }
 
     let samples_res = crate::io::wav::read_wav_to_f32(&temp_wav);
-    let (samples, sample_rate) = match samples_res {
-        Ok(s) => s,
-        Err(e) => return (Err(e), Vec::new()),
-    };
-
-    let features = match analyze_audio_features(&samples) {
-        Ok(f) => f,
-        Err(e) => return (Err(e), Vec::new()),
-    };
-
-    let fingerprints = fingerprint::fingerprint_segment(&samples, sample_rate as f32);
+    let (samples, _) = match samples_res {
         Ok(s) => s,
         Err(e) => return (Err(e), Vec::new()),
     };

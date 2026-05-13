@@ -47,6 +47,7 @@ fn run() -> Result<()> {
             vad_engine,
             calibration_profile,
             save_calibration,
+            parallel_features,
         } => {
             let cfg = load_analysis_config(
                 config,
@@ -56,6 +57,7 @@ fn run() -> Result<()> {
                 max_non_voice_ms,
                 vad_engine,
                 calibration_profile,
+                parallel_features,
             )?;
 
             if let Some(delta) = cfg.vad_threshold_delta.abs().partial_cmp(&0.0_f32) {
@@ -102,8 +104,9 @@ fn run() -> Result<()> {
             output,
             config,
         } => {
-            let cfg =
-                config::AnalysisConfig::from_args(config, None, None, None, None, None, None)?;
+            let cfg = config::AnalysisConfig::from_args(
+                config, None, None, None, None, None, None, None,
+            )?;
             let mut timeline = read_timeline(&input_json)?;
             add_prompts(&mut timeline, &cfg);
             write_json_pretty(&output, &timeline)?;
@@ -181,6 +184,7 @@ fn run() -> Result<()> {
             max_non_voice_ms,
             vad_engine,
             calibration_profile,
+            parallel_features,
             output,
         } => {
             let cfg = load_analysis_config(
@@ -191,6 +195,7 @@ fn run() -> Result<()> {
                 max_non_voice_ms,
                 vad_engine,
                 calibration_profile,
+                parallel_features,
             )?;
             let benchmark = benchmark_file(&input_media, &cfg)?;
             write_json_pretty(&output, &benchmark)?;
@@ -212,6 +217,7 @@ fn run() -> Result<()> {
             dataset_manifest,
             total_ms,
             profile,
+            parallel_features,
             output,
         } => {
             let cfg = load_analysis_config(
@@ -222,6 +228,7 @@ fn run() -> Result<()> {
                 max_non_voice_ms,
                 vad_engine,
                 calibration_profile,
+                parallel_features,
             )?;
             let selected_inputs = [
                 truth_json.is_some(),
@@ -587,6 +594,7 @@ fn load_analysis_config(
     max_non_voice_override: Option<u32>,
     vad_engine: String,
     calibration_profile: Option<std::path::PathBuf>,
+    parallel_features: Option<bool>,
 ) -> Result<config::AnalysisConfig> {
     let threshold_delta = load_calibration_threshold_delta(calibration_profile.as_deref())?;
     config::AnalysisConfig::from_args(
@@ -597,6 +605,7 @@ fn load_analysis_config(
         max_non_voice_override,
         Some(vad_engine),
         threshold_delta,
+        parallel_features,
     )
 }
 

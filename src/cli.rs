@@ -31,6 +31,8 @@ pub enum Commands {
         calibration_profile: Option<PathBuf>,
         #[arg(long)]
         save_calibration: bool,
+        #[arg(long)]
+        parallel_features: Option<bool>,
     },
     Tag {
         input_media: PathBuf,
@@ -90,6 +92,8 @@ pub enum Commands {
         vad_engine: String,
         #[arg(long)]
         calibration_profile: Option<PathBuf>,
+        #[arg(long)]
+        parallel_features: Option<bool>,
         #[arg(long, default_value = "analysis/benchmarks/latest.json")]
         output: PathBuf,
     },
@@ -124,6 +128,8 @@ pub enum Commands {
         total_ms: Option<u64>,
         #[arg(long, default_value = "movie")]
         profile: String,
+        #[arg(long)]
+        parallel_features: Option<bool>,
         #[arg(long, default_value = "analysis/validation/latest.json")]
         output: PathBuf,
     },

@@ -207,7 +207,7 @@ fn compute_spectral_flux(samples: &[f32]) -> f32 {
     let mut spectrum_b = vec![0.0f32; window_size / 2 + 1];
     let mut current_is_a = true;
 
-    for i in (0..samples.len().saturating_sub(window_size)).step_by(hop_size) {
+    for i in (0..=samples.len().saturating_sub(window_size)).step_by(hop_size) {
         let window = &samples[i..i + window_size];
         input.copy_from_slice(window);
         if fft.process(&mut input, &mut output).is_err() {

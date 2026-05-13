@@ -326,6 +326,8 @@ fn run() -> Result<()> {
             learning_state,
             learning_db,
             save_learning,
+            use_fingerprints,
+            fingerprint_threshold,
         } => {
             let timeline_data = read_timeline(&timeline)?;
             let report = crate::verification::verify_timeline(
@@ -338,6 +340,9 @@ fn run() -> Result<()> {
                 energy_min,
                 centroid_min,
                 centroid_max,
+                use_fingerprints,
+                fingerprint_threshold,
+                learning_db.clone(),
             )?;
 
             info!(
@@ -377,7 +382,7 @@ fn run() -> Result<()> {
                     .build()
                     .context("failed to create async runtime for learning db")?;
                 let learning_db = rt.block_on(learning::database::LearningDb::new(&db_path))?;
-                for result in &report.segment_results {
+                for (i, result) in report.segment_results.iter().enumerate() {
                     let segment = learning::database::VerifiedSegment {
                         start_ms: result.start_ms as i64,
                         end_ms: result.end_ms as i64,
@@ -394,7 +399,12 @@ fn run() -> Result<()> {
                         },
                         was_false_positive: result.is_suspicious,
                     };
-                    rt.block_on(learning_db.record_verification(segment))?;
+                    let segment_id = rt.block_on(learning_db.record_verification(segment))?;
+
+                    // Also store fingerprints
+                    if let Some(fps) = report.segment_fingerprints.get(i) {
+                        rt.block_on(learning_db.record_fingerprints(segment_id, fps))?;
+                    }
                 }
                 info!(path = %db_path.display(), "saved learning data to database");
             }

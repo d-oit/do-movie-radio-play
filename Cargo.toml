@@ -33,3 +33,7 @@ criterion = { version = "0.8", features = ["html_reports"] }
 [[bench]]
 name = "pipeline_bench"
 harness = false
+
+[[bench]]
+name = "analysis_bench"
+harness = false

@@ -105,7 +105,7 @@ fn run() -> Result<()> {
             config,
         } => {
             let cfg = config::AnalysisConfig::from_args(
-                config, None, None, None, None, None, None, None,
+                config, None, None, None, None, None, None, None, None,
             )?;
             let mut timeline = read_timeline(&input_json)?;
             add_prompts(&mut timeline, &cfg);
@@ -607,6 +607,7 @@ fn load_analysis_config(
         Some(vad_engine),
         threshold_delta,
         parallel_features,
+        None,
     )
 }
 

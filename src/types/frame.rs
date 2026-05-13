@@ -8,6 +8,9 @@ pub struct Frame {
     pub centroid_hz: f32,
     pub low_band_ratio: f32,
     pub high_band_ratio: f32,
+    #[allow(dead_code)]
+    pub constellation_peaks: u32,
+    pub constellation_speech_peaks: u32,
 }
 
 impl Frame {

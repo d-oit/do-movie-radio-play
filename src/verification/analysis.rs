@@ -284,4 +284,64 @@ mod tests {
 
         assert!(features.rms < 0.01);
     }
+
+    #[test]
+    fn test_spectral_entropy_white_noise() {
+        // White noise should have high entropy
+        let mut samples = vec![0.0f32; 1024];
+        use rand::rngs::StdRng;
+        use rand::{RngExt, SeedableRng};
+        let mut rng = StdRng::seed_from_u64(42);
+        for s in samples.iter_mut() {
+            *s = rng.random::<f32>() * 2.0 - 1.0;
+        }
+
+        let (entropy, _, _, _, _) = compute_spectral_features(&samples).unwrap();
+        // For 512 bins (next_power_of_2 of 1024 is 1024, but realfft gives 513 bins),
+        // max entropy is log2(513) approx 9.0.
+        assert!(entropy > 7.0, "White noise should have high entropy, got {}", entropy);
+    }
+
+    #[test]
+    fn test_spectral_flatness_sine_vs_noise() {
+        let mut sine = vec![0.0f32; 1024];
+        for i in 0..1024 {
+            sine[i] = (i as f32 * 0.1).sin();
+        }
+
+        let mut noise = vec![0.0f32; 1024];
+        use rand::rngs::StdRng;
+        use rand::{RngExt, SeedableRng};
+        let mut rng = StdRng::seed_from_u64(42);
+        for s in noise.iter_mut() {
+            *s = rng.random::<f32>() * 2.0 - 1.0;
+        }
+
+        let (_, flatness_sine, _, _, _) = compute_spectral_features(&sine).unwrap();
+        let (_, flatness_noise, _, _, _) = compute_spectral_features(&noise).unwrap();
+
+        assert!(flatness_noise > flatness_sine, "Noise flatness {} should be > sine flatness {}", flatness_noise, flatness_sine);
+        // Pure sine has 1 peak, white noise is flat. Flatness of noise should be close to 1.
+        // Flatness of a pure sine should be low.
+        assert!(flatness_sine < 0.35, "Sine flatness too high: {}", flatness_sine);
+        assert!(flatness_noise > 0.45, "Noise flatness too low: {}", flatness_noise);
+    }
+
+    #[test]
+    fn test_spectral_flux_loop_range() {
+        // window=512, hop=256.
+        // 512 samples: exactly 1 window. flux should be 0 because no prev.
+        let samples1 = vec![0.1f32; 512];
+        assert_eq!(compute_spectral_flux(&samples1), 0.0);
+
+        // 768 samples: exactly 2 windows (0..512 and 256..768).
+        // If we use 0..512 (exclusive), it only sees 1 window.
+        // If we use 0..=256, it sees 2 windows.
+        let mut samples2 = vec![0.1f32; 768];
+        for i in 512..768 {
+            samples2[i] = 0.5; // Change second half
+        }
+        let flux = compute_spectral_flux(&samples2);
+        assert!(flux > 0.0, "Flux should be non-zero for 2 different windows, got {}", flux);
+    }
 }

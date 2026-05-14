@@ -153,6 +153,28 @@ fn run() -> Result<()> {
             corrections_dir,
             profile,
         } => {
+            #[cfg(feature = "analytics")]
+            {
+                let db_path = std::path::PathBuf::from("analysis/thresholds/learning.db");
+                if db_path.exists() {
+                    info!("using duckdb analytics for calibration");
+                    let report = learning::analytics::run_calibration_analytics(&db_path)?;
+                    let report_path = std::path::Path::new("analysis/learnings/latest-calibration.json");
+                    if let Some(parent) = report_path.parent() {
+                        std::fs::create_dir_all(parent)?;
+                    }
+                    std::fs::write(report_path, serde_json::to_vec_pretty(&report)?)?;
+                    let output_profile = get_calibration_dir()?.join("latest.json");
+                    apply_calibration_report(report_path, &output_profile)?;
+                    info!(
+                        report = %report_path.display(),
+                        output = %output_profile.display(),
+                        "saved duckdb calibration report and updated active profile"
+                    );
+                    return Ok(());
+                }
+            }
+
             let report_path = run_calibration(&corrections_dir, &profile)?;
             let output_profile = get_calibration_dir()?.join("latest.json");
             apply_calibration_report(&report_path, &output_profile)?;
@@ -454,11 +476,17 @@ fn run() -> Result<()> {
             let recommendations = rt.block_on(db.get_threshold_recommendations())?;
             let latest_threshold = rt.block_on(db.get_latest_threshold())?;
 
+            #[cfg(feature = "analytics")]
+            let analytics_stats = learning::analytics::get_learning_stats_analytics(&learning_db).ok();
+            #[cfg(not(feature = "analytics"))]
+            let analytics_stats: Option<serde_json::Value> = None;
+
             let report = serde_json::json!({
                 "learning_db": learning_db,
                 "statistics": stats,
                 "recommendations": recommendations,
                 "latest_threshold": latest_threshold,
+                "analytics": analytics_stats,
             });
 
             if let Some(output_path) = output {

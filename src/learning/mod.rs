@@ -3,6 +3,8 @@ pub mod calibrator;
 pub mod corrections;
 pub mod database;
 pub mod profiles;
+#[cfg(feature = "analytics")]
+pub mod analytics;
 
 #[allow(unused_imports)]
 pub use database::{

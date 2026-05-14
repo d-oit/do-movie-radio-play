@@ -10,13 +10,15 @@ use crate::learning::corrections::CorrectionRecord;
 use crate::learning::profiles::{self, CalibrationProfile};
 
 #[derive(Debug, Serialize, Deserialize)]
-struct CalibrationReport {
-    version: u32,
-    profile: String,
-    records_seen: usize,
-    speech_to_non_voice: usize,
-    non_voice_to_speech: usize,
-    recommended_energy_threshold_delta: f32,
+pub struct CalibrationReport {
+    pub version: u32,
+    pub profile: String,
+    pub records_seen: usize,
+    pub speech_to_non_voice: usize,
+    pub non_voice_to_speech: usize,
+    pub recommended_energy_threshold_delta: f32,
+    #[serde(default)]
+    pub duckdb_stats: Option<serde_json::Value>,
 }
 
 pub fn run_calibration(corrections_dir: &Path, profile: &str) -> Result<PathBuf> {

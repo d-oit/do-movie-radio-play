@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use std::path::Path;
-use serde_json::json;
+use serde_json::{json, Value};
 
 #[cfg(feature = "analytics")]
 use duckdb::Connection;
@@ -8,7 +8,7 @@ use duckdb::Connection;
 use crate::learning::calibrator::CalibrationReport;
 
 #[cfg(feature = "analytics")]
-pub fn run_calibration_analytics(db_path: &Path) -> Result<CalibrationReport> {
+pub fn run_calibration_analytics(db_path: &Path) -> Result<Value> {
     let conn = Connection::open_in_memory().context("failed to open in-memory duckdb")?;
 
     conn.execute_batch("INSTALL sqlite; LOAD sqlite;")?;
@@ -16,10 +16,7 @@ pub fn run_calibration_analytics(db_path: &Path) -> Result<CalibrationReport> {
     let db_path_str = db_path.to_string_lossy();
     conn.execute(&format!("ATTACH '{}' AS learning (TYPE sqlite);", db_path_str), [])?;
 
-    // Note: spectral_features is stored as JSON in the SQLite database.
-    // DuckDB's SQLite extension can access it, but we might need to extract fields.
-    // For this implementation, we follow the requested design pattern.
-    let stats: serde_json::Value = conn.query_row(
+    let stats: Value = conn.query_row(
         "SELECT
             PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY (spectral_features->>'$.spectral_flatness')::DOUBLE) as flatness_p95,
             PERCENTILE_CONT(0.05) WITHIN GROUP (ORDER BY (spectral_features->>'$.spectral_entropy')::DOUBLE) as entropy_p05,
@@ -32,37 +29,27 @@ pub fn run_calibration_analytics(db_path: &Path) -> Result<CalibrationReport> {
         [],
         |row| {
             Ok(json!({
-                "flatness_p95": row.get::<_, f64>(0)?,
-                "entropy_p05": row.get::<_, f64>(1)?,
-                "entropy_p95": row.get::<_, f64>(2)?,
-                "centroid_min": row.get::<_, f64>(3)?,
-                "centroid_max": row.get::<_, f64>(4)?,
+                "flatness_p95": row.get::<_, Option<f64>>(0)?,
+                "entropy_p05": row.get::<_, Option<f64>>(1)?,
+                "entropy_p95": row.get::<_, Option<f64>>(2)?,
+                "centroid_min": row.get::<_, Option<f64>>(3)?,
+                "centroid_max": row.get::<_, Option<f64>>(4)?,
                 "sample_size": row.get::<_, i64>(5)?,
             }))
         }
     )?;
 
-    let sample_size = stats["sample_size"].as_i64().unwrap_or(0) as usize;
-
-    Ok(CalibrationReport {
-        version: 1,
-        profile: "duckdb-analytics".to_string(),
-        records_seen: sample_size,
-        speech_to_non_voice: 0,
-        non_voice_to_speech: 0,
-        recommended_energy_threshold_delta: 0.0,
-        duckdb_stats: Some(stats),
-    })
+    Ok(stats)
 }
 
 #[cfg(feature = "analytics")]
-pub fn get_learning_stats_analytics(db_path: &Path) -> Result<serde_json::Value> {
+pub fn get_learning_stats_analytics(db_path: &Path) -> Result<Value> {
     let conn = Connection::open_in_memory().context("failed to open in-memory duckdb")?;
     conn.execute_batch("INSTALL sqlite; LOAD sqlite;")?;
     let db_path_str = db_path.to_string_lossy();
     conn.execute(&format!("ATTACH '{}' AS learning (TYPE sqlite);", db_path_str), [])?;
 
-    let stats = conn.query_row(
+    let base_stats = conn.query_row(
         "SELECT
             AVG((spectral_features->>'$.spectral_flatness')::DOUBLE),
             AVG((spectral_features->>'$.spectral_entropy')::DOUBLE),
@@ -82,5 +69,51 @@ pub fn get_learning_stats_analytics(db_path: &Path) -> Result<serde_json::Value>
         }
     )?;
 
-    Ok(stats)
+    let entropy_histogram = get_histogram(&conn, "(spectral_features->>'$.spectral_entropy')::DOUBLE", 0.0, 10.0, 10)?;
+    let flatness_histogram = get_histogram(&conn, "(spectral_features->>'$.spectral_flatness')::DOUBLE", 0.0, 1.0, 10)?;
+
+    Ok(json!({
+        "summary": base_stats,
+        "histograms": {
+            "spectral_entropy": entropy_histogram,
+            "spectral_flatness": flatness_histogram,
+        }
+    }))
+}
+
+#[cfg(feature = "analytics")]
+fn get_histogram(conn: &Connection, column_expr: &str, min: f64, max: f64, buckets: usize) -> Result<Value> {
+    let bucket_width = (max - min) / buckets as f64;
+    let query = format!(
+        "SELECT
+            floor(({} - {}) / {}) as bucket,
+            COUNT(*) as count
+         FROM learning.verified_segments
+         WHERE {} BETWEEN {} AND {}
+         GROUP BY bucket
+         ORDER BY bucket",
+        column_expr, min, bucket_width, column_expr, min, max
+    );
+
+    let mut stmt = conn.prepare(&query)?;
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, f64>(0)? as usize, row.get::<_, i64>(1)?))
+    })?;
+
+    let mut histogram = vec![0i64; buckets];
+    for res in rows {
+        let (bucket, count) = res?;
+        if bucket < buckets {
+            histogram[bucket] = count;
+        }
+    }
+
+    let labels: Vec<String> = (0..buckets)
+        .map(|i| format!("{:.2}-{:.2}", min + i as f64 * bucket_width, min + (i + 1) as f64 * bucket_width))
+        .collect();
+
+    Ok(json!({
+        "buckets": labels,
+        "counts": histogram,
+    }))
 }

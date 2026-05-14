@@ -153,29 +153,24 @@ fn run() -> Result<()> {
             corrections_dir,
             profile,
         } => {
+            let report_path = run_calibration(&corrections_dir, &profile)?;
+
             #[cfg(feature = "analytics")]
             {
                 let db_path = std::path::PathBuf::from("analysis/thresholds/learning.db");
+                // TODO: Allow passing learning_db path to calibrate as well.
+                // For now use the default or common path.
                 if db_path.exists() {
-                    info!("using duckdb analytics for calibration");
-                    let report = learning::analytics::run_calibration_analytics(&db_path)?;
-                    let report_path = std::path::Path::new("analysis/learnings/latest-calibration.json");
-                    if let Some(parent) = report_path.parent() {
-                        std::fs::create_dir_all(parent)?;
+                    info!("enriching calibration report with duckdb analytics");
+                    if let Ok(duckdb_stats) = learning::analytics::run_calibration_analytics(&db_path) {
+                        let mut report: crate::learning::calibrator::CalibrationReport =
+                            read_json(&report_path)?;
+                        report.duckdb_stats = Some(duckdb_stats);
+                        std::fs::write(&report_path, serde_json::to_vec_pretty(&report)?)?;
                     }
-                    std::fs::write(report_path, serde_json::to_vec_pretty(&report)?)?;
-                    let output_profile = get_calibration_dir()?.join("latest.json");
-                    apply_calibration_report(report_path, &output_profile)?;
-                    info!(
-                        report = %report_path.display(),
-                        output = %output_profile.display(),
-                        "saved duckdb calibration report and updated active profile"
-                    );
-                    return Ok(());
                 }
             }
 
-            let report_path = run_calibration(&corrections_dir, &profile)?;
             let output_profile = get_calibration_dir()?.join("latest.json");
             apply_calibration_report(&report_path, &output_profile)?;
             info!(

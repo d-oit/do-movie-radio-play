@@ -59,6 +59,7 @@ pub fn run_calibration(corrections_dir: &Path, profile: &str) -> Result<PathBuf>
         speech_to_non_voice,
         non_voice_to_speech,
         recommended_energy_threshold_delta: base.energy_threshold_delta + drift,
+        duckdb_stats: None,
     };
     let out_dir = Path::new("analysis/learnings");
     fs::create_dir_all(out_dir)?;

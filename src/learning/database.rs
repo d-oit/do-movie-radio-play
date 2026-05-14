@@ -217,26 +217,6 @@ impl LearningDb {
             )
             .await?;
 
-        self.conn
-            .execute(
-                "CREATE TABLE IF NOT EXISTS segment_fingerprints (
-                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    hash        INTEGER NOT NULL,
-                    offset_ms   INTEGER NOT NULL,
-                    segment_id  INTEGER REFERENCES verified_segments(id) ON DELETE CASCADE,
-                    created_at  TEXT DEFAULT (datetime('now'))
-                )",
-                (),
-            )
-            .await?;
-
-        self.conn
-            .execute(
-                "CREATE INDEX IF NOT EXISTS idx_fp_hash ON segment_fingerprints(hash)",
-                (),
-            )
-            .await?;
-
         Ok(())
     }
 
@@ -460,85 +440,11 @@ impl LearningDb {
             0.0
         };
 
-        let mut rows = self
-            .conn
-            .query("SELECT COUNT(*) FROM segment_fingerprints", ())
-            .await?;
-        let row = rows.next().await?.context("failed to get count")?;
-        let fingerprint_count: i64 = row.get(0)?;
-
-        let avg_fingerprints_per_segment = if total > 0 {
-            fingerprint_count as f64 / total as f64
-        } else {
-            0.0
-        };
-
         Ok(LearningStatistics {
             total_verifications: total,
             total_false_positives: fps,
             false_positive_rate: fp_rate,
-            total_fingerprints: fingerprint_count as usize,
-            avg_fingerprints_per_segment,
         })
-    }
-
-    pub async fn record_fingerprints(
-        &self,
-        segment_id: i64,
-        fingerprints: &[crate::verification::fingerprint::Fingerprint],
-    ) -> Result<()> {
-        // Use a transaction for batch insertion
-        self.conn.execute("BEGIN TRANSACTION", ()).await?;
-
-        for fp in fingerprints {
-            if let Err(e) = self.conn
-                .execute(
-                    "INSERT INTO segment_fingerprints (hash, offset_ms, segment_id) VALUES (?1, ?2, ?3)",
-                    [
-                        Value::Integer(fp.hash as i64),
-                        Value::Integer(fp.offset_ms as i64),
-                        Value::Integer(segment_id),
-                    ],
-                )
-                .await {
-                    self.conn.execute("ROLLBACK", ()).await?;
-                    return Err(e.into());
-                }
-        }
-
-        self.conn.execute("COMMIT", ()).await?;
-        Ok(())
-    }
-
-    pub async fn find_fingerprint_matches(&self, hashes: &[u32]) -> Result<Vec<(i64, u32, u32)>> {
-        if hashes.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let mut results = Vec::new();
-
-        // Chunk hashes to avoid exceeding SQLITE_MAX_VARIABLE_NUMBER
-        for chunk in hashes.chunks(900) {
-            let placeholders = chunk
-                .iter()
-                .enumerate()
-                .map(|(i, _)| format!("?{}", i + 1))
-                .collect::<Vec<_>>()
-                .join(",");
-            let sql = format!(
-                "SELECT segment_id, hash, offset_ms FROM segment_fingerprints WHERE hash IN ({})",
-                placeholders
-            );
-
-            let params: Vec<Value> = chunk.iter().map(|&h| Value::Integer(h as i64)).collect();
-            let mut rows = self.conn.query(&sql, params).await?;
-
-            while let Some(row) = rows.next().await? {
-                results.push((row.get(0)?, row.get(1)?, row.get(2)?));
-            }
-        }
-
-        Ok(results)
     }
 
     pub async fn get_latest_threshold(&self) -> Result<Option<ThresholdHistoryEntry>> {
@@ -573,8 +479,6 @@ pub struct LearningStatistics {
     pub total_verifications: usize,
     pub total_false_positives: usize,
     pub false_positive_rate: f64,
-    pub total_fingerprints: usize,
-    pub avg_fingerprints_per_segment: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

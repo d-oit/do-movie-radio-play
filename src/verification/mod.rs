@@ -6,7 +6,6 @@ use tracing::{info, warn};
 
 pub mod analysis;
 pub mod extractor;
-pub mod fingerprint;
 
 pub use analysis::{analyze_audio_features, SegmentAnalysis, SpectralFeatures, VerificationStatus};
 pub use extractor::extract_segment_audio;
@@ -15,7 +14,6 @@ pub use extractor::extract_segment_audio;
 pub struct VerificationReport {
     pub verified_timeline: TimelineOutput,
     pub segment_results: Vec<SegmentVerification>,
-    pub segment_fingerprints: Vec<Vec<fingerprint::Fingerprint>>,
     pub summary: VerificationSummary,
 }
 
@@ -75,9 +73,6 @@ pub fn verify_timeline(
     energy_min: Option<f32>,
     centroid_min: Option<f32>,
     centroid_max: Option<f32>,
-    use_fingerprints: bool,
-    fingerprint_threshold: u32,
-    learning_db_path: Option<std::path::PathBuf>,
 ) -> Result<VerificationReport> {
     let media_path_buf = media_path.to_path_buf();
     let media_exists = media_path_buf.exists();
@@ -95,7 +90,6 @@ pub fn verify_timeline(
     );
 
     let mut segment_results = Vec::new();
-    let mut segment_fingerprints = Vec::new();
     let mut verified_segments = Vec::new();
 
     let non_voice_segments: Vec<_> = timeline
@@ -110,41 +104,20 @@ pub fn verify_timeline(
         "starting verification"
     );
 
-    let rt = if use_fingerprints {
-        Some(
-            tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .context("failed to create async runtime for fingerprint matching")?,
-        )
-    } else {
-        None
-    };
-
-    let db = if let (true, Some(rt), Some(db_path)) = (use_fingerprints, &rt, &learning_db_path) {
-        Some(rt.block_on(crate::learning::database::LearningDb::new(db_path))?)
-    } else {
-        None
-    };
-
     for segment in &timeline.segments {
         if segment.kind != SegmentKind::NonVoice {
             verified_segments.push(segment.clone());
-            segment_fingerprints.push(Vec::new());
             continue;
         }
 
-        let (analysis, fingerprints) = if media_exists {
-            analyze_segment_with_fingerprints(&media_path_buf, segment, &thresholds)
+        let analysis = if media_exists {
+            analyze_segment(&media_path_buf, segment, &thresholds)
         } else {
-            (
-                Ok(SegmentAnalysis {
-                    status: VerificationStatus::Inconclusive,
-                    features: SpectralFeatures::default(),
-                    reason: Some("media not available".to_string()),
-                }),
-                Vec::new(),
-            )
+            Ok(SegmentAnalysis {
+                status: VerificationStatus::Inconclusive,
+                features: SpectralFeatures::default(),
+                reason: Some("media not available".to_string()),
+            })
         };
 
         let analysis = match analysis {
@@ -163,40 +136,11 @@ pub fn verify_timeline(
             }
         };
 
-        let mut is_verified = matches!(analysis.status, VerificationStatus::Verified);
-        let mut is_suspicious = matches!(
+        let is_verified = matches!(analysis.status, VerificationStatus::Verified);
+        let is_suspicious = matches!(
             analysis.status,
             VerificationStatus::Suspicious | VerificationStatus::Inconclusive
         );
-        let mut reason = analysis.reason;
-
-        if use_fingerprints && !fingerprints.is_empty() {
-            if let (Some(rt), Some(db)) = (&rt, &db) {
-                let query_hashes: Vec<u32> = fingerprints.iter().map(|f| f.hash).collect();
-                let stored_fps = rt.block_on(db.find_fingerprint_matches(&query_hashes))?;
-
-                if !stored_fps.is_empty() {
-                    let matches = fingerprint::match_fingerprints(&fingerprints, stored_fps);
-                    for (_seg_id, score) in matches {
-                        if score >= fingerprint_threshold {
-                            info!(
-                                segment_ms = format!("{}-{}", segment.start_ms, segment.end_ms),
-                                score = score,
-                                "fingerprint match found, verifying segment"
-                            );
-                            is_verified = true;
-                            is_suspicious = false;
-                            if let Some(ref mut r) = reason {
-                                *r = format!("{r}; fingerprint match (score={score})");
-                            } else {
-                                reason = Some(format!("fingerprint match (score={score})"));
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-        }
 
         let verification = SegmentVerification {
             start_ms: segment.start_ms,
@@ -206,11 +150,10 @@ pub fn verify_timeline(
             spectral_features: analysis.features,
             is_verified,
             is_suspicious,
-            reason,
+            reason: analysis.reason,
         };
 
         segment_results.push(verification);
-        segment_fingerprints.push(fingerprints);
         verified_segments.push(segment.clone());
     }
 
@@ -258,7 +201,6 @@ pub fn verify_timeline(
     let report = VerificationReport {
         verified_timeline,
         segment_results,
-        segment_fingerprints,
         summary,
     };
 
@@ -335,53 +277,26 @@ fn analyze_segment(
     segment: &Segment,
     thresholds: &AppliedThresholds,
 ) -> Result<SegmentAnalysis> {
-    let (analysis, _) = analyze_segment_with_fingerprints(media_path, segment, thresholds);
-    analysis
-}
-
-fn analyze_segment_with_fingerprints(
-    media_path: &Path,
-    segment: &Segment,
-    thresholds: &AppliedThresholds,
-) -> (Result<SegmentAnalysis>, Vec<fingerprint::Fingerprint>) {
-    let temp_wav_res = tempfile::Builder::new()
+    let temp_wav = tempfile::Builder::new()
         .prefix("segment_")
         .suffix(".wav")
         .tempfile()
-        .context("failed to create temp file");
+        .context("failed to create temp file")?
+        .into_temp_path();
 
-    let temp_wav = match temp_wav_res {
-        Ok(t) => t.into_temp_path(),
-        Err(e) => return (Err(e), Vec::new()),
-    };
+    extract_segment_audio(media_path, segment, &temp_wav)?;
 
-    if let Err(e) = extract_segment_audio(media_path, segment, &temp_wav) {
-        return (Err(e), Vec::new());
-    }
+    let samples = crate::io::wav::read_wav_to_f32(&temp_wav)?;
 
-    let samples_res = crate::io::wav::read_wav_to_f32(&temp_wav);
-    let (samples, _) = match samples_res {
-        Ok(s) => s,
-        Err(e) => return (Err(e), Vec::new()),
-    };
-
-    let features = match analyze_audio_features(&samples) {
-        Ok(f) => f,
-        Err(e) => return (Err(e), Vec::new()),
-    };
-
-    let fingerprints = fingerprint::fingerprint_segment(&samples, fingerprint::DEFAULT_SAMPLE_RATE);
+    let features = analyze_audio_features(&samples.0)?;
 
     let status = determine_verification_status(&features, segment.confidence, thresholds);
 
-    (
-        Ok(SegmentAnalysis {
-            status,
-            features,
-            reason: None,
-        }),
-        fingerprints,
-    )
+    Ok(SegmentAnalysis {
+        status,
+        features,
+        reason: None,
+    })
 }
 
 fn determine_verification_status(

@@ -33,7 +33,6 @@ struct AvgStats {
     centroid_hz: f32,
     low_band_ratio: f32,
     high_band_ratio: f32,
-    constellation_speech_peaks: f32,
 }
 
 fn average_frame_stats(frames: &[Frame], frame_ms: u32, start_ms: u64, end_ms: u64) -> AvgStats {
@@ -55,20 +54,10 @@ fn average_frame_stats(frames: &[Frame], frame_ms: u32, start_ms: u64, end_ms: u
         centroid_hz: slice.iter().map(|f| f.centroid_hz).sum::<f32>() / n,
         low_band_ratio: slice.iter().map(|f| f.low_band_ratio).sum::<f32>() / n,
         high_band_ratio: slice.iter().map(|f| f.high_band_ratio).sum::<f32>() / n,
-        constellation_speech_peaks: slice
-            .iter()
-            .map(|f| f.constellation_speech_peaks as f32)
-            .sum::<f32>()
-            / n,
     }
 }
 
 fn looks_implausible_for_speech(stats: &AvgStats) -> bool {
-    // If we have strong constellation evidence for speech (formant peaks), it's likely speech
-    if stats.constellation_speech_peaks > 2.5 {
-        return false;
-    }
-
     let music_like = stats.low_band_ratio > 0.45 && stats.high_band_ratio < 0.15;
     let noisy = stats.flatness > 0.42 || stats.entropy > 6.2;
     let centroid_outside = stats.centroid_hz < 120.0 || stats.centroid_hz > 5000.0;
@@ -108,8 +97,6 @@ mod tests {
             centroid_hz,
             low_band_ratio: low,
             high_band_ratio: high,
-            constellation_peaks: 0,
-            constellation_speech_peaks: 0,
         }
     }
 

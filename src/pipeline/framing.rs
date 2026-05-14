@@ -20,11 +20,25 @@ pub fn build_frames(
             .collect();
     }
 
-    let chunks: Vec<&[f32]> = samples.chunks(frame_len).collect();
-    compute_features_parallel(&chunks, sample_rate)
-        .into_iter()
-        .map(feature_set_to_frame)
-        .collect()
+    let mut out = Vec::with_capacity(samples.len() / frame_len + 1);
+    let fft_len = frame_len.next_power_of_two().max(256);
+    let mut extractor = crate::pipeline::features::FeatureExtractor::new(fft_len);
+    let mut prev_mags: Option<Vec<f32>> = None;
+
+    for chunk in samples.chunks(frame_len) {
+        if chunk.is_empty() {
+            continue;
+        }
+        let (features, mags) = extractor.extract_frame(chunk, sample_rate, prev_mags.as_deref());
+        if let Some(ref mut prev) = prev_mags {
+            prev.copy_from_slice(mags);
+        } else {
+            prev_mags = Some(mags.to_vec());
+        }
+
+        out.push(feature_set_to_frame(features));
+    }
+    out
 }
 
 #[cfg(test)]

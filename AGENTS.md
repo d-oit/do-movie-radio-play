@@ -25,7 +25,6 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - **Frame**: 20ms audio window (320 samples at 16kHz).
 - **VAD**: Voice Activity Detection classifying frames as speech or non-voice.
 - **Segment**: Contiguous time range with kind, confidence, tags, and prompt.
-- **Learning Database**: Stores `verified_segments` with normalized columns for spectral features (rms, zcr, spectral_flux, spectral_flatness, spectral_entropy, centroid_hz, low_band_ratio, high_band_ratio) to enable efficient SQL aggregation.
 - **Calibration profile**: Genre-specific energy threshold deltas.
 
 ## Skill Activation Policy

@@ -7,6 +7,9 @@ edition = "2021"
 name = "timeline"
 path = "src/main.rs"
 
+[features]
+analytics = ["dep:duckdb"]
+
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
@@ -19,7 +22,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 hound = "3"
 realfft = "3"
 tempfile = "3"
-libsql = "0.9"
+libsql = { version = "0.9", features = ["replication", "remote"] }
+duckdb = { version = "1.1", optional = true, features = ["bundled"] }
 symphonia = { version = "0.5", features = ["mp3", "wav", "flac", "ogg", "pcm"] }
 rayon = "1.10"
 

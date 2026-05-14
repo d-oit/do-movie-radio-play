@@ -1,4 +1,6 @@
 pub mod adaptive_thresholds;
+#[cfg(feature = "analytics")]
+pub mod analytics;
 pub mod calibrator;
 pub mod corrections;
 pub mod database;

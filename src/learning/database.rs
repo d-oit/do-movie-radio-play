@@ -94,7 +94,10 @@ impl LearningDb {
     pub async fn new(path: &Path) -> Result<Self> {
         let db_path = path.to_string_lossy().to_string();
 
-        let (db, is_remote) = match (std::env::var("TURSO_URL"), std::env::var("TURSO_AUTH_TOKEN")) {
+        let (db, is_remote) = match (
+            std::env::var("TURSO_URL"),
+            std::env::var("TURSO_AUTH_TOKEN"),
+        ) {
             (Ok(url), Ok(token)) if !url.is_empty() && !token.is_empty() => {
                 let db = Builder::new_remote_replica(&db_path, url, token)
                     .sync_interval(Duration::from_secs(300))

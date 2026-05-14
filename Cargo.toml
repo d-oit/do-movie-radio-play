@@ -7,9 +7,6 @@ edition = "2021"
 name = "timeline"
 path = "src/main.rs"
 
-[features]
-analytics = ["dep:duckdb"]
-
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }

@@ -89,10 +89,22 @@ pub struct ThresholdRecommendation {
 impl LearningDb {
     pub async fn new(path: &Path) -> Result<Self> {
         let db_path = path.to_string_lossy().to_string();
-        let db = Builder::new_local(&db_path)
-            .build()
-            .await
-            .context("failed to open database")?;
+
+        let db = match (
+            std::env::var("TURSO_URL"),
+            std::env::var("TURSO_AUTH_TOKEN"),
+        ) {
+            (Ok(url), Ok(token)) => Builder::new_remote_replica(&db_path, url, token)
+                .sync_interval(std::time::Duration::from_secs(300))
+                .build()
+                .await
+                .context("failed to open remote replica")?,
+            _ => Builder::new_local(&db_path)
+                .build()
+                .await
+                .context("failed to open local database")?,
+        };
+
         let conn = db.connect().context("failed to create connection")?;
 
         let learning_db = Self { conn };

@@ -1,14 +1,18 @@
 use anyhow::{Context, Result};
-use libsql::{Builder, Connection, Value};
+use libsql::{Builder, Connection, Database, Value};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::time::Duration;
 
 use crate::learning::adaptive_thresholds::RecommendationConfidence;
 use crate::pipeline::features::FeatureSet;
 
+use std::sync::Arc;
+
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct LearningDb {
+    db: Option<Arc<Database>>,
     conn: Connection,
 }
 
@@ -90,24 +94,30 @@ impl LearningDb {
     pub async fn new(path: &Path) -> Result<Self> {
         let db_path = path.to_string_lossy().to_string();
 
-        let db = match (
-            std::env::var("TURSO_URL"),
-            std::env::var("TURSO_AUTH_TOKEN"),
-        ) {
-            (Ok(url), Ok(token)) => Builder::new_remote_replica(&db_path, url, token)
-                .sync_interval(std::time::Duration::from_secs(300))
-                .build()
-                .await
-                .context("failed to open remote replica")?,
-            _ => Builder::new_local(&db_path)
-                .build()
-                .await
-                .context("failed to open local database")?,
+        let (db, is_remote) = match (std::env::var("TURSO_URL"), std::env::var("TURSO_AUTH_TOKEN")) {
+            (Ok(url), Ok(token)) if !url.is_empty() && !token.is_empty() => {
+                let db = Builder::new_remote_replica(&db_path, url, token)
+                    .sync_interval(Duration::from_secs(300))
+                    .build()
+                    .await
+                    .context("failed to open remote replica")?;
+                (db, true)
+            }
+            _ => {
+                let db = Builder::new_local(&db_path)
+                    .build()
+                    .await
+                    .context("failed to open local database")?;
+                (db, false)
+            }
         };
 
         let conn = db.connect().context("failed to create connection")?;
 
-        let learning_db = Self { conn };
+        let learning_db = Self {
+            db: if is_remote { Some(Arc::new(db)) } else { None },
+            conn,
+        };
         learning_db.initialize().await?;
         Ok(learning_db)
     }

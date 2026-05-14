@@ -6,6 +6,29 @@ use std::path::Path;
 use crate::learning::adaptive_thresholds::RecommendationConfidence;
 use crate::pipeline::features::FeatureSet;
 
+const DEFAULT_FLATNESS_MAX: f64 = 0.45;
+const DEFAULT_ENTROPY_MIN: f64 = 3.5;
+const DEFAULT_ENTROPY_MAX: f64 = 7.0;
+const DEFAULT_CENTROID_MIN: f64 = 100.0;
+const DEFAULT_CENTROID_MAX: f64 = 6000.0;
+
+const RECOMMENDATION_FLATNESS_MIN_AVG: f64 = 0.3;
+const RECOMMENDATION_FLATNESS_MULTIPLIER: f64 = 1.2;
+const RECOMMENDATION_FLATNESS_CLAMP_MIN: f64 = 0.45;
+const RECOMMENDATION_FLATNESS_CLAMP_MAX: f64 = 0.95;
+
+const RECOMMENDATION_ENTROPY_MULTIPLIER: f64 = 0.8;
+const RECOMMENDATION_ENTROPY_CLAMP_MIN: f64 = 1.0;
+const RECOMMENDATION_ENTROPY_CLAMP_MAX: f64 = 6.0;
+
+const RECOMMENDATION_CENTROID_MIN_MULTIPLIER: f64 = 0.5;
+const RECOMMENDATION_CENTROID_MIN_LIMIT: f64 = 50.0;
+const RECOMMENDATION_CENTROID_MAX_MULTIPLIER: f64 = 1.5;
+const RECOMMENDATION_CENTROID_MAX_LIMIT: f64 = 8000.0;
+
+const RECOMMENDATION_HIGH_CONFIDENCE_SIZE: usize = 20;
+const RECOMMENDATION_MEDIUM_CONFIDENCE_SIZE: usize = 5;
+
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct LearningDb {
@@ -85,6 +108,20 @@ pub struct ThresholdRecommendation {
     pub sample_size: usize,
 }
 
+impl Default for ThresholdRecommendation {
+    fn default() -> Self {
+        Self {
+            suggested_flatness_max: DEFAULT_FLATNESS_MAX,
+            suggested_entropy_min: DEFAULT_ENTROPY_MIN,
+            suggested_entropy_max: DEFAULT_ENTROPY_MAX,
+            suggested_centroid_min: DEFAULT_CENTROID_MIN,
+            suggested_centroid_max: DEFAULT_CENTROID_MAX,
+            confidence: RecommendationConfidence::Low,
+            sample_size: 0,
+        }
+    }
+}
+
 #[allow(dead_code)]
 impl LearningDb {
     pub async fn new(path: &Path) -> Result<Self> {
@@ -128,47 +165,55 @@ impl LearningDb {
             .conn
             .query("PRAGMA table_info(verified_segments)", ())
             .await?;
-        let mut has_rms = false;
-        let mut has_spectral_features = false;
+        let mut existing_columns = std::collections::HashSet::new();
         while let Some(row) = rows.next().await? {
             let name: String = row.get(1)?;
-            if name == "rms" {
-                has_rms = true;
-            }
-            if name == "spectral_features" {
-                has_spectral_features = true;
-            }
+            existing_columns.insert(name);
         }
 
-        if !has_rms {
-            self.conn
-                .execute(
-                    "ALTER TABLE verified_segments ADD COLUMN rms REAL NOT NULL DEFAULT 0.0",
-                    (),
-                )
-                .await?;
-            self.conn
-                .execute(
-                    "ALTER TABLE verified_segments ADD COLUMN zcr REAL NOT NULL DEFAULT 0.0",
-                    (),
-                )
-                .await?;
-            self.conn.execute("ALTER TABLE verified_segments ADD COLUMN spectral_flux REAL NOT NULL DEFAULT 0.0", ()).await?;
-            self.conn.execute("ALTER TABLE verified_segments ADD COLUMN spectral_flatness REAL NOT NULL DEFAULT 0.0", ()).await?;
-            self.conn.execute("ALTER TABLE verified_segments ADD COLUMN spectral_entropy REAL NOT NULL DEFAULT 0.0", ()).await?;
-            self.conn.execute("ALTER TABLE verified_segments ADD COLUMN centroid_hz REAL NOT NULL DEFAULT 0.0", ()).await?;
-            self.conn.execute("ALTER TABLE verified_segments ADD COLUMN low_band_ratio REAL NOT NULL DEFAULT 0.0", ()).await?;
-            self.conn.execute("ALTER TABLE verified_segments ADD COLUMN high_band_ratio REAL NOT NULL DEFAULT 0.0", ()).await?;
+        let has_spectral_features = existing_columns.contains("spectral_features");
+
+        let feature_cols = [
+            "rms",
+            "zcr",
+            "spectral_flux",
+            "spectral_flatness",
+            "spectral_entropy",
+            "centroid_hz",
+            "low_band_ratio",
+            "high_band_ratio",
+        ];
+
+        for col in feature_cols {
+            if !existing_columns.contains(col) {
+                self.conn
+                    .execute(
+                        &format!(
+                            "ALTER TABLE verified_segments ADD COLUMN {} REAL NOT NULL DEFAULT 0.0",
+                            col
+                        ),
+                        (),
+                    )
+                    .await?;
+            }
         }
 
         if has_spectral_features {
-            self.conn.execute("BEGIN TRANSACTION", ()).await?;
-            let mut rows = self.conn.query("SELECT id, spectral_features FROM verified_segments WHERE spectral_features IS NOT NULL AND spectral_features != ''", ()).await?;
-            while let Some(row) = rows.next().await? {
-                let id: i64 = row.get(0)?;
-                let features_json: String = row.get(1)?;
-                if let Ok(features) = serde_json::from_str::<SpectralFeatures>(&features_json) {
-                    self.conn.execute(
+            let tx = self.conn.transaction().await?;
+            {
+                let mut rows = tx
+                    .query(
+                        "SELECT id, spectral_features FROM verified_segments WHERE spectral_features IS NOT NULL AND spectral_features != ''",
+                        (),
+                    )
+                    .await?;
+                while let Some(row) = rows.next().await? {
+                    let id: i64 = row.get(0)?;
+                    let features_json: String = row.get(1)?;
+                    let features: SpectralFeatures = serde_json::from_str(&features_json)
+                        .context("failed to parse spectral features during migration")?;
+
+                    tx.execute(
                         "UPDATE verified_segments SET
                             rms = ?1, zcr = ?2, spectral_flux = ?3, spectral_flatness = ?4,
                             spectral_entropy = ?5, centroid_hz = ?6, low_band_ratio = ?7, high_band_ratio = ?8
@@ -184,10 +229,12 @@ impl LearningDb {
                             Value::Real(features.high_band_ratio),
                             Value::Integer(id),
                         ],
-                    ).await?;
+                    )
+                    .await?;
                 }
             }
-            self.conn.execute("COMMIT", ()).await?;
+            tx.commit().await?;
+
             self.conn
                 .execute(
                     "ALTER TABLE verified_segments DROP COLUMN spectral_features",
@@ -213,6 +260,26 @@ impl LearningDb {
         self.conn
             .execute(
                 "CREATE INDEX IF NOT EXISTS idx_fp ON verified_segments(was_false_positive) WHERE was_false_positive = 1",
+                (),
+            )
+            .await?;
+
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS segment_fingerprints (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    hash        INTEGER NOT NULL,
+                    offset_ms   INTEGER NOT NULL,
+                    segment_id  INTEGER REFERENCES verified_segments(id) ON DELETE CASCADE,
+                    created_at  TEXT DEFAULT (datetime('now'))
+                )",
+                (),
+            )
+            .await?;
+
+        self.conn
+            .execute(
+                "CREATE INDEX IF NOT EXISTS idx_fp_hash ON segment_fingerprints(hash)",
                 (),
             )
             .await?;
@@ -311,15 +378,7 @@ impl LearningDb {
             .await?;
 
         let Some(row) = rows.next().await? else {
-            return Ok(ThresholdRecommendation {
-                suggested_flatness_max: 0.45,
-                suggested_entropy_min: 3.5,
-                suggested_entropy_max: 7.0,
-                suggested_centroid_min: 100.0,
-                suggested_centroid_max: 6000.0,
-                confidence: RecommendationConfidence::Low,
-                sample_size: 0,
-            });
+            return Ok(ThresholdRecommendation::default());
         };
 
         let avg_flatness: Option<f64> = row.get(0)?;
@@ -329,31 +388,33 @@ impl LearningDb {
         let sample_size: i64 = row.get(4)?;
 
         if sample_size == 0 || avg_flatness.is_none() {
-            return Ok(ThresholdRecommendation {
-                suggested_flatness_max: 0.45,
-                suggested_entropy_min: 3.5,
-                suggested_entropy_max: 7.0,
-                suggested_centroid_min: 100.0,
-                suggested_centroid_max: 6000.0,
-                confidence: RecommendationConfidence::Low,
-                sample_size: 0,
-            });
+            return Ok(ThresholdRecommendation::default());
         }
 
-        let avg_flatness = avg_flatness.unwrap();
-        let avg_entropy = avg_entropy.unwrap();
-        let min_centroid = min_centroid.unwrap();
-        let max_centroid = max_centroid.unwrap();
+        let avg_flatness = avg_flatness.context("missing average flatness")?;
+        let avg_entropy = avg_entropy.context("missing average entropy")?;
+        let min_centroid = min_centroid.context("missing minimum centroid")?;
+        let max_centroid = max_centroid.context("missing maximum centroid")?;
 
-        let suggested_flatness_max = (avg_flatness.max(0.3) * 1.2).clamp(0.45, 0.95);
-        let suggested_entropy_min = (avg_entropy * 0.8).clamp(1.0, 6.0);
+        let suggested_flatness_max = (avg_flatness.max(RECOMMENDATION_FLATNESS_MIN_AVG)
+            * RECOMMENDATION_FLATNESS_MULTIPLIER)
+            .clamp(
+                RECOMMENDATION_FLATNESS_CLAMP_MIN,
+                RECOMMENDATION_FLATNESS_CLAMP_MAX,
+            );
+        let suggested_entropy_min = (avg_entropy * RECOMMENDATION_ENTROPY_MULTIPLIER).clamp(
+            RECOMMENDATION_ENTROPY_CLAMP_MIN,
+            RECOMMENDATION_ENTROPY_CLAMP_MAX,
+        );
 
-        let suggested_centroid_min = (min_centroid * 0.5).max(50.0);
-        let suggested_centroid_max = (max_centroid * 1.5).min(8000.0);
+        let suggested_centroid_min = (min_centroid * RECOMMENDATION_CENTROID_MIN_MULTIPLIER)
+            .max(RECOMMENDATION_CENTROID_MIN_LIMIT);
+        let suggested_centroid_max = (max_centroid * RECOMMENDATION_CENTROID_MAX_MULTIPLIER)
+            .min(RECOMMENDATION_CENTROID_MAX_LIMIT);
 
-        let confidence = if sample_size >= 20 {
+        let confidence = if sample_size >= RECOMMENDATION_HIGH_CONFIDENCE_SIZE as i64 {
             RecommendationConfidence::High
-        } else if sample_size >= 5 {
+        } else if sample_size >= RECOMMENDATION_MEDIUM_CONFIDENCE_SIZE as i64 {
             RecommendationConfidence::Medium
         } else {
             RecommendationConfidence::Low
@@ -362,7 +423,7 @@ impl LearningDb {
         Ok(ThresholdRecommendation {
             suggested_flatness_max,
             suggested_entropy_min,
-            suggested_entropy_max: 7.0,
+            suggested_entropy_max: DEFAULT_ENTROPY_MAX,
             suggested_centroid_min,
             suggested_centroid_max,
             confidence,
@@ -440,11 +501,85 @@ impl LearningDb {
             0.0
         };
 
+        let mut rows = self
+            .conn
+            .query("SELECT COUNT(*) FROM segment_fingerprints", ())
+            .await?;
+        let row = rows.next().await?.context("failed to get count")?;
+        let fingerprint_count: i64 = row.get(0)?;
+
+        let avg_fingerprints_per_segment = if total > 0 {
+            fingerprint_count as f64 / total as f64
+        } else {
+            0.0
+        };
+
         Ok(LearningStatistics {
             total_verifications: total,
             total_false_positives: fps,
             false_positive_rate: fp_rate,
+            total_fingerprints: fingerprint_count as usize,
+            avg_fingerprints_per_segment,
         })
+    }
+
+    pub async fn record_fingerprints(
+        &self,
+        segment_id: i64,
+        fingerprints: &[crate::verification::fingerprint::Fingerprint],
+    ) -> Result<()> {
+        // Use a transaction for batch insertion
+        self.conn.execute("BEGIN TRANSACTION", ()).await?;
+
+        for fp in fingerprints {
+            if let Err(e) = self.conn
+                .execute(
+                    "INSERT INTO segment_fingerprints (hash, offset_ms, segment_id) VALUES (?1, ?2, ?3)",
+                    [
+                        Value::Integer(fp.hash as i64),
+                        Value::Integer(fp.offset_ms as i64),
+                        Value::Integer(segment_id),
+                    ],
+                )
+                .await {
+                    self.conn.execute("ROLLBACK", ()).await?;
+                    return Err(e.into());
+                }
+        }
+
+        self.conn.execute("COMMIT", ()).await?;
+        Ok(())
+    }
+
+    pub async fn find_fingerprint_matches(&self, hashes: &[u32]) -> Result<Vec<(i64, u32, u32)>> {
+        if hashes.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut results = Vec::new();
+
+        // Chunk hashes to avoid exceeding SQLITE_MAX_VARIABLE_NUMBER
+        for chunk in hashes.chunks(900) {
+            let placeholders = chunk
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format!("?{}", i + 1))
+                .collect::<Vec<_>>()
+                .join(",");
+            let sql = format!(
+                "SELECT segment_id, hash, offset_ms FROM segment_fingerprints WHERE hash IN ({})",
+                placeholders
+            );
+
+            let params: Vec<Value> = chunk.iter().map(|&h| Value::Integer(h as i64)).collect();
+            let mut rows = self.conn.query(&sql, params).await?;
+
+            while let Some(row) = rows.next().await? {
+                results.push((row.get(0)?, row.get(1)?, row.get(2)?));
+            }
+        }
+
+        Ok(results)
     }
 
     pub async fn get_latest_threshold(&self) -> Result<Option<ThresholdHistoryEntry>> {
@@ -479,6 +614,8 @@ pub struct LearningStatistics {
     pub total_verifications: usize,
     pub total_false_positives: usize,
     pub false_positive_rate: f64,
+    pub total_fingerprints: usize,
+    pub avg_fingerprints_per_segment: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

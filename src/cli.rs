@@ -162,6 +162,10 @@ pub enum Commands {
         learning_db: Option<PathBuf>,
         #[arg(long)]
         save_learning: bool,
+        #[arg(long)]
+        use_fingerprints: bool,
+        #[arg(long, default_value = "10")]
+        fingerprint_threshold: u32,
     },
     UpdateThresholds {
         #[arg(long, default_value = "analysis/thresholds/learning-state.json")]

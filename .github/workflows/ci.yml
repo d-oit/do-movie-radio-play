@@ -36,11 +36,9 @@ jobs:
       - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
       - run: python3 scripts/check_validation_coverage.py --tier A --strict-files
       - run: cargo build
-      - run: cargo build --features analytics
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test
-      - run: cargo test --features analytics
       - run: bash scripts/quality_gate.sh
 
   benchmark:

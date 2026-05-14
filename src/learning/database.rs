@@ -138,6 +138,7 @@ impl LearningDb {
     }
 
     async fn initialize(&self) -> Result<()> {
+        self.conn.execute("PRAGMA foreign_keys = ON", ()).await?;
         self.conn
             .execute(
                 "CREATE TABLE IF NOT EXISTS verified_segments (
@@ -528,26 +529,22 @@ impl LearningDb {
         segment_id: i64,
         fingerprints: &[crate::verification::fingerprint::Fingerprint],
     ) -> Result<()> {
-        // Use a transaction for batch insertion
-        self.conn.execute("BEGIN TRANSACTION", ()).await?;
+        // Use RAII transaction for batch insertion
+        let tx = self.conn.transaction().await?;
 
         for fp in fingerprints {
-            if let Err(e) = self.conn
-                .execute(
-                    "INSERT INTO segment_fingerprints (hash, offset_ms, segment_id) VALUES (?1, ?2, ?3)",
-                    [
-                        Value::Integer(fp.hash as i64),
-                        Value::Integer(fp.offset_ms as i64),
-                        Value::Integer(segment_id),
-                    ],
-                )
-                .await {
-                    self.conn.execute("ROLLBACK", ()).await?;
-                    return Err(e.into());
-                }
+            tx.execute(
+                "INSERT INTO segment_fingerprints (hash, offset_ms, segment_id) VALUES (?1, ?2, ?3)",
+                [
+                    Value::Integer(fp.hash as i64),
+                    Value::Integer(fp.offset_ms as i64),
+                    Value::Integer(segment_id),
+                ],
+            )
+            .await?;
         }
 
-        self.conn.execute("COMMIT", ()).await?;
+        tx.commit().await?;
         Ok(())
     }
 
@@ -835,5 +832,27 @@ mod tests {
             }
         }
         assert!(!has_spectral_features);
+    }
+
+    #[tokio::test]
+    async fn test_foreign_key_enforcement() {
+        let temp_file = setup_test_db_path();
+        let db = LearningDb::new(temp_file.path()).await.unwrap();
+
+        // Try to insert a fingerprint with a non-existent segment_id (9999)
+        let result = db
+            .conn
+            .execute(
+                "INSERT INTO segment_fingerprints (hash, offset_ms, segment_id) VALUES (1, 100, 9999)",
+                (),
+            )
+            .await;
+
+        assert!(
+            result.is_err(),
+            "Foreign key constraint should have prevented insertion"
+        );
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("FOREIGN KEY constraint failed"));
     }
 }

@@ -93,13 +93,16 @@ pub struct ThresholdRecommendation {
 #[allow(dead_code)]
 impl LearningDb {
     pub async fn new(path: &Path) -> Result<Self> {
+        let url = std::env::var("TURSO_URL").ok();
+        let token = std::env::var("TURSO_AUTH_TOKEN").ok();
+        Self::new_internal(path, url, token).await
+    }
+
+    async fn new_internal(path: &Path, url: Option<String>, token: Option<String>) -> Result<Self> {
         let db_path = path.to_string_lossy().to_string();
 
-        let (db, is_remote) = match (
-            std::env::var("TURSO_URL"),
-            std::env::var("TURSO_AUTH_TOKEN"),
-        ) {
-            (Ok(url), Ok(token)) if !url.is_empty() && !token.is_empty() => {
+        let (db, is_remote) = match (url, token) {
+            (Some(url), Some(token)) if !url.is_empty() && !token.is_empty() => {
                 let db = Builder::new_remote_replica(&db_path, url, token)
                     .sync_interval(Duration::from_secs(300))
                     .build()
@@ -559,30 +562,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_database_initialization_local_by_default() {
-        // Ensure environment variables are not set for this test
-        std::env::remove_var("TURSO_URL");
-        std::env::remove_var("TURSO_AUTH_TOKEN");
-
         let temp_file = setup_test_db_path();
-        let db = LearningDb::new(temp_file.path()).await.unwrap();
+        let db = LearningDb::new_internal(temp_file.path(), None, None)
+            .await
+            .unwrap();
         assert!(!db.is_remote());
     }
 
     #[tokio::test]
     async fn test_database_initialization_remote_attempt() {
-        // We can't easily test a successful remote connection without a real server,
-        // but we can verify that providing the env vars triggers the remote replica builder.
-        // Even if it fails to build due to invalid URL, the attempt is verified by the error context.
-        std::env::set_var("TURSO_URL", "libsql://test.turso.io");
-        std::env::set_var("TURSO_AUTH_TOKEN", "test-token");
-
         let temp_file = setup_test_db_path();
-        let result = LearningDb::new(temp_file.path()).await;
+        let result = LearningDb::new_internal(
+            temp_file.path(),
+            Some("libsql://test.turso.io".to_string()),
+            Some("test-token".to_string()),
+        )
+        .await;
 
         match result {
             Ok(db) => assert!(db.is_remote()),
             Err(e) => {
-                // If it failed, it should be with a remote-replica related error
                 let err_str = format!("{:?}", e);
                 assert!(
                     err_str.contains("failed to open remote replica")
@@ -590,8 +589,5 @@ mod tests {
                 );
             }
         }
-
-        std::env::remove_var("TURSO_URL");
-        std::env::remove_var("TURSO_AUTH_TOKEN");
     }
 }

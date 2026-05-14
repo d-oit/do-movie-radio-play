@@ -162,7 +162,9 @@ fn run() -> Result<()> {
                 // For now use the default or common path.
                 if db_path.exists() {
                     info!("enriching calibration report with duckdb analytics");
-                    if let Ok(duckdb_stats) = learning::analytics::run_calibration_analytics(&db_path) {
+                    if let Ok(duckdb_stats) =
+                        learning::analytics::run_calibration_analytics(&db_path)
+                    {
                         let mut report: crate::learning::calibrator::CalibrationReport =
                             read_json(&report_path)?;
                         report.duckdb_stats = Some(duckdb_stats);
@@ -343,8 +345,6 @@ fn run() -> Result<()> {
             learning_state,
             learning_db,
             save_learning,
-            use_fingerprints,
-            fingerprint_threshold,
         } => {
             let timeline_data = read_timeline(&timeline)?;
             let report = crate::verification::verify_timeline(
@@ -357,9 +357,6 @@ fn run() -> Result<()> {
                 energy_min,
                 centroid_min,
                 centroid_max,
-                use_fingerprints,
-                fingerprint_threshold,
-                learning_db.clone(),
             )?;
 
             info!(
@@ -399,7 +396,7 @@ fn run() -> Result<()> {
                     .build()
                     .context("failed to create async runtime for learning db")?;
                 let learning_db = rt.block_on(learning::database::LearningDb::new(&db_path))?;
-                for (i, result) in report.segment_results.iter().enumerate() {
+                for result in &report.segment_results {
                     let segment = learning::database::VerifiedSegment {
                         start_ms: result.start_ms as i64,
                         end_ms: result.end_ms as i64,
@@ -416,12 +413,7 @@ fn run() -> Result<()> {
                         },
                         was_false_positive: result.is_suspicious,
                     };
-                    let segment_id = rt.block_on(learning_db.record_verification(segment))?;
-
-                    // Also store fingerprints
-                    if let Some(fps) = report.segment_fingerprints.get(i) {
-                        rt.block_on(learning_db.record_fingerprints(segment_id, fps))?;
-                    }
+                    rt.block_on(learning_db.record_verification(segment))?;
                 }
                 info!(path = %db_path.display(), "saved learning data to database");
             }
@@ -482,7 +474,8 @@ fn run() -> Result<()> {
             let latest_threshold = rt.block_on(db.get_latest_threshold())?;
 
             #[cfg(feature = "analytics")]
-            let analytics_stats = learning::analytics::get_learning_stats_analytics(&learning_db).ok();
+            let analytics_stats =
+                learning::analytics::get_learning_stats_analytics(&learning_db).ok();
             #[cfg(not(feature = "analytics"))]
             let analytics_stats: Option<serde_json::Value> = None;
 

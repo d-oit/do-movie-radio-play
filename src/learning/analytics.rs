@@ -1,11 +1,9 @@
 use anyhow::{Context, Result};
-use std::path::Path;
 use serde_json::{json, Value};
+use std::path::Path;
 
 #[cfg(feature = "analytics")]
 use duckdb::Connection;
-
-use crate::learning::calibrator::CalibrationReport;
 
 #[cfg(feature = "analytics")]
 pub fn run_calibration_analytics(db_path: &Path) -> Result<Value> {
@@ -14,7 +12,10 @@ pub fn run_calibration_analytics(db_path: &Path) -> Result<Value> {
     conn.execute_batch("INSTALL sqlite; LOAD sqlite;")?;
 
     let db_path_str = db_path.to_string_lossy();
-    conn.execute(&format!("ATTACH '{}' AS learning (TYPE sqlite);", db_path_str), [])?;
+    conn.execute(
+        &format!("ATTACH '{}' AS learning (TYPE sqlite);", db_path_str),
+        [],
+    )?;
 
     let stats: Value = conn.query_row(
         "SELECT
@@ -47,7 +48,10 @@ pub fn get_learning_stats_analytics(db_path: &Path) -> Result<Value> {
     let conn = Connection::open_in_memory().context("failed to open in-memory duckdb")?;
     conn.execute_batch("INSTALL sqlite; LOAD sqlite;")?;
     let db_path_str = db_path.to_string_lossy();
-    conn.execute(&format!("ATTACH '{}' AS learning (TYPE sqlite);", db_path_str), [])?;
+    conn.execute(
+        &format!("ATTACH '{}' AS learning (TYPE sqlite);", db_path_str),
+        [],
+    )?;
 
     let base_stats = conn.query_row(
         "SELECT
@@ -69,8 +73,20 @@ pub fn get_learning_stats_analytics(db_path: &Path) -> Result<Value> {
         }
     )?;
 
-    let entropy_histogram = get_histogram(&conn, "(spectral_features->>'$.spectral_entropy')::DOUBLE", 0.0, 10.0, 10)?;
-    let flatness_histogram = get_histogram(&conn, "(spectral_features->>'$.spectral_flatness')::DOUBLE", 0.0, 1.0, 10)?;
+    let entropy_histogram = get_histogram(
+        &conn,
+        "(spectral_features->>'$.spectral_entropy')::DOUBLE",
+        0.0,
+        10.0,
+        10,
+    )?;
+    let flatness_histogram = get_histogram(
+        &conn,
+        "(spectral_features->>'$.spectral_flatness')::DOUBLE",
+        0.0,
+        1.0,
+        10,
+    )?;
 
     Ok(json!({
         "summary": base_stats,
@@ -82,7 +98,13 @@ pub fn get_learning_stats_analytics(db_path: &Path) -> Result<Value> {
 }
 
 #[cfg(feature = "analytics")]
-fn get_histogram(conn: &Connection, column_expr: &str, min: f64, max: f64, buckets: usize) -> Result<Value> {
+fn get_histogram(
+    conn: &Connection,
+    column_expr: &str,
+    min: f64,
+    max: f64,
+    buckets: usize,
+) -> Result<Value> {
     let bucket_width = (max - min) / buckets as f64;
     let query = format!(
         "SELECT
@@ -109,7 +131,13 @@ fn get_histogram(conn: &Connection, column_expr: &str, min: f64, max: f64, bucke
     }
 
     let labels: Vec<String> = (0..buckets)
-        .map(|i| format!("{:.2}-{:.2}", min + i as f64 * bucket_width, min + (i + 1) as f64 * bucket_width))
+        .map(|i| {
+            format!(
+                "{:.2}-{:.2}",
+                min + i as f64 * bucket_width,
+                min + (i + 1) as f64 * bucket_width
+            )
+        })
         .collect();
 
     Ok(json!({

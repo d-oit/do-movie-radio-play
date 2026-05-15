@@ -51,14 +51,6 @@ def cohort_for_media(media_path: str) -> str:
 
 
 def main() -> int:
-    """
-    Builds a consolidated radio-play readiness report.
-
-    If DuckDB analytics are enabled during calibration, the resulting calibration
-    reports may include 'duckdb_stats' containing percentile distributions (p95 flatness,
-    p05/p95 entropy) and columnar sample sizes. These stats can be used to refine
-    thresholds in this report by comparing against the population distribution.
-    """
     parser = argparse.ArgumentParser(
         description="Build a consolidated radio-play readiness report"
     )

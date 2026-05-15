@@ -51,14 +51,6 @@ Key `AnalysisConfig` fields:
 2. Generate the readiness report: `python3 scripts/build_radio_play_readiness_report.py`.
 3. Verify codebase integrity: `bash scripts/quality_gate.sh`.
 
-## Cross-device sync (optional)
-The learning database can be synchronized across devices using Turso. To enable this, set the following environment
-variables:
-- `TURSO_URL`: Your Turso database URL (e.g., `libsql://your-db.turso.io`).
-- `TURSO_AUTH_TOKEN`: Your Turso authentication token.
-
-When configured, the tool uses a local-first remote replica that synchronizes every 5 minutes.
-
 ## Export
 - **JSON**: Internal format with timestamps, confidence scores, and tags.
 - **EDL**: CMX 3600 Edit Decision List for DAW/NLE import.

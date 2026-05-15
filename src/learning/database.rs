@@ -378,6 +378,15 @@ impl LearningDb {
         segment_id: i64,
         fingerprints: &[crate::verification::fingerprint::Fingerprint],
     ) -> Result<()> {
+    pub async fn record_fingerprints(
+        &self,
+        segment_id: i64,
+        fingerprints: &[crate::verification::fingerprint::Fingerprint],
+    ) -> Result<()> {
+        if fingerprints.is_empty() {
+            return Ok(());
+        }
+
         // Use RAII transaction for batch insertion
         let tx = self.conn.transaction().await?;
 

@@ -665,11 +665,16 @@ mod tests {
             )
             .await;
 
-        assert!(
-            result.is_err(),
-            "Foreign key constraint should have prevented insertion"
-        );
-        let err_msg = result.unwrap_err().to_string();
+        let err_msg = db
+            .conn
+            .execute(
+                "INSERT INTO segment_fingerprints (hash, offset_ms, segment_id) VALUES (1, 100, 9999)",
+                (),
+            )
+            .await
+            .expect_err("Foreign key constraint should have prevented insertion")
+            .to_string();
+
         assert!(err_msg.contains("FOREIGN KEY constraint failed"));
     }
 }

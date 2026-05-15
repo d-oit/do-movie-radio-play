@@ -1,38 +1,20 @@
 use anyhow::{Context, Result};
-use libsql::{Builder, Connection, Value};
+use libsql::{Builder, Connection, Database, Value};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::time::Duration;
 
 use crate::learning::adaptive_thresholds::RecommendationConfidence;
 use crate::pipeline::features::FeatureSet;
 
-const DEFAULT_FLATNESS_MAX: f64 = 0.45;
-const DEFAULT_ENTROPY_MIN: f64 = 3.5;
-const DEFAULT_ENTROPY_MAX: f64 = 7.0;
-const DEFAULT_CENTROID_MIN: f64 = 100.0;
-const DEFAULT_CENTROID_MAX: f64 = 6000.0;
-
-const RECOMMENDATION_FLATNESS_MIN_AVG: f64 = 0.3;
-const RECOMMENDATION_FLATNESS_MULTIPLIER: f64 = 1.2;
-const RECOMMENDATION_FLATNESS_CLAMP_MIN: f64 = 0.45;
-const RECOMMENDATION_FLATNESS_CLAMP_MAX: f64 = 0.95;
-
-const RECOMMENDATION_ENTROPY_MULTIPLIER: f64 = 0.8;
-const RECOMMENDATION_ENTROPY_CLAMP_MIN: f64 = 1.0;
-const RECOMMENDATION_ENTROPY_CLAMP_MAX: f64 = 6.0;
-
-const RECOMMENDATION_CENTROID_MIN_MULTIPLIER: f64 = 0.5;
-const RECOMMENDATION_CENTROID_MIN_LIMIT: f64 = 50.0;
-const RECOMMENDATION_CENTROID_MAX_MULTIPLIER: f64 = 1.5;
-const RECOMMENDATION_CENTROID_MAX_LIMIT: f64 = 8000.0;
-
-const RECOMMENDATION_HIGH_CONFIDENCE_SIZE: usize = 20;
-const RECOMMENDATION_MEDIUM_CONFIDENCE_SIZE: usize = 5;
+use std::sync::Arc;
 
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct LearningDb {
+    db: Arc<Database>,
     conn: Connection,
+    is_remote: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,31 +90,42 @@ pub struct ThresholdRecommendation {
     pub sample_size: usize,
 }
 
-impl Default for ThresholdRecommendation {
-    fn default() -> Self {
-        Self {
-            suggested_flatness_max: DEFAULT_FLATNESS_MAX,
-            suggested_entropy_min: DEFAULT_ENTROPY_MIN,
-            suggested_entropy_max: DEFAULT_ENTROPY_MAX,
-            suggested_centroid_min: DEFAULT_CENTROID_MIN,
-            suggested_centroid_max: DEFAULT_CENTROID_MAX,
-            confidence: RecommendationConfidence::Low,
-            sample_size: 0,
-        }
-    }
-}
-
 #[allow(dead_code)]
 impl LearningDb {
     pub async fn new(path: &Path) -> Result<Self> {
+        let url = std::env::var("TURSO_URL").ok();
+        let token = std::env::var("TURSO_AUTH_TOKEN").ok();
+        Self::new_internal(path, url, token).await
+    }
+
+    async fn new_internal(path: &Path, url: Option<String>, token: Option<String>) -> Result<Self> {
         let db_path = path.to_string_lossy().to_string();
-        let db = Builder::new_local(&db_path)
-            .build()
-            .await
-            .context("failed to open database")?;
+
+        let (db, is_remote) = match (url, token) {
+            (Some(url), Some(token)) if !url.is_empty() && !token.is_empty() => {
+                let db = Builder::new_remote_replica(&db_path, url, token)
+                    .sync_interval(Duration::from_secs(300))
+                    .build()
+                    .await
+                    .context("failed to open remote replica")?;
+                (db, true)
+            }
+            _ => {
+                let db = Builder::new_local(&db_path)
+                    .build()
+                    .await
+                    .context("failed to open local database")?;
+                (db, false)
+            }
+        };
+
         let conn = db.connect().context("failed to create connection")?;
 
-        let learning_db = Self { conn };
+        let learning_db = Self {
+            db: Arc::new(db),
+            conn,
+            is_remote,
+        };
         learning_db.initialize().await?;
         Ok(learning_db)
     }
@@ -146,103 +139,13 @@ impl LearningDb {
                     start_ms INTEGER NOT NULL,
                     end_ms INTEGER NOT NULL,
                     confidence REAL NOT NULL,
-                    rms REAL NOT NULL DEFAULT 0.0,
-                    zcr REAL NOT NULL DEFAULT 0.0,
-                    spectral_flux REAL NOT NULL DEFAULT 0.0,
-                    spectral_flatness REAL NOT NULL DEFAULT 0.0,
-                    spectral_entropy REAL NOT NULL DEFAULT 0.0,
-                    centroid_hz REAL NOT NULL DEFAULT 0.0,
-                    low_band_ratio REAL NOT NULL DEFAULT 0.0,
-                    high_band_ratio REAL NOT NULL DEFAULT 0.0,
+                    spectral_features TEXT NOT NULL,
                     was_false_positive INTEGER NOT NULL DEFAULT 0,
                     timestamp TEXT NOT NULL DEFAULT (datetime('now'))
                 )",
                 (),
             )
             .await?;
-
-        // Migration logic
-        let mut rows = self
-            .conn
-            .query("PRAGMA table_info(verified_segments)", ())
-            .await?;
-        let mut existing_columns = std::collections::HashSet::new();
-        while let Some(row) = rows.next().await? {
-            let name: String = row.get(1)?;
-            existing_columns.insert(name);
-        }
-
-        let has_spectral_features = existing_columns.contains("spectral_features");
-
-        let feature_cols = [
-            "rms",
-            "zcr",
-            "spectral_flux",
-            "spectral_flatness",
-            "spectral_entropy",
-            "centroid_hz",
-            "low_band_ratio",
-            "high_band_ratio",
-        ];
-
-        for col in feature_cols {
-            if !existing_columns.contains(col) {
-                self.conn
-                    .execute(
-                        &format!(
-                            "ALTER TABLE verified_segments ADD COLUMN {} REAL NOT NULL DEFAULT 0.0",
-                            col
-                        ),
-                        (),
-                    )
-                    .await?;
-            }
-        }
-
-        if has_spectral_features {
-            let tx = self.conn.transaction().await?;
-            {
-                let mut rows = tx
-                    .query(
-                        "SELECT id, spectral_features FROM verified_segments WHERE spectral_features IS NOT NULL AND spectral_features != ''",
-                        (),
-                    )
-                    .await?;
-                while let Some(row) = rows.next().await? {
-                    let id: i64 = row.get(0)?;
-                    let features_json: String = row.get(1)?;
-                    let features: SpectralFeatures = serde_json::from_str(&features_json)
-                        .context("failed to parse spectral features during migration")?;
-
-                    tx.execute(
-                        "UPDATE verified_segments SET
-                            rms = ?1, zcr = ?2, spectral_flux = ?3, spectral_flatness = ?4,
-                            spectral_entropy = ?5, centroid_hz = ?6, low_band_ratio = ?7, high_band_ratio = ?8
-                         WHERE id = ?9",
-                        [
-                            Value::Real(features.rms),
-                            Value::Real(features.zcr),
-                            Value::Real(features.spectral_flux),
-                            Value::Real(features.spectral_flatness),
-                            Value::Real(features.spectral_entropy),
-                            Value::Real(features.centroid_hz),
-                            Value::Real(features.low_band_ratio),
-                            Value::Real(features.high_band_ratio),
-                            Value::Integer(id),
-                        ],
-                    )
-                    .await?;
-                }
-            }
-            tx.commit().await?;
-
-            self.conn
-                .execute(
-                    "ALTER TABLE verified_segments DROP COLUMN spectral_features",
-                    (),
-                )
-                .await?;
-        }
 
         self.conn
             .execute(
@@ -265,52 +168,25 @@ impl LearningDb {
             )
             .await?;
 
-        self.conn
-            .execute(
-                "CREATE TABLE IF NOT EXISTS segment_fingerprints (
-                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    hash        INTEGER NOT NULL,
-                    offset_ms   INTEGER NOT NULL,
-                    segment_id  INTEGER REFERENCES verified_segments(id) ON DELETE CASCADE,
-                    created_at  TEXT DEFAULT (datetime('now'))
-                )",
-                (),
-            )
-            .await?;
-
-        self.conn
-            .execute(
-                "CREATE INDEX IF NOT EXISTS idx_fp_hash ON segment_fingerprints(hash)",
-                (),
-            )
-            .await?;
-
         Ok(())
     }
 
     pub async fn record_verification(&self, segment: VerifiedSegment) -> Result<i64> {
+        let features_json = serde_json::to_string(&segment.spectral_features)
+            .context("failed to serialize spectral features")?;
+
         let was_fp: i64 = if segment.was_false_positive { 1 } else { 0 };
 
         self.conn
             .execute(
-                "INSERT INTO verified_segments (
-                    start_ms, end_ms, confidence, was_false_positive,
-                    rms, zcr, spectral_flux, spectral_flatness,
-                    spectral_entropy, centroid_hz, low_band_ratio, high_band_ratio
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                "INSERT INTO verified_segments (start_ms, end_ms, confidence, spectral_features, was_false_positive)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
                 [
                     Value::Integer(segment.start_ms),
                     Value::Integer(segment.end_ms),
                     Value::Real(segment.confidence),
+                    Value::Text(features_json),
                     Value::Integer(was_fp),
-                    Value::Real(segment.spectral_features.rms),
-                    Value::Real(segment.spectral_features.zcr),
-                    Value::Real(segment.spectral_features.spectral_flux),
-                    Value::Real(segment.spectral_features.spectral_flatness),
-                    Value::Real(segment.spectral_features.spectral_entropy),
-                    Value::Real(segment.spectral_features.centroid_hz),
-                    Value::Real(segment.spectral_features.low_band_ratio),
-                    Value::Real(segment.spectral_features.high_band_ratio),
                 ],
             )
             .await?;
@@ -330,9 +206,7 @@ impl LearningDb {
         let mut rows = self
             .conn
             .query(
-                "SELECT id, start_ms, end_ms, confidence, timestamp,
-                        rms, zcr, spectral_flux, spectral_flatness,
-                        spectral_entropy, centroid_hz, low_band_ratio, high_band_ratio
+                "SELECT id, start_ms, end_ms, confidence, spectral_features, timestamp
                  FROM verified_segments
                  WHERE was_false_positive = 1
                  ORDER BY timestamp DESC",
@@ -341,16 +215,9 @@ impl LearningDb {
             .await?;
 
         while let Some(row) = rows.next().await? {
-            let spectral_features = SpectralFeatures {
-                rms: row.get(5)?,
-                zcr: row.get(6)?,
-                spectral_flux: row.get(7)?,
-                spectral_flatness: row.get(8)?,
-                spectral_entropy: row.get(9)?,
-                centroid_hz: row.get(10)?,
-                low_band_ratio: row.get(11)?,
-                high_band_ratio: row.get(12)?,
-            };
+            let features_json: String = row.get(4)?;
+            let spectral_features: SpectralFeatures = serde_json::from_str(&features_json)
+                .context("failed to parse spectral features")?;
 
             results.push(FalsePositive {
                 id: row.get(0)?,
@@ -358,7 +225,7 @@ impl LearningDb {
                 end_ms: row.get(2)?,
                 confidence: row.get(3)?,
                 spectral_features,
-                timestamp: row.get(4)?,
+                timestamp: row.get(5)?,
             });
         }
 
@@ -366,56 +233,53 @@ impl LearningDb {
     }
 
     pub async fn get_threshold_recommendations(&self) -> Result<ThresholdRecommendation> {
-        let mut rows = self
-            .conn
-            .query(
-                "SELECT
-                    AVG(spectral_flatness), AVG(spectral_entropy),
-                    MIN(centroid_hz), MAX(centroid_hz), COUNT(*)
-                 FROM verified_segments
-                 WHERE was_false_positive = 1",
-                (),
-            )
-            .await?;
+        let fps = self.get_false_positives().await?;
+        let sample_size = fps.len();
 
-        let Some(row) = rows.next().await? else {
-            return Ok(ThresholdRecommendation::default());
-        };
-
-        let avg_flatness: Option<f64> = row.get(0)?;
-        let avg_entropy: Option<f64> = row.get(1)?;
-        let min_centroid: Option<f64> = row.get(2)?;
-        let max_centroid: Option<f64> = row.get(3)?;
-        let sample_size: i64 = row.get(4)?;
-
-        if sample_size == 0 || avg_flatness.is_none() {
-            return Ok(ThresholdRecommendation::default());
+        if sample_size == 0 {
+            return Ok(ThresholdRecommendation {
+                suggested_flatness_max: 0.45,
+                suggested_entropy_min: 3.5,
+                suggested_entropy_max: 7.0,
+                suggested_centroid_min: 100.0,
+                suggested_centroid_max: 6000.0,
+                confidence: RecommendationConfidence::Low,
+                sample_size: 0,
+            });
         }
 
-        let avg_flatness = avg_flatness.context("missing average flatness")?;
-        let avg_entropy = avg_entropy.context("missing average entropy")?;
-        let min_centroid = min_centroid.context("missing minimum centroid")?;
-        let max_centroid = max_centroid.context("missing maximum centroid")?;
+        let total_flatness: f64 = fps
+            .iter()
+            .map(|fp| fp.spectral_features.spectral_flatness)
+            .sum();
+        let total_entropy: f64 = fps
+            .iter()
+            .map(|fp| fp.spectral_features.spectral_entropy)
+            .sum();
+        let total_centroid: f64 = fps.iter().map(|fp| fp.spectral_features.centroid_hz).sum();
 
-        let suggested_flatness_max = (avg_flatness.max(RECOMMENDATION_FLATNESS_MIN_AVG)
-            * RECOMMENDATION_FLATNESS_MULTIPLIER)
-            .clamp(
-                RECOMMENDATION_FLATNESS_CLAMP_MIN,
-                RECOMMENDATION_FLATNESS_CLAMP_MAX,
-            );
-        let suggested_entropy_min = (avg_entropy * RECOMMENDATION_ENTROPY_MULTIPLIER).clamp(
-            RECOMMENDATION_ENTROPY_CLAMP_MIN,
-            RECOMMENDATION_ENTROPY_CLAMP_MAX,
-        );
+        let avg_flatness = total_flatness / sample_size as f64;
+        let avg_entropy = total_entropy / sample_size as f64;
+        let _avg_centroid = total_centroid / sample_size as f64;
 
-        let suggested_centroid_min = (min_centroid * RECOMMENDATION_CENTROID_MIN_MULTIPLIER)
-            .max(RECOMMENDATION_CENTROID_MIN_LIMIT);
-        let suggested_centroid_max = (max_centroid * RECOMMENDATION_CENTROID_MAX_MULTIPLIER)
-            .min(RECOMMENDATION_CENTROID_MAX_LIMIT);
+        let suggested_flatness_max = (avg_flatness.max(0.3) * 1.2).clamp(0.45, 0.95);
+        let suggested_entropy_min = (avg_entropy * 0.8).clamp(1.0, 6.0);
 
-        let confidence = if sample_size >= RECOMMENDATION_HIGH_CONFIDENCE_SIZE as i64 {
+        let min_centroid = fps
+            .iter()
+            .map(|fp| fp.spectral_features.centroid_hz)
+            .fold(f64::MAX, f64::min);
+        let max_centroid = fps
+            .iter()
+            .map(|fp| fp.spectral_features.centroid_hz)
+            .fold(0.0f64, f64::max);
+
+        let suggested_centroid_min = (min_centroid * 0.5).max(50.0);
+        let suggested_centroid_max = (max_centroid * 1.5).min(8000.0);
+
+        let confidence = if sample_size >= 20 {
             RecommendationConfidence::High
-        } else if sample_size >= RECOMMENDATION_MEDIUM_CONFIDENCE_SIZE as i64 {
+        } else if sample_size >= 5 {
             RecommendationConfidence::Medium
         } else {
             RecommendationConfidence::Low
@@ -424,11 +288,11 @@ impl LearningDb {
         Ok(ThresholdRecommendation {
             suggested_flatness_max,
             suggested_entropy_min,
-            suggested_entropy_max: DEFAULT_ENTROPY_MAX,
+            suggested_entropy_max: 7.0,
             suggested_centroid_min,
             suggested_centroid_max,
             confidence,
-            sample_size: sample_size as usize,
+            sample_size,
         })
     }
 
@@ -502,25 +366,10 @@ impl LearningDb {
             0.0
         };
 
-        let mut rows = self
-            .conn
-            .query("SELECT COUNT(*) FROM segment_fingerprints", ())
-            .await?;
-        let row = rows.next().await?.context("failed to get count")?;
-        let fingerprint_count: i64 = row.get(0)?;
-
-        let avg_fingerprints_per_segment = if total > 0 {
-            fingerprint_count as f64 / total as f64
-        } else {
-            0.0
-        };
-
         Ok(LearningStatistics {
             total_verifications: total,
             total_false_positives: fps,
             false_positive_rate: fp_rate,
-            total_fingerprints: fingerprint_count as usize,
-            avg_fingerprints_per_segment,
         })
     }
 
@@ -611,8 +460,6 @@ pub struct LearningStatistics {
     pub total_verifications: usize,
     pub total_false_positives: usize,
     pub false_positive_rate: f64,
-    pub total_fingerprints: usize,
-    pub avg_fingerprints_per_segment: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -765,73 +612,34 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_migration_from_json_to_columns() {
+    async fn test_database_initialization_local_by_default() {
         let temp_file = setup_test_db_path();
-        let db_path = temp_file.path().to_string_lossy().to_string();
-
-        // 1. Manually create an old-style database
-        let db = Builder::new_local(&db_path).build().await.unwrap();
-        let conn = db.connect().unwrap();
-        conn.execute(
-            "CREATE TABLE verified_segments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                start_ms INTEGER NOT NULL,
-                end_ms INTEGER NOT NULL,
-                confidence REAL NOT NULL,
-                spectral_features TEXT NOT NULL,
-                was_false_positive INTEGER NOT NULL DEFAULT 0,
-                timestamp TEXT NOT NULL DEFAULT (datetime('now'))
-            )",
-            (),
-        )
-        .await
-        .unwrap();
-
-        let features = SpectralFeatures {
-            rms: 0.123,
-            zcr: 0.456,
-            spectral_flux: 0.789,
-            spectral_flatness: 0.111,
-            spectral_entropy: 0.222,
-            centroid_hz: 333.3,
-            low_band_ratio: 0.444,
-            high_band_ratio: 0.555,
-        };
-        let features_json = serde_json::to_string(&features).unwrap();
-
-        conn.execute(
-            "INSERT INTO verified_segments (start_ms, end_ms, confidence, spectral_features, was_false_positive)
-             VALUES (100, 200, 0.9, ?1, 1)",
-            [Value::Text(features_json)],
-        )
-        .await
-        .unwrap();
-
-        // 2. Open it with LearningDb, which should trigger migration
-        let learning_db = LearningDb::new(temp_file.path()).await.unwrap();
-
-        // 3. Verify columns exist and data is migrated
-        let fps = learning_db.get_false_positives().await.unwrap();
-        assert_eq!(fps.len(), 1);
-        let fp = &fps[0];
-        assert_eq!(fp.spectral_features.rms, 0.123);
-        assert_eq!(fp.spectral_features.zcr, 0.456);
-        assert_eq!(fp.spectral_features.centroid_hz, 333.3);
-
-        // 4. Verify original column is dropped
-        let mut rows = learning_db
-            .conn
-            .query("PRAGMA table_info(verified_segments)", ())
+        let db = LearningDb::new_internal(temp_file.path(), None, None)
             .await
             .unwrap();
-        let mut has_spectral_features = false;
-        while let Some(row) = rows.next().await.unwrap() {
-            let name: String = row.get(1).unwrap();
-            if name == "spectral_features" {
-                has_spectral_features = true;
+        assert!(!db.is_remote());
+    }
+
+    #[tokio::test]
+    async fn test_database_initialization_remote_attempt() {
+        let temp_file = setup_test_db_path();
+        let result = LearningDb::new_internal(
+            temp_file.path(),
+            Some("libsql://test.turso.io".to_string()),
+            Some("test-token".to_string()),
+        )
+        .await;
+
+        match result {
+            Ok(db) => assert!(db.is_remote()),
+            Err(e) => {
+                let err_str = format!("{:?}", e);
+                assert!(
+                    err_str.contains("failed to open remote replica")
+                        || err_str.contains("failed to create connection")
+                );
             }
         }
-        assert!(!has_spectral_features);
     }
 
     #[tokio::test]

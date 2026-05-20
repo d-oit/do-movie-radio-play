@@ -339,4 +339,43 @@ mod tests {
             flux
         );
     }
+
+    #[test]
+    fn test_zcr_sine_wave() {
+        // 1kHz sine at 16kHz sample rate
+        // 16 samples per cycle.
+        let mut samples = vec![0.0f32; 1600];
+        for (i, s) in samples.iter_mut().enumerate() {
+            *s = (2.0 * std::f32::consts::PI * 1000.0 * i as f32 / 16000.0).sin();
+        }
+        let zcr = compute_zcr(&samples);
+        // 100 cycles, 2 crossings per cycle = 200 crossings.
+        // ZCR = 200 / 1599 approx 0.125
+        assert!((zcr - 0.125).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_spectral_centroid_sine() {
+        // 2kHz sine at 16kHz sample rate
+        let mut samples = vec![0.0f32; 1024];
+        for (i, s) in samples.iter_mut().enumerate() {
+            *s = (2.0 * std::f32::consts::PI * 2000.0 * i as f32 / 16000.0).sin();
+        }
+        let (_, _, centroid, _, _) = compute_spectral_features(&samples).unwrap();
+        // Centroid should be very close to 2000Hz.
+        assert!((centroid - 2000.0).abs() < 100.0);
+    }
+
+    #[test]
+    fn test_rms_known_values() {
+        let val = std::f32::consts::FRAC_1_SQRT_2;
+        let samples = vec![val; 1000];
+        let rms = compute_rms(&samples);
+        assert!((rms - val).abs() < 0.001);
+
+        let samples2 = vec![0.0f32, 1.0f32, 0.0f32, -1.0f32];
+        // Squares: 0, 1, 0, 1. Sum=2. Avg=0.5. Sqrt=0.7071
+        let rms2 = compute_rms(&samples2);
+        assert!((rms2 - val).abs() < 0.001);
+    }
 }

@@ -56,7 +56,11 @@ fn compute_rms(samples: &[f32]) -> f32 {
     if samples.is_empty() {
         return 0.0;
     }
-    let sum_squares: f32 = samples.iter().map(|s| s * s).sum();
+    // Optimization: Manual loop for efficiency
+    let mut sum_squares = 0.0f32;
+    for &s in samples {
+        sum_squares += s * s;
+    }
     (sum_squares / samples.len() as f32).sqrt()
 }
 
@@ -64,10 +68,16 @@ fn compute_zcr(samples: &[f32]) -> f32 {
     if samples.len() < 2 {
         return 0.0;
     }
-    let crossings: usize = samples
-        .windows(2)
-        .filter(|w| w[0].signum() != w[1].signum())
-        .count();
+    // Optimization: true single pass manual loop
+    let mut crossings = 0usize;
+    let mut prev_sign = samples[0] >= 0.0;
+    for &s in &samples[1..] {
+        let sign = s >= 0.0;
+        if sign != prev_sign {
+            crossings += 1;
+        }
+        prev_sign = sign;
+    }
     crossings as f32 / (samples.len() - 1) as f32
 }
 
@@ -90,14 +100,57 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
         return Err(anyhow::anyhow!("FFT processing failed"));
     }
 
-    // Reuse a single buffer for magnitudes to avoid extra allocations
-    let spectrum: Vec<f32> = output.iter().map(|c| c.norm()).collect();
+    // Optimization: Fuse multiple spectral feature calculations into a single pass over the FFT output.
+    // This avoids an intermediate Vec<f32> allocation for magnitudes and reduces iterations.
+    let sample_rate = 16000.0f32;
+    let bin_width = sample_rate / fft_size as f32;
+    let inv_ln_2 = 1.0 / 2.0f32.ln();
 
-    let entropy = compute_spectral_entropy(&spectrum);
-    let flatness = compute_spectral_flatness(&spectrum);
-    let (centroid, low_ratio, high_ratio) = compute_spectral_centroid(&spectrum);
+    let mut weighted_sum = 0.0f32;
+    let mut total_mag = 0.0f32;
+    let mut low_mag_sum = 0.0f32;
+    let mut high_mag_sum = 0.0f32;
+    let mut log_mag_sum = 0.0f32;
+    let mut mag_log_mag_sum = 0.0f32;
+    let mut pos_count = 0usize;
 
-    Ok((entropy, flatness, centroid, low_ratio, high_ratio))
+    for (i, c) in output.iter().enumerate() {
+        let mag = c.norm();
+        let freq = i as f32 * bin_width;
+
+        weighted_sum += freq * mag;
+        total_mag += mag;
+
+        if freq < 250.0 {
+            low_mag_sum += mag;
+        } else if freq > 4000.0 {
+            high_mag_sum += mag;
+        }
+
+        if mag > 1e-10 {
+            let ln_mag = mag.ln();
+            log_mag_sum += ln_mag;
+            mag_log_mag_sum += mag * ln_mag;
+            pos_count += 1;
+        }
+    }
+
+    if total_mag > 0.0 {
+        let entropy = ((total_mag.ln() - mag_log_mag_sum / total_mag) * inv_ln_2).max(0.0);
+        let flatness = if pos_count > 0 {
+            let geometric_mean = (log_mag_sum / pos_count as f32).exp();
+            let arithmetic_mean = total_mag / output.len() as f32;
+            (geometric_mean / arithmetic_mean).min(1.0)
+        } else {
+            1.0
+        };
+        let centroid = weighted_sum / total_mag;
+        let low_ratio = low_mag_sum / total_mag;
+        let high_ratio = high_mag_sum / total_mag;
+        Ok((entropy, flatness, centroid, low_ratio, high_ratio))
+    } else {
+        Ok((7.0, 1.0, 0.0, 0.0, 0.0))
+    }
 }
 
 fn next_power_of_2(n: usize) -> usize {
@@ -106,91 +159,12 @@ fn next_power_of_2(n: usize) -> usize {
     1 << shift
 }
 
-fn compute_spectral_entropy(spectrum: &[f32]) -> f32 {
-    let sum: f32 = spectrum.iter().sum();
-    if sum == 0.0 {
-        return 7.0;
-    }
-    let inv_sum = 1.0 / sum;
-    spectrum
-        .iter()
-        .filter(|&&x| x > 0.0)
-        .map(|&x| {
-            let p = x * inv_sum;
-            -p * p.log2()
-        })
-        .sum()
-}
-
-fn compute_spectral_flatness(spectrum: &[f32]) -> f32 {
-    let n = spectrum.len();
-    if n == 0 {
-        return 1.0;
-    }
-
-    let mut log_sum = 0.0f32;
-    let mut pos_count = 0usize;
-    let mut sum = 0.0f32;
-
-    for &x in spectrum {
-        sum += x;
-        if x > 0.0 {
-            log_sum += x.ln();
-            pos_count += 1;
-        }
-    }
-
-    if pos_count == 0 || sum == 0.0 {
-        return 1.0;
-    }
-
-    let geometric_mean = (log_sum / pos_count as f32).exp();
-    let arithmetic_mean = sum / n as f32;
-
-    (geometric_mean / arithmetic_mean).min(1.0)
-}
-
-fn compute_spectral_centroid(spectrum: &[f32]) -> (f32, f32, f32) {
-    let sample_rate = 16000.0f32;
-    // realfft output length is n/2 + 1
-    let n = (spectrum.len().saturating_sub(1)) * 2;
-    let bin_width = sample_rate / n.max(1) as f32;
-
-    let mut weighted_sum = 0.0f32;
-    let mut total = 0.0f32;
-    let mut low_sum = 0.0f32;
-    let mut high_sum = 0.0f32;
-
-    for (i, &mag) in spectrum.iter().enumerate() {
-        let freq = i as f32 * bin_width;
-        weighted_sum += freq * mag;
-        total += mag;
-
-        if freq < 250.0 {
-            low_sum += mag;
-        } else if freq > 4000.0 {
-            high_sum += mag;
-        }
-    }
-
-    let centroid = if total > 0.0 {
-        weighted_sum / total
-    } else {
-        0.0
-    };
-
-    let low_ratio = if total > 0.0 { low_sum / total } else { 0.0 };
-    let high_ratio = if total > 0.0 { high_sum / total } else { 0.0 };
-
-    (centroid, low_ratio, high_ratio)
-}
-
 fn compute_spectral_flux(samples: &[f32]) -> f32 {
-    if samples.len() < 2 {
+    let window_size = 512;
+    if samples.len() < window_size {
         return 0.0;
     }
 
-    let window_size = 512;
     let hop_size = 256;
 
     let mut flux = 0.0f32;
@@ -364,5 +338,44 @@ mod tests {
             "Flux should be non-zero for 2 different windows, got {}",
             flux
         );
+    }
+
+    #[test]
+    fn test_zcr_sine_wave() {
+        // 1kHz sine at 16kHz sample rate
+        // 16 samples per cycle.
+        let mut samples = vec![0.0f32; 1600];
+        for (i, s) in samples.iter_mut().enumerate() {
+            *s = (2.0 * std::f32::consts::PI * 1000.0 * i as f32 / 16000.0).sin();
+        }
+        let zcr = compute_zcr(&samples);
+        // 100 cycles, 2 crossings per cycle = 200 crossings.
+        // ZCR = 200 / 1599 approx 0.125
+        assert!((zcr - 0.125).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_spectral_centroid_sine() {
+        // 2kHz sine at 16kHz sample rate
+        let mut samples = vec![0.0f32; 1024];
+        for (i, s) in samples.iter_mut().enumerate() {
+            *s = (2.0 * std::f32::consts::PI * 2000.0 * i as f32 / 16000.0).sin();
+        }
+        let (_, _, centroid, _, _) = compute_spectral_features(&samples).unwrap();
+        // Centroid should be very close to 2000Hz.
+        assert!((centroid - 2000.0).abs() < 100.0);
+    }
+
+    #[test]
+    fn test_rms_known_values() {
+        let val = std::f32::consts::FRAC_1_SQRT_2;
+        let samples = vec![val; 1000];
+        let rms = compute_rms(&samples);
+        assert!((rms - val).abs() < 0.001);
+
+        let samples2 = vec![0.0f32, 1.0f32, 0.0f32, -1.0f32];
+        // Squares: 0, 1, 0, 1. Sum=2. Avg=0.5. Sqrt=0.7071
+        let rms2 = compute_rms(&samples2);
+        assert!((rms2 - val).abs() < 0.001);
     }
 }

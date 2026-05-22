@@ -52,9 +52,11 @@ pub fn write_review_html(
 }
 
 fn escape_json_for_script(json: String) -> String {
-    // Robustly escape JSON for embedding in a <script> tag by escaping the '<' character.
-    // This prevents any sequence like '</script>' (case-insensitive) from breaking out of the block.
+    // Robustly escape JSON for embedding in a <script> tag by escaping characters
+    // that could be used for tag breakout or other injection attacks.
     json.replace('<', "\\u003c")
+        .replace('>', "\\u003e")
+        .replace('&', "\\u0026")
 }
 
 pub fn write_review_html_with_options(
@@ -818,38 +820,66 @@ mod tests {
 
         let output_html = dir.path().join("review.html");
 
-        // If media_file exists, use it. If not, use a virtual path that exists on paper
-        let result = write_review_html_with_options(
-            &media_file,
-            &timeline,
-            &output_html,
+        // Ensure we have a file that exists for the call to write_review_html_with_options
+        let safe_input = if media_file.exists() {
+            media_file.clone()
+        } else {
+            let f = dir.path().join("safe.wav");
+            std::fs::write(&f, "dummy").unwrap();
+            f
+        };
+
+        write_review_html_with_options(&safe_input, &timeline, &output_html, 1.0, 1.0, None, false)
+            .unwrap();
+
+        let html = std::fs::read_to_string(output_html).unwrap();
+        // Check that the malicious strings are escaped
+        assert!(
+            html.contains(r"\u003cscript\u003ealert(2)\u003c/script\u003e")
+                || html.contains(r"\u003cscript\u003ealert(2)\u003c\/script\u003e")
+        );
+        assert!(
+            html.contains(r"\u003c/SCRIPT\u003e\u003cscript\u003ealert(3)\u003c/script\u003e")
+                || html.contains(
+                    r"\u003c\/SCRIPT\u003e\u003cscript\u003ealert(3)\u003c\/script\u003e"
+                )
+        );
+
+        // Check for ampersand escaping
+        let timeline_with_amp = TimelineOutput {
+            file: "test.wav".to_string(),
+            analysis_sample_rate: 16000,
+            frame_ms: 20,
+            segments: vec![Segment {
+                start_ms: 0,
+                end_ms: 1000,
+                kind: SegmentKind::NonVoice,
+                confidence: 1.0,
+                tags: vec!["rock & roll".to_string()],
+                prompt: None,
+            }],
+        };
+        let output_amp = dir.path().join("review_amp.html");
+        write_review_html_with_options(
+            &safe_input,
+            &timeline_with_amp,
+            &output_amp,
             1.0,
             1.0,
             None,
             false,
-        );
+        )
+        .unwrap();
+        let html_amp = std::fs::read_to_string(output_amp).unwrap();
+        assert!(html_amp.contains(r"rock \u0026 roll"));
 
-        if result.is_err() {
-            // If it failed because of canonicalize or exists check, try with a name that exists
-            let safe_file = dir.path().join("safe.wav");
-            std::fs::write(&safe_file, "dummy").unwrap();
-
-            // We can't easily mock the path inside write_review_html_with_options without changing it
-            // but we've already confirmed the logic.
-            return;
-        }
-
-        let html = std::fs::read_to_string(output_html).unwrap();
-        // Check that the malicious strings are escaped using \u003c
-        assert!(html.contains(r"\u003c/script>\u003cscript>alert(1)\u003c/script>"));
-        assert!(html.contains(r"\u003cscript>alert(2)\u003c/script>"));
-        assert!(html.contains(r"\u003c/SCRIPT>\u003cscript>alert(3)\u003c/script>"));
-
-        // Check that it does NOT contain unescaped '<' in the script variables
+        // Check that it does NOT contain unescaped '<', '>', or '&' in the script variables
         // Finding where the script variables start
         let script_start = html.find("const mediaSrc =").unwrap();
         let script_end = html.find("allSegments = JSON.parse").unwrap();
         let script_vars = &html[script_start..script_end];
         assert!(!script_vars.contains('<'));
+        assert!(!script_vars.contains('>'));
+        assert!(!script_vars.contains('&'));
     }
 }

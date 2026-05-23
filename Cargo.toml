@@ -19,7 +19,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 hound = "3"
 realfft = "3"
 tempfile = "3"
-libsql = "0.9"
+libsql = { version = "0.9", default-features = false, features = ["core"] }
 symphonia = { version = "0.6", features = ["mp3", "wav", "flac", "ogg", "pcm"] }
 rayon = "1.10"
 

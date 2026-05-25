@@ -10,10 +10,16 @@ Goal: make non-voice extraction correctness testable and repeatable on real medi
 
 ## Current Coverage Snapshot
 
-Raw media currently present under `testdata/raw/` includes modern and legacy files.
-Validation artifacts currently present under `testdata/validation/` are partial.
+Raw media files are not stored in the repository — they are downloaded separately
+by users or CI. The `testdata/raw/` directory serves as a staging location for
+these downloaded files.
 
-Implication: not every raw video currently has a corresponding validation report artifact.
+Two manifests define the validation coverage policy:
+- `testdata/validation/manifest.json` — main production eval manifest
+- `testdata/validation/radio-play-manifest.json` — radio-play specific manifest
+
+All production-critical fixtures (Elephant's Dream, The Hole) are present in both
+manifests. Coverage is enforced via `scripts/check_validation_coverage.py`.
 
 ## Required Output Coverage
 
@@ -52,7 +58,8 @@ Every production-eval run must satisfy:
 ## Implementation Tasks
 
 1. Add a fixture-to-output manifest file (source -> truth -> output path). ✅ `testdata/validation/manifest.json`
-2. Add a script to run the manifest and fail on missing outputs. ✅ `scripts/check_validation_coverage.py`
+2. Add radio-play specific manifest. ✅ `testdata/validation/radio-play-manifest.json`
+3. Add a script to run the manifest and fail on missing outputs. ✅ `scripts/check_validation_coverage.py`
 3. Add CI job for Tier A manifest checks. ✅ `.github/workflows/ci.yml` (`test` job)
 4. Add scheduled CI for Tier C full sweep. ✅ `.github/workflows/validation-sweep.yml`
 5. Add metric drift summary artifact upload for release visibility. ✅ validation sweep summary + reports uploaded as workflow artifacts
@@ -63,6 +70,9 @@ Run Tier A enforcement locally:
 
 ```bash
 python3 scripts/check_validation_coverage.py --tier A --strict-files
+
+# Also check radio-play manifest
+python3 scripts/check_validation_coverage.py --manifest testdata/validation/radio-play-manifest.json --tier A
 ```
 
 ## Exit Criteria

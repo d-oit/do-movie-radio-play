@@ -98,11 +98,8 @@ fn decode_via_symphonia(
         return Err(TimelineError::EmptyAudio.into());
     }
 
-    let resampled = crate::pipeline::resample::resample_linear(
-        &samples,
-        source_sample_rate,
-        target_sample_rate,
-    );
+    let resampled =
+        crate::pipeline::resample::resample(&samples, source_sample_rate, target_sample_rate);
     Ok((resampled, target_sample_rate))
 }
 
@@ -193,7 +190,12 @@ mod tests {
 
         let (samples, sr) = decode_audio(&wav_path, 8000).unwrap();
         assert_eq!(sr, 8000);
-        assert_eq!(samples.len(), 8000);
+        // rubato resampler may produce 7999 or 8000 due to async buffering
+        assert!(
+            samples.len() == 8000 || samples.len() == 7999,
+            "expected ~8000 samples, got {}",
+            samples.len()
+        );
     }
 
     #[test]

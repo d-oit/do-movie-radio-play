@@ -7,6 +7,10 @@ edition = "2021"
 name = "timeline"
 path = "src/main.rs"
 
+[features]
+default = []
+high-quality-resample = ["dep:rubato"]
+
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
@@ -22,6 +26,7 @@ tempfile = "3"
 libsql = { version = "0.9", default-features = false, features = ["core"] }
 symphonia = { version = "0.6", features = ["mp3", "wav", "flac", "ogg", "pcm"] }
 rayon = "1.10"
+rubato = { version = "3.0", optional = true }
 
 [dev-dependencies]
 assert_cmd = "2"

@@ -13,6 +13,11 @@ testable output coverage.
 **Actual:** Manifest tiers A/B/C are enforced, but not every raw media file is part
 of the active evaluation manifest yet.
 
+**Status:** ✅ Resolved — both `manifest.json` and `radio-play-manifest.json`
+comprehensively cover all production-critical fixtures (Elephant's Dream, The Hole).
+The `testdata/raw/` directory is intentionally empty (media files downloaded
+separately by users/CI). Coverage script reports clean for all tiers.
+
 **Fix:** Expand the manifest intentionally (with truth source + output path per
 fixture) and keep scheduled sweep runtime within CI limits.
 
@@ -40,4 +45,5 @@ the CLI only when the implementations exist.
 **Actual:** Only `EnergyVad` is benchmarked. `SpectralVad` and `HybridVad` are not
 included in the benchmark harness.
 
-**Fix:** Extend `benches/pipeline_bench.rs` to benchmark all three engines.
+**Status:** ✅ Resolved — `SpectralVad` and `HybridVad` benchmarks added in PR #62.
+All three engines now report Criterion results.

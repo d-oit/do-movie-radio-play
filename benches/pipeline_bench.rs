@@ -3,7 +3,7 @@ use movie_nonvoice_timeline::pipeline::{
     decode,
     features::compute_features,
     framing, segmenter,
-    vad::{EnergyVad, VadEngine},
+    vad::{EnergyVad, HybridVad, SpectralVad, VadEngine},
 };
 use std::{hint::black_box, path::Path, sync::OnceLock, time::Duration};
 
@@ -99,9 +99,19 @@ fn bench_features(c: &mut Criterion) {
 fn bench_vad(c: &mut Criterion) {
     let frames =
         framing::build_frames(bench_samples(), BENCH_SAMPLE_RATE_HZ, BENCH_FRAME_MS, false);
-    let vad = EnergyVad::new(0.015);
+    let energy_vad = EnergyVad::new(0.015);
     c.bench_function("energy_vad", |b| {
-        b.iter(|| vad.classify(black_box(&frames)))
+        b.iter(|| energy_vad.classify(black_box(&frames)))
+    });
+
+    let spectral_vad = SpectralVad::new(0.015);
+    c.bench_function("spectral_vad", |b| {
+        b.iter(|| spectral_vad.classify(black_box(&frames)))
+    });
+
+    let hybrid_vad = HybridVad::new(0.015);
+    c.bench_function("hybrid_vad", |b| {
+        b.iter(|| hybrid_vad.classify(black_box(&frames)))
     });
 }
 

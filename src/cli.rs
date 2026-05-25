@@ -40,6 +40,8 @@ pub enum Commands {
         input: PathBuf,
         #[arg(long)]
         output: PathBuf,
+        #[arg(long)]
+        calibration_profile: Option<PathBuf>,
     },
     Prompt {
         input_json: PathBuf,

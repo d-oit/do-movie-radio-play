@@ -76,6 +76,7 @@ pub fn apply_calibration_report(report_path: &Path, output_profile: &Path) -> Re
         name: format!("{}-v{}", report.profile, report.version + 1),
         energy_threshold_delta: report.recommended_energy_threshold_delta,
         version: report.version + 1,
+        tag_thresholds: None,
     };
     if let Some(parent) = output_profile.parent() {
         fs::create_dir_all(parent)?;

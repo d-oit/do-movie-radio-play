@@ -20,7 +20,7 @@ use crate::io::json::{read_json, read_timeline, write_json_pretty};
 use crate::learning::calibrator::{apply_calibration_report, run_calibration};
 use crate::learning::profiles::CalibrationProfile;
 use crate::pipeline::prompts::add_prompts;
-use crate::pipeline::tags::add_tags;
+use crate::pipeline::tags::{add_tags, TagRules};
 use crate::pipeline::{benchmark_file, extract_timeline};
 
 fn main() {
@@ -82,6 +82,7 @@ fn run() -> Result<()> {
                     name: "runtime".to_string(),
                     energy_threshold_delta: cfg.vad_threshold_delta,
                     version: 1,
+                    tag_thresholds: None,
                 };
                 if let Some(parent) = profile_path.parent() {
                     std::fs::create_dir_all(parent)?;
@@ -94,9 +95,11 @@ fn run() -> Result<()> {
             input_media,
             input,
             output,
+            calibration_profile,
         } => {
             let mut timeline = read_timeline(&input)?;
-            add_tags(&input_media, &mut timeline)?;
+            let rules = load_tag_rules(calibration_profile.as_deref())?;
+            add_tags(&input_media, &mut timeline, rules.as_ref())?;
             write_json_pretty(&output, &timeline)?;
         }
         Commands::Prompt {
@@ -632,6 +635,34 @@ fn load_calibration_threshold_delta(profile_path: Option<&std::path::Path>) -> R
     })?;
     info!(profile = %profile.name, delta = profile.energy_threshold_delta, "loaded calibration profile");
     Ok(Some(profile.energy_threshold_delta))
+}
+
+fn load_tag_rules(profile_path: Option<&std::path::Path>) -> Result<Option<TagRules>> {
+    let Some(profile_path) = profile_path else {
+        return Ok(None);
+    };
+    let profile: CalibrationProfile = read_json(profile_path).with_context(|| {
+        format!(
+            "failed to read calibration profile: {}",
+            profile_path.display()
+        )
+    })?;
+    let rules = profile
+        .tag_thresholds
+        .as_ref()
+        .map(TagRules::from_thresholds);
+    if let Some(rules) = &rules {
+        info!(
+            profile = %profile.name,
+            ambience_max_rms = rules.ambience_max_rms,
+            impact_min_rms = rules.impact_min_rms,
+            min_centroid_hz = rules.min_centroid_hz,
+            "loaded tag rules from calibration profile"
+        );
+    } else {
+        info!(profile = %profile.name, "profile has no tag thresholds, using defaults");
+    }
+    Ok(rules)
 }
 
 fn load_merge_options(

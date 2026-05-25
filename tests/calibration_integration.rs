@@ -47,6 +47,7 @@ fn calibration_profile_changes_output() {
         name: "test".to_string(),
         energy_threshold_delta: 0.0,
         version: 1,
+        tag_thresholds: None,
     };
     std::fs::write(
         &profile,
@@ -101,11 +102,13 @@ fn positive_delta_reduces_speech_detection() {
         name: "low".to_string(),
         energy_threshold_delta: -0.005,
         version: 1,
+        tag_thresholds: None,
     };
     let high_profile = CalibrationProfile {
         name: "high".to_string(),
         energy_threshold_delta: 0.005,
         version: 1,
+        tag_thresholds: None,
     };
 
     std::fs::write(

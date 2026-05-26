@@ -115,7 +115,7 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
     let mut pos_count = 0usize;
 
     for (i, c) in output.iter().enumerate() {
-        let mag = c.norm();
+        let mag = (c.re * c.re + c.im * c.im).sqrt();
         let freq = i as f32 * bin_width;
 
         weighted_sum += freq * mag;
@@ -189,29 +189,31 @@ fn compute_spectral_flux(samples: &[f32]) -> f32 {
         }
 
         if current_is_a {
-            for (c, m) in output.iter().zip(spectrum_a.iter_mut()) {
-                *m = c.norm();
+            let mut diff_sum = 0.0f32;
+            for (c, (m, &p)) in output
+                .iter()
+                .zip(spectrum_a.iter_mut().zip(spectrum_b.iter()))
+            {
+                let mag = (c.re * c.re + c.im * c.im).sqrt();
+                *m = mag;
+                diff_sum += (mag - p).max(0.0);
             }
             if has_prev {
-                let diff: f32 = spectrum_a
-                    .iter()
-                    .zip(spectrum_b.iter())
-                    .map(|(s, p)| (s - p).max(0.0))
-                    .sum();
-                flux += diff;
+                flux += diff_sum;
                 count += 1;
             }
         } else {
-            for (c, m) in output.iter().zip(spectrum_b.iter_mut()) {
-                *m = c.norm();
+            let mut diff_sum = 0.0f32;
+            for (c, (m, &p)) in output
+                .iter()
+                .zip(spectrum_b.iter_mut().zip(spectrum_a.iter()))
+            {
+                let mag = (c.re * c.re + c.im * c.im).sqrt();
+                *m = mag;
+                diff_sum += (mag - p).max(0.0);
             }
             if has_prev {
-                let diff: f32 = spectrum_b
-                    .iter()
-                    .zip(spectrum_a.iter())
-                    .map(|(s, p)| (s - p).max(0.0))
-                    .sum();
-                flux += diff;
+                flux += diff_sum;
                 count += 1;
             }
         }

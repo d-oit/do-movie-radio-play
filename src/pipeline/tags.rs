@@ -173,10 +173,14 @@ mod tests {
         let default_rules = TagRules::default();
         // Default rules: rms=0.018 > 0.012, so NOT ambience via rule; music_bed matches
         let tags_default = map_tags(music_f, &default_rules);
-        assert!(tags_default.contains(&"music_bed".to_string()),
-            "music_bed should match with default rules");
-        assert!(!tags_default.contains(&"ambience".to_string()),
-            "ambience should not match via rule with rms=0.018");
+        assert!(
+            tags_default.contains(&"music_bed".to_string()),
+            "music_bed should match with default rules"
+        );
+        assert!(
+            !tags_default.contains(&"ambience".to_string()),
+            "ambience should not match via rule with rms=0.018"
+        );
 
         // With raised ambience threshold, should match ambience directly
         let high_ambience = TagRules {
@@ -184,8 +188,10 @@ mod tests {
             ..TagRules::default()
         };
         let tags_high = map_tags(music_f, &high_ambience);
-        assert!(tags_high.contains(&"ambience".to_string()),
-            "raised ambience_max_rms should include rms=0.018 as ambience");
+        assert!(
+            tags_high.contains(&"ambience".to_string()),
+            "raised ambience_max_rms should include rms=0.018 as ambience"
+        );
 
         // Test that tightened centroid threshold excludes machinery_like tag
         let f_machinery = crate::pipeline::features::FeatureSet {

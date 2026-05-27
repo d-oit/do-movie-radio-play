@@ -1,0 +1,39 @@
+{
+  "skill_name": "codacy",
+  "version": "1.0.0",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Codacy is blocking my PR because of a clippy warning. How do I see the details?",
+      "expected_output": "The agent should suggest using `codacy pull-request gh <org> <repo> <prNumber> --output json` to fetch the issues and mention checking the `newIssues` array for Clippy findings.",
+      "assertions": [
+        "Uses `codacy pull-request ... --output json`",
+        "Mentions Clippy",
+        "Mentions parsing newIssues"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I have a false positive from Codacy in my Rust code. How do I ignore it?",
+      "expected_output": "The agent should explain that they need the numeric `resultDataId` from the JSON output and then use `codacy pull-request ... --ignore-issue <id> --ignore-reason FalsePositive`.",
+      "assertions": [
+        "Mentions numeric resultDataId",
+        "Uses --ignore-issue",
+        "Specifies --ignore-reason FalsePositive"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "How do I exclude the 'testdata' folder from Codacy analysis?",
+      "expected_output": "The agent should recommend adding `testdata/**` to the `exclude_paths` section of `.codacy.yml`.",
+      "assertions": [
+        "Mentions .codacy.yml",
+        "Mentions exclude_paths",
+        "Mentions testdata/**"
+      ],
+      "files": []
+    }
+  ]
+}

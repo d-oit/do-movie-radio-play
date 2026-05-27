@@ -34,6 +34,7 @@ Load skills from `.agents/skills/` before starting tasks:
 - `audio-vad-cpu`: [SKILL.md](.agents/skills/audio-vad-cpu/SKILL.md)
 - `self-learning-calibration`: [SKILL.md](.agents/skills/self-learning-calibration/SKILL.md)
 - `agent-coordination`: [SKILL.md](.agents/skills/agent-coordination/SKILL.md)
+- `codacy`: [SKILL.md](.agents/skills/codacy/SKILL.md)
 
 ## Rules
 - **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.

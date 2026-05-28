@@ -1,5 +1,7 @@
 # AGENTS.md
 
+
+
 ## Named Constants
 ```bash readonly
 DEFAULT_SAMPLE_RATE_HZ=16000
@@ -8,8 +10,12 @@ MAX_SOURCE_FILE_LOC=500
 MAX_LINES_AGENTS_MD=150
 ```
 
+
+
 ## Versioning
-The `VERSION` file in the root is the single source of truth. Never edit version strings inline.
+The `VERSION` file in the root is the single source of truth. Never edit version strings inline unless specifically instructed otherwise.
+
+
 
 ## Repository Map
 | Directory | Purpose |
@@ -21,6 +27,8 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | `plans/` | ADRs, roadmaps, and status reports |
 | `.agents/skills/` | Reusable skill playbooks |
 
+
+
 ## Domain Concepts
 - **Frame**: 20ms audio window (320 samples at 16kHz).
 - **VAD**: Voice Activity Detection classifying frames as speech or non-voice.
@@ -28,23 +36,30 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - **Learning Database**: Stores `verified_segments` with normalized columns for spectral features (rms, zcr, spectral_flux, spectral_flatness, spectral_entropy, centroid_hz, low_band_ratio, high_band_ratio) to enable efficient SQL aggregation.
 - **Calibration profile**: Genre-specific energy threshold deltas.
 
+
+
 ## Skill Activation Policy
 Load skills from `.agents/skills/` before starting tasks:
 - `nonvoice-segmentation`: [SKILL.md](.agents/skills/nonvoice-segmentation/SKILL.md)
 - `audio-vad-cpu`: [SKILL.md](.agents/skills/audio-vad-cpu/SKILL.md)
 - `self-learning-calibration`: [SKILL.md](.agents/skills/self-learning-calibration/SKILL.md)
 - `agent-coordination`: [SKILL.md](.agents/skills/agent-coordination/SKILL.md)
+- `codacy`: [SKILL.md](.agents/skills/codacy/SKILL.md)
+
+
 
 ## Rules
-- **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.
+- **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings (unless pre-existing issues are explicitly acknowledged).
 - **Fix ALL pre-existing issues** (lint, tests, clippy) before completing any task.
 - **No unwrap() or expect()** in `src/`. Use `Result` and `?`.
-- **Deterministic outputs**: Same input must produce identical JSON.
+- **Deterministic outputs**: Same input should produce identical JSON (subject to floating point variance in specific VAD implementations).
 - **Atomic Commits**: `bash scripts/quality_gate.sh && git add -A && git commit`.
 - **MAX_SOURCE_FILE_LOC**: Limit Rust source files to 500 lines.
 - **No magic numbers**: Extract to `config.rs` or module-level constants.
 - **Media Sourcing**: Use legally redistributable media only (Blender/Open Movies).
 - **Secret Scanning**: Gitleaks enforcement is currently a gap (no `.gitleaks.toml`).
+
+
 
 ## Template Sync
 | Pattern | Status | Notes |
@@ -57,6 +72,8 @@ Load skills from `.agents/skills/` before starting tasks:
 | Skill Frontmatter | Adopted | Verified in all `.agents/skills/*.md` |
 | Agent Config Dirs | Gap | `.jules/`, `.opencode/`, `.qwen/` missing |
 | `update-all-docs.sh`| Gap | Script missing; see `plans/050-status-report/STATUS.md` |
+
+
 
 ## Agent Coordination References
 Reference [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md) and

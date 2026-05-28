@@ -98,7 +98,8 @@ fn decode_via_symphonia(
         return Err(TimelineError::EmptyAudio.into());
     }
 
-    let resampled = crate::pipeline::resample::resample(&samples, source_sample_rate, target_sample_rate)?;
+    let resampled =
+        crate::pipeline::resample::resample(&samples, source_sample_rate, target_sample_rate)?;
     Ok((resampled, target_sample_rate))
 }
 

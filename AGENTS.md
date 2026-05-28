@@ -57,14 +57,14 @@ Load skills from `.agents/skills/` before starting tasks:
 - **MAX_SOURCE_FILE_LOC**: Limit Rust source files to 500 lines.
 - **No magic numbers**: Extract to `config.rs` or module-level constants.
 - **Media Sourcing**: Use legally redistributable media only (Blender/Open Movies).
-- **Secret Scanning**: Gitleaks enforcement is currently a gap (no `.gitleaks.toml`).
+- **Secret Scanning**: Gitleaks enforcement via `.gitleaks.toml`.
 
 
 
 ## Template Sync
 | Pattern | Status | Notes |
 |---------|--------|-------|
-| Gitleaks Scan | Gap | `.gitleaks.toml` missing |
+| Gitleaks Scan | Adopted | `.gitleaks.toml` present |
 | Named Constants | Adopted | `bash readonly` block above |
 | `ai-commit.sh` | Gap | Script missing; see `plans/050-status-report/STATUS.md` |
 | Single Source Version | Adopted | `VERSION` file is the source of truth |

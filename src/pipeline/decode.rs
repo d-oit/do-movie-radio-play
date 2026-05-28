@@ -99,7 +99,7 @@ fn decode_via_symphonia(
     }
 
     let resampled =
-        crate::pipeline::resample::resample(&samples, source_sample_rate, target_sample_rate);
+        crate::pipeline::resample::resample(&samples, source_sample_rate, target_sample_rate)?;
     Ok((resampled, target_sample_rate))
 }
 

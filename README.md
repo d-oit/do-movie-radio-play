@@ -2,20 +2,18 @@
 
 Extracts non-voice segments from movie audio to assist in radio play adaptation.
 
-## What it does
 The tool identifies audio intervals without speech, such as music, sound effects, or ambience. It uses energy and
-spectral feature analysis to classify audio frames and clusters them into segments. Output is provided as JSON
-timelines, which can be exported to EDL or VTT formats.
+spectral feature analysis to classify audio frames and clusters them into segments.
 
 ## Prerequisites
-- Rust 1.75+ (2021 edition)
-- ffmpeg (optional; required only for video container inputs such as MKV, MP4, AVI)
+- Rust 2021 toolchain (v1.75+)
+- FFmpeg (optional; required only for video container inputs or non-WAV audio)
 
 ## Build
 ```bash
 cargo build --release
 ```
-The compiled binary is available at `target/release/timeline`.
+The binary is located at `target/release/timeline`.
 
 ## Commands
 - `extract <INPUT> --output <JSON>`: Run the extraction pipeline on a media file.
@@ -26,7 +24,7 @@ The compiled binary is available at `target/release/timeline`.
 - `apply-calibration --report <JSON>`: Update the active profile with a calibration report.
 - `bench <MEDIA> --output <JSON>`: Measure pipeline performance and stage durations.
 - `gen-fixtures`: Create synthetic audio test cases.
-- `validate <MEDIA> --output <JSON>`: Compare extraction results against ground truth or SRT.
+- `validate <MEDIA> --output <JSON>`: Compare extraction results against ground truth or subtitles.
 - `ai-voice-extract <JSON> --output <JSON>`: Extract only speech segments for voice replacement workflows.
 - `verify-timeline <MEDIA> --timeline <JSON>`: Validate segments against spectral feature bounds.
 - `update-thresholds`: Adjust adaptive thresholds using the learning database.
@@ -35,31 +33,34 @@ The compiled binary is available at `target/release/timeline`.
 - `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Convert timeline to external formats.
 
 ## Configuration
-Configuration is loaded from JSON profiles in `config/profiles/`. Options can be overridden via CLI flags or
-environment variables (prefixed with `TIMELINE_`).
+Profiles are stored as JSON in `config/profiles/`. Options can be overridden via `TIMELINE_` environment variables.
 
-Key `AnalysisConfig` fields:
+### AnalysisConfig Fields
 - `sample_rate_hz`: Processing sample rate (default: 16000).
 - `frame_ms`: Analysis window size (default: 20).
 - `energy_threshold`: Baseline RMS sensitivity (0.0 to 1.0).
-- `vad_engine`: Classification engine ("energy" or "spectral").
+- `vad_engine`: Classification engine ("energy", "spectral", or "hybrid").
 - `min_speech_ms`: Minimum duration for a speech cluster.
 - `min_non_voice_ms`: Minimum duration for a non-voice segment.
+- `max_non_voice_ms`: Maximum duration for a non-voice segment.
+- `speech_hangover_ms`: Duration to extend speech segments after detection.
+- `merge_gap_ms`: Maximum gap to merge adjacent segments.
+- `parallel_features`: Enable multi-threaded feature extraction.
 
 ## Validation Workflow
-1. Execute the validation manifest: `python3 scripts/run_validation_manifest.py`.
+1. Run the validation suite: `python3 scripts/run_validation_manifest.py`.
 2. Generate the readiness report: `python3 scripts/build_radio_play_readiness_report.py`.
-3. Verify codebase integrity: `bash scripts/quality_gate.sh`.
+3. Check codebase integrity: `bash scripts/quality_gate.sh`.
 
-## Export
-- **JSON**: Internal format with timestamps, confidence scores, and tags.
-- **EDL**: CMX 3600 Edit Decision List for DAW/NLE import.
-- **VTT**: WebVTT subtitle format for web players.
+## Export Formats
+- **JSON**: Internal format with timestamps, confidence, tags, and prompts.
+- **EDL**: CMX 3600 Edit Decision List for NLE import.
+- **VTT**: WebVTT subtitle format.
 
 ## Known Limitations
-- Direct WAV reading is restricted to 16-bit PCM; ffmpeg is used for all other formats.
-- Spectral analysis is CPU-bound and requires sequential processing for frame features.
-- Memory usage scales with segment count during HTML report generation.
+- 16-bit PCM WAV is the only natively supported format; others require FFmpeg.
+- Spectral analysis is CPU-bound.
+- Memory usage increases with the number of segments during HTML report generation.
 
 ## Contributing
 Refer to [AGENTS.md](AGENTS.md) for development workflows and agent coordination policies.

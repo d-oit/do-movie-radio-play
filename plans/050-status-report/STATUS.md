@@ -90,9 +90,10 @@ Repository integrity sweep (2026-04-18):
   `plans/040-validation/PRODUCTION-EVALS.md` and
   `plans/040-validation/ACCEPTANCE.md`.
 
-## Documentation and Tooling Gaps (2026-04-18)
+## Documentation and Tooling Gaps (2026-05-02)
 The following patterns from `d-o-hub/github-template-ai-agents` are missing:
 - `./scripts/ai-commit.sh`: Helper for atomic commits is missing.
 - `./scripts/update-all-docs.sh`: Tool for synchronizing all documentation is missing.
 - `.jules/`, `.opencode/`, `.qwen/`: Agent-specific configuration directories are missing.
-- `.gitleaks.toml`: Gitleaks configuration for secret scanning is missing.
+
+**Note:** Gitleaks scanning is adopted via root `.gitleaks.toml`. All skill files under `.agents/skills/` now include required YAML frontmatter.

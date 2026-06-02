@@ -8,3 +8,10 @@ testdata/generated/*
 !testdata/generated/.gitkeep
 analysis/thresholds/*.db
 analysis/optimization/fp-sweep-runs/
+
+# Guardrail: no test/template/dummy/runtime-output files in root
+/dummy.*
+/merged.json
+/timeline.json
+/verified.json
+/*.wav

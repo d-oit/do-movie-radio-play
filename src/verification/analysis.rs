@@ -1,5 +1,10 @@
 use realfft::RealFftPlanner;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+
+thread_local! {
+    static FFT_PLANNER: RefCell<RealFftPlanner<f32>> = RefCell::new(RealFftPlanner::new());
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -84,8 +89,7 @@ fn compute_zcr(samples: &[f32]) -> f32 {
 fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, f32, f32)> {
     let fft_size = next_power_of_2(samples.len().max(512));
 
-    let mut planner = RealFftPlanner::new();
-    let fft = planner.plan_fft_forward(fft_size);
+    let fft = FFT_PLANNER.with(|p| p.borrow_mut().plan_fft_forward(fft_size));
     let mut input = fft.make_input_vec();
 
     if samples.len() >= fft_size {
@@ -171,8 +175,7 @@ fn compute_spectral_flux(samples: &[f32]) -> f32 {
     let mut count = 0usize;
     let mut has_prev = false;
 
-    let mut planner = RealFftPlanner::new();
-    let fft = planner.plan_fft_forward(window_size);
+    let fft = FFT_PLANNER.with(|p| p.borrow_mut().plan_fft_forward(window_size));
     let mut input = fft.make_input_vec();
     let mut output = fft.make_output_vec();
 

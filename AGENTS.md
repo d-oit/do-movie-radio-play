@@ -20,6 +20,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | `scripts/` | Quality gate, benchmarks, and validation |
 | `plans/` | ADRs, roadmaps, and status reports |
 | `.agents/skills/` | Reusable skill playbooks |
+| `testdata/` | All test fixtures and generated test media |
 
 ## Domain Concepts
 - **Frame**: 20ms audio window (320 samples at 16kHz).
@@ -42,6 +43,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - **No magic numbers**: Extract to `config.rs` or module-level constants.
 - **Media Sourcing**: Use legally redistributable media only (Blender/Open Movies).
 - **Secret Scanning**: Gitleaks enforcement via `.gitleaks.toml`.
+- **No test/dummy/runtime files in root**: Never commit `dummy.*`, `*.wav`, `merged.json`, `timeline.json`, `verified.json`, or any other test fixture, template, or runtime-output file to the repository root. All such files belong in `testdata/` (fixtures), `analysis/` (outputs), or are listed in `.gitignore`.
 
 ## Template Sync
 | Pattern | Status | Notes |
@@ -54,6 +56,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | Skill Frontmatter | Adopted | Verified in all `.agents/skills/*.md` |
 | Agent Config Dirs | Gap | `.jules/`, `.opencode/`, `.qwen/` missing |
 | `update-all-docs.sh`| Gap | Script missing; flagged in STATUS.md |
+| Root Cleanliness | Adopted | No dummy/test/runtime files in root |
 
 ## Agent Coordination References
 - [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)

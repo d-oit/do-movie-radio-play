@@ -1,5 +1,10 @@
 use realfft::RealFftPlanner;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+
+thread_local! {
+    static FFT_PLANNER: RefCell<RealFftPlanner<f32>> = RefCell::new(RealFftPlanner::new());
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -84,8 +89,7 @@ fn compute_zcr(samples: &[f32]) -> f32 {
 fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, f32, f32)> {
     let fft_size = next_power_of_2(samples.len().max(512));
 
-    let mut planner = RealFftPlanner::new();
-    let fft = planner.plan_fft_forward(fft_size);
+    let fft = FFT_PLANNER.with(|p| p.borrow_mut().plan_fft_forward(fft_size));
     let mut input = fft.make_input_vec();
 
     if samples.len() >= fft_size {
@@ -155,7 +159,7 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
 
 fn next_power_of_2(n: usize) -> usize {
     let n = n.saturating_sub(1);
-    let shift = std::mem::size_of::<usize>() * 8 - n.leading_zeros() as usize;
+    let shift = usize::BITS - n.leading_zeros();
     1 << shift
 }
 
@@ -171,8 +175,7 @@ fn compute_spectral_flux(samples: &[f32]) -> f32 {
     let mut count = 0usize;
     let mut has_prev = false;
 
-    let mut planner = RealFftPlanner::new();
-    let fft = planner.plan_fft_forward(window_size);
+    let fft = FFT_PLANNER.with(|p| p.borrow_mut().plan_fft_forward(window_size));
     let mut input = fft.make_input_vec();
     let mut output = fft.make_output_vec();
 
@@ -272,7 +275,7 @@ mod tests {
             *s = rng.random::<f32>() * 2.0 - 1.0;
         }
 
-        let (entropy, _, _, _, _) = compute_spectral_features(&samples).unwrap();
+        let (entropy, ..) = compute_spectral_features(&samples).unwrap();
         // For 512 bins (next_power_of_2 of 1024 is 1024, but realfft gives 513 bins),
         // max entropy is log2(513) approx 9.0.
         assert!(
@@ -297,8 +300,8 @@ mod tests {
             *s = rng.random::<f32>() * 2.0 - 1.0;
         }
 
-        let (_, flatness_sine, _, _, _) = compute_spectral_features(&sine).unwrap();
-        let (_, flatness_noise, _, _, _) = compute_spectral_features(&noise).unwrap();
+        let (_, flatness_sine, ..) = compute_spectral_features(&sine).unwrap();
+        let (_, flatness_noise, ..) = compute_spectral_features(&noise).unwrap();
 
         assert!(
             flatness_noise > flatness_sine,
@@ -363,7 +366,7 @@ mod tests {
         for (i, s) in samples.iter_mut().enumerate() {
             *s = (2.0 * std::f32::consts::PI * 2000.0 * i as f32 / 16000.0).sin();
         }
-        let (_, _, centroid, _, _) = compute_spectral_features(&samples).unwrap();
+        let (_, _, centroid, ..) = compute_spectral_features(&samples).unwrap();
         // Centroid should be very close to 2000Hz.
         assert!((centroid - 2000.0).abs() < 100.0);
     }

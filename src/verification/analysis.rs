@@ -159,7 +159,7 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
 
 fn next_power_of_2(n: usize) -> usize {
     let n = n.saturating_sub(1);
-    let shift = std::mem::size_of::<usize>() * 8 - n.leading_zeros() as usize;
+    let shift = usize::BITS - n.leading_zeros();
     1 << shift
 }
 
@@ -275,7 +275,7 @@ mod tests {
             *s = rng.random::<f32>() * 2.0 - 1.0;
         }
 
-        let (entropy, _, _, _, _) = compute_spectral_features(&samples).unwrap();
+        let (entropy, ..) = compute_spectral_features(&samples).unwrap();
         // For 512 bins (next_power_of_2 of 1024 is 1024, but realfft gives 513 bins),
         // max entropy is log2(513) approx 9.0.
         assert!(
@@ -300,8 +300,8 @@ mod tests {
             *s = rng.random::<f32>() * 2.0 - 1.0;
         }
 
-        let (_, flatness_sine, _, _, _) = compute_spectral_features(&sine).unwrap();
-        let (_, flatness_noise, _, _, _) = compute_spectral_features(&noise).unwrap();
+        let (_, flatness_sine, ..) = compute_spectral_features(&sine).unwrap();
+        let (_, flatness_noise, ..) = compute_spectral_features(&noise).unwrap();
 
         assert!(
             flatness_noise > flatness_sine,
@@ -366,7 +366,7 @@ mod tests {
         for (i, s) in samples.iter_mut().enumerate() {
             *s = (2.0 * std::f32::consts::PI * 2000.0 * i as f32 / 16000.0).sin();
         }
-        let (_, _, centroid, _, _) = compute_spectral_features(&samples).unwrap();
+        let (_, _, centroid, ..) = compute_spectral_features(&samples).unwrap();
         // Centroid should be very close to 2000Hz.
         assert!((centroid - 2000.0).abs() < 100.0);
     }

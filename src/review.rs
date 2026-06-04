@@ -57,6 +57,9 @@ fn escape_json_for_script(json: String) -> String {
     json.replace('<', "\\u003c")
         .replace('>', "\\u003e")
         .replace('&', "\\u0026")
+        .replace('\u{2028}', "\\u2028")
+        .replace('\u{2029}', "\\u2029")
+        .replace('`', "\\u0060")
 }
 
 pub fn write_review_html_with_options(
@@ -160,6 +163,7 @@ pub fn write_review_html_with_options(
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src *; connect-src 'none';" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Non-Voice Review Player</title>
   <style>
@@ -872,6 +876,37 @@ mod tests {
         .unwrap();
         let html_amp = std::fs::read_to_string(output_amp).unwrap();
         assert!(html_amp.contains(r"rock \u0026 roll"));
+
+        // Check for new escape characters
+        let timeline_new = TimelineOutput {
+            file: "test.wav".to_string(),
+            analysis_sample_rate: 16000,
+            frame_ms: 20,
+            segments: vec![Segment {
+                start_ms: 0,
+                end_ms: 1000,
+                kind: SegmentKind::NonVoice,
+                confidence: 1.0,
+                tags: vec!["line\u{2028}para\u{2029}back`tick".to_string()],
+                prompt: None,
+            }],
+        };
+        let output_new = dir.path().join("review_new.html");
+        write_review_html_with_options(
+            &safe_input,
+            &timeline_new,
+            &output_new,
+            1.0,
+            1.0,
+            None,
+            false,
+        )
+        .unwrap();
+        let html_new = std::fs::read_to_string(output_new).unwrap();
+        assert!(html_new.contains(r"line\u2028para\u2029back\u0060tick"));
+
+        // Check for CSP meta tag
+        assert!(html_new.contains("<meta http-equiv=\"Content-Security-Policy\""));
 
         // Check that it does NOT contain unescaped '<', '>', or '&' in the script variables
         // Finding where the script variables start

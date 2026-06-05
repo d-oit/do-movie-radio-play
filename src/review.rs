@@ -54,9 +54,20 @@ pub fn write_review_html(
 fn escape_json_for_script(json: String) -> String {
     // Robustly escape JSON for embedding in a <script> tag by escaping characters
     // that could be used for tag breakout or other injection attacks.
-    json.replace('<', "\\u003c")
-        .replace('>', "\\u003e")
-        .replace('&', "\\u0026")
+    // Optimization: Use a single pass with a pre-allocated buffer to reduce allocations.
+    let mut escaped = String::with_capacity(json.len() + 32);
+    for c in json.chars() {
+        match c {
+            '<' => escaped.push_str("\\u003c"),
+            '>' => escaped.push_str("\\u003e"),
+            '&' => escaped.push_str("\\u0026"),
+            '\u{2028}' => escaped.push_str("\\u2028"),
+            '\u{2029}' => escaped.push_str("\\u2029"),
+            '`' => escaped.push_str("\\u0060"),
+            _ => escaped.push(c),
+        }
+    }
+    escaped
 }
 
 pub fn write_review_html_with_options(
@@ -109,8 +120,8 @@ pub fn write_review_html_with_options(
         if non_voice_segments.is_empty() {
             vec![]
         } else {
-            let first_start = non_voice_segments.first().map(|s| s.start_ms).unwrap_or(0);
-            let last_end = non_voice_segments.last().map(|s| s.end_ms).unwrap_or(0);
+            let first_start = non_voice_segments.first().map_or(0, |s| s.start_ms);
+            let last_end = non_voice_segments.last().map_or(0, |s| s.end_ms);
             let duration_ms = last_end.saturating_sub(first_start);
             let avg_confidence: f32 = non_voice_segments.iter().map(|s| s.confidence).sum::<f32>()
                 / non_voice_segments.len() as f32;
@@ -160,6 +171,7 @@ pub fn write_review_html_with_options(
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src *; connect-src 'none';" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Non-Voice Review Player</title>
   <style>
@@ -872,6 +884,37 @@ mod tests {
         .unwrap();
         let html_amp = std::fs::read_to_string(output_amp).unwrap();
         assert!(html_amp.contains(r"rock \u0026 roll"));
+
+        // Check for new escape characters
+        let timeline_new = TimelineOutput {
+            file: "test.wav".to_string(),
+            analysis_sample_rate: 16000,
+            frame_ms: 20,
+            segments: vec![Segment {
+                start_ms: 0,
+                end_ms: 1000,
+                kind: SegmentKind::NonVoice,
+                confidence: 1.0,
+                tags: vec!["line\u{2028}para\u{2029}back`tick".to_string()],
+                prompt: None,
+            }],
+        };
+        let output_new = dir.path().join("review_new.html");
+        write_review_html_with_options(
+            &safe_input,
+            &timeline_new,
+            &output_new,
+            1.0,
+            1.0,
+            None,
+            false,
+        )
+        .unwrap();
+        let html_new = std::fs::read_to_string(output_new).unwrap();
+        assert!(html_new.contains(r"line\u2028para\u2029back\u0060tick"));
+
+        // Check for CSP meta tag
+        assert!(html_new.contains("<meta http-equiv=\"Content-Security-Policy\""));
 
         // Check that it does NOT contain unescaped '<', '>', or '&' in the script variables
         // Finding where the script variables start

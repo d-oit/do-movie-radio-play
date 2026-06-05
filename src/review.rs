@@ -54,12 +54,20 @@ pub fn write_review_html(
 fn escape_json_for_script(json: String) -> String {
     // Robustly escape JSON for embedding in a <script> tag by escaping characters
     // that could be used for tag breakout or other injection attacks.
-    json.replace('<', "\\u003c")
-        .replace('>', "\\u003e")
-        .replace('&', "\\u0026")
-        .replace('\u{2028}', "\\u2028")
-        .replace('\u{2029}', "\\u2029")
-        .replace('`', "\\u0060")
+    // Optimization: Use a single pass with a pre-allocated buffer to reduce allocations.
+    let mut escaped = String::with_capacity(json.len() + 32);
+    for c in json.chars() {
+        match c {
+            '<' => escaped.push_str("\\u003c"),
+            '>' => escaped.push_str("\\u003e"),
+            '&' => escaped.push_str("\\u0026"),
+            '\u{2028}' => escaped.push_str("\\u2028"),
+            '\u{2029}' => escaped.push_str("\\u2029"),
+            '`' => escaped.push_str("\\u0060"),
+            _ => escaped.push(c),
+        }
+    }
+    escaped
 }
 
 pub fn write_review_html_with_options(

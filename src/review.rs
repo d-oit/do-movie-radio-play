@@ -112,8 +112,8 @@ pub fn write_review_html_with_options(
         if non_voice_segments.is_empty() {
             vec![]
         } else {
-            let first_start = non_voice_segments.first().map(|s| s.start_ms).unwrap_or(0);
-            let last_end = non_voice_segments.last().map(|s| s.end_ms).unwrap_or(0);
+            let first_start = non_voice_segments.first().map_or(0, |s| s.start_ms);
+            let last_end = non_voice_segments.last().map_or(0, |s| s.end_ms);
             let duration_ms = last_end.saturating_sub(first_start);
             let avg_confidence: f32 = non_voice_segments.iter().map(|s| s.confidence).sum::<f32>()
                 / non_voice_segments.len() as f32;

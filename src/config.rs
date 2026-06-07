@@ -1,15 +1,53 @@
 use anyhow::{bail, Context, Result};
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
-use std::{env, fs, path::PathBuf};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
+use tracing::info;
+
+use crate::io::json::read_json;
+use crate::learning::profiles::CalibrationProfile;
+use crate::pipeline::tags::TagRules;
 
 const VALID_VAD_ENGINES: [&str; 3] = ["energy", "spectral", "hybrid"];
-pub const VALID_MERGE_STRATEGIES: [&str; 3] = ["all", "longest", "sparse"];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[serde(rename_all = "snake_case")]
+pub enum MergeStrategy {
+    All,
+    Longest,
+    Sparse,
+}
+
+impl std::fmt::Display for MergeStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::All => write!(f, "all"),
+            Self::Longest => write!(f, "longest"),
+            Self::Sparse => write!(f, "sparse"),
+        }
+    }
+}
+
+pub const TOLERANCE_SYNTHETIC_MS: u64 = 100;
+pub const TOLERANCE_DATASET_MS: u64 = 200;
+pub const TOLERANCE_DEFAULT_MS: u64 = 400;
+
+pub fn tolerance_for_profile(profile: &str) -> u64 {
+    match profile {
+        "synthetic" => TOLERANCE_SYNTHETIC_MS,
+        "dataset" => TOLERANCE_DATASET_MS,
+        _ => TOLERANCE_DEFAULT_MS,
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct MergeOptions {
     pub min_gap_to_merge: u32,
-    pub merge_strategy: String,
+    pub merge_strategy: MergeStrategy,
     pub min_speech_duration: u32,
     pub min_silence_duration: u32,
     pub silence_threshold_db: i32,
@@ -19,7 +57,7 @@ impl Default for MergeOptions {
     fn default() -> Self {
         Self {
             min_gap_to_merge: 400,
-            merge_strategy: "all".to_string(),
+            merge_strategy: MergeStrategy::All,
             min_speech_duration: 250,
             min_silence_duration: 300,
             silence_threshold_db: -42,
@@ -209,6 +247,9 @@ fn validate(cfg: &AnalysisConfig) -> Result<()> {
 }
 
 fn validate_merge_options(opts: &MergeOptions, frame_ms: u32) -> Result<()> {
+    if opts.min_gap_to_merge == 0 {
+        bail!("invalid merge_options: min_gap_to_merge must be > 0");
+    }
     if opts.min_gap_to_merge < frame_ms {
         bail!("invalid merge_options: min_gap_to_merge must be >= frame_ms");
     }
@@ -221,13 +262,116 @@ fn validate_merge_options(opts: &MergeOptions, frame_ms: u32) -> Result<()> {
     if !(opts.silence_threshold_db >= -80 && opts.silence_threshold_db <= -20) {
         bail!("invalid merge_options: silence_threshold_db must be in [-80, -20]");
     }
-    if !VALID_MERGE_STRATEGIES.contains(&opts.merge_strategy.as_str()) {
-        bail!(
-            "invalid merge_options: merge_strategy must be one of {}",
-            VALID_MERGE_STRATEGIES.join(", ")
-        );
-    }
     Ok(())
+}
+
+pub fn get_calibration_dir() -> Result<PathBuf> {
+    let base = if cfg!(target_os = "windows") {
+        env::var("APPDATA")?
+    } else if cfg!(target_os = "macos") {
+        PathBuf::from(env::var("HOME")?)
+            .join("Library/Application Support")
+            .to_string_lossy()
+            .to_string()
+    } else {
+        env::var("XDG_CONFIG_HOME")
+            .or_else(|_| env::var("HOME").map(|h| format!("{h}/.config")))
+            .map_err(|_| anyhow::anyhow!("Neither XDG_CONFIG_HOME nor HOME set"))?
+    };
+    Ok(PathBuf::from(base).join("do-movie-radio-play/profiles"))
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn load_analysis_config(
+    config_path: Option<PathBuf>,
+    threshold_override: Option<f32>,
+    min_speech_override: Option<u32>,
+    min_silence_override: Option<u32>,
+    max_non_voice_override: Option<u32>,
+    vad_engine: String,
+    calibration_profile: Option<PathBuf>,
+    parallel_features: Option<bool>,
+) -> Result<AnalysisConfig> {
+    let threshold_delta = load_calibration_threshold_delta(calibration_profile.as_deref())?;
+    AnalysisConfig::from_args(
+        config_path,
+        threshold_override,
+        min_speech_override,
+        min_silence_override,
+        max_non_voice_override,
+        Some(vad_engine),
+        threshold_delta,
+        parallel_features,
+    )
+}
+
+pub fn load_calibration_threshold_delta(profile_path: Option<&Path>) -> Result<Option<f32>> {
+    let Some(profile_path) = profile_path else {
+        return Ok(None);
+    };
+    let profile: CalibrationProfile = read_json(profile_path).with_context(|| {
+        format!(
+            "failed to read calibration profile: {}",
+            profile_path.display()
+        )
+    })?;
+    info!(profile = %profile.name, delta = profile.energy_threshold_delta, "loaded calibration profile");
+    Ok(Some(profile.energy_threshold_delta))
+}
+
+pub fn load_tag_rules(profile_path: Option<&Path>) -> Result<Option<TagRules>> {
+    let Some(profile_path) = profile_path else {
+        return Ok(None);
+    };
+    let profile: CalibrationProfile = read_json(profile_path).with_context(|| {
+        format!(
+            "failed to read calibration profile: {}",
+            profile_path.display()
+        )
+    })?;
+    let rules = profile
+        .tag_thresholds
+        .as_ref()
+        .map(TagRules::from_thresholds);
+    if let Some(rules) = &rules {
+        info!(
+            profile = %profile.name,
+            ambience_max_rms = rules.ambience_max_rms,
+            impact_min_rms = rules.impact_min_rms,
+            min_centroid_hz = rules.min_centroid_hz,
+            "loaded tag rules from calibration profile"
+        );
+    } else {
+        info!(profile = %profile.name, "profile has no tag thresholds, using defaults");
+    }
+    Ok(rules)
+}
+
+pub fn load_merge_options(
+    config_path: Option<&Path>,
+    min_gap_override: Option<u32>,
+    strategy_override: Option<MergeStrategy>,
+) -> Result<MergeOptions> {
+    let mut opts = if let Some(path) = config_path {
+        let data = fs::read_to_string(path).context("failed to read config file")?;
+        let analysis_cfg: AnalysisConfig =
+            serde_json::from_str(&data).context("failed to parse config file")?;
+        analysis_cfg.merge_options.unwrap_or_default()
+    } else {
+        MergeOptions::default()
+    };
+
+    if let Some(min_gap) = min_gap_override {
+        opts.min_gap_to_merge = min_gap;
+    }
+    if let Some(strategy) = strategy_override {
+        opts.merge_strategy = strategy;
+    }
+
+    // CLI path: frame_ms is unavailable here; frame-dependent checks are validated
+    // later when the full AnalysisConfig is loaded from the config file.
+    validate_merge_options(&opts, 0)?;
+    Ok(opts)
 }
 
 #[cfg(test)]

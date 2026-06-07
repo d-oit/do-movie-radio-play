@@ -1,4 +1,4 @@
-use crate::config::MergeOptions;
+use crate::config::{MergeOptions, MergeStrategy};
 use crate::types::{Segment, SegmentKind};
 
 const SHORT_SPEECH_CONFIDENCE_KEEP_FLOOR: f32 = 0.78;
@@ -155,11 +155,11 @@ pub fn apply_non_voice_merge_policy(segments: &[Segment], options: &MergeOptions
 
     let merge_gap_ms = options.min_gap_to_merge.max(options.min_silence_duration) as u64;
 
-    match options.merge_strategy.as_str() {
-        "all" => merge_by_gap_threshold(segments, merge_gap_ms),
-        "longest" => merge_by_gap_threshold(segments, merge_gap_ms),
-        "sparse" => merge_sparse_non_voice(segments, merge_gap_ms),
-        _ => segments.to_vec(),
+    match options.merge_strategy {
+        MergeStrategy::All | MergeStrategy::Longest => {
+            merge_by_gap_threshold(segments, merge_gap_ms)
+        }
+        MergeStrategy::Sparse => merge_sparse_non_voice(segments, merge_gap_ms),
     }
 }
 
@@ -446,7 +446,7 @@ mod tests {
     fn sparse_merge_policy_merges_close_non_voice_segments() {
         let opts = MergeOptions {
             min_gap_to_merge: 400,
-            merge_strategy: "sparse".to_string(),
+            merge_strategy: MergeStrategy::Sparse,
             min_speech_duration: 500,
             min_silence_duration: 300,
             silence_threshold_db: -42,
@@ -480,7 +480,7 @@ mod tests {
     fn all_merge_policy_respects_gap_threshold() {
         let opts = MergeOptions {
             min_gap_to_merge: 400,
-            merge_strategy: "all".to_string(),
+            merge_strategy: MergeStrategy::All,
             min_speech_duration: 500,
             min_silence_duration: 300,
             silence_threshold_db: -42,

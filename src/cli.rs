@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+use crate::config::MergeStrategy;
+
 #[derive(Debug, Parser)]
 #[command(name = "timeline")]
 #[command(about = "Extract non-voice timeline segments from movie audio")]
@@ -191,8 +193,8 @@ pub enum Commands {
         config: Option<PathBuf>,
         #[arg(long)]
         min_gap_to_merge: Option<u32>,
-        #[arg(long, value_parser = ["all", "longest", "sparse"])]
-        merge_strategy: Option<String>,
+        #[arg(long)]
+        merge_strategy: Option<MergeStrategy>,
         #[arg(long)]
         verified: Option<PathBuf>,
     },

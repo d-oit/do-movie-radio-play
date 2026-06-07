@@ -1,3 +1,4 @@
+pub mod browser;
 pub mod edl;
 pub mod json;
 pub mod vtt;

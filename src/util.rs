@@ -2,12 +2,19 @@ use anyhow::{Context, Result};
 use tracing::{info, Level};
 use tracing_subscriber::EnvFilter;
 
+/// Tolerance in milliseconds for synthetic test profiles.
+pub const TOLERANCE_SYNTHETIC_MS: u64 = 100;
+/// Tolerance in milliseconds for dataset test profiles.
+pub const TOLERANCE_DATASET_MS: u64 = 200;
+/// Default tolerance in milliseconds for unknown/other profiles.
+pub const TOLERANCE_DEFAULT_MS: u64 = 400;
+
 /// Tolerance values for validation profiles.
 pub fn tolerance_for_profile(profile: &str) -> u64 {
     match profile {
-        "synthetic" => 100,
-        "dataset" => 200,
-        _ => 400,
+        "synthetic" => TOLERANCE_SYNTHETIC_MS,
+        "dataset" => TOLERANCE_DATASET_MS,
+        _ => TOLERANCE_DEFAULT_MS,
     }
 }
 

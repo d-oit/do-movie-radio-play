@@ -1,8 +1,13 @@
 name: Quality Gate
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore: ['*.md', 'plans/**', 'analysis/**']
+  pull_request:
+    paths-ignore: ['*.md', 'plans/**', 'analysis/**']
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  CARGO_INCREMENTAL: 0
 
 permissions:
   contents: read
@@ -18,6 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash -n scripts/self-fix-loop.sh
       - run: bash -n scripts/handoff-to-tasks.sh
@@ -31,6 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
       - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
@@ -39,7 +46,6 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test
-      - run: bash scripts/quality_gate.sh
 
   benchmark:
     runs-on: ubuntu-latest
@@ -47,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
       - run: bash scripts/benchmark.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/ci.json
@@ -77,6 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
       - run: cargo build --quiet

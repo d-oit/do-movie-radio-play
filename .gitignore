@@ -2,7 +2,6 @@
 analysis/benchmarks/*.json
 testdata/raw/*
 !testdata/raw/.gitkeep
-testdata/generated/*.wav
 *.tmp
 testdata/generated/*
 !testdata/generated/.gitkeep

@@ -17,10 +17,22 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | `src/pipeline/` | VAD, framing, segmentation, features, tags, prompts |
 | `src/learning/` | Calibration, adaptive thresholds, and libsql database |
 | `src/types/` | Shared types (Frame, Segment, Metrics) |
-| `scripts/` | Quality gate, benchmarks, and validation |
+| `src/cli.rs` | CLI argument parsing via clap |
+| `src/config.rs` | Configuration, profiles, merge options |
+| `src/review.rs` | Review player HTML generation |
+| `src/error.rs` | Error types and TimelineError |
+| `src/io/` | JSON read/write utilities |
+| `src/verification/` | Verification analysis, fingerprinting, extractor |
+| `scripts/` | Quality gate, benchmarks, validation, optimization |
+| `tests/` | Integration tests |
+| `benches/` | Criterion benchmarks (pipeline, analysis) |
 | `plans/` | ADRs, roadmaps, and status reports |
 | `.agents/skills/` | Reusable skill playbooks |
 | `testdata/` | All test fixtures and generated test media |
+| `config/` | VAD profiles (modern-optimized, legacy-optimized) |
+| `.github/` | CI workflows |
+| `analysis/` | Benchmark artifacts, validation reports, thresholds |
+| `schema/` | JSON schema for timeline output |
 
 ## Domain Concepts
 - **Frame**: 20ms audio window (320 samples at 16kHz).
@@ -37,12 +49,16 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 
 ## Rules
 - **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.
+- **Lint and typecheck**: Always run `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings` before committing.
+- **Test command**: Run `cargo test` alongside quality gate.
 - **No unwrap() or expect()** in `src/`. Use `Result` and `?`.
-- **Atomic Commits**: Use `./scripts/ai-commit.sh` if available, else `quality_gate.sh && git add -A && git commit`.
+- **Atomic Commits**: Use `quality_gate.sh && git add -A && git commit` (ai-commit.sh not available).
 - **MAX_SOURCE_FILE_LOC**: Limit Rust source files to 500 lines.
 - **No magic numbers**: Extract to `config.rs` or module-level constants.
 - **Media Sourcing**: Use legally redistributable media only (Blender/Open Movies).
 - **Secret Scanning**: Gitleaks enforcement via `.gitleaks.toml`.
+- **16-bit PCM WAV only**: Direct reader supports only 16-bit PCM WAV; all other formats require ffmpeg on PATH.
+- **Deterministic output**: All pipeline stages must produce deterministic output for identical inputs.
 - **No test/dummy/runtime files in root**: Never commit `dummy.*`, `*.wav`, `merged.json`, `timeline.json`, `verified.json`, or any other test fixture, template, or runtime-output file to the repository root. All such files belong in `testdata/` (fixtures), `analysis/` (outputs), or are listed in `.gitignore`.
 
 ## Template Sync
@@ -50,13 +66,13 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 |---------|--------|-------|
 | Gitleaks Scan | Adopted | `.gitleaks.toml` present |
 | Named Constants | Adopted | `bash readonly` block above |
-| `ai-commit.sh` | Gap | Script missing; flagged in STATUS.md |
 | Single Source Version | Adopted | `VERSION` file is the source of truth |
 | `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines |
 | Skill Frontmatter | Adopted | Verified in all `.agents/skills/*.md` |
-| Agent Config Dirs | Gap | `.jules/`, `.opencode/`, `.qwen/` missing |
-| `update-all-docs.sh`| Gap | Script missing; flagged in STATUS.md |
 | Root Cleanliness | Adopted | No dummy/test/runtime files in root |
+| `ai-commit.sh` | Deferred | Not needed — quality_gate.sh covers pre-commit checks |
+| `update-all-docs.sh` | Deferred | Not needed — no generated docs to sync |
+| Agent Config Dirs | Deferred | Not used — tools read AGENTS.md directly |
 
 ## Agent Coordination References
 - [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)

@@ -16,7 +16,7 @@ use std::{path::Path, time::Instant};
 use anyhow::Result;
 use tracing::info;
 
-use crate::config::AnalysisConfig;
+use crate::config::{AnalysisConfig, MergeStrategy};
 use crate::pipeline::vad::{adapt_spectral_thresholds, create_engine, VadEngine};
 use crate::types::{BenchmarkResult, StageDurations, TimelineOutput};
 use crate::verification::{
@@ -24,7 +24,7 @@ use crate::verification::{
 };
 
 const MAX_FILTER_MIN_NON_VOICE_MS: u32 = 1_000;
-const FILTER_MERGE_STRATEGY: &str = "sparse";
+const FILTER_MERGE_STRATEGY: MergeStrategy = MergeStrategy::Sparse;
 const MAX_RESIDUAL_BRIDGE_GAP_MS: u64 = 2_500;
 const NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS: u64 = 400;
 
@@ -384,7 +384,7 @@ mod tests {
         let cfg = AnalysisConfig {
             min_non_voice_ms: 800,
             merge_options: Some(MergeOptions {
-                merge_strategy: "sparse".to_string(),
+                merge_strategy: MergeStrategy::Sparse,
                 ..MergeOptions::default()
             }),
             ..AnalysisConfig::default()
@@ -398,7 +398,7 @@ mod tests {
         let cfg = AnalysisConfig {
             min_non_voice_ms: 500,
             merge_options: Some(MergeOptions {
-                merge_strategy: "all".to_string(),
+                merge_strategy: MergeStrategy::All,
                 ..MergeOptions::default()
             }),
             ..AnalysisConfig::default()
@@ -411,7 +411,7 @@ mod tests {
     fn residual_bridge_gap_stays_wide_for_sparse_profiles() {
         let cfg = AnalysisConfig {
             merge_options: Some(MergeOptions {
-                merge_strategy: "sparse".to_string(),
+                merge_strategy: MergeStrategy::Sparse,
                 min_gap_to_merge: 600,
                 min_silence_duration: 500,
                 ..MergeOptions::default()
@@ -426,7 +426,7 @@ mod tests {
     fn residual_bridge_gap_is_bounded_for_non_sparse_profiles() {
         let cfg = AnalysisConfig {
             merge_options: Some(MergeOptions {
-                merge_strategy: "all".to_string(),
+                merge_strategy: MergeStrategy::All,
                 min_gap_to_merge: 400,
                 min_silence_duration: 300,
                 ..MergeOptions::default()
@@ -441,7 +441,7 @@ mod tests {
     fn ambiguous_expand_unbounded_for_sparse_profiles() {
         let cfg = AnalysisConfig {
             merge_options: Some(MergeOptions {
-                merge_strategy: "sparse".to_string(),
+                merge_strategy: MergeStrategy::Sparse,
                 ..MergeOptions::default()
             }),
             ..AnalysisConfig::default()
@@ -454,7 +454,7 @@ mod tests {
     fn ambiguous_expand_bounded_for_non_sparse_profiles() {
         let cfg = AnalysisConfig {
             merge_options: Some(MergeOptions {
-                merge_strategy: "all".to_string(),
+                merge_strategy: MergeStrategy::All,
                 ..MergeOptions::default()
             }),
             ..AnalysisConfig::default()
@@ -470,7 +470,7 @@ mod tests {
     fn speech_evidence_filter_enabled_for_sparse_profiles() {
         let cfg = AnalysisConfig {
             merge_options: Some(MergeOptions {
-                merge_strategy: "sparse".to_string(),
+                merge_strategy: MergeStrategy::Sparse,
                 ..MergeOptions::default()
             }),
             ..AnalysisConfig::default()
@@ -483,7 +483,7 @@ mod tests {
     fn speech_evidence_filter_disabled_for_non_sparse_profiles() {
         let cfg = AnalysisConfig {
             merge_options: Some(MergeOptions {
-                merge_strategy: "all".to_string(),
+                merge_strategy: MergeStrategy::All,
                 ..MergeOptions::default()
             }),
             ..AnalysisConfig::default()

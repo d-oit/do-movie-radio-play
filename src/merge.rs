@@ -57,8 +57,8 @@ fn merge_all(segments: Vec<&Segment>) -> Vec<Segment> {
         return vec![];
     }
 
-    let first_start = segments.first().map(|s| s.start_ms).unwrap_or(0);
-    let last_end = segments.last().map(|s| s.end_ms).unwrap_or(0);
+    let first_start = segments.first().map_or(0, |s| s.start_ms);
+    let last_end = segments.last().map_or(0, |s| s.end_ms);
 
     let avg_confidence: f32 =
         segments.iter().map(|s| s.confidence).sum::<f32>() / segments.len() as f32;

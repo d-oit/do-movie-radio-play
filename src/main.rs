@@ -26,6 +26,7 @@ fn main() {
     }
 }
 
+#[allow(clippy::cyclomatic_complexity)]
 fn run() -> Result<()> {
     util::init_logging();
     let cli = Cli::parse();

@@ -31,87 +31,115 @@ pub fn open_in_browser(path: &std::path::Path) -> Result<()> {
     };
     let path_str = absolute.to_string_lossy().to_string();
 
-    if is_wsl() {
-        if try_open("wslview", &[&path_str])? {
-            info!(path = %absolute.display(), opener = "wslview", "opened review output in browser");
+    if is_wsl() && try_open_wsl(&path_str, &absolute)? {
+        return Ok(());
+    }
+
+    if cfg!(target_os = "macos") {
+        try_open_macos(&path_str, &absolute)
+    } else if cfg!(target_os = "windows") {
+        try_open_windows(&path_str, &absolute)
+    } else {
+        try_open_linux(&path_str, &absolute)
+    }
+}
+
+/// Try browser openers under WSL.
+fn try_open_wsl(path_str: &str, absolute: &std::path::Path) -> Result<bool> {
+    if try_open("wslview", &[path_str])? {
+        info!(path = %absolute.display(), opener = "wslview", "opened review output in browser");
+        return Ok(true);
+    }
+
+    if let Some(win_path) = wsl_to_windows_path(path_str)? {
+        if try_open("cmd.exe", &["/C", "start", "", &win_path])? {
+            info!(path = %absolute.display(), opener = "cmd.exe/start", "opened review output in browser");
+            return Ok(true);
+        }
+        if try_open(
+            "powershell.exe",
+            &["-NoProfile", "-Command", "Start-Process", &win_path],
+        )? {
+            info!(path = %absolute.display(), opener = "powershell.exe", "opened review output in browser");
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// Try browser openers on macOS.
+fn try_open_macos(path_str: &str, absolute: &std::path::Path) -> Result<()> {
+    if try_open("open", &[path_str])? {
+        info!(path = %absolute.display(), opener = "open", "opened review output in browser");
+        return Ok(());
+    }
+    anyhow::bail!(
+        "could not auto-open browser for {}; open it manually",
+        absolute.display()
+    )
+}
+
+/// Try browser openers on Windows.
+fn try_open_windows(path_str: &str, absolute: &std::path::Path) -> Result<()> {
+    if try_open("cmd", &["/C", "start", "", path_str])? {
+        info!(path = %absolute.display(), opener = "cmd/start", "opened review output in browser");
+        return Ok(());
+    }
+    if try_open(
+        "powershell",
+        &["-NoProfile", "-Command", "Start-Process", path_str],
+    )? {
+        info!(path = %absolute.display(), opener = "powershell", "opened review output in browser");
+        return Ok(());
+    }
+    anyhow::bail!(
+        "could not auto-open browser for {}; open it manually",
+        absolute.display()
+    )
+}
+
+/// Try browser openers on Linux.
+fn try_open_linux(path_str: &str, absolute: &std::path::Path) -> Result<()> {
+    let file_url = format!("file://{}", absolute.display());
+
+    if let Some(default_browser) = linux_default_browser_command()? {
+        if try_open(&default_browser, &["--new-window", &file_url])?
+            || try_open(&default_browser, &[&file_url])?
+        {
+            info!(
+                path = %absolute.display(),
+                opener = %default_browser,
+                "opened review output in browser"
+            );
             return Ok(());
         }
+    }
 
-        if let Some(win_path) = wsl_to_windows_path(&path_str)? {
-            if try_open("cmd.exe", &["/C", "start", "", &win_path])? {
-                info!(path = %absolute.display(), opener = "cmd.exe/start", "opened review output in browser");
-                return Ok(());
-            }
-            if try_open(
-                "powershell.exe",
-                &["-NoProfile", "-Command", "Start-Process", &win_path],
-            )? {
-                info!(path = %absolute.display(), opener = "powershell.exe", "opened review output in browser");
+    if let Some(browser_env) = std::env::var_os("BROWSER") {
+        let browser_env = browser_env.to_string_lossy().to_string();
+        for candidate in browser_env.split(':').filter(|c| !c.is_empty()) {
+            if try_open(candidate, &[&file_url])? {
+                info!(path = %absolute.display(), opener = %candidate, "opened review output in browser");
                 return Ok(());
             }
         }
     }
 
-    if cfg!(target_os = "macos") {
-        if try_open("open", &[&path_str])? {
-            info!(path = %absolute.display(), opener = "open", "opened review output in browser");
+    for candidate in ["google-chrome", "chromium-browser", "chromium", "firefox"] {
+        if try_open(candidate, &["--new-window", &file_url])? || try_open(candidate, &[&file_url])?
+        {
+            info!(path = %absolute.display(), opener = %candidate, "opened review output in browser");
             return Ok(());
         }
-    } else if cfg!(target_os = "windows") {
-        if try_open("cmd", &["/C", "start", "", &path_str])? {
-            info!(path = %absolute.display(), opener = "cmd/start", "opened review output in browser");
-            return Ok(());
-        }
-        if try_open(
-            "powershell",
-            &["-NoProfile", "-Command", "Start-Process", &path_str],
-        )? {
-            info!(path = %absolute.display(), opener = "powershell", "opened review output in browser");
-            return Ok(());
-        }
-    } else {
-        let file_url = format!("file://{}", absolute.display());
+    }
 
-        if let Some(default_browser) = linux_default_browser_command()? {
-            if try_open(&default_browser, &["--new-window", &file_url])?
-                || try_open(&default_browser, &[&file_url])?
-            {
-                info!(
-                    path = %absolute.display(),
-                    opener = %default_browser,
-                    "opened review output in browser"
-                );
-                return Ok(());
-            }
-        }
-
-        if let Some(browser_env) = std::env::var_os("BROWSER") {
-            let browser_env = browser_env.to_string_lossy().to_string();
-            for candidate in browser_env.split(':').filter(|c| !c.is_empty()) {
-                if try_open(candidate, &[&file_url])? {
-                    info!(path = %absolute.display(), opener = %candidate, "opened review output in browser");
-                    return Ok(());
-                }
-            }
-        }
-
-        for candidate in ["google-chrome", "chromium-browser", "chromium", "firefox"] {
-            if try_open(candidate, &["--new-window", &file_url])?
-                || try_open(candidate, &[&file_url])?
-            {
-                info!(path = %absolute.display(), opener = %candidate, "opened review output in browser");
-                return Ok(());
-            }
-        }
-
-        if try_open("xdg-open", &[&path_str])? {
-            info!(path = %absolute.display(), opener = "xdg-open", "opened review output in browser");
-            return Ok(());
-        }
-        if try_open("gio", &["open", &path_str])? {
-            info!(path = %absolute.display(), opener = "gio open", "opened review output in browser");
-            return Ok(());
-        }
+    if try_open("xdg-open", &[path_str])? {
+        info!(path = %absolute.display(), opener = "xdg-open", "opened review output in browser");
+        return Ok(());
+    }
+    if try_open("gio", &["open", path_str])? {
+        info!(path = %absolute.display(), opener = "gio open", "opened review output in browser");
+        return Ok(());
     }
 
     anyhow::bail!(
@@ -182,18 +210,22 @@ fn is_wsl() -> bool {
     false
 }
 
+const ENV_APPDATA: &str = "APPDATA";
+const ENV_HOME: &str = "HOME";
+const ENV_XDG_CONFIG_HOME: &str = "XDG_CONFIG_HOME";
+
 /// Get the calibration profiles directory path.
 pub fn get_calibration_dir() -> Result<std::path::PathBuf> {
     let base = if cfg!(target_os = "windows") {
-        std::env::var("APPDATA")?
+        std::env::var(ENV_APPDATA)?
     } else if cfg!(target_os = "macos") {
-        std::path::PathBuf::from(std::env::var("HOME")?)
+        std::path::PathBuf::from(std::env::var(ENV_HOME)?)
             .join("Library/Application Support")
             .to_string_lossy()
             .to_string()
     } else {
-        std::env::var("XDG_CONFIG_HOME")
-            .or_else(|_| std::env::var("HOME").map(|h| format!("{h}/.config")))
+        std::env::var(ENV_XDG_CONFIG_HOME)
+            .or_else(|_| std::env::var(ENV_HOME).map(|h| format!("{h}/.config")))
             .map_err(|_| anyhow::anyhow!("Neither XDG_CONFIG_HOME nor HOME set"))?
     };
     Ok(std::path::PathBuf::from(base).join("do-movie-radio-play/profiles"))

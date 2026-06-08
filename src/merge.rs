@@ -99,7 +99,8 @@ fn merge_by_gap_threshold(segments: Vec<&Segment>, min_gap_ms: u64) -> Vec<Segme
             });
             current_start = segment.start_ms;
             current_confidence = segment.confidence;
-            current_tags = segment.tags.clone();
+            current_tags.clear();
+            current_tags.extend(segment.tags.iter().cloned());
         }
         current_end = segment.end_ms;
     }
@@ -140,10 +141,11 @@ fn merge_sparse_segments(segments: Vec<&Segment>, min_gap_ms: u64) -> Vec<Segmen
             });
             current_start = segment.start_ms;
             current_confidence = segment.confidence;
-            current_tags = segment.tags.clone();
+            current_tags.clear();
+            current_tags.extend(segment.tags.iter().cloned());
         } else {
             current_confidence = (current_confidence + segment.confidence) / 2.0;
-            current_tags.extend(segment.tags.clone());
+            current_tags.extend(segment.tags.iter().cloned());
         }
         current_end = segment.end_ms;
     }

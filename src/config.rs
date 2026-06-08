@@ -1,15 +1,33 @@
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use std::{env, fs, path::PathBuf};
+use std::{env, fmt, fs, path::PathBuf};
 
 const VALID_VAD_ENGINES: [&str; 3] = ["energy", "spectral", "hybrid"];
-pub const VALID_MERGE_STRATEGIES: [&str; 3] = ["all", "longest", "sparse"];
+
+/// Merge strategy for combining non-voice segments.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MergeStrategy {
+    All,
+    Longest,
+    Sparse,
+}
+
+impl fmt::Display for MergeStrategy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MergeStrategy::All => write!(f, "all"),
+            MergeStrategy::Longest => write!(f, "longest"),
+            MergeStrategy::Sparse => write!(f, "sparse"),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct MergeOptions {
     pub min_gap_to_merge: u32,
-    pub merge_strategy: String,
+    pub merge_strategy: MergeStrategy,
     pub min_speech_duration: u32,
     pub min_silence_duration: u32,
     pub silence_threshold_db: i32,
@@ -19,7 +37,7 @@ impl Default for MergeOptions {
     fn default() -> Self {
         Self {
             min_gap_to_merge: 400,
-            merge_strategy: "all".to_string(),
+            merge_strategy: MergeStrategy::All,
             min_speech_duration: 250,
             min_silence_duration: 300,
             silence_threshold_db: -42,
@@ -220,12 +238,6 @@ fn validate_merge_options(opts: &MergeOptions, frame_ms: u32) -> Result<()> {
     }
     if !(opts.silence_threshold_db >= -80 && opts.silence_threshold_db <= -20) {
         bail!("invalid merge_options: silence_threshold_db must be in [-80, -20]");
-    }
-    if !VALID_MERGE_STRATEGIES.contains(&opts.merge_strategy.as_str()) {
-        bail!(
-            "invalid merge_options: merge_strategy must be one of {}",
-            VALID_MERGE_STRATEGIES.join(", ")
-        );
     }
     Ok(())
 }

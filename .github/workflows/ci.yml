@@ -25,6 +25,17 @@ jobs:
       - run: bash scripts/self-fix-loop.sh --help
       - run: bash scripts/self-fix-loop.sh --dry-run --max-retries 1 --timeout 60 --poll-interval 1
 
+  docs_sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate AGENTS.md cross-references and Template Sync table
+        run: |
+          bash -n scripts/update-all-docs.sh
+          chmod +x scripts/update-all-docs.sh
+          bash scripts/update-all-docs.sh --check
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30

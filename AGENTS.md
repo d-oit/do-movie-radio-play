@@ -50,13 +50,14 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 |---------|--------|-------|
 | Gitleaks Scan | Adopted | `.gitleaks.toml` present |
 | Named Constants | Adopted | `bash readonly` block above |
-| `ai-commit.sh` | Gap | Script missing; flagged in STATUS.md |
+| `ai-commit.sh` | Adopted | `scripts/ai-commit.sh` wraps `quality_gate.sh && git add -A && git commit` (issue #76) |
 | Single Source Version | Adopted | `VERSION` file is the source of truth |
 | `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines |
 | Skill Frontmatter | Adopted | Verified in all `.agents/skills/*.md` |
-| Agent Config Dirs | Gap | `.jules/`, `.opencode/`, `.qwen/` missing |
-| `update-all-docs.sh`| Gap | Script missing; flagged in STATUS.md |
+| `update-all-docs.sh` | Adopted | `scripts/update-all-docs.sh` validates skill refs and Template Sync drift (issue #76) |
 | Root Cleanliness | Adopted | No dummy/test/runtime files in root |
+
+> **Closed (2026-06-09, issue #76):** External AI agent config dirs `.jules/`, `.opencode/`, `.qwen/` are not used by this project; the upstream template rows were removed rather than adding empty directories.
 
 ## Agent Coordination References
 - [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)

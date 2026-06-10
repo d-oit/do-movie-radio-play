@@ -1,9 +1,60 @@
-use realfft::RealFftPlanner;
+use realfft::num_complex::Complex;
+use realfft::{RealFftPlanner, RealToComplex};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::sync::Arc;
+
+struct AnalysisCache {
+    planner: RealFftPlanner<f32>,
+    plans: HashMap<usize, Arc<dyn RealToComplex<f32>>>,
+    input: Vec<f32>,
+    output: Vec<Complex<f32>>,
+    spectrum_a: Vec<f32>,
+    spectrum_b: Vec<f32>,
+}
+
+impl AnalysisCache {
+    fn new() -> Self {
+        Self {
+            planner: RealFftPlanner::new(),
+            plans: HashMap::new(),
+            input: Vec::new(),
+            output: Vec::new(),
+            spectrum_a: Vec::new(),
+            spectrum_b: Vec::new(),
+        }
+    }
+
+    fn get_plan(&mut self, size: usize) -> Arc<dyn RealToComplex<f32>> {
+        self.plans
+            .entry(size)
+            .or_insert_with(|| self.planner.plan_fft_forward(size))
+            .clone()
+    }
+
+    fn ensure_buffers(&mut self, fft_size: usize) {
+        if self.input.len() < fft_size {
+            self.input.resize(fft_size, 0.0);
+        }
+        let output_size = fft_size / 2 + 1;
+        if self.output.len() < output_size {
+            self.output.resize(output_size, Complex::new(0.0, 0.0));
+        }
+    }
+
+    fn ensure_flux_buffers(&mut self, output_size: usize) {
+        if self.spectrum_a.len() < output_size {
+            self.spectrum_a.resize(output_size, 0.0);
+        }
+        if self.spectrum_b.len() < output_size {
+            self.spectrum_b.resize(output_size, 0.0);
+        }
+    }
+}
 
 thread_local! {
-    static FFT_PLANNER: RefCell<RealFftPlanner<f32>> = RefCell::new(RealFftPlanner::new());
+    static CACHE: RefCell<AnalysisCache> = RefCell::new(AnalysisCache::new());
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -89,72 +140,83 @@ fn compute_zcr(samples: &[f32]) -> f32 {
 fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, f32, f32)> {
     let fft_size = next_power_of_2(samples.len().max(512));
 
-    let fft = FFT_PLANNER.with(|p| p.borrow_mut().plan_fft_forward(fft_size));
-    let mut input = fft.make_input_vec();
+    let (entropy, flatness, centroid, low_ratio, high_ratio) = CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let fft = cache.get_plan(fft_size);
+        cache.ensure_buffers(fft_size);
 
-    if samples.len() >= fft_size {
-        input.copy_from_slice(&samples[..fft_size]);
-    } else {
-        input[..samples.len()].copy_from_slice(samples);
-        input[samples.len()..].fill(0.0);
-    };
+        let cache_ptr = &mut *cache;
+        let input = &mut cache_ptr.input;
+        let output = &mut cache_ptr.output;
 
-    let mut output = fft.make_output_vec();
-    if fft.process(&mut input, &mut output).is_err() {
-        return Err(anyhow::anyhow!("FFT processing failed"));
-    }
-
-    // Optimization: Fuse multiple spectral feature calculations into a single pass over the FFT output.
-    // This avoids an intermediate Vec<f32> allocation for magnitudes and reduces iterations.
-    let sample_rate = 16000.0f32;
-    let bin_width = sample_rate / fft_size as f32;
-    let inv_ln_2 = 1.0 / 2.0f32.ln();
-
-    let mut weighted_sum = 0.0f32;
-    let mut total_mag = 0.0f32;
-    let mut low_mag_sum = 0.0f32;
-    let mut high_mag_sum = 0.0f32;
-    let mut log_mag_sum = 0.0f32;
-    let mut mag_log_mag_sum = 0.0f32;
-    let mut pos_count = 0usize;
-
-    for (i, c) in output.iter().enumerate() {
-        let mag = (c.re * c.re + c.im * c.im).sqrt();
-        let freq = i as f32 * bin_width;
-
-        weighted_sum += freq * mag;
-        total_mag += mag;
-
-        if freq < 250.0 {
-            low_mag_sum += mag;
-        } else if freq > 4000.0 {
-            high_mag_sum += mag;
-        }
-
-        if mag > 1e-10 {
-            let ln_mag = mag.ln();
-            log_mag_sum += ln_mag;
-            mag_log_mag_sum += mag * ln_mag;
-            pos_count += 1;
-        }
-    }
-
-    if total_mag > 0.0 {
-        let entropy = ((total_mag.ln() - mag_log_mag_sum / total_mag) * inv_ln_2).max(0.0);
-        let flatness = if pos_count > 0 {
-            let geometric_mean = (log_mag_sum / pos_count as f32).exp();
-            let arithmetic_mean = total_mag / output.len() as f32;
-            (geometric_mean / arithmetic_mean).min(1.0)
+        if samples.len() >= fft_size {
+            input[..fft_size].copy_from_slice(&samples[..fft_size]);
         } else {
-            1.0
+            input[..samples.len()].copy_from_slice(samples);
+            input[samples.len()..fft_size].fill(0.0);
         };
-        let centroid = weighted_sum / total_mag;
-        let low_ratio = low_mag_sum / total_mag;
-        let high_ratio = high_mag_sum / total_mag;
-        Ok((entropy, flatness, centroid, low_ratio, high_ratio))
-    } else {
-        Ok((7.0, 1.0, 0.0, 0.0, 0.0))
-    }
+
+        if fft
+            .process(&mut input[..fft_size], &mut output[..fft_size / 2 + 1])
+            .is_err()
+        {
+            return Err(anyhow::anyhow!("FFT processing failed"));
+        }
+
+        let sample_rate = 16000.0f32;
+        let bin_width = sample_rate / fft_size as f32;
+        let inv_ln_2 = 1.0 / 2.0f32.ln();
+
+        let low_bin_limit = (250.0 / bin_width).floor() as usize;
+        let high_bin_limit = (4000.0 / bin_width).ceil() as usize;
+
+        let mut weighted_sum = 0.0f32;
+        let mut total_mag = 0.0f32;
+        let mut low_mag_sum = 0.0f32;
+        let mut high_mag_sum = 0.0f32;
+        let mut log_mag_sum = 0.0f32;
+        let mut mag_log_mag_sum = 0.0f32;
+        let mut pos_count = 0usize;
+
+        for (i, c) in output[..fft_size / 2 + 1].iter().enumerate() {
+            let mag = (c.re * c.re + c.im * c.im).sqrt();
+
+            weighted_sum += i as f32 * mag;
+            total_mag += mag;
+
+            if i < low_bin_limit {
+                low_mag_sum += mag;
+            } else if i > high_bin_limit {
+                high_mag_sum += mag;
+            }
+
+            if mag > 1e-10 {
+                let ln_mag = mag.ln();
+                log_mag_sum += ln_mag;
+                mag_log_mag_sum += mag * ln_mag;
+                pos_count += 1;
+            }
+        }
+
+        if total_mag > 0.0 {
+            let entropy = ((total_mag.ln() - mag_log_mag_sum / total_mag) * inv_ln_2).max(0.0);
+            let flatness = if pos_count > 0 {
+                let geometric_mean = (log_mag_sum / pos_count as f32).exp();
+                let arithmetic_mean = total_mag / (fft_size / 2 + 1) as f32;
+                (geometric_mean / arithmetic_mean).min(1.0)
+            } else {
+                1.0
+            };
+            let centroid = (weighted_sum * bin_width) / total_mag;
+            let low_ratio = low_mag_sum / total_mag;
+            let high_ratio = high_mag_sum / total_mag;
+            Ok((entropy, flatness, centroid, low_ratio, high_ratio))
+        } else {
+            Ok((7.0, 1.0, 0.0, 0.0, 0.0))
+        }
+    })?;
+
+    Ok((entropy, flatness, centroid, low_ratio, high_ratio))
 }
 
 fn next_power_of_2(n: usize) -> usize {
@@ -170,66 +232,73 @@ fn compute_spectral_flux(samples: &[f32]) -> f32 {
     }
 
     let hop_size = 256;
+    let output_size = window_size / 2 + 1;
 
-    let mut flux = 0.0f32;
-    let mut count = 0usize;
-    let mut has_prev = false;
+    CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let fft = cache.get_plan(window_size);
+        cache.ensure_buffers(window_size);
+        cache.ensure_flux_buffers(output_size);
 
-    let fft = FFT_PLANNER.with(|p| p.borrow_mut().plan_fft_forward(window_size));
-    let mut input = fft.make_input_vec();
-    let mut output = fft.make_output_vec();
+        let mut flux = 0.0f32;
+        let mut count = 0usize;
+        let mut has_prev = false;
+        let mut current_is_a = true;
 
-    // Use two buffers to avoid allocations in the loop
-    let mut spectrum_a = vec![0.0f32; window_size / 2 + 1];
-    let mut spectrum_b = vec![0.0f32; window_size / 2 + 1];
-    let mut current_is_a = true;
+        for i in (0..=samples.len().saturating_sub(window_size)).step_by(hop_size) {
+            let window = &samples[i..i + window_size];
 
-    for i in (0..=samples.len().saturating_sub(window_size)).step_by(hop_size) {
-        let window = &samples[i..i + window_size];
-        input.copy_from_slice(window);
-        if fft.process(&mut input, &mut output).is_err() {
-            continue;
-        }
+            let cache_ptr = &mut *cache;
+            cache_ptr.input[..window_size].copy_from_slice(window);
 
-        if current_is_a {
-            let mut diff_sum = 0.0f32;
-            for (c, (m, &p)) in output
-                .iter()
-                .zip(spectrum_a.iter_mut().zip(spectrum_b.iter()))
+            if fft
+                .process(
+                    &mut cache_ptr.input[..window_size],
+                    &mut cache_ptr.output[..output_size],
+                )
+                .is_err()
             {
-                let mag = (c.re * c.re + c.im * c.im).sqrt();
-                *m = mag;
-                diff_sum += (mag - p).max(0.0);
+                continue;
             }
+
+            let mut diff_sum = 0.0f32;
+            if current_is_a {
+                for (c, (m, &p)) in cache_ptr.output[..output_size].iter().zip(
+                    cache_ptr.spectrum_a[..output_size]
+                        .iter_mut()
+                        .zip(cache_ptr.spectrum_b[..output_size].iter()),
+                ) {
+                    let mag = (c.re * c.re + c.im * c.im).sqrt();
+                    *m = mag;
+                    diff_sum += (mag - p).max(0.0);
+                }
+            } else {
+                for (c, (m, &p)) in cache_ptr.output[..output_size].iter().zip(
+                    cache_ptr.spectrum_b[..output_size]
+                        .iter_mut()
+                        .zip(cache_ptr.spectrum_a[..output_size].iter()),
+                ) {
+                    let mag = (c.re * c.re + c.im * c.im).sqrt();
+                    *m = mag;
+                    diff_sum += (mag - p).max(0.0);
+                }
+            }
+
             if has_prev {
                 flux += diff_sum;
                 count += 1;
             }
+
+            has_prev = true;
+            current_is_a = !current_is_a;
+        }
+
+        if count > 0 {
+            flux / count as f32
         } else {
-            let mut diff_sum = 0.0f32;
-            for (c, (m, &p)) in output
-                .iter()
-                .zip(spectrum_b.iter_mut().zip(spectrum_a.iter()))
-            {
-                let mag = (c.re * c.re + c.im * c.im).sqrt();
-                *m = mag;
-                diff_sum += (mag - p).max(0.0);
-            }
-            if has_prev {
-                flux += diff_sum;
-                count += 1;
-            }
+            0.0
         }
-
-        has_prev = true;
-        current_is_a = !current_is_a;
-    }
-
-    if count > 0 {
-        flux / count as f32
-    } else {
-        0.0
-    }
+    })
 }
 
 #[cfg(test)]

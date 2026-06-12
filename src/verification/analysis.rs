@@ -144,6 +144,7 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
         let mut cache = cache.borrow_mut();
         let fft = cache.get_plan(fft_size);
         cache.ensure_buffers(fft_size);
+        let output_size = fft_size / 2 + 1;
 
         let cache_ptr = &mut *cache;
         let input = &mut cache_ptr.input;
@@ -157,7 +158,7 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
         };
 
         if fft
-            .process(&mut input[..fft_size], &mut output[..fft_size / 2 + 1])
+            .process(&mut input[..fft_size], &mut output[..output_size])
             .is_err()
         {
             return Err(anyhow::anyhow!("FFT processing failed"));
@@ -178,7 +179,7 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
         let mut mag_log_mag_sum = 0.0f32;
         let mut pos_count = 0usize;
 
-        for (i, c) in output[..fft_size / 2 + 1].iter().enumerate() {
+        for (i, c) in output[..output_size].iter().enumerate() {
             let mag = (c.re * c.re + c.im * c.im).sqrt();
 
             weighted_sum += i as f32 * mag;
@@ -202,7 +203,7 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
             let entropy = ((total_mag.ln() - mag_log_mag_sum / total_mag) * inv_ln_2).max(0.0);
             let flatness = if pos_count > 0 {
                 let geometric_mean = (log_mag_sum / pos_count as f32).exp();
-                let arithmetic_mean = total_mag / (fft_size / 2 + 1) as f32;
+                let arithmetic_mean = total_mag / output_size as f32;
                 (geometric_mean / arithmetic_mean).min(1.0)
             } else {
                 1.0

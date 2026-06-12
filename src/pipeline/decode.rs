@@ -37,6 +37,16 @@ fn decode_via_symphonia(
     target_sample_rate: u32,
 ) -> Result<(Vec<f32>, u32)> {
     let file = std::fs::File::open(path)?;
+
+    // Defense-in-depth: ensure it's a file, not a directory or device
+    let metadata = file.metadata()?;
+    if !metadata.is_file() {
+        bail!(TimelineError::Decode(format!(
+            "input is not a regular file: {}",
+            path.display()
+        )));
+    }
+
     let mss = MediaSourceStream::new(Box::new(file), Default::default());
     let mut hint = Hint::new();
     if let Some(ext) = extension {
@@ -105,24 +115,22 @@ fn decode_via_symphonia(
 
 fn decode_via_ffmpeg(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u32)> {
     let output = Command::new("ffmpeg")
-        .args([
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-nostdin",
-            "-protocol_whitelist",
-            "file,pipe,fd",
-            "-i",
-            &path.display().to_string(),
-            "-vn",
-            "-ac",
-            "1",
-            "-ar",
-            &target_sample_rate.to_string(),
-            "-f",
-            "s16le",
-            "-",
-        ])
+        .arg("-hide_banner")
+        .arg("-loglevel")
+        .arg("error")
+        .arg("-nostdin")
+        .arg("-protocol_whitelist")
+        .arg("file,pipe,fd")
+        .arg("-i")
+        .arg(path)
+        .arg("-vn")
+        .arg("-ac")
+        .arg("1")
+        .arg("-ar")
+        .arg(target_sample_rate.to_string())
+        .arg("-f")
+        .arg("s16le")
+        .arg("-")
         .output()
         .context("failed to execute ffmpeg")?;
 

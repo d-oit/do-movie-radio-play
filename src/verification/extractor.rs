@@ -28,29 +28,27 @@ pub fn extract_segment_audio(
     );
 
     let output = Command::new("ffmpeg")
-        .args([
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-nostdin",
-            "-protocol_whitelist",
-            "file,pipe,fd",
-            "-ss",
-            &format!("{start_sec}"),
-            "-i",
-            &media_path.display().to_string(),
-            "-t",
-            &duration_str,
-            "-vn",
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-acodec",
-            "pcm_s16le",
-            "-y",
-            &output_path.display().to_string(),
-        ])
+        .arg("-hide_banner")
+        .arg("-loglevel")
+        .arg("error")
+        .arg("-nostdin")
+        .arg("-protocol_whitelist")
+        .arg("file,pipe,fd")
+        .arg("-ss")
+        .arg(format!("{start_sec}"))
+        .arg("-i")
+        .arg(media_path)
+        .arg("-t")
+        .arg(duration_str)
+        .arg("-vn")
+        .arg("-ac")
+        .arg("1")
+        .arg("-ar")
+        .arg("16000")
+        .arg("-acodec")
+        .arg("pcm_s16le")
+        .arg("-y")
+        .arg(output_path)
         .output()
         .context("failed to execute ffmpeg for segment extraction")?;
 

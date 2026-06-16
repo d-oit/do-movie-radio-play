@@ -33,11 +33,13 @@ impl SpectralAnalyzer {
         }
     }
 
+    /// Optimized analysis that computes magnitudes into the internal buffer.
     pub fn analyze(&mut self, samples: &[f32]) -> &[f32] {
         let n = samples.len().min(self.fft_len);
         self.input_buf[..n].copy_from_slice(&samples[..n]);
         self.input_buf[n..].fill(0.0);
 
+        // Fuse windowing with input preparation if possible, but here we just optimize the loop
         for (s, h) in self.input_buf.iter_mut().zip(self.hann.iter()) {
             *s *= h;
         }
@@ -51,10 +53,38 @@ impl SpectralAnalyzer {
             return &self.mag_buf;
         }
 
+        // Manual magnitude calculation to avoid Complex::norm() overhead if any
         for (c, m) in self.output_buf.iter().zip(self.mag_buf.iter_mut()) {
             *m = (c.re * c.re + c.im * c.im).sqrt();
         }
         &self.mag_buf
+    }
+
+    /// Optimized analysis that computes magnitudes directly into a provided destination buffer.
+    /// This eliminates one copy of the spectral data.
+    pub fn analyze_into(&mut self, samples: &[f32], out_mag: &mut [f32]) {
+        let n = samples.len().min(self.fft_len);
+        self.input_buf[..n].copy_from_slice(&samples[..n]);
+        self.input_buf[n..].fill(0.0);
+
+        for (s, h) in self.input_buf.iter_mut().zip(self.hann.iter()) {
+            *s *= h;
+        }
+
+        if self
+            .fft
+            .process(&mut self.input_buf, &mut self.output_buf)
+            .is_err()
+        {
+            out_mag.fill(0.0);
+            return;
+        }
+
+        let half_bins = self.fft_len / 2;
+        let limit = out_mag.len().min(half_bins).min(self.output_buf.len());
+        for (c, m) in self.output_buf.iter().zip(out_mag.iter_mut()).take(limit) {
+            *m = (c.re * c.re + c.im * c.im).sqrt();
+        }
     }
 }
 
@@ -99,8 +129,6 @@ impl FeatureExtractor {
             };
         }
 
-        let inv_ln_2 = 1.0 / 2.0f32.ln();
-
         let sum_sq: f32 = samples.iter().map(|v| v * v).sum();
         let rms = (sum_sq / samples.len() as f32).sqrt();
 
@@ -142,8 +170,7 @@ impl FeatureExtractor {
             for (i, &m) in mags.iter().enumerate().take(half_bins) {
                 chunk_mag_sum += m;
 
-                let freq = i as f32 * bin_width;
-                weighted_bin_sum += freq * m;
+                weighted_bin_sum += i as f32 * m;
                 mag_sum += m;
                 if i < low_bin {
                     low += m;
@@ -167,8 +194,8 @@ impl FeatureExtractor {
             }
 
             if chunk_mag_sum > 1e-10 {
-                let chunk_entropy =
-                    (chunk_mag_sum.ln() - chunk_sum_m_ln_m / chunk_mag_sum) * inv_ln_2;
+                let chunk_entropy = (chunk_mag_sum.ln() - chunk_sum_m_ln_m / chunk_mag_sum)
+                    * std::f32::consts::LOG2_E;
                 entropy_acc += chunk_entropy.max(0.0);
                 entropy_count += 1;
             }
@@ -197,7 +224,7 @@ impl FeatureExtractor {
             spectral_flatness,
             spectral_entropy,
             centroid_hz: if mag_sum > 0.0 {
-                weighted_bin_sum / mag_sum
+                (weighted_bin_sum * bin_width) / mag_sum
             } else {
                 0.0
             },
@@ -253,9 +280,7 @@ pub fn compute_features_parallel(frames: &[&[f32]], sample_rate: u32) -> Vec<Fea
         .for_each_init(
             || SpectralAnalyzer::new(fft_len),
             |analyzer, (mags_out, chunk)| {
-                let mags = analyzer.analyze(chunk);
-                let n = mags.len().min(half_bins);
-                mags_out[..n].copy_from_slice(&mags[..n]);
+                analyzer.analyze_into(chunk, mags_out);
             },
         );
 
@@ -283,8 +308,6 @@ fn compute_frame_features_impl(
     sample_rate: u32,
     fft_len: usize,
 ) -> FeatureSet {
-    let inv_ln_2 = 1.0 / 2.0f32.ln();
-
     let sum_sq: f32 = samples.iter().map(|v| v * v).sum();
     let rms = (sum_sq / samples.len() as f32).sqrt();
 
@@ -315,8 +338,7 @@ fn compute_frame_features_impl(
     let mut sum_m_ln_m = 0.0f32;
 
     for (i, &m) in mags.iter().enumerate().take(half_bins) {
-        let freq = i as f32 * bin_width;
-        weighted_bin_sum += freq * m;
+        weighted_bin_sum += i as f32 * m;
         mag_sum += m;
         if i <= low_bin {
             low += m;
@@ -339,7 +361,7 @@ fn compute_frame_features_impl(
     }
 
     let spectral_entropy = if mag_sum > 1e-10 {
-        ((mag_sum.ln() - sum_m_ln_m / mag_sum) * inv_ln_2).max(0.0)
+        ((mag_sum.ln() - sum_m_ln_m / mag_sum) * std::f32::consts::LOG2_E).max(0.0)
     } else {
         0.0
     };
@@ -358,7 +380,7 @@ fn compute_frame_features_impl(
         spectral_flatness,
         spectral_entropy,
         centroid_hz: if mag_sum > 0.0 {
-            weighted_bin_sum / mag_sum
+            (weighted_bin_sum * bin_width) / mag_sum
         } else {
             0.0
         },

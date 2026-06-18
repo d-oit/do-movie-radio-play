@@ -105,12 +105,13 @@ fn decode_via_symphonia(
 
 fn decode_via_ffmpeg(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u32)> {
     let output = Command::new("ffmpeg")
+        .arg("-nostdin")
+        .arg("-protocol_whitelist")
+        .arg("file,pipe,fd")
+        .args(["-hide_banner", "-loglevel", "error"])
+        .arg("-i")
+        .arg(path)
         .args([
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-i",
-            &path.display().to_string(),
             "-vn",
             "-ac",
             "1",

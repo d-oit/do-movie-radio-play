@@ -6,23 +6,26 @@
 
 ## Context
 
-Radio play listeners need narrated descriptions of visual scenes that carry appropriate emotion (tense, joyful, mysterious). The system must support:
+Radio play listeners need narrated descriptions of visual scenes that carry appropriate emotion (tense, joyful, mysterious). The primary output language is **German (de-DE)** — all narration must be synthesized in German by default. The system must support:
 - Free/local models for offline, cost-free operation (CPU or GPU)
 - Paid APIs for maximum quality when budget allows
 - User-configurable provider selection with fallback chains
 - Emotion control: the synthesized voice must convey scene mood
+- **German as default language** with multilingual capability for other locales
 
 ### 2026 TTS Landscape (Researched)
 
-| Provider | Type | Size | Emotion Control | Language | License | Rust Support |
-|----------|------|------|-----------------|----------|---------|--------------|
-| **Kokoro-82M** | Local/ONNX | 82M params | Style tokens per voice | EN (+community langs) | Apache 2.0 | `tts-rs` crate (ONNX) |
-| **Qwen3-TTS** | Local/GGML+ONNX | ~1.5B | Description-based ("speak sadly"), voice cloning | 20+ languages | Apache 2.0 | `qts`, `qwen3-tts-rs`, `rlx-qwen3-tts` |
-| **Orpheus-3B** | Local/GGUF | 3B | Inline tags: `[whispers]`, `[excited]`, `[laughs]`, `[sad]` | EN, DE, multilingual | Apache 2.0 | llama.cpp via FFI |
-| **Supertonic** | Local/ONNX | 99M | Voice style selection | EN | — | `supertonic-ort-backend` |
-| **ElevenLabs v3** | API | — | Emotion via style + stability params, voice cloning | 70+ languages | Paid ($5-22/mo) | HTTP REST |
-| **OpenAI TTS-1 HD** | API | — | Limited (voice selection) | Multi | Paid (per-char) | HTTP REST |
-| **Azure Neural Voice** | API | — | SSML prosody + emotion tags | 100+ languages | Paid (per-char) | HTTP REST |
+| Provider | Type | Size | Emotion Control | German Support | License | Rust Support |
+|----------|------|------|-----------------|----------------|---------|--------------|
+| **Kokoro-82M** | Local/ONNX | 82M params | Style tokens per voice | Community lang packs | Apache 2.0 | `tts-rs` crate (ONNX) |
+| **Qwen3-TTS** | Local/GGML+ONNX | ~1.5B | Description-based ("sprich traurig"), voice cloning | ✅ Native (20+ langs) | Apache 2.0 | `qts`, `qwen3-tts-rs`, `rlx-qwen3-tts` |
+| **Orpheus-3B** | Local/GGUF | 3B | Inline tags: `[whispers]`, `[excited]`, `[laughs]`, `[sad]` | ✅ German fine-tune available | Apache 2.0 | llama.cpp via FFI |
+| **Supertonic** | Local/ONNX | 99M | Voice style selection | ❌ EN only | — | `supertonic-ort-backend` |
+| **ElevenLabs v3** | API | — | Emotion via style + stability params, voice cloning | ✅ Native multilingual | Paid ($5-22/mo) | HTTP REST |
+| **OpenAI TTS-1 HD** | API | — | Limited (voice selection) | ✅ Multi | Paid (per-char) | HTTP REST |
+| **Azure Neural Voice** | API | — | SSML prosody + emotion tags | ✅ de-DE voices | Paid (per-char) | HTTP REST |
+
+**Recommended for German:** Qwen3-TTS (best local quality + emotion in German) or Orpheus-3B German fine-tune (`lex-au/Orpheus-3b-German-FT-Q8_0.gguf`). For paid: ElevenLabs v3 multilingual.
 
 ## Decision
 
@@ -78,7 +81,7 @@ pub struct ProviderCapabilities {
 {
   "voice_synthesis": {
     "provider": "qwen3",
-    "fallback_chain": ["kokoro", "elevenlabs"],
+    "fallback_chain": ["orpheus", "kokoro", "elevenlabs"],
     "emotion_mapping": true,
     "language": "de",
     "voice_id": null,
@@ -92,10 +95,10 @@ pub struct ProviderCapabilities {
         "model_path": "models/qwen3-tts-0.6b.gguf",
         "vocoder_path": "models/qwen3-vocoder.onnx",
         "device": "auto",
-        "voice_description": "A calm male narrator with warm tone"
+        "voice_description": "Ein ruhiger männlicher Erzähler mit warmer Stimme"
       },
       "orpheus": {
-        "model_path": "models/orpheus-3b-q8.gguf",
+        "model_path": "models/orpheus-3b-german-q8.gguf",
         "device": "auto"
       },
       "elevenlabs": {
@@ -129,15 +132,15 @@ The GOAP pipeline's `prepare_voice_scripts` action maps segment tags to emotions
 
 For Orpheus-3B, emotions map to inline tags:
 ```
-[excited] The hero charges through the flames [laughs]
-[sad] She watches the train disappear into the fog
-[whispers] Something moves in the shadows behind them
+[excited] Der Held stürmt durch die Flammen [laughs]
+[sad] Sie sieht zu, wie der Zug im Nebel verschwindet
+[whispers] Etwas bewegt sich in den Schatten hinter ihnen
 ```
 
 For Qwen3-TTS, emotions map to voice descriptions:
 ```
-"Speak with urgency and excitement, as if describing a chase scene"
-"Speak softly and sadly, narrating a farewell"
+"Sprich mit Dringlichkeit und Aufregung, als würdest du eine Verfolgungsjagd beschreiben"
+"Sprich leise und traurig, erzähle einen Abschied"
 ```
 
 ### Device Selection (CPU/GPU)

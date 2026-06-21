@@ -12,6 +12,19 @@ The system should improve after every run. Current pipeline already has a learni
 - Optimal segment boundaries for narration insertion points
 - Voice pacing and timing preferences per movie genre
 
+### Implementation Base: `d-o-hub/rust-self-learning-memory`
+
+Instead of building the learning system from scratch, we integrate the **`do-memory-core`** crate from `d-o-hub/rust-self-learning-memory` (v0.1.33, MIT, same org). This crate provides:
+
+- **Episode lifecycle** (start → execute → score → learn → retrieve) — maps to GOAP execution traces
+- **Pattern recognition** (ToolSequence, DecisionPoint, ErrorRecovery, ContextPattern) — learns which provider+emotion combos work
+- **Reward scoring with reflection** — our quality scoring + adaptation logic
+- **libSQL storage** — same DB backend already in use
+- **CSM cascading retrieval** (via `chaotic_semantic_memory` crate, `d-o-hub`, v0.3.6) — find similar past scenes without external APIs, CPU-only HDC vectors
+- **Episode checkpoints** — enables `--resume` capability
+
+This saves ~2 weeks vs custom implementation and keeps learning logic in a reusable, tested crate.
+
 ### 2026 Self-Improvement Patterns (Researched)
 
 1. **Closed-Loop Self-Improvement** (tianpan.co, 2026): generate → attempt → verify → train cycle without human in loop
@@ -172,10 +185,18 @@ Optional (if quality model available):
 
 ## Implementation
 
+### Dependencies
+
+```toml
+[dependencies]
+do-memory-core = { git = "https://github.com/d-o-hub/rust-self-learning-memory", features = ["csm"] }
+chaotic_semantic_memory = "0.3"  # transitive via do-memory-core csm feature
+```
+
 ### Phase 7.5.1: Trace Recording (2 days)
-- Add `run_traces` and `emotion_outcomes` tables to learning DB
-- Record every GOAP action execution
-- No behavior change, pure observation
+- Wrap GOAP actions as `do-memory-core` episodes with execution steps
+- Map `ActionRecord` to episode step with tool usage tracking
+- Store via existing libsql backend (shared with current learning DB)
 
 ### Phase 7.5.2: Quality Metrics (3 days)
 - Implement automated quality scoring (SNR, timing, consistency)

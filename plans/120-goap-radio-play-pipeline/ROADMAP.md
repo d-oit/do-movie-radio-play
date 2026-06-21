@@ -177,6 +177,30 @@ Radio Play Audio + Quality Report
 | `src/review.rs` | Milestone G (rating UI) | Extend template |
 | `config/profiles/` | Provider selection | New profile type |
 
+## External Crate Dependencies (d-o-hub org)
+
+| Crate | Version | Use | Impact |
+|-------|---------|-----|--------|
+| `do-memory-core` | 0.1.33 | Learning system (ADR-122) — episodes, patterns, reward scoring | Saves ~2 weeks vs custom impl |
+| `chaotic_semantic_memory` | 0.3.6 | Scene similarity search via HDC vectors (CPU-only, no API) | Find similar past scenes for emotion reuse |
+
+These are from the same GitHub org (`d-o-hub`) and share the libSQL backend already in use.
+
+```toml
+# Cargo.toml additions
+[dependencies]
+do-memory-core = { git = "https://github.com/d-o-hub/rust-self-learning-memory", features = ["csm"] }
+```
+
+## Language: German (de-DE) Primary
+
+All narration output defaults to German. The scene description generator and TTS providers must:
+- Generate description text in German
+- Synthesize speech with German pronunciation and prosody
+- Use German emotion descriptions for Qwen3-TTS voice control
+- Support the German Orpheus fine-tune (`Orpheus-3b-German-FT-Q8_0.gguf`)
+- Config override via `"language": "en"` for other locales
+
 ## Open Questions
 
 1. **Scene description quality**: Template-based (deterministic) vs LLM-generated (creative but variable)?

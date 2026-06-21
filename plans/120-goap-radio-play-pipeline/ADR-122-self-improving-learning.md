@@ -34,7 +34,38 @@ This saves ~2 weeks vs custom implementation and keeps learning logic in a reusa
 
 ## Decision
 
-Implement a three-layer learning system that improves radio play quality after every run:
+Implement a three-layer learning system that **autonomously** improves radio play quality after every run. The system is fully self-learning by default — human feedback is optional and only used when explicitly provided.
+
+### Design Principle: Self-Learning First
+
+```
+┌────────────────────────────────────────────┐
+│ AUTONOMOUS LOOP (runs every time)          │
+│                                            │
+│  Execute → Measure → Analyze → Adapt      │
+│     ↑                              │       │
+│     └──────────────────────────────┘       │
+│                                            │
+│  Signals: timing overlap, SNR, gap fit,    │
+│  narration density, emotion consistency,   │
+│  pattern similarity to past runs           │
+└────────────────────────────────────────────┘
+         │
+         ▼ (optional, high-weight when given)
+┌────────────────────────────────────────────┐
+│ HUMAN FEEDBACK (only if provided)          │
+│                                            │
+│  "unnecessary" / "missing" / "wrong tone"  │
+│  → immediately integrated as strong signal │
+│  → but system never waits for human input  │
+└────────────────────────────────────────────┘
+```
+
+The system **never blocks** on human input. It:
+1. Runs the full pipeline autonomously
+2. Self-evaluates output quality via automated metrics
+3. Adapts parameters for the next run
+4. If human feedback arrives later, it's treated as a high-confidence correction
 
 ### Layer 1: Execution Trace Recording (Automatic)
 

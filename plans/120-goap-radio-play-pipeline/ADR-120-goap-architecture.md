@@ -6,36 +6,51 @@
 
 ## Context
 
-The current pipeline extracts non-voice segments from movie audio (decode → VAD → segment → tag → prompt → review) with 99.88% precision. However, converting a full movie into a complete radio play requires additional stages: scene description generation, voice synthesis with emotion, audio mixing, and quality verification. These stages have complex dependencies, variable execution times, and can fail independently.
+The goal is to convert a movie into a **complete radio play** (Hörspiel) that a listener can enjoy without seeing any video. The key insight:
 
-A Goal-Oriented Action Planning (GOAP) architecture provides:
-- Dynamic replanning when stages fail (TTS timeout, GPU OOM, bad audio quality)
-- Cost-aware action selection (local CPU vs GPU vs paid API based on user config)
-- World-state tracking enabling self-improvement across runs
-- Parallelizable independent actions with dependency resolution
+> **The original movie audio is the radio play.** We only add an AI narrator voice to describe what a listener cannot understand without the visual.
+
+Specifically:
+- **Preserve 100%** of the original audio: all dialogue, sound effects, music, ambience
+- **Identify moments** where a listener would be lost without the picture (visual-only scenes, silent actions, scene transitions, title cards, visual gags)
+- **Generate German narration text** describing only what is visually critical
+- **Synthesize an AI narrator voice** for those descriptions
+- **Insert narration** into natural pauses or expand timing slightly — never cut original content
+- **Learn** which moments need narration and which are self-explanatory from audio alone
+
+This is **automated Audiodeskription** (audio description) optimized for radio play format.
+
+### What the existing pipeline already provides
+
+The current extraction pipeline identifies non-voice segments (music, ambience, silence, SFX). But not all non-voice segments need narration — a music interlude is fine without description. The new challenge is:
+
+**Which non-voice (or low-information) segments require visual description for listener comprehension?**
+
+This requires a higher-level analysis:
+1. Does the scene make sense from audio alone? (dialogue explains everything → no narration needed)
+2. Is something visually important happening with no audio cue? (→ needs narration)
+3. Is there a scene change that's only apparent visually? (→ needs brief orientation)
 
 ## Decision
 
-Adopt a GOAP planner as the orchestration layer for the full movie-to-radio-play conversion pipeline.
+Adopt a GOAP planner as the orchestration layer for the radio play generation pipeline.
 
 ### World State Model
 
 ```rust
 struct WorldState {
     movie_decoded: bool,
-    audio_extracted: bool,
-    segments_identified: bool,
-    segments_tagged: bool,
-    scene_descriptions_generated: bool,
-    voice_scripts_prepared: bool,
-    voices_synthesized: bool,
-    audio_mixed: bool,
+    audio_timeline_extracted: bool,       // existing pipeline
+    visual_gaps_identified: bool,         // NEW: moments needing narration
+    narration_scripts_generated: bool,    // German text for narrator
+    narrator_voice_synthesized: bool,     // AI voice audio files
+    radio_play_assembled: bool,           // final mix: original + narrator
     quality_verified: bool,
     // Resource awareness
     gpu_available: bool,
     api_keys_configured: bool,
     local_models_loaded: bool,
-    // Quality metrics from previous runs
+    // Learning
     last_quality_score: f32,
     learnings_applied: bool,
 }
@@ -43,32 +58,59 @@ struct WorldState {
 
 ### Action Registry
 
-| Action | Preconditions | Effects | Cost (CPU) | Cost (GPU) |
-|--------|--------------|---------|------------|------------|
-| `decode_movie` | movie_path exists | audio_extracted=true | 1.0 | 0.3 |
-| `run_vad_pipeline` | audio_extracted | segments_identified=true | 2.0 | 0.5 |
-| `tag_segments` | segments_identified | segments_tagged=true | 0.5 | 0.5 |
-| `generate_descriptions` | segments_tagged | scene_descriptions_generated=true | 3.0 (LLM) | 1.0 |
-| `prepare_voice_scripts` | scene_descriptions_generated | voice_scripts_prepared=true | 1.0 | 1.0 |
-| `synthesize_voices` | voice_scripts_prepared | voices_synthesized=true | 10.0 (CPU TTS) | 2.0 |
-| `mix_audio` | voices_synthesized, audio_extracted | audio_mixed=true | 1.5 | 0.5 |
-| `verify_quality` | audio_mixed | quality_verified=true | 2.0 | 1.0 |
-| `apply_learnings` | quality_verified, learning_db exists | learnings_applied=true | 0.5 | 0.5 |
+| Action | Preconditions | Effects | Cost |
+|--------|--------------|---------|------|
+| `decode_movie` | movie_path exists | movie_decoded=true | 1.0 |
+| `extract_timeline` | movie_decoded | audio_timeline_extracted=true | 2.0 |
+| `identify_visual_gaps` | audio_timeline_extracted | visual_gaps_identified=true | 3.0 |
+| `generate_narration` | visual_gaps_identified | narration_scripts_generated=true | 2.0 |
+| `synthesize_narrator` | narration_scripts_generated | narrator_voice_synthesized=true | 5.0 |
+| `assemble_radio_play` | narrator_voice_synthesized, movie_decoded | radio_play_assembled=true | 1.5 |
+| `verify_quality` | radio_play_assembled | quality_verified=true | 2.0 |
+| `apply_learnings` | quality_verified | learnings_applied=true | 0.5 |
+
+### Key Stage: `identify_visual_gaps`
+
+This is the novel algorithm — determining WHERE narration is needed:
+
+**Input signals:**
+- Non-voice segments from existing VAD pipeline (candidates)
+- Segment tags (music, ambience, silence, SFX)
+- Duration of silence/ambience (long silence = likely visual-only scene)
+- Surrounding context (what audio came before/after)
+- Spectral features (is there ANY audio information for the listener?)
+
+**Decision heuristics (initial, then learned):**
+- Pure silence > 3s in a dialogue-heavy scene → likely needs description
+- Scene boundary (detected via audio fingerprint change) with no dialogue → needs orientation
+- Long ambience-only section between dialogue blocks → may need "what's happening" narration
+- Music-over-visual montage → may need brief description of what's shown
+- Sound effects that are ambiguous without visual context → needs clarification
+
+**Learning signal:**
+- User corrections: "this segment didn't need narration" / "this moment was missing narration"
+- After each run, the decision model improves its gap identification
 
 ### Planner Algorithm
 
 A* search over world-state transitions:
-1. Start: initial world state (movie file available)
-2. Goal: `quality_verified=true` AND `audio_mixed=true`
-3. Search: expand cheapest actions whose preconditions are met
-4. Replan trigger: any action failure, quality score below threshold, or resource change
+1. Start: movie file available
+2. Goal: `radio_play_assembled=true` AND `quality_verified=true`
+3. Replan on: action failure, quality below threshold, resource change
 
-### Replanning Triggers
+### Output Format
 
-- TTS provider timeout → switch to fallback provider
-- GPU OOM → fall back to CPU inference or API
-- Quality verification fails → re-synthesize specific segments with adjusted emotion
-- New learning data available → adjust thresholds before next segment batch
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Final Radio Play Audio                                       │
+├──────────┬─────────────┬──────────────┬────────────┬────────┤
+│ Original │ AI Narrator │  Original    │ AI Narrator│Original│
+│ Dialogue │ "Er betritt │  SFX+Music   │ "Sie sieht │Dialogue│
+│ + SFX    │  den Raum"  │  (unchanged) │  ihn an"   │+ Music │
+└──────────┴─────────────┴──────────────┴────────────┴────────┘
+```
+
+The narrator voice is **inserted** at identified visual gaps, never replacing original content.
 
 ## Implementation Phases
 
@@ -77,55 +119,65 @@ A* search over world-state transitions:
 - `src/goap/planner.rs` — A* search with cost functions
 - `src/goap/actions.rs` — Action registry wrapping existing pipeline stages
 
-### Phase 7.2: Scene Description (1 week)
-- `src/goap/describe.rs` — Generate listener descriptions for visual scenes
-- Input: tagged non-voice segments + movie metadata
-- Output: narrator scripts with emotion markers
+### Phase 7.2: Visual Gap Identification (2 weeks)
+- `src/goap/gaps.rs` — Algorithm to find moments needing narration
+- Uses existing segment tags + duration + context analysis
+- Outputs: `Vec<NarrationGap>` with timestamp, duration, context, priority
+- Initial heuristics → refined via learning after each run
 
-### Phase 7.3: Voice Synthesis Integration (2 weeks)
-- `src/goap/synthesize.rs` — TTS provider abstraction
-- Provider trait with local/API implementations
-- See ADR-121 for provider details
+### Phase 7.3: Narration Generation (1 week)
+- `src/goap/narrate.rs` — Generate German narration text for each gap
+- Input: gap context (what audio is around it, segment tags, duration)
+- Output: brief German description text + emotion annotation
+- Constraint: narration must fit within available time slot
 
-### Phase 7.4: Audio Assembly (1 week)
-- `src/goap/mixer.rs` — Combine original audio + synthesized narration
-- Crossfade, ducking, volume normalization
-- Output: final radio play audio file (WAV/MP3/FLAC)
+### Phase 7.4: Voice Synthesis (2 weeks)
+- `src/voice/` — TTS provider abstraction (see ADR-121)
+- Synthesize German narrator voice with appropriate emotion
+- Single consistent narrator voice across entire movie
 
-### Phase 7.5: Quality Loop (ongoing)
-- `src/goap/verify.rs` — Automated quality checks
-- Stores results in learning DB for next-run improvement
-- See ADR-122 for self-improvement architecture
+### Phase 7.5: Assembly (1 week)
+- `src/goap/assemble.rs` — Insert narrator audio into original timeline
+- Strategies: insert in natural pauses, or time-stretch gaps slightly
+- Never cut/remove original audio content
+- Crossfade narrator in/out (50-100ms)
+- Volume ducking of background during narration
+
+### Phase 7.6: Quality + Learning (ongoing)
+- Automated self-evaluation: narrator doesn't overlap, timing fits, emotion consistent
+- Self-learning: system adjusts gap detection thresholds autonomously after each run
+- Pattern accumulation: similar scenes across movies share learned decisions
+- Optional human feedback: high-weight correction signal, but system never waits for it
 
 ## CLI Integration
 
 ```bash
-# Full conversion with GOAP orchestration
-timeline radio-play <MOVIE> --output <DIR> --config <JSON>
+# Full radio play generation
+timeline radio-play <MOVIE> --output <FILE> --language de
 
-# Resume interrupted conversion (GOAP replans from last checkpoint)
+# Show what would be narrated (gap analysis only)
+timeline radio-play <MOVIE> --analyze-only
+
+# Resume interrupted generation
 timeline radio-play --resume <STATE_FILE>
-
-# Dry-run showing planned actions without execution
-timeline radio-play <MOVIE> --plan-only
 ```
 
 ## Consequences
 
 **Positive:**
-- Resilient to partial failures — replans around broken stages
-- Resource-adaptive — selects cheapest viable path (CPU/GPU/API)
-- Enables incremental improvement through learning feedback loop
-- Parallelizes independent actions (tag + describe can run concurrently)
-- Deterministic planning given same world state (auditable)
+- Preserves 100% of original movie audio — nothing is lost
+- Only adds narration where truly needed for listener comprehension
+- Learns to identify visual gaps better with each run
+- Works with any movie without prior metadata or subtitle files
+- Deterministic gap identification given same world state
 
 **Negative:**
-- Adds architectural complexity vs linear pipeline
-- Planner overhead (~10ms per replan) — negligible vs TTS latency
-- Requires careful world-state serialization for resume capability
-- Testing requires mocking world-state transitions
+- Gap identification is the hardest problem — initial heuristics will be imperfect
+- Without video analysis, purely audio-based gap detection has inherent limitations
+- May over-narrate (annoying) or under-narrate (confusing) until learned
+- Timing constraints: narration must fit in available audio gaps
 
 **Risks:**
-- Experimental: full GOAP for media pipelines is novel (2026)
-- TTS quality may not match professional radio plays initially
-- Large movies (2+ hours) need streaming/chunked processing (existing Phase 6.4 plan)
+- Audio-only gap detection may miss important visual moments
+- Future: video frame analysis (VLM) could dramatically improve gap identification
+- German TTS quality for emotional narration is still evolving (2026)

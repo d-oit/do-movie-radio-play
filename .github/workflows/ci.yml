@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash -n scripts/self-fix-loop.sh
       - run: bash -n scripts/handoff-to-tasks.sh
@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
       - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
@@ -53,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
       - run: bash scripts/benchmark.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/ci.json
@@ -84,7 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
       - run: cargo build --quiet

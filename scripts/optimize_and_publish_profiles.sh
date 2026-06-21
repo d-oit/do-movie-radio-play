@@ -7,7 +7,6 @@ min_coverage_ratio=${3:-0.7}
 
 previous_report="analysis/optimization/fp-sweep-ranked.json"
 comparison_report="analysis/optimization/fp-sweep-comparison.json"
-changelog_note="analysis/learnings/latest-optimization-note.md"
 
 echo "[1/4] Running optimization sweep..."
 python3 scripts/optimize_fp_sweep.py \

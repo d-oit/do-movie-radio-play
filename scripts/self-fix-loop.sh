@@ -10,11 +10,9 @@ STRICT_VALIDATION="${SELF_FIX_LOOP_STRICT_VALIDATION:-1}"
 DRY_RUN=0
 BASE_BRANCH="main"
 
-START_TS="$(date +%s)"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 HANDOFF_DIR="${REPO_ROOT}/analysis/handoffs"
 CI_LOG_FILE=""
-LAST_HANDOFF_FILE=""
 
 log() {
   printf '[self-fix-loop] %s\n' "$*"
@@ -204,7 +202,6 @@ write_handoff_bundle() {
   mkdir -p "$HANDOFF_DIR"
   local handoff_file
   handoff_file="${HANDOFF_DIR}/self-fix-loop-iter-${iteration}-$(date +%Y%m%d-%H%M%S).md"
-  LAST_HANDOFF_FILE="$handoff_file"
 
   cat >"$handoff_file" <<EOF
 # Self-Fix Loop Handoff (Iteration ${iteration})

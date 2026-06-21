@@ -1,0 +1,352 @@
+[WARN]   src/pipeline/segmenter.rs: 541 lines (max 500)
+[WARN]   src/pipeline/mod.rs: 527 lines (max 500)
+[WARN]   src/handlers.rs: 789 lines (max 500)
+[WARN]   src/verification/mod.rs: 565 lines (max 500)
+[WARN]   src/learning/database.rs: 1061 lines (max 500)
+[FAIL] LOC: 5 files exceed 500 lines
+[PASS] Format: OK
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.33s
+[PASS] Clippy: OK
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.32s
+[PASS] Build: OK
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s
+     Running unittests src/lib.rs (target/debug/deps/movie_nonvoice_timeline-489cc8388fdfe729)
+
+running 99 tests
+test config::tests::default_config_valid ... ok
+test config::tests::from_args_with_overrides ... ok
+test config::tests::hybrid_vad_engine_is_accepted ... ok
+test config::tests::invalid_energy_threshold_is_rejected ... ok
+test config::tests::max_non_voice_must_be_at_least_frame_ms ... ok
+test config::tests::invalid_vad_engine_is_rejected ... ok
+test config::tests::min_must_not_exceed_max ... ok
+test config::tests::min_non_voice_must_be_at_least_frame_ms ... ok
+test goap::gaps::tests::test_identify_long_gap ... ok
+test goap::planner::tests::test_plan_with_existing_state ... ok
+test goap::planner::tests::test_impossible_goal ... ok
+test goap::orchestrator::tests::test_orchestrator_run ... ok
+test io::edl::tests::edl_export_basic ... ok
+test goap::planner::tests::test_radio_play_pipeline_plan ... ok
+test io::vtt::tests::vtt_export_basic ... ok
+test io::json::tests::serde_roundtrip ... ok
+test learning::adaptive_thresholds::tests::learning_state_default ... ok
+test learning::adaptive_thresholds::tests::recent_fp_rate_calculation ... ok
+test learning::adaptive_thresholds::tests::record_false_positive_adjusts_thresholds ... ok
+test learning::adaptive_thresholds::tests::save_and_load_roundtrip ... ok
+test learning::database::tests::test_foreign_key_enforcement ... ok
+test learning::database::tests::test_initialize_creates_tables ... ok
+test learning::database::tests::test_gap_decisions_storage ... ok
+test learning::database::tests::test_false_positive_rate ... ok
+test learning::database::tests::test_pragma_foreign_keys_is_on ... ok
+test learning::database::tests::test_record_false_positive ... ok
+test learning::database::tests::test_record_verification ... ok
+test learning::database::tests::test_record_fingerprints_atomicity ... ok
+test learning::database::tests::test_migration_from_json_to_columns ... ok
+test pipeline::decode::tests::test_decode_audio_dispatch_ffmpeg ... ok
+test pipeline::decode::tests::test_decode_via_symphonia_stereo ... ok
+test learning::database::tests::test_threshold_recommendations_low_samples ... ok
+test pipeline::features::tests::dc_signal_has_low_centroid ... ok
+test pipeline::features::tests::empty_input_returns_zeros ... ok
+test pipeline::features::tests::noise_has_high_flux ... ok
+test learning::database::tests::test_threshold_recommendations_from_fps ... ok
+test pipeline::decode::tests::test_decode_via_symphonia_wav ... ok
+test pipeline::nonvoice_expand::tests::does_not_expand_into_speech_leaning_ambiguous_frames ... ok
+test pipeline::framing::tests::frame_count_is_stable ... ok
+test pipeline::nonvoice_expand::tests::expands_into_adjacent_ambiguous_frames ... ok
+test pipeline::prompts::tests::prompts_set_for_eligible_segments ... ok
+test pipeline::framing::tests::frame_count_parallel_is_stable ... ok
+test pipeline::resample::tests::resample_empty_input ... ok
+test pipeline::resample::tests::resample_identity_when_rates_match ... ok
+test pipeline::segmenter::tests::all_merge_policy_respects_gap_threshold ... ok
+test pipeline::segmenter::tests::bridges_non_voice_across_short_speech_gap ... ok
+test pipeline::segmenter::tests::merge_gap_works ... ok
+test pipeline::segmenter::tests::prune_short_low_confidence_speech_segments ... ok
+test pipeline::segmenter::tests::residual_gap_bridge_merges_tiny_final_gap ... ok
+test pipeline::segmenter::tests::sparse_merge_policy_merges_close_non_voice_segments ... ok
+test pipeline::speech_evidence::tests::filters_low_confidence_non_speech_like_segments ... ok
+test pipeline::tags::tests::tag_mapping_stable ... ok
+test pipeline::pipeline_tests::test_run_pipeline_smoke ... ok
+test pipeline::tail_recovery::tests::enforces_minimum_left_extension_before_stopping ... ok
+test pipeline::tail_recovery::tests::extends_single_terminal_segment_left ... ok
+test pipeline::tail_recovery::tests::skips_minimum_extension_floor_for_large_min_non_voice ... ok
+test pipeline::tests::ambiguous_expand_bounded_for_non_sparse_profiles ... ok
+test pipeline::tests::ambiguous_expand_unbounded_for_sparse_profiles ... ok
+test pipeline::tests::residual_bridge_gap_is_bounded_for_non_sparse_profiles ... ok
+test pipeline::tests::residual_bridge_gap_stays_wide_for_sparse_profiles ... ok
+test pipeline::tests::speech_evidence_filter_disabled_for_non_sparse_profiles ... ok
+test pipeline::tests::speech_evidence_filter_enabled_for_sparse_profiles ... ok
+test pipeline::tests::verification_filter_applies_to_sparse_low_min_non_voice_profiles ... ok
+test pipeline::tests::verification_filter_skips_non_sparse_profiles ... ok
+test pipeline::tri_state::tests::ambiguous_frames_bridge_neighboring_speech ... ok
+test pipeline::tri_state::tests::low_likelihood_frames_stay_non_voice ... ok
+test pipeline::tri_state::tests::music_like_frame_stays_non_speech ... ok
+test pipeline::vad::hybrid::tests::hybrid_classifies_typical_speech_like_frame_as_speech ... ok
+test pipeline::vad::hybrid::tests::hybrid_penalizes_low_energy_and_low_spectral_frame ... ok
+test pipeline::vad::tests::adaptive_thresholds_relax_for_noisy_frames ... ok
+test pipeline::vad::tests::create_engine_supports_hybrid ... ok
+test review::tests::test_xss_escaping_in_review_html ... ok
+test review_template::tests::test_escape_ampersand ... ok
+test review_template::tests::test_escape_json_for_script ... ok
+test review_template::tests::test_escape_line_terminators ... ok
+test review_template::tests::test_template_loads_and_formats ... ok
+test review_template::tests::test_url_revoke_constant_is_used_in_output ... ok
+test validation::compare::tests::duration_metrics_handle_many_to_one_matches ... ok
+test validation::compare::tests::metrics_are_stable ... ok
+test validation::srt::tests::parses_basic_srt ... ok
+test verification::analysis::tests::rms_computation ... ok
+test verification::analysis::tests::spectral_features_empty_input ... ok
+test verification::analysis::tests::spectral_features_silence ... ok
+test pipeline::tags::tests::test_add_tags_indexing_safety ... ok
+test verification::analysis::tests::test_rms_known_values ... ok
+test verification::analysis::tests::test_spectral_centroid_sine ... ok
+test verification::analysis::tests::test_spectral_entropy_white_noise ... ok
+test verification::analysis::tests::test_spectral_flux_loop_range ... ok
+test verification::analysis::tests::test_zcr_sine_wave ... ok
+test verification::analysis::tests::zcr_of_silence_is_zero ... ok
+test verification::extractor::tests::segment_duration_validation ... ok
+test verification::analysis::tests::test_spectral_flatness_sine_vs_noise ... ok
+test pipeline::resample::tests::resample_downsample_48k_to_16k ... ok
+test verification::fingerprint::tests::test_fingerprint_empty ... ok
+test verification::tests::build_thresholds_uses_defaults ... ok
+test verification::tests::false_positive_rate_calculation ... ok
+test verification::tests::verification_status_determination ... ok
+test verification::fingerprint::tests::test_fingerprint_sine ... ok
+test pipeline::decode::tests::test_decode_audio_dispatch ... ok
+
+test result: ok. 99 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running unittests src/main.rs (target/debug/deps/timeline-36f709724b92742e)
+
+running 99 tests
+test config::tests::default_config_valid ... ok
+test config::tests::from_args_with_overrides ... ok
+test config::tests::hybrid_vad_engine_is_accepted ... ok
+test config::tests::invalid_energy_threshold_is_rejected ... ok
+test config::tests::invalid_vad_engine_is_rejected ... ok
+test config::tests::max_non_voice_must_be_at_least_frame_ms ... ok
+test config::tests::min_must_not_exceed_max ... ok
+test config::tests::min_non_voice_must_be_at_least_frame_ms ... ok
+test goap::gaps::tests::test_identify_long_gap ... ok
+test goap::orchestrator::tests::test_orchestrator_run ... ok
+test goap::planner::tests::test_impossible_goal ... ok
+test goap::planner::tests::test_plan_with_existing_state ... ok
+test goap::planner::tests::test_radio_play_pipeline_plan ... ok
+test io::edl::tests::edl_export_basic ... ok
+test io::vtt::tests::vtt_export_basic ... ok
+test io::json::tests::serde_roundtrip ... ok
+test learning::adaptive_thresholds::tests::learning_state_default ... ok
+test learning::adaptive_thresholds::tests::recent_fp_rate_calculation ... ok
+test learning::adaptive_thresholds::tests::record_false_positive_adjusts_thresholds ... ok
+test learning::adaptive_thresholds::tests::save_and_load_roundtrip ... ok
+test learning::database::tests::test_foreign_key_enforcement ... ok
+test learning::database::tests::test_initialize_creates_tables ... ok
+test learning::database::tests::test_gap_decisions_storage ... ok
+test learning::database::tests::test_false_positive_rate ... ok
+test learning::database::tests::test_pragma_foreign_keys_is_on ... ok
+test learning::database::tests::test_record_false_positive ... ok
+test learning::database::tests::test_record_fingerprints_atomicity ... ok
+test learning::database::tests::test_record_verification ... ok
+test learning::database::tests::test_migration_from_json_to_columns ... ok
+test pipeline::decode::tests::test_decode_audio_dispatch_ffmpeg ... ok
+test pipeline::decode::tests::test_decode_via_symphonia_stereo ... ok
+test learning::database::tests::test_threshold_recommendations_low_samples ... ok
+test pipeline::features::tests::dc_signal_has_low_centroid ... ok
+test pipeline::features::tests::empty_input_returns_zeros ... ok
+test pipeline::features::tests::noise_has_high_flux ... ok
+test pipeline::framing::tests::frame_count_is_stable ... ok
+test pipeline::framing::tests::frame_count_parallel_is_stable ... ok
+test pipeline::nonvoice_expand::tests::does_not_expand_into_speech_leaning_ambiguous_frames ... ok
+test pipeline::nonvoice_expand::tests::expands_into_adjacent_ambiguous_frames ... ok
+test pipeline::decode::tests::test_decode_via_symphonia_wav ... ok
+test pipeline::prompts::tests::prompts_set_for_eligible_segments ... ok
+test learning::database::tests::test_threshold_recommendations_from_fps ... ok
+test pipeline::resample::tests::resample_empty_input ... ok
+test pipeline::resample::tests::resample_identity_when_rates_match ... ok
+test pipeline::segmenter::tests::all_merge_policy_respects_gap_threshold ... ok
+test pipeline::segmenter::tests::bridges_non_voice_across_short_speech_gap ... ok
+test pipeline::segmenter::tests::merge_gap_works ... ok
+test pipeline::segmenter::tests::prune_short_low_confidence_speech_segments ... ok
+test pipeline::segmenter::tests::residual_gap_bridge_merges_tiny_final_gap ... ok
+test pipeline::segmenter::tests::sparse_merge_policy_merges_close_non_voice_segments ... ok
+test pipeline::speech_evidence::tests::filters_low_confidence_non_speech_like_segments ... ok
+test pipeline::tags::tests::tag_mapping_stable ... ok
+test pipeline::pipeline_tests::test_run_pipeline_smoke ... ok
+test pipeline::tail_recovery::tests::enforces_minimum_left_extension_before_stopping ... ok
+test pipeline::tail_recovery::tests::extends_single_terminal_segment_left ... ok
+test pipeline::tail_recovery::tests::skips_minimum_extension_floor_for_large_min_non_voice ... ok
+test pipeline::tests::ambiguous_expand_bounded_for_non_sparse_profiles ... ok
+test pipeline::tests::ambiguous_expand_unbounded_for_sparse_profiles ... ok
+test pipeline::tests::residual_bridge_gap_is_bounded_for_non_sparse_profiles ... ok
+test pipeline::tests::residual_bridge_gap_stays_wide_for_sparse_profiles ... ok
+test pipeline::tests::speech_evidence_filter_disabled_for_non_sparse_profiles ... ok
+test pipeline::tests::speech_evidence_filter_enabled_for_sparse_profiles ... ok
+test pipeline::tests::verification_filter_applies_to_sparse_low_min_non_voice_profiles ... ok
+test pipeline::tests::verification_filter_skips_non_sparse_profiles ... ok
+test pipeline::tri_state::tests::ambiguous_frames_bridge_neighboring_speech ... ok
+test pipeline::tri_state::tests::low_likelihood_frames_stay_non_voice ... ok
+test pipeline::tri_state::tests::music_like_frame_stays_non_speech ... ok
+test pipeline::vad::hybrid::tests::hybrid_classifies_typical_speech_like_frame_as_speech ... ok
+test pipeline::vad::hybrid::tests::hybrid_penalizes_low_energy_and_low_spectral_frame ... ok
+test pipeline::vad::tests::adaptive_thresholds_relax_for_noisy_frames ... ok
+test pipeline::vad::tests::create_engine_supports_hybrid ... ok
+test review::tests::test_xss_escaping_in_review_html ... ok
+test review_template::tests::test_escape_ampersand ... ok
+test review_template::tests::test_escape_json_for_script ... ok
+test review_template::tests::test_escape_line_terminators ... ok
+test review_template::tests::test_template_loads_and_formats ... ok
+test review_template::tests::test_url_revoke_constant_is_used_in_output ... ok
+test validation::compare::tests::duration_metrics_handle_many_to_one_matches ... ok
+test validation::compare::tests::metrics_are_stable ... ok
+test pipeline::tags::tests::test_add_tags_indexing_safety ... ok
+test validation::srt::tests::parses_basic_srt ... ok
+test verification::analysis::tests::rms_computation ... ok
+test verification::analysis::tests::spectral_features_empty_input ... ok
+test verification::analysis::tests::test_rms_known_values ... ok
+test verification::analysis::tests::test_spectral_centroid_sine ... ok
+test verification::analysis::tests::test_spectral_entropy_white_noise ... ok
+test verification::analysis::tests::test_spectral_flatness_sine_vs_noise ... ok
+test verification::analysis::tests::test_spectral_flux_loop_range ... ok
+test verification::analysis::tests::test_zcr_sine_wave ... ok
+test verification::analysis::tests::zcr_of_silence_is_zero ... ok
+test verification::extractor::tests::segment_duration_validation ... ok
+test verification::fingerprint::tests::test_fingerprint_empty ... ok
+test pipeline::resample::tests::resample_downsample_48k_to_16k ... ok
+test verification::tests::build_thresholds_uses_defaults ... ok
+test verification::tests::false_positive_rate_calculation ... ok
+test verification::tests::verification_status_determination ... ok
+test verification::analysis::tests::spectral_features_silence ... ok
+test verification::fingerprint::tests::test_fingerprint_sine ... ok
+test pipeline::decode::tests::test_decode_audio_dispatch ... ok
+
+test result: ok. 99 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/benchmark_regression_cli.rs (target/debug/deps/benchmark_regression_cli-a0cbc7e5cd5b5db1)
+
+running 5 tests
+test benchmark_regression_check_fails_for_large_regression ... ok
+test benchmark_regression_check_passes_for_similar_candidate ... ok
+test benchmark_regression_check_rejects_decode_field_mismatch ... ok
+test benchmark_regression_check_accepts_current_cli_output_schema ... ok
+test benchmark_regression_check_rejects_schema_mismatch ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.22s
+
+     Running tests/benchmark_smoke.rs (target/debug/deps/benchmark_smoke-caa5cf6321053427)
+
+running 2 tests
+test benchmark_command_honors_config_validation ... ok
+test benchmark_command_writes_output ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/calibration_integration.rs (target/debug/deps/calibration_integration-dcac4775a6cd0961)
+
+running 6 tests
+test apply_calibration_converts_report ... ok
+test calibrate_updates_active_profile_from_report ... ok
+test invalid_calibration_profile_errors ... ok
+test save_calibration_writes_profile ... ok
+test positive_delta_reduces_speech_detection ... ok
+test calibration_profile_changes_output ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/decode_smoke.rs (target/debug/deps/decode_smoke-e7b8ed173bc937b2)
+
+running 1 test
+test decode_smoke_on_downloaded_movie_if_present ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/features.rs (target/debug/deps/features-04df85fa596a7b4d)
+
+running 10 tests
+test empty_input_edge_case ... ok
+test dc_offset_has_more_low_energy ... ok
+test amplitude_affects_rms ... ok
+test known_frequency_signal_1khz ... ok
+test silent_signal_has_zero_flux ... ok
+test known_frequency_signal_4khz ... ok
+test spectral_entropy_is_computed ... ok
+test noise_floor_detection ... ok
+test too_short_input_edge_case ... ok
+test speech_has_lower_entropy_than_noise ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/fingerprint_integration_test.rs (target/debug/deps/fingerprint_integration_test-2506e6a120bef5e6)
+
+running 2 tests
+test test_fingerprint_matching_logic ... ok
+test test_database_fingerprint_storage ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/integration_cli.rs (target/debug/deps/integration_cli-5d89b17d6864eb77)
+
+running 8 tests
+test float_wav_falls_back_to_ffmpeg ... ok
+test malformed_corrections_json_errors ... ok
+test missing_file_errors ... ok
+test invalid_env_override_errors_clearly ... ok
+test unsupported_vad_engine_is_rejected_by_cli ... ok
+test review_generates_html_player ... ok
+test extract_tag_prompt_flow ... ok
+test repeated_extract_is_deterministic ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/json_contract.rs (target/debug/deps/json_contract-775764ac165bc237)
+
+running 1 test
+test extract_output_matches_schema ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/prompt_rules.rs (target/debug/deps/prompt_rules-a3df5785f9516d7b)
+
+running 2 tests
+test crowd_and_machinery_have_unique_prompts ... ok
+test prompt_rule_applies ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/segmentation_regression.rs (target/debug/deps/segmentation_regression-fef7cbd9d54dd3a6)
+
+running 1 test
+test smoothing_and_inversion_regression ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/tag_rules.rs (target/debug/deps/tag_rules-c043f3a089fded82)
+
+running 1 test
+test feature_computation_is_deterministic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/validation_cli.rs (target/debug/deps/validation_cli-c192633f5afca830)
+
+running 9 tests
+test subtitle_validation_requires_total_ms ... ok
+test dataset_validation_requires_total_ms ... ok
+test validate_rejects_multiple_truth_sources ... ok
+test validate_with_dataset_manifest_rejects_bad_rows ... ok
+test validate_with_multilingual_subtitles ... ok
+test validate_with_subtitles ... ok
+test validate_command_honors_config_validation ... ok
+test eval_alias_runs_validation_flow ... ok
+test generate_and_validate_synthetic_fixture ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+   Doc-tests movie_nonvoice_timeline
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+[PASS] Tests: OK
+[PASS] Secret scan: OK
+
+✗ Quality Gate FAILED

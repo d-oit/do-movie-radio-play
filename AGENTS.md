@@ -52,7 +52,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - **Lint and typecheck**: Always run `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings` before committing.
 - **Test command**: Run `cargo test` alongside quality gate.
 - **No unwrap() or expect()** in `src/`. Use `Result` and `?`.
-- **Atomic Commits**: Use `quality_gate.sh && git add -A && git commit` (ai-commit.sh not available).
+- **Atomic Commits**: Use `bash scripts/ai-commit.sh`.
 - **MAX_SOURCE_FILE_LOC**: Limit Rust source files to 500 lines.
 - **No magic numbers**: Extract to `config.rs` or module-level constants.
 - **Media Sourcing**: Use legally redistributable media only (Blender/Open Movies).
@@ -70,9 +70,9 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines |
 | Skill Frontmatter | Adopted | Verified in all `.agents/skills/*.md` |
 | Root Cleanliness | Adopted | No dummy/test/runtime files in root |
-| `ai-commit.sh` | Deferred | Not needed — quality_gate.sh covers pre-commit checks |
-| `update-all-docs.sh` | Deferred | Not needed — no generated docs to sync |
-| Agent Config Dirs | Deferred | Not used — tools read AGENTS.md directly |
+| `ai-commit.sh` | Adopted | Available in `scripts/` |
+| `update-all-docs.sh` | Adopted | Available in `scripts/` |
+| Agent Config Dirs | Adopted | Directories `.jules/`, `.opencode/`, `.qwen/` present |
 
 ## Agent Coordination References
 - [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)

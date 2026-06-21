@@ -205,4 +205,15 @@ pub enum Commands {
         #[arg(long)]
         verified: Option<PathBuf>,
     },
+    RadioPlay {
+        movie: PathBuf,
+        #[arg(long)]
+        timeline: Option<PathBuf>,
+        #[arg(long)]
+        subtitles: Option<PathBuf>,
+        #[arg(long)]
+        output: Option<PathBuf>,
+        #[arg(long)]
+        analyze_only: bool,
+    },
 }

@@ -1,6 +1,7 @@
 mod cli;
 mod config;
 mod error;
+pub mod goap;
 mod handlers;
 mod io;
 mod learning;
@@ -153,6 +154,13 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
         Commands::AiVoiceExtract { input_json, output } => {
             handlers::handle_ai_voice_extract(input_json, output)
         }
+        Commands::RadioPlay {
+            movie,
+            timeline,
+            subtitles,
+            output,
+            analyze_only,
+        } => handlers::handle_radio_play(movie, timeline, subtitles, output, analyze_only),
         Commands::Calibrate {
             corrections_dir,
             profile,

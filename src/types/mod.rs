@@ -3,4 +3,6 @@ pub mod metrics;
 pub mod segment;
 
 pub use metrics::{BenchmarkResult, StageDurations};
-pub use segment::{AiVoiceOutput, Segment, SegmentKind, TimelineOutput};
+pub use segment::{
+    AiVoiceOutput, GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap,
+};

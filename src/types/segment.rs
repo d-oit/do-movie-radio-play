@@ -26,6 +26,21 @@ pub struct TimelineOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VisualGap {
+    pub start_ms: u64,
+    pub end_ms: u64,
+    pub confidence: f32,
+    pub reason: String,
+    pub priority: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GapAnalysisOutput {
+    pub file: String,
+    pub gaps: Vec<VisualGap>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiVoiceOutput {
     pub file: String,
     pub analysis_sample_rate: u32,

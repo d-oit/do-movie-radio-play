@@ -27,6 +27,9 @@ libsql = { version = "0.9", default-features = false, features = ["core"] }
 symphonia = { version = "0.6", features = ["mp3", "wav", "flac", "ogg", "pcm"] }
 rayon = "1.10"
 rubato = { version = "3.0", optional = true }
+async-trait = "0.1"
+ort = { version = "2.0.0-rc.9", features = ["load-dynamic"] }
+reqwest = { version = "0.12", features = ["json"] }
 
 [dev-dependencies]
 assert_cmd = "2"

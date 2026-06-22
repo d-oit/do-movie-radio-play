@@ -1,0 +1,12 @@
+[
+  {
+    "id": "milestone-d-planning",
+    "prompt": "I need to implement Milestone D from the radio-play roadmap. Create a GOAP plan to identify visual gaps in the audio.",
+    "expected_output": "The response must include a GOAP plan with state persistence in plans/GOAP_STATE.md, dependency mapping (e.g., heuristics depend on types), and specific tasks for src/goap/gaps.rs and the CLI flag."
+  },
+  {
+    "id": "new-tts-provider-planning",
+    "prompt": "Add a new TTS provider for ElevenLabs as described in ADR-121. Give me a multi-step execution strategy.",
+    "expected_output": "The response must propose a strategy (Sequential or Parallel), define tasks for trait implementation in src/voice/ and config updates in src/config.rs, and include a quality gate for verification."
+  }
+]

@@ -88,7 +88,10 @@ impl SynthesisOrchestrator {
             std::collections::HashMap::new();
 
         if let Some(c) = config.providers.kokoro {
-            providers.insert("kokoro".to_string(), Box::new(kokoro::KokoroProvider::new(c)));
+            providers.insert(
+                "kokoro".to_string(),
+                Box::new(kokoro::KokoroProvider::new(c)),
+            );
         }
         if let Some(c) = config.providers.pockettts {
             providers.insert(

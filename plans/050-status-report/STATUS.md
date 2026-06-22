@@ -1,6 +1,6 @@
 # Implementation Status Report
 
-**Date:** 2026-06-08
+**Date:** 2026-06-22
 
 ## Phase Status Summary
 
@@ -9,141 +9,171 @@
 | 01 | JSON-only pipeline | COMPLETE | Deterministic extract pipeline verified |
 | 02 | Acoustic tags | COMPLETE | Rule-based tags with spectral features |
 | 03 | Prompt generation | COMPLETE | Config passthrough and tag mappings are wired |
-| 04 | Self-learning | COMPLETE | Calibration now writes a report and updates the active profile automatically |
-| 05 | Hardening and quality | COMPLETE | Validation/config, WAV fallback, VAD fail-fast, and benchmark CI regression checks are complete |
-| 06 | New capabilities | READY | Next feature should build on existing profile/tag infrastructure |
+| 04 | Self-learning | COMPLETE | Calibration, adaptive thresholds, learning DB, gap store, threshold store |
+| 05 | Hardening and quality | COMPLETE | Validation/config, WAV fallback, VAD fail-fast, benchmark CI regression |
+| 06 | New capabilities | IN PROGRESS | Workspace restructure complete; radio-play pipeline partially implemented |
+
+## Workspace Restructure (2026-06-22)
+
+Major workspace restructure extracted monolithic `src/` into 9 focused crates:
+
+| Crate | LOC | Purpose | Status |
+|-------|-----|---------|--------|
+| `movie-radio-types` | 392 | Shared types (Frame, Segment, Metrics, Emotion, AudioOutput, config) | Complete |
+| `movie-radio-pipeline` | 3,245 | VAD, framing, segmentation, features, tags, prompts, decode | Complete |
+| `movie-radio-learning` | 1,605 | Calibration, adaptive thresholds, libsql database, profiles | Complete |
+| `movie-radio-verification` | 1,356 | Spectral verification, fingerprinting, segment extraction | Complete |
+| `movie-radio-validation` | 745 | Validation, comparison, SRT parsing, synthetic fixtures | Complete |
+| `movie-radio-voice` | 624 | TTS providers (Kokoro, PocketTts, Qwen3, Orpheus, ElevenLabs) | Structurally complete; most providers return silence |
+| `movie-radio-io` | 309 | JSON, EDL, VTT, WAV I/O utilities | Complete |
+| `movie-radio-goap` | 1,275 | GOAP planner, orchestrator, actions, gaps, narrate, assemble | All modules implemented; orchestrator doesn't execute real work |
+| `movie-radio-timeline` | 2,241 | CLI binary with 16 subcommands, handlers, config | Complete |
+
+**Total:** ~11,800 LOC across 76 Rust source files.
+
+## CLI Commands (16 subcommands)
+
+| Command | Purpose | Status |
+|---------|---------|--------|
+| `extract` | Run VAD pipeline, produce TimelineOutput JSON | Complete |
+| `tag` | Add audio-feature-based tags to timeline | Complete |
+| `prompt` | Generate AI narration prompts from tagged timeline | Complete |
+| `review` | Generate interactive HTML review player | Complete |
+| `calibrate` | Run calibration from corrections directory | Complete |
+| `apply-calibration` | Apply saved calibration report to active profile | Complete |
+| `bench` | Benchmark pipeline on a file | Complete |
+| `gen-fixtures` | Generate synthetic WAV test fixtures | Complete |
+| `validate` (alias: `eval`) | Evaluate pipeline accuracy against ground truth | Complete |
+| `ai-voice-extract` | Extract speech segments into AiVoiceOutput | Complete |
+| `verify-timeline` | Spectral verification of non-voice segments | Complete |
+| `update-thresholds` | Generate threshold recommendations from learning state | Complete |
+| `learning-stats` | Print statistics from learning database | Complete |
+| `merge-timeline` | Merge contiguous non-voice segments | Complete |
+| `export` | Export timeline to JSON, EDL, or VTT format | Complete |
+| `radio-play` | Gap analysis for radio play production | Analyze-only mode works; full pipeline not wired |
+
+## Voice Synthesis Providers
+
+| Provider | File | Real Logic | Synthesis Output | Notes |
+|----------|------|------------|------------------|-------|
+| **Modal** | `src/voice/modal.rs` | HTTP POST + PCM WAV decode | Real audio | PR #110; free-tier serverless GPU |
+| **ElevenLabs** | `src/voice/elevenlabs.rs` | HTTP POST, API key auth | Mock audio (no MP3 decode) | Real API calls, needs MP3 decoder |
+| **Kokoro** | `src/voice/kokoro.rs` | ONNX model download + session load | Silence (no inference) | Infrastructure ready |
+| **Orpheus** | `src/voice/orpheus.rs` | Emotion tag wrapping | Silence | Stub |
+| **Qwen3** | `src/voice/qwen3.rs` | German emotion prompts | Silence | Stub |
+| **PocketTts** | `src/voice/pockettts.rs` | None | Silence | Fully stubbed |
+
+**Fallback chain:** `SynthesisOrchestrator` in `src/voice/mod.rs` iterates configured provider list, tries each in order, falls through on failure. Monthly spend tracking via `LearningDb`.
+
+## GOAP Pipeline
+
+| Component | File | Status |
+|-----------|------|--------|
+| A* Planner | `movie-radio-goap/src/planner.rs` | Fully implemented with tests |
+| World State | `movie-radio-goap/src/lib.rs` | 11-field boolean state, `meets(goal)` |
+| Actions | `movie-radio-goap/src/actions.rs` | 8 actions with preconditions/effects/costs |
+| Orchestrator | `movie-radio-goap/src/orchestrator.rs` | Structural loop works; doesn't execute real work |
+| Gap Identifier | `movie-radio-goap/src/gaps.rs` | 5-signal scoring, fully implemented |
+| Narration Generator | `movie-radio-goap/src/narrate.rs` | Template-based German text, fully implemented |
+| Audio Assembler | `movie-radio-goap/src/assemble.rs` | Crossfade + ducking, fully implemented |
+
+## Pipeline Stages (execution order)
+
+1. **Decode** — Symphonia native + ffmpeg fallback
+2. **Resample** — Linear interpolation (rubato behind feature flag)
+3. **Framing** — 20ms windows, parallel feature extraction
+4. **Feature Extraction** — FFT-based 8 spectral features
+5. **VAD** — Energy / Spectral / Hybrid engines
+6. **Tri-State Smoothing** — Speech/MusicLike/NoiseLike classification
+7. **Speech Segmentation** — Hangover smoothing, merge, prune
+8. **Speech Evidence Filter** — Remove implausible speech segments
+9. **Invert to Non-Voice** — Complement computation
+10. **Bridge Non-Voice** — Merge segments separated by short speech
+11. **Non-Voice Merge Policy** — All/Longest/Sparse strategies
+12. **Expand Non-Voice** — Extend into ambiguous frames
+13. **Split Long Segments** — Cap non-voice duration
+14. **Verification Filter** — Spectral verification (sparse profiles)
+15. **Bridge Residual Gaps** — Final merge pass
+16. **Tail Recovery** — Extend terminal non-voice segment
+
+## Learning System
+
+| Component | File | Status |
+|-----------|------|--------|
+| Adaptive Thresholds | `movie-radio-learning/src/adaptive_thresholds.rs` | FP rate tracking, auto-adjustment |
+| Calibration | `movie-radio-learning/src/calibrator.rs` | Correction-driven threshold delta |
+| Database | `movie-radio-learning/src/database.rs` | libsql SQLite, verified_segments, fingerprints |
+| Profiles | `movie-radio-learning/src/profiles.rs` | Action/Documentary/Animation/Drama profiles |
+| Gap Store | `movie-radio-learning/src/gap_store.rs` | Gap decision persistence |
+| Threshold Store | `movie-radio-learning/src/threshold_store.rs` | Threshold recommendations + history |
+
+## Verification System
+
+| Component | File | Status |
+|-----------|------|--------|
+| Spectral Analysis | `movie-radio-verification/src/verification/analysis.rs` | FFT-based 8 features, thread-local cache |
+| Fingerprinting | `movie-radio-verification/src/verification/fingerprint.rs` | Wang-style combinatorial hashing |
+| Verification Engine | `movie-radio-verification/src/verification/mod.rs` | Voice/nonvoice scoring, graph structure signal |
+| Segment Extractor | `movie-radio-verification/src/verification/extractor.rs` | ffmpeg-based segment extraction |
 
 ## Current Missing Implementations
 
-No medium-or-higher runtime gaps are currently open in the shipped CLI flow.
+| Gap | Severity | Location | Notes |
+|-----|----------|----------|-------|
+| Voice providers return silence | High | `movie-radio-voice/src/voice/` | Only Modal + ElevenLabs make real calls |
+| GOAP orchestrator doesn't execute | Medium | `movie-radio-goap/src/orchestrator.rs` | Simulates state transitions only |
+| Radio-play CLI not wired | Medium | `src/handlers/radio_play.rs` | analyze-only mode works; full pipeline stub |
+| OpenAI TTS provider missing | Low | N/A | Not implemented at all |
+| MP3 decode for ElevenLabs | Low | `src/voice/elevenlabs.rs` | HTTP works, response not decoded |
 
 ## Quality Issues
 
-No active hardening gaps are currently open beyond future feature work.
+No active hardening gaps beyond the voice synthesis stubs above.
 
 Dependency security (GitHub Dependabot):
-- ✅ **HIGH**: GHSA-82j2-j2ch-gfr8 in rustls-webpki — resolved via PR #61 (2026-05-23), which disabled libsql TLS, removing 80+ transitive deps
-- ✅ Remaining moderate/low advisories accepted — no active code paths exercise the vulnerable functionality (CRL checking is not enabled)
-- Tracking URL: `https://github.com/d-oit/do-movie-radio-play/security/dependabot`
+- HIGH: GHSA-82j2-j2ch-gfr8 in rustls-webpki — resolved via PR #61
+- Remaining moderate/low advisories accepted
 
-GitHub queue scan (2026-06-07):
-- Open issues: 6 (#72-#77), all filed 2026-06-07 as refactor audit items
-- Open PRs: 0 (PR #78 merged)
-- Recent merged PRs: #61-#65 (GOAP closeout, 2026-05-23), #66-#71 (post-GOAP hardening), #78 (refactor extraction)
+## Open GitHub Issues
 
-Repository integrity sweep (2026-04-18):
-- All `.github/workflows/*.yml` files parse and are registered in GitHub Actions.
-- Markdown local-link audit passes after fixing stale skill-reference relative paths.
-
-## Production Evaluation Correctness
-
-- Manifest-based eval coverage is now implemented in:
-  - `testdata/validation/manifest.json` (general)
-  - `testdata/validation/radio-play-manifest.json` (release-readiness)
-- Tier A coverage is enforced in PR CI via `.github/workflows/ci.yml`.
-- Scheduled full sweeps are implemented in `.github/workflows/validation-sweep.yml`.
-- Coverage and artifact integrity checks are enforced by `scripts/check_validation_coverage.py`.
-- Full manifest execution and summary emission are implemented in
-  `scripts/run_validation_manifest.py` and `analysis/validation/radio-play-sweep-summary.json` for release-readiness.
-
-## Completed Since Earlier Plan Drafts
-
-- Prompt generation now honors `AnalysisConfig` in `src/pipeline/prompts.rs`.
-- `crowd_like` and `machinery_like` have distinct prompt mappings.
-- Segment confidence is derived from frame likelihoods in `src/pipeline/segmenter.rs`.
-- `validate` and `bench` now accept runtime config, threshold, engine, and calibration inputs.
-- `calibrate` now closes the loop by writing a report and updating the active calibration profile.
-- The CLI now exposes both `energy` and `spectral` VAD engines.
-- Unsupported WAV direct decodes now fall back to `ffmpeg`.
-- Config and env override validation now fail clearly on malformed values and invalid ranges.
-- Dataset manifest parsing now fails fast on malformed rows instead of manufacturing timestamps.
-- `io::Error` is mapped semantically instead of being surfaced as config failure.
-- JSON schema validation exists via `schema/timeline.schema.json` and
-   `tests/json_contract.rs`.
-- Criterion benchmarks are configured in `Cargo.toml` and implemented in
-   `benches/pipeline_bench.rs`.
-- CI now runs benchmark smoke, compares against the checked-in real-media baseline, and uploads benchmark artifacts.
-- Frame construction and VAD already use spectral features through
-   `src/types/frame.rs` and `src/pipeline/framing.rs`.
-- Production eval governance is now codified in
-  `plans/040-validation/PRODUCTION-EVALS.md` and
-  `plans/040-validation/ACCEPTANCE.md`.
-- Hybrid VAD engine committed and benchmarked via GOAP closeout PRs #62, #65.
-- SpectralVad added to Criterion benchmarks; rubato high-quality resampling behind feature flag.
-
-## Documentation and Tooling Gaps
-
-The following patterns from `d-o-hub/github-template-ai-agents` are acknowledged but deferred:
-
-| Pattern | AGENTS.md Decision | Rationale |
-|---------|-------------------|-----------|
-| `scripts/ai-commit.sh` | Deferred | Not needed — `quality_gate.sh` covers pre-commit checks |
-| `scripts/update-all-docs.sh` | Deferred | Not needed — no generated docs to sync |
-| Agent config dirs | Deferred | Not used — tools read AGENTS.md directly |
-
-These were formally acknowledged in the AGENTS.md Template Sync table with `Deferred` status
-and explicit rationale. Gitleaks scanning (`root .gitleaks.toml`) and skill frontmatter
-(`.agents/skills/`) are already adopted.
+| # | Title | Status | Notes |
+|---|-------|--------|-------|
+| 97 | German narration text generator | **DONE** | Implemented in `movie-radio-goap/src/narrate.rs` |
+| 96 | End-to-end radio-play CLI | **PARTIAL** | `radio-play` subcommand exists; only analyze-only mode |
+| 95 | Autonomous self-learning system | **MOSTLY DONE** | Learning crate has adaptive thresholds, calibration, database |
+| 94 | Radio play assembly | **DONE** | Implemented in `movie-radio-goap/src/assemble.rs` |
+| 93 | Provider fallback chain | **DONE** | Implemented in `src/voice/mod.rs` SynthesisOrchestrator |
+| 92 | ElevenLabs and OpenAI TTS | **PARTIAL** | ElevenLabs HTTP works; OpenAI not implemented |
+| 91 | Orpheus-3B TTS provider | **PARTIAL** | Struct exists, inference stubbed |
+| 110 | Modal.com TTS provider | **DONE** | PR #110 merged; real HTTP + PCM decode |
 
 ## Recent Changes
 
-### GOAP Closeout (2026-05-23)
+### Workspace Restructure (2026-06-22)
+- 128 files changed, 14,890 insertions
+- Extracted 9 crates from monolithic src/
+- Added GOAP pipeline crate with planner, gaps, narrate, assemble
+- Added learning crate with full calibration/threshold/database stack
+- Added verification crate with spectral analysis + fingerprinting
+- Added validation crate with comparison, SRT, synthetic fixtures
+- Added voice crate with 5 providers + fallback orchestrator
+- Added Modal.com TTS provider (PR #110)
+- Added 16 CLI subcommands
+- Benchmarks in dedicated crate
 
-Resolved 6 open issues via PRs #61-#65:
-
-| # | Issue | PR | What |
-|---|-------|----|------|
-| 1 | #54/#58 | [#61](https://github.com/d-oit/do-movie-radio-play/pull/61) | Remove vulnerable rustls-webpki 0.102.8 by disabling libsql TLS |
-| 2 | #55 | — | Hybrid VAD engine (already in main, d351f66) |
-| 3 | #56 | [#62](https://github.com/d-oit/do-movie-radio-play/pull/62) | Add SpectralVad + HybridVad to Criterion benchmarks |
-| 4 | #57 | [#63](https://github.com/d-oit/do-movie-radio-play/pull/63) | Profile-driven tag calibration (Phase 6.1) |
-| 5 | #59 | [#64](https://github.com/d-oit/do-movie-radio-play/pull/64) | Close manifest coverage gap |
-| 6 | #60 | [#65](https://github.com/d-oit/do-movie-radio-play/pull/65) | High-quality resampling via rubato (feature flag) |
-
-### Post-GOAP Hardening (2026-05-26 to 2026-06-04)
-
-- PR #66: Optimize spectral analysis (avoid hypot, fuse loops)
-- PR #67: Add Codacy agent skill adapted for Rust project
-- PR #68: DoS-resistant audio resampler error handling
-- PR #69: Rewrite README.md and update AGENTS.md for agent-readiness
-- PR #70: Thread-local FFT planning cache
-- PR #71: XSS protection + CSP in review report
-
-### Radio-Play 95% Milestone Progress
-
-- **Milestone A**: ✅ Complete — entropy fix + graph-inspired verifier integration
-- **Milestone B**: ✅ Complete — holdout scoring scripts, CI gate, failure breakdown, readiness reports, bounded merge behavior, tri-state smoothing
-- **Milestone C**: ⏸️ Deferred — see `plans/100-radio-play-95/MILESTONE-C-DECISION.md`
-
-Current best holdout metrics: precision=0.9988, recall=1.0000, overlap=0.9994
-Modern precision ceiling: ~0.7368 (bounded ceiling check confirmed)
-
-### PR #78 — Refactor Extraction (2026-06-08)
-
-PR #78 extracted major modules to improve organization:
-
-- `src/handlers.rs` — 740 lines of CLI command handlers from main.rs (main.rs: 1048→269 LOC)
-- `src/review_template.rs` — 655 lines of HTML+JS template from review.rs (review.rs: 928→296 LOC)
-- `src/merge.rs` — MergeOptions, MergeStrategy enum, load helpers
-- `src/util.rs` — init_logging, open_in_browser, get_calibration_dir
-- `MergeStrategy` enum replaces stringly-typed merge strategy literals
-
-### Current Open Issues (#72-#77)
-
-All opened 2026-06-07 as refactor audit items. Status as of 2026-06-08:
-
-| # | Title | Status | Resolution |
-|---|-------|--------|------------|
-| 72 | Split main.rs (1,048 LOC) | ✅ **CLOSED** | main.rs is now 233 LOC (below 500 limit) after PR #78 + handler extraction |
-| 73 | MergeStrategy enum + named tolerance constants | ✅ **CLOSED** | `MergeStrategy` enum in `config.rs`; named constants `TOLERANCE_SYNTHETIC_MS`, `TOLERANCE_DATASET_MS`, `TOLERANCE_DEFAULT_MS` in `util.rs`; `URL_REVOKE_TIMEOUT_MS` in `review_template.rs` |
-| 74 | Extract HTML/JS template from review.rs | ✅ **CLOSED** | Template extracted to `templates/review.html`, loaded via `include_str!` in `review_template.rs`. Review.rs is 296 LOC. |
-| 75 | Replace tokio::runtime with #[tokio::main] | ✅ **CLOSED** | Main dispatch is now synchronous; no `tokio::runtime::Builder` in `main.rs` |
-| 76 | Close AGENTS.md template sync gaps | ⏸️ **DEFERRED** | Acknowledged in AGENTS.md with rationale — no action taken |
-| 77 | Extract CLI command dispatch to dedicated files | ✅ **CLOSED** | Dispatch extracted to `handlers.rs` (740 LOC); main.rs is 233 LOC |
+### PR #110 — Modal.com TTS Provider (2026-06-22)
+- Added `src/voice/modal.rs` with real HTTP POST to Modal endpoint
+- PCM WAV decoding (skip 44-byte header, i16→f32)
+- Cost tracking via `LearningDb.provider_usage` table
+- Deployment scripts: `scripts/modal_tts_deploy.py`, `scripts/modal_tts_piper.py`
+- Resolved merge conflicts with main's store-module refactoring
+- Fixed Codacy unused import warnings
 
 ## Open Action Items
 
-1. **#76 AGENTS.md gaps**: Deferred by design — gap rows acknowledged with rationale in AGENTS.md Template Sync table
-2. **Milestone C (ONNX verifier)**: Deferred — engine-level speech/non-speech discrimination improvement is the next recommended step per ROADMAP.md
-3. **Review player UX bugs**: 4 minor issues remain unfiled (see `plans/070-review-player-testing/UNRESOLVED-ISSUES.md`)
-4. **tokio::runtime refactor (handlers.rs)**: 3 manual `tokio::runtime::Builder::new_current_thread()` constructions remain in `handlers.rs` for learning database operations — these require async and are not easily replaced with `#[tokio::main]` in the current architecture
+1. **Wire GOAP orchestrator to real pipeline stages** — orchestrator currently simulates state transitions
+2. **Implement TTS inference for local providers** — Kokoro/Orpheus/Qwen3 need actual neural inference
+3. **Add MP3 decode for ElevenLabs** — HTTP works but response not decoded
+4. **Wire radio-play CLI to full pipeline** — currently only analyze-only mode
+5. **Add OpenAI TTS provider** — not implemented at all
+6. **#76 AGENTS.md gaps** — Deferred by design

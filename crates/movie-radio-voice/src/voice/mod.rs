@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod elevenlabs;
 pub mod kokoro;
+pub mod modal;
 pub mod orpheus;
 pub mod pockettts;
 pub mod qwen3;
@@ -112,6 +113,12 @@ impl SynthesisOrchestrator {
             providers.insert(
                 "elevenlabs".to_string(),
                 Box::new(elevenlabs::ElevenLabsProvider::new(c)),
+            );
+        }
+        if let Some(c) = config.providers.modal {
+            providers.insert(
+                "modal".to_string(),
+                Box::new(modal::ModalTtsProvider::new(c)),
             );
         }
 

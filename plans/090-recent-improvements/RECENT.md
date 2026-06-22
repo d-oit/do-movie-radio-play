@@ -392,3 +392,52 @@ bash scripts/optimize_and_publish_profiles.sh analysis/optimization/fp-sweep-ran
 - Swarm-coordinated next best action:
   - change non-voice merge behavior for `merge_strategy=all` from global collapse to bounded gap-aware merge,
   - keep holdout protections (sparse-profile filter + tail-recovery floor) unchanged.
+
+## 20. Workspace Restructure + Radio-Play Pipeline (2026-06-22)
+
+Major restructure extracting monolithic src/ into 9 focused crates, plus GOAP radio-play pipeline implementation.
+
+### New Crates
+
+| Crate | LOC | Purpose |
+|-------|-----|---------|
+| movie-radio-types | 392 | Shared types (Frame, Segment, Metrics, Emotion, AudioOutput, config) |
+| movie-radio-pipeline | 3,245 | VAD, framing, segmentation, features, tags, prompts, decode |
+| movie-radio-learning | 1,605 | Calibration, adaptive thresholds, libsql database, profiles |
+| movie-radio-verification | 1,356 | Spectral verification, fingerprinting, segment extraction |
+| movie-radio-validation | 745 | Validation, comparison, SRT parsing, synthetic fixtures |
+| movie-radio-voice | 624 | TTS providers with fallback chain orchestrator |
+| movie-radio-io | 309 | JSON, EDL, VTT, WAV I/O utilities |
+| movie-radio-goap | 1,275 | GOAP planner, orchestrator, actions, gaps, narrate, assemble |
+| movie-radio-timeline | 2,241 | CLI binary with 16 subcommands, handlers, config |
+
+**Total:** ~11,800 LOC across 76 Rust source files.
+
+### GOAP Pipeline Modules
+
+- **Planner** (`movie-radio-goap/src/planner.rs`): A* search with admissible heuristic
+- **Gap Identifier** (`movie-radio-goap/src/gaps.rs`): 5-signal scoring (duration, tags, dialogue proximity, environment change, subtitles)
+- **Narration Generator** (`movie-radio-goap/src/narrate.rs`): Template-based German text with context-aware emotion inference
+- **Audio Assembler** (`movie-radio-goap/src/assemble.rs`): Crossfade + ducking, overlap validation
+
+### Modal.com TTS Provider (PR #110)
+
+- Real HTTP POST to Modal serverless endpoint
+- PCM WAV decoding (skip 44-byte header, i16 to f32)
+- Cost tracking via learning database provider_usage table
+- Deployment scripts: modal_tts_deploy.py (Coqui XTTS v2), modal_tts_piper.py (Piper TTS)
+
+### CLI Expansion
+
+16 subcommands now available: extract, tag, prompt, review, calibrate, apply-calibration, bench, gen-fixtures, validate, ai-voice-extract, verify-timeline, update-thresholds, learning-stats, merge-timeline, export, radio-play
+
+### Voice Provider Status
+
+| Provider | Real Synthesis | Notes |
+|----------|----------------|-------|
+| Modal | Yes | Serverless GPU, free tier |
+| ElevenLabs | Partial | HTTP works, MP3 decode missing |
+| Kokoro | No | ONNX loading works, inference stubbed |
+| Orpheus | No | Emotion tags work, inference stubbed |
+| Qwen3 | No | Emotion prompts work, inference stubbed |
+| PocketTts | No | Fully stubbed |

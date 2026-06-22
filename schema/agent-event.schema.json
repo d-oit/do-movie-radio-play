@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://d-oit.dev/movie-radio-play/agent-event.schema.json",
+  "title": "AgentEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "workflow_id",
+    "skill",
+    "event_type",
+    "timestamp",
+    "git_sha",
+    "branch"
+  ],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "Unique identifier for the task"
+    },
+    "workflow_id": {
+      "type": "string",
+      "description": "Unique identifier for the workflow session"
+    },
+    "skill": {
+      "type": "string",
+      "description": "The skill being used"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": ["started", "finished"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO8601 timestamp"
+    },
+    "success": {
+      "type": "boolean",
+      "description": "Whether the task/event was successful (only for finished)"
+    },
+    "human_interventions": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of human interventions during the task"
+    },
+    "git_sha": {
+      "type": "string"
+    },
+    "branch": {
+      "type": "string"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

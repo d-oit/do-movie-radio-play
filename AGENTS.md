@@ -46,6 +46,8 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - `self-learning-calibration`: [.agents/skills/self-learning-calibration/SKILL.md](.agents/skills/self-learning-calibration/SKILL.md)
 - `agent-coordination`: [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)
 - `codacy`: [.agents/skills/codacy/SKILL.md](.agents/skills/codacy/SKILL.md)
+- `triz-analysis`: [.agents/skills/triz-analysis/SKILL.md](.agents/skills/triz-analysis/SKILL.md)
+- `triz-solver`: [.agents/skills/triz-solver/SKILL.md](.agents/skills/triz-solver/SKILL.md)
 
 ## Rules
 - **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod elevenlabs;
 pub mod kokoro;
+pub mod modal;
 pub mod orpheus;
 pub mod pockettts;
 pub mod qwen3;
@@ -18,6 +19,9 @@ pub trait VoiceSynthesizer: Send + Sync {
 
     /// Estimated cost for a request (0.0 for local)
     fn estimate_cost(&self, text_len: usize) -> f64;
+
+    /// Max monthly cost allowed for this provider
+    fn max_monthly_cost(&self) -> f64;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +84,7 @@ pub struct ProviderCapabilities {
 pub struct SynthesisOrchestrator {
     providers: std::collections::HashMap<String, Box<dyn VoiceSynthesizer>>,
     fallback_chain: Vec<String>,
+    max_cost_per_run: f64,
 }
 
 impl SynthesisOrchestrator {
@@ -114,20 +119,64 @@ impl SynthesisOrchestrator {
                 Box::new(elevenlabs::ElevenLabsProvider::new(c)),
             );
         }
+        if let Some(c) = config.providers.modal {
+            providers.insert(
+                "modal".to_string(),
+                Box::new(modal::ModalTtsProvider::new(c)),
+            );
+        }
 
         Self {
             providers,
             fallback_chain: config.fallback_chain,
+            max_cost_per_run: config.max_cost_per_run_usd,
         }
     }
 
-    pub async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
+    pub async fn synthesize(
+        &self,
+        request: &SynthesisRequest,
+        db: Option<&crate::learning::database::LearningDb>,
+    ) -> Result<AudioOutput> {
         let mut last_err = anyhow::anyhow!("No provider available in fallback chain");
 
         for provider_id in &self.fallback_chain {
             if let Some(provider) = self.providers.get(provider_id) {
+                let cost = provider.estimate_cost(request.text.len());
+                if cost > self.max_cost_per_run {
+                    tracing::warn!(
+                        "Provider {} exceeds max cost per run: {} > {}",
+                        provider_id,
+                        cost,
+                        self.max_cost_per_run
+                    );
+                    continue;
+                }
+
+                // Monthly cost guard for cloud/serverless providers
+                if let Some(db) = db {
+                    let max_monthly = provider.max_monthly_cost();
+                    if max_monthly > 0.0 {
+                        let monthly_spend = db.get_monthly_spend(provider_id).await.unwrap_or(0.0);
+                        if monthly_spend >= max_monthly {
+                            tracing::warn!(
+                                "Provider {} monthly spend limit reached: ${} >= ${}",
+                                provider_id,
+                                monthly_spend,
+                                max_monthly
+                            );
+                            continue;
+                        }
+                    }
+                }
+
                 match provider.synthesize(request).await {
-                    Ok(output) => return Ok(output),
+                    Ok(output) => {
+                        if let Some(db) = db {
+                            let _ = db.record_usage(provider_id, cost).await;
+                        }
+                        return Ok(output);
+                    }
                     Err(e) => {
                         tracing::warn!("Provider {} failed: {}", provider_id, e);
                         last_err = e;

@@ -19,6 +19,13 @@ pub struct VoiceProvidersConfig {
     pub qwen3: Option<Qwen3Config>,
     pub orpheus: Option<OrpheusConfig>,
     pub elevenlabs: Option<ElevenLabsConfig>,
+    pub modal: Option<ModalConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModalConfig {
+    pub endpoint_url_env: String,
+    pub max_monthly_cost: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -145,7 +145,6 @@ impl VoiceSynthesizer for OrpheusProvider {
 
         // 3. Autoregressive Sampling for Speech Tokens
         let mut speech_tokens = Vec::new();
-        let mut n_cur = tokens_list.len() as i32;
         let max_speech_tokens = 500; // Safety limit
 
         let mut sampler = LlamaSampler::chain_simple([
@@ -154,7 +153,7 @@ impl VoiceSynthesizer for OrpheusProvider {
             LlamaSampler::dist(rand::random()),
         ]);
 
-        for _ in 0..max_speech_tokens {
+        for n_cur in (tokens_list.len() as i32..).take(max_speech_tokens) {
             let token = sampler.sample(&ctx, batch.n_tokens() - 1);
 
             // Check for end-of-audio or end-of-generation
@@ -169,7 +168,6 @@ impl VoiceSynthesizer for OrpheusProvider {
             batch
                 .add(token, n_cur, &[0], true)
                 .map_err(|e| anyhow::anyhow!("Failed to add sampled token to batch: {:?}", e))?;
-            n_cur += 1;
 
             ctx.decode(&mut batch)
                 .map_err(|e| anyhow::anyhow!("Inference failed during sampling: {:?}", e))?;

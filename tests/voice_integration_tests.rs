@@ -1,10 +1,10 @@
 use movie_nonvoice_timeline::config::{
-    ElevenLabsConfig, KokoroConfig, OrpheusConfig, PocketTtsConfig, Qwen3Config,
+    ElevenLabsConfig, KokoroConfig, ModalConfig, OrpheusConfig, PocketTtsConfig, Qwen3Config,
 };
 use movie_nonvoice_timeline::voice::{
-    elevenlabs::ElevenLabsProvider, kokoro::KokoroProvider, orpheus::OrpheusProvider,
-    pockettts::PocketTtsProvider, qwen3::Qwen3Provider, Emotion, SynthesisRequest,
-    VoiceSynthesizer,
+    elevenlabs::ElevenLabsProvider, kokoro::KokoroProvider, modal::ModalTtsProvider,
+    orpheus::OrpheusProvider, pockettts::PocketTtsProvider, qwen3::Qwen3Provider, Emotion,
+    SynthesisRequest, VoiceSynthesizer,
 };
 use std::path::PathBuf;
 
@@ -123,6 +123,7 @@ async fn test_orchestrator_fallback() {
             pockettts: None,
             qwen3: None,
             orpheus: None,
+            modal: None,
         },
     };
 
@@ -133,6 +134,22 @@ async fn test_orchestrator_fallback() {
     };
 
     // ElevenLabs should fail (no API key), falling back to Kokoro (which returns mock audio)
-    let output = orchestrator.synthesize(&request).await.unwrap();
+    let output = orchestrator.synthesize(&request, None).await.unwrap();
     assert_eq!(output.samples[0], 0.1);
+}
+
+#[tokio::test]
+async fn test_modal_synthesis_no_endpoint() {
+    let config = ModalConfig {
+        endpoint_url_env: "NON_EXISTENT_MODAL_URL".to_string(),
+        max_monthly_cost: 25.0,
+    };
+    let provider = ModalTtsProvider::new(config);
+    let request = SynthesisRequest {
+        text: "Modal test".to_string(),
+        ..Default::default()
+    };
+    let result = provider.synthesize(&request).await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("Environment variable NON_EXISTENT_MODAL_URL not set"));
 }

@@ -309,6 +309,25 @@ impl LearningDb {
             )
             .await?;
 
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS provider_usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    provider_id TEXT NOT NULL,
+                    cost REAL NOT NULL,
+                    timestamp TEXT NOT NULL DEFAULT (datetime('now'))
+                )",
+                (),
+            )
+            .await?;
+
+        self.conn
+            .execute(
+                "CREATE INDEX IF NOT EXISTS idx_provider_usage_date ON provider_usage(provider_id, timestamp)",
+                (),
+            )
+            .await?;
+
         Ok(())
     }
 
@@ -658,6 +677,35 @@ impl LearningDb {
         }
 
         Ok(results)
+    }
+
+    pub async fn record_usage(&self, provider_id: &str, cost: f64) -> Result<()> {
+        self.conn
+            .execute(
+                "INSERT INTO provider_usage (provider_id, cost) VALUES (?1, ?2)",
+                [Value::Text(provider_id.to_string()), Value::Real(cost)],
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_monthly_spend(&self, provider_id: &str) -> Result<f64> {
+        let mut rows = self
+            .conn
+            .query(
+                "SELECT SUM(cost) FROM provider_usage
+                 WHERE provider_id = ?1
+                 AND timestamp >= datetime('now', 'start of month')",
+                [Value::Text(provider_id.to_string())],
+            )
+            .await?;
+
+        if let Some(row) = rows.next().await? {
+            let sum: Option<f64> = row.get(0)?;
+            Ok(sum.unwrap_or(0.0))
+        } else {
+            Ok(0.0)
+        }
     }
 
     pub async fn get_latest_threshold(&self) -> Result<Option<ThresholdHistoryEntry>> {
@@ -1057,5 +1105,24 @@ mod tests {
         assert_eq!(results[0].movie_hash, "movie123");
         assert_eq!(results[0].start_ms, 5000);
         assert_eq!(results[0].user_approved, Some(true));
+    }
+
+    #[tokio::test]
+    async fn test_provider_usage_tracking() {
+        let temp_file = setup_test_db_path();
+        let db = LearningDb::new(temp_file.path()).await.unwrap();
+
+        db.record_usage("modal", 0.03).await.unwrap();
+        db.record_usage("modal", 0.02).await.unwrap();
+        db.record_usage("elevenlabs", 0.50).await.unwrap();
+
+        let modal_spend = db.get_monthly_spend("modal").await.unwrap();
+        assert_eq!(modal_spend, 0.05);
+
+        let elevenlabs_spend = db.get_monthly_spend("elevenlabs").await.unwrap();
+        assert_eq!(elevenlabs_spend, 0.50);
+
+        let unknown_spend = db.get_monthly_spend("unknown").await.unwrap();
+        assert_eq!(unknown_spend, 0.0);
     }
 }

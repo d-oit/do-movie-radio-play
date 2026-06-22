@@ -87,4 +87,8 @@ impl VoiceSynthesizer for ElevenLabsProvider {
         // Rough estimate: $0.0003 per character for Multilingual v2/v3
         (text_len as f64) * 0.0003
     }
+
+    fn max_monthly_cost(&self) -> f64 {
+        f64::MAX
+    }
 }

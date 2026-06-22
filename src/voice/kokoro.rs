@@ -78,4 +78,8 @@ impl VoiceSynthesizer for KokoroProvider {
     fn estimate_cost(&self, _text_len: usize) -> f64 {
         0.0 // Local provider
     }
+
+    fn max_monthly_cost(&self) -> f64 {
+        0.0
+    }
 }

@@ -14,18 +14,18 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 ## Repository Map
 | Directory | Purpose |
 |-----------|---------|
-| `src/pipeline/` | VAD, framing, segmentation, features, tags, prompts |
-| `src/learning/` | Calibration, adaptive thresholds, and libsql database |
-| `src/types/` | Shared types (Frame, Segment, Metrics) |
-| `src/cli.rs` | CLI argument parsing via clap |
-| `src/config.rs` | Configuration, profiles, merge options |
-| `src/review.rs` | Review player HTML generation |
-| `src/error.rs` | Error types and TimelineError |
-| `src/io/` | JSON read/write utilities |
-| `src/verification/` | Verification analysis, fingerprinting, extractor |
+| `crates/movie-radio-types/` | Shared types (Frame, Segment, Metrics, Emotion, AudioOutput) |
+| `crates/movie-radio-pipeline/` | VAD, framing, segmentation, features, tags, prompts |
+| `crates/movie-radio-voice/` | TTS providers (Kokoro, Orpheus, ElevenLabs, etc.) |
+| `crates/movie-radio-goap/` | GOAP planner, actions, orchestrator, gaps, narrate, assemble |
+| `crates/movie-radio-learning/` | Calibration, adaptive thresholds, libsql database |
+| `crates/movie-radio-verification/` | Spectral verification, fingerprinting, extractor |
+| `crates/movie-radio-io/` | JSON, EDL, VTT, WAV I/O utilities |
+| `crates/movie-radio-validation/` | Validation, comparison, SRT parsing, synthetic fixtures |
+| `crates/movie-radio-timeline/` | Binary crate (CLI, handlers, config) |
+| `benchmarks/` | Criterion benchmarks |
 | `scripts/` | Quality gate, benchmarks, validation, optimization |
 | `tests/` | Integration tests |
-| `benches/` | Criterion benchmarks (pipeline, analysis) |
 | `plans/` | ADRs, roadmaps, and status reports |
 | `.agents/skills/` | Reusable skill playbooks |
 | `testdata/` | All test fixtures and generated test media |
@@ -33,6 +33,15 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | `.github/` | CI workflows |
 | `analysis/` | Benchmark artifacts, validation reports, thresholds |
 | `schema/` | JSON schema for timeline output |
+
+## Quick Reference
+| Task | Command |
+|------|---------|
+| Build | `cargo build --workspace` |
+| Test | `cargo test --workspace` |
+| Lint | `cargo clippy --workspace --all-targets --all-features -- -D warnings` |
+| Format | `cargo fmt --all -- --check` |
+| Quality Gate | `bash scripts/quality_gate.sh` |
 
 ## Domain Concepts
 - **Frame**: 20ms audio window (320 samples at 16kHz).
@@ -54,9 +63,9 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 
 ## Rules
 - **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.
-- **Lint and typecheck**: Always run `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings` before committing.
-- **Test command**: Run `cargo test` alongside quality gate.
-- **No unwrap() or expect()** in `src/`. Use `Result` and `?`.
+- **Lint and typecheck**: Always run `cargo fmt --check && cargo clippy --workspace --all-targets --all-features -- -D warnings` before committing.
+- **Test command**: Run `cargo test --workspace` alongside quality gate.
+- **No unwrap() or expect()** in `crates/*/src/`. Use `Result` and `?`.
 - **Atomic Commits**: Use `bash scripts/ai-commit.sh`.
 - **MAX_SOURCE_FILE_LOC**: Limit Rust source files to 500 lines.
 - **No magic numbers**: Extract to `config.rs` or module-level constants.

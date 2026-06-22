@@ -13,6 +13,7 @@ mod types;
 mod util;
 mod validation;
 mod verification;
+mod voice;
 
 use anyhow::Result;
 use clap::Parser;

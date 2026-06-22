@@ -85,6 +85,8 @@ pub trait Action: std::fmt::Debug + Send + Sync {
 }
 
 pub mod actions;
+pub mod assemble;
 pub mod gaps;
+pub mod narrate;
 pub mod orchestrator;
 pub mod planner;

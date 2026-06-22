@@ -3,36 +3,13 @@ use libsql::{Builder, Connection, Value};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-use crate::learning::adaptive_thresholds::RecommendationConfidence;
+use super::{gap_store, threshold_store};
 use crate::pipeline::features::FeatureSet;
-
-const DEFAULT_FLATNESS_MAX: f64 = 0.45;
-const DEFAULT_ENTROPY_MIN: f64 = 3.5;
-const DEFAULT_ENTROPY_MAX: f64 = 7.0;
-const DEFAULT_CENTROID_MIN: f64 = 100.0;
-const DEFAULT_CENTROID_MAX: f64 = 6000.0;
-
-const RECOMMENDATION_FLATNESS_MIN_AVG: f64 = 0.3;
-const RECOMMENDATION_FLATNESS_MULTIPLIER: f64 = 1.2;
-const RECOMMENDATION_FLATNESS_CLAMP_MIN: f64 = 0.45;
-const RECOMMENDATION_FLATNESS_CLAMP_MAX: f64 = 0.95;
-
-const RECOMMENDATION_ENTROPY_MULTIPLIER: f64 = 0.8;
-const RECOMMENDATION_ENTROPY_CLAMP_MIN: f64 = 1.0;
-const RECOMMENDATION_ENTROPY_CLAMP_MAX: f64 = 6.0;
-
-const RECOMMENDATION_CENTROID_MIN_MULTIPLIER: f64 = 0.5;
-const RECOMMENDATION_CENTROID_MIN_LIMIT: f64 = 50.0;
-const RECOMMENDATION_CENTROID_MAX_MULTIPLIER: f64 = 1.5;
-const RECOMMENDATION_CENTROID_MAX_LIMIT: f64 = 8000.0;
-
-const RECOMMENDATION_HIGH_CONFIDENCE_SIZE: usize = 20;
-const RECOMMENDATION_MEDIUM_CONFIDENCE_SIZE: usize = 5;
 
 #[derive(Clone)]
 #[allow(dead_code)]
 pub struct LearningDb {
-    conn: Connection,
+    pub(crate) conn: Connection,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,28 +75,12 @@ pub struct FalsePositive {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ThresholdRecommendation {
-    pub suggested_flatness_max: f64,
-    pub suggested_entropy_min: f64,
-    pub suggested_entropy_max: f64,
-    pub suggested_centroid_min: f64,
-    pub suggested_centroid_max: f64,
-    pub confidence: RecommendationConfidence,
-    pub sample_size: usize,
-}
-
-impl Default for ThresholdRecommendation {
-    fn default() -> Self {
-        Self {
-            suggested_flatness_max: DEFAULT_FLATNESS_MAX,
-            suggested_entropy_min: DEFAULT_ENTROPY_MIN,
-            suggested_entropy_max: DEFAULT_ENTROPY_MAX,
-            suggested_centroid_min: DEFAULT_CENTROID_MIN,
-            suggested_centroid_max: DEFAULT_CENTROID_MAX,
-            confidence: RecommendationConfidence::Low,
-            sample_size: 0,
-        }
-    }
+pub struct LearningStatistics {
+    pub total_verifications: usize,
+    pub total_false_positives: usize,
+    pub false_positive_rate: f64,
+    pub total_fingerprints: usize,
+    pub avg_fingerprints_per_segment: f64,
 }
 
 #[allow(dead_code)]
@@ -161,7 +122,43 @@ impl LearningDb {
             )
             .await?;
 
-        // Migration logic
+        self.migrate_spectral_features().await?;
+
+        threshold_store::create_threshold_tables(&self.conn).await?;
+
+        self.conn
+            .execute(
+                "CREATE INDEX IF NOT EXISTS idx_fp ON verified_segments(was_false_positive) WHERE was_false_positive = 1",
+                (),
+            )
+            .await?;
+
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS segment_fingerprints (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    hash        INTEGER NOT NULL,
+                    offset_ms   INTEGER NOT NULL,
+                    segment_id  INTEGER REFERENCES verified_segments(id) ON DELETE CASCADE,
+                    created_at  TEXT DEFAULT (datetime('now'))
+                )",
+                (),
+            )
+            .await?;
+
+        self.conn
+            .execute(
+                "CREATE INDEX IF NOT EXISTS idx_fp_hash ON segment_fingerprints(hash)",
+                (),
+            )
+            .await?;
+
+        gap_store::create_gap_tables(&self.conn).await?;
+
+        Ok(())
+    }
+
+    async fn migrate_spectral_features(&self) -> Result<()> {
         let mut rows = self
             .conn
             .query("PRAGMA table_info(verified_segments)", ())
@@ -244,129 +241,18 @@ impl LearningDb {
                 .await?;
         }
 
-        self.conn
-            .execute(
-                "CREATE TABLE IF NOT EXISTS threshold_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    flatness_max REAL NOT NULL,
-                    entropy_min REAL NOT NULL,
-                    centroid_min REAL NOT NULL,
-                    centroid_max REAL NOT NULL,
-                    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-                )",
-                (),
-            )
-            .await?;
-
-        self.conn
-            .execute(
-                "CREATE INDEX IF NOT EXISTS idx_fp ON verified_segments(was_false_positive) WHERE was_false_positive = 1",
-                (),
-            )
-            .await?;
-
-        self.conn
-            .execute(
-                "CREATE TABLE IF NOT EXISTS segment_fingerprints (
-                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    hash        INTEGER NOT NULL,
-                    offset_ms   INTEGER NOT NULL,
-                    segment_id  INTEGER REFERENCES verified_segments(id) ON DELETE CASCADE,
-                    created_at  TEXT DEFAULT (datetime('now'))
-                )",
-                (),
-            )
-            .await?;
-
-        self.conn
-            .execute(
-                "CREATE INDEX IF NOT EXISTS idx_fp_hash ON segment_fingerprints(hash)",
-                (),
-            )
-            .await?;
-
-        self.conn
-            .execute(
-                "CREATE TABLE IF NOT EXISTS gap_decisions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    movie_hash TEXT NOT NULL,
-                    start_ms INTEGER NOT NULL,
-                    end_ms INTEGER NOT NULL,
-                    confidence REAL NOT NULL,
-                    reason TEXT,
-                    priority INTEGER NOT NULL,
-                    user_approved INTEGER, -- NULL = undecided, 1 = approved, 0 = rejected
-                    created_at TEXT DEFAULT (datetime('now'))
-                )",
-                (),
-            )
-            .await?;
-
-        self.conn
-            .execute(
-                "CREATE INDEX IF NOT EXISTS idx_gap_movie ON gap_decisions(movie_hash)",
-                (),
-            )
-            .await?;
-
         Ok(())
     }
 
-    pub async fn record_gap_decision(&self, decision: GapDecision) -> Result<i64> {
-        let approved: Option<i64> = decision.user_approved.map(|b| if b { 1 } else { 0 });
-
-        self.conn
-            .execute(
-                "INSERT INTO gap_decisions (
-                    movie_hash, start_ms, end_ms, confidence, reason, priority, user_approved
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                [
-                    Value::Text(decision.movie_hash),
-                    Value::Integer(decision.start_ms),
-                    Value::Integer(decision.end_ms),
-                    Value::Real(decision.confidence),
-                    Value::Text(decision.reason),
-                    Value::Integer(decision.priority as i64),
-                    approved.map(Value::Integer).unwrap_or(Value::Null),
-                ],
-            )
-            .await?;
-
-        let mut rows = self.conn.query("SELECT last_insert_rowid()", ()).await?;
-        let row = rows
-            .next()
-            .await?
-            .context("failed to get last insert rowid")?;
-        let last_id: i64 = row.get(0)?;
-        Ok(last_id)
+    pub async fn record_gap_decision(
+        &self,
+        decision: gap_store::GapDecision,
+    ) -> Result<i64> {
+        gap_store::record_gap_decision(&self.conn, decision).await
     }
 
-    pub async fn get_gap_decisions(&self, movie_hash: &str) -> Result<Vec<GapDecision>> {
-        let mut results = Vec::new();
-        let mut rows = self
-            .conn
-            .query(
-                "SELECT movie_hash, start_ms, end_ms, confidence, reason, priority, user_approved
-                 FROM gap_decisions
-                 WHERE movie_hash = ?1
-                 ORDER BY start_ms",
-                [Value::Text(movie_hash.to_string())],
-            )
-            .await?;
-
-        while let Some(row) = rows.next().await? {
-            let approved: Option<i64> = row.get(6)?;
-            results.push(GapDecision {
-                movie_hash: row.get(0)?,
-                start_ms: row.get(1)?,
-                end_ms: row.get(2)?,
-                confidence: row.get(3)?,
-                reason: row.get(4)?,
-                priority: row.get(5).map(|p: i64| p as u32)?,
-                user_approved: approved.map(|a| a == 1),
-            });
-        }
-        Ok(results)
+    pub async fn get_gap_decisions(&self, movie_hash: &str) -> Result<Vec<gap_store::GapDecision>> {
+        gap_store::get_gap_decisions(&self.conn, movie_hash).await
     }
 
     pub async fn record_verification(&self, segment: VerifiedSegment) -> Result<i64> {
@@ -446,71 +332,10 @@ impl LearningDb {
         Ok(results)
     }
 
-    pub async fn get_threshold_recommendations(&self) -> Result<ThresholdRecommendation> {
-        let mut rows = self
-            .conn
-            .query(
-                "SELECT
-                    AVG(spectral_flatness), AVG(spectral_entropy),
-                    MIN(centroid_hz), MAX(centroid_hz), COUNT(*)
-                 FROM verified_segments
-                 WHERE was_false_positive = 1",
-                (),
-            )
-            .await?;
-
-        let Some(row) = rows.next().await? else {
-            return Ok(ThresholdRecommendation::default());
-        };
-
-        let avg_flatness: Option<f64> = row.get(0)?;
-        let avg_entropy: Option<f64> = row.get(1)?;
-        let min_centroid: Option<f64> = row.get(2)?;
-        let max_centroid: Option<f64> = row.get(3)?;
-        let sample_size: i64 = row.get(4)?;
-
-        if sample_size == 0 || avg_flatness.is_none() {
-            return Ok(ThresholdRecommendation::default());
-        }
-
-        let avg_flatness = avg_flatness.context("missing average flatness")?;
-        let avg_entropy = avg_entropy.context("missing average entropy")?;
-        let min_centroid = min_centroid.context("missing minimum centroid")?;
-        let max_centroid = max_centroid.context("missing maximum centroid")?;
-
-        let suggested_flatness_max = (avg_flatness.max(RECOMMENDATION_FLATNESS_MIN_AVG)
-            * RECOMMENDATION_FLATNESS_MULTIPLIER)
-            .clamp(
-                RECOMMENDATION_FLATNESS_CLAMP_MIN,
-                RECOMMENDATION_FLATNESS_CLAMP_MAX,
-            );
-        let suggested_entropy_min = (avg_entropy * RECOMMENDATION_ENTROPY_MULTIPLIER).clamp(
-            RECOMMENDATION_ENTROPY_CLAMP_MIN,
-            RECOMMENDATION_ENTROPY_CLAMP_MAX,
-        );
-
-        let suggested_centroid_min = (min_centroid * RECOMMENDATION_CENTROID_MIN_MULTIPLIER)
-            .max(RECOMMENDATION_CENTROID_MIN_LIMIT);
-        let suggested_centroid_max = (max_centroid * RECOMMENDATION_CENTROID_MAX_MULTIPLIER)
-            .min(RECOMMENDATION_CENTROID_MAX_LIMIT);
-
-        let confidence = if sample_size >= RECOMMENDATION_HIGH_CONFIDENCE_SIZE as i64 {
-            RecommendationConfidence::High
-        } else if sample_size >= RECOMMENDATION_MEDIUM_CONFIDENCE_SIZE as i64 {
-            RecommendationConfidence::Medium
-        } else {
-            RecommendationConfidence::Low
-        };
-
-        Ok(ThresholdRecommendation {
-            suggested_flatness_max,
-            suggested_entropy_min,
-            suggested_entropy_max: DEFAULT_ENTROPY_MAX,
-            suggested_centroid_min,
-            suggested_centroid_max,
-            confidence,
-            sample_size: sample_size as usize,
-        })
+    pub async fn get_threshold_recommendations(
+        &self,
+    ) -> Result<threshold_store::ThresholdRecommendation> {
+        threshold_store::get_threshold_recommendations(&self.conn).await
     }
 
     pub async fn record_threshold(
@@ -520,26 +345,7 @@ impl LearningDb {
         centroid_min: f64,
         centroid_max: f64,
     ) -> Result<i64> {
-        self.conn
-            .execute(
-                "INSERT INTO threshold_history (flatness_max, entropy_min, centroid_min, centroid_max)
-                 VALUES (?1, ?2, ?3, ?4)",
-                [
-                    Value::Real(flatness_max),
-                    Value::Real(entropy_min),
-                    Value::Real(centroid_min),
-                    Value::Real(centroid_max),
-                ],
-            )
-            .await?;
-
-        let mut rows = self.conn.query("SELECT last_insert_rowid()", ()).await?;
-        let row = rows
-            .next()
-            .await?
-            .context("failed to get last insert rowid")?;
-        let last_id: i64 = row.get(0)?;
-        Ok(last_id)
+        threshold_store::record_threshold(&self.conn, flatness_max, entropy_min, centroid_min, centroid_max).await
     }
 
     pub async fn get_total_verifications(&self) -> Result<usize> {
@@ -610,7 +416,6 @@ impl LearningDb {
         segment_id: i64,
         fingerprints: &[crate::verification::fingerprint::Fingerprint],
     ) -> Result<()> {
-        // Use RAII transaction for batch insertion
         let tx = self.conn.transaction().await?;
 
         for fp in fingerprints {
@@ -636,7 +441,6 @@ impl LearningDb {
 
         let mut results = Vec::new();
 
-        // Chunk hashes to avoid exceeding SQLITE_MAX_VARIABLE_NUMBER
         for chunk in hashes.chunks(900) {
             let placeholders = chunk
                 .iter()
@@ -660,61 +464,11 @@ impl LearningDb {
         Ok(results)
     }
 
-    pub async fn get_latest_threshold(&self) -> Result<Option<ThresholdHistoryEntry>> {
-        let mut rows = self
-            .conn
-            .query(
-                "SELECT id, flatness_max, entropy_min, centroid_min, centroid_max, created_at
-                 FROM threshold_history
-                 ORDER BY id DESC
-                 LIMIT 1",
-                (),
-            )
-            .await?;
-
-        let Some(row) = rows.next().await? else {
-            return Ok(None);
-        };
-
-        Ok(Some(ThresholdHistoryEntry {
-            id: row.get(0)?,
-            flatness_max: row.get(1)?,
-            entropy_min: row.get(2)?,
-            centroid_min: row.get(3)?,
-            centroid_max: row.get(4)?,
-            created_at: row.get(5)?,
-        }))
+    pub async fn get_latest_threshold(
+        &self,
+    ) -> Result<Option<threshold_store::ThresholdHistoryEntry>> {
+        threshold_store::get_latest_threshold(&self.conn).await
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LearningStatistics {
-    pub total_verifications: usize,
-    pub total_false_positives: usize,
-    pub false_positive_rate: f64,
-    pub total_fingerprints: usize,
-    pub avg_fingerprints_per_segment: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ThresholdHistoryEntry {
-    pub id: i64,
-    pub flatness_max: f64,
-    pub entropy_min: f64,
-    pub centroid_min: f64,
-    pub centroid_max: f64,
-    pub created_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GapDecision {
-    pub movie_hash: String,
-    pub start_ms: i64,
-    pub end_ms: i64,
-    pub confidence: f64,
-    pub reason: String,
-    pub priority: u32,
-    pub user_approved: Option<bool>,
 }
 
 #[cfg(test)]
@@ -800,7 +554,7 @@ mod tests {
 
         let rec = db.get_threshold_recommendations().await.unwrap();
         assert_eq!(rec.sample_size, 0);
-        assert!(rec.confidence == RecommendationConfidence::Low);
+        assert!(rec.confidence == crate::learning::adaptive_thresholds::RecommendationConfidence::Low);
     }
 
     #[tokio::test]
@@ -832,7 +586,7 @@ mod tests {
         assert_eq!(rec.sample_size, 10);
         assert!(rec.suggested_flatness_max > 0.55);
         assert!(rec.suggested_entropy_min < 4.0);
-        assert!(rec.confidence == RecommendationConfidence::Medium);
+        assert!(rec.confidence == crate::learning::adaptive_thresholds::RecommendationConfidence::Medium);
     }
 
     #[tokio::test]
@@ -861,7 +615,6 @@ mod tests {
         let temp_file = setup_test_db_path();
         let db_path = temp_file.path().to_string_lossy().to_string();
 
-        // 1. Manually create an old-style database
         let db = Builder::new_local(&db_path).build().await.unwrap();
         let conn = db.connect().unwrap();
         conn.execute(
@@ -899,10 +652,8 @@ mod tests {
         .await
         .unwrap();
 
-        // 2. Open it with LearningDb, which should trigger migration
         let learning_db = LearningDb::new(temp_file.path()).await.unwrap();
 
-        // 3. Verify columns exist and data is migrated
         let fps = learning_db.get_false_positives().await.unwrap();
         assert_eq!(fps.len(), 1);
         let fp = &fps[0];
@@ -910,7 +661,6 @@ mod tests {
         assert_eq!(fp.spectral_features.zcr, 0.456);
         assert_eq!(fp.spectral_features.centroid_hz, 333.3);
 
-        // 4. Verify original column is dropped
         let mut rows = learning_db
             .conn
             .query("PRAGMA table_info(verified_segments)", ())
@@ -931,7 +681,6 @@ mod tests {
         let temp_file = setup_test_db_path();
         let db = LearningDb::new(temp_file.path()).await.unwrap();
 
-        // Try to insert a fingerprint with a non-existent segment_id (9999)
         let result = db
             .conn
             .execute(
@@ -973,7 +722,6 @@ mod tests {
             },
         ];
 
-        // 1. Success case
         db.record_fingerprints(segment_id, &fingerprints)
             .await
             .unwrap();
@@ -990,7 +738,6 @@ mod tests {
         let count: i64 = row.get(0).unwrap();
         assert_eq!(count, 2);
 
-        // 2. Failure case (atomicity)
         let invalid_segment_id = 9999;
         let mixed_fingerprints = vec![
             crate::verification::fingerprint::Fingerprint {
@@ -1003,13 +750,11 @@ mod tests {
             },
         ];
 
-        // This should fail because segment_id 9999 doesn't exist
         let result = db
             .record_fingerprints(invalid_segment_id, &mixed_fingerprints)
             .await;
         assert!(result.is_err());
 
-        // Verify that NO fingerprints with hash 3 or 4 were inserted
         let mut rows = db
             .conn
             .query(
@@ -1039,7 +784,7 @@ mod tests {
         let temp_file = setup_test_db_path();
         let db = LearningDb::new(temp_file.path()).await.unwrap();
 
-        let decision = GapDecision {
+        let decision = gap_store::GapDecision {
             movie_hash: "movie123".to_string(),
             start_ms: 5000,
             end_ms: 8000,

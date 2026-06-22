@@ -45,6 +45,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - `audio-vad-cpu`: [.agents/skills/audio-vad-cpu/SKILL.md](.agents/skills/audio-vad-cpu/SKILL.md)
 - `self-learning-calibration`: [.agents/skills/self-learning-calibration/SKILL.md](.agents/skills/self-learning-calibration/SKILL.md)
 - `agent-coordination`: [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)
+- `goap-agent`: [.agents/skills/goap-agent/SKILL.md](.agents/skills/goap-agent/SKILL.md)
 - `codacy`: [.agents/skills/codacy/SKILL.md](.agents/skills/codacy/SKILL.md)
 - `triz-analysis`: [.agents/skills/triz-analysis/SKILL.md](.agents/skills/triz-analysis/SKILL.md)
 - `triz-solver`: [.agents/skills/triz-solver/SKILL.md](.agents/skills/triz-solver/SKILL.md)

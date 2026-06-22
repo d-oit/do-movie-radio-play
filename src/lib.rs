@@ -13,3 +13,4 @@ pub mod types;
 pub mod util;
 pub mod validation;
 pub mod verification;
+pub mod voice;

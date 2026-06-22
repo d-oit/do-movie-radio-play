@@ -80,5 +80,6 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | Agent Config Dirs | Adopted | Directories `.jules/`, `.opencode/`, `.qwen/` present |
 
 ## Agent Coordination References
+- [.agents/ORCHESTRATION.md](.agents/ORCHESTRATION.md)
 - [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)
 - [.agents/skills/agent-coordination/PARALLEL.md](.agents/skills/agent-coordination/PARALLEL.md)

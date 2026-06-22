@@ -58,6 +58,8 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - `codacy`: [.agents/skills/codacy/SKILL.md](.agents/skills/codacy/SKILL.md)
 - `triz-analysis`: [.agents/skills/triz-analysis/SKILL.md](.agents/skills/triz-analysis/SKILL.md)
 - `triz-solver`: [.agents/skills/triz-solver/SKILL.md](.agents/skills/triz-solver/SKILL.md)
+- `metrics-reporter`: [.agents/skills/metrics-reporter/SKILL.md](.agents/skills/metrics-reporter/SKILL.md)
+- `dora-report`: [.agents/skills/dora-report/SKILL.md](.agents/skills/dora-report/SKILL.md)
 
 ## Rules
 - **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.
@@ -87,5 +89,6 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | Agent Config Dirs | Adopted | Directories `.jules/`, `.opencode/`, `.qwen/` present |
 
 ## Agent Coordination References
+- [.agents/ORCHESTRATION.md](.agents/ORCHESTRATION.md)
 - [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)
 - [.agents/skills/agent-coordination/PARALLEL.md](.agents/skills/agent-coordination/PARALLEL.md)

@@ -13,7 +13,6 @@ image = modal.Image.debian_slim(python_version="3.11").pip_install(
     gpu="T4",
     image=image,
     scaledown_window=60,
-    container_idle_timeout=60,
 )
 @modal.fastapi_endpoint(method="POST")
 def generate_speech(text: str, speaker_wav: str = None, language: str = "de"):

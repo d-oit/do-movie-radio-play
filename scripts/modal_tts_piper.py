@@ -12,15 +12,14 @@ image = (
     .run_commands(
         "apt-get update && apt-get install -y wget",
         "mkdir -p /models",
-        "wget -O /models/de_DE-thorsten-high.onnx https://github.com/rhasspy/piper/releases/download/v1.0.0/voice-de_DE-thorsten-high.onnx",
-        "wget -O /models/de_DE-thorsten-high.onnx.json https://github.com/rhasspy/piper/releases/download/v1.0.0/voice-de_DE-thorsten-high.onnx.json",
+        "wget -O /models/de_DE-thorsten-high.onnx https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx",
+        "wget -O /models/de_DE-thorsten-high.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json",
     )
 )
 
 @app.function(
     image=image,
     scaledown_window=60,
-    container_idle_timeout=60,
 )
 @modal.fastapi_endpoint(method="POST")
 def generate_speech(text: str, language: str = "de"):

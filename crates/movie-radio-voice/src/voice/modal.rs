@@ -33,11 +33,10 @@ impl VoiceSynthesizer for ModalTtsProvider {
         let response = self
             .client
             .post(&endpoint_url)
-            .json(&serde_json::json!({
-                "text": request.text,
-                "language": request.language,
-                "speaker_wav": request.voice_id,
-            }))
+            .query(&[
+                ("text", request.text.as_str()),
+                ("language", request.language.as_str()),
+            ])
             .send()
             .await
             .context("Failed to send request to Modal endpoint")?;

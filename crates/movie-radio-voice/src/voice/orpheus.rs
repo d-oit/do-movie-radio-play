@@ -1,12 +1,12 @@
 use anyhow::Result;
 use async_trait::async_trait;
+use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_backend::LlamaBackend;
+use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::LlamaModel;
-use llama_cpp_2::context::params::LlamaContextParams;
-use llama_cpp_2::token::LlamaToken;
-use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::sampling::LlamaSampler;
+use llama_cpp_2::token::LlamaToken;
 use once_cell::sync::OnceCell;
 use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
@@ -54,8 +54,15 @@ impl OrpheusProvider {
                     info!("Orpheus provider: using CPU execution");
                 }
 
-                let model = LlamaModel::load_from_file(&backend, &self.config.model_path, &model_params)
-                    .map_err(|e| anyhow::anyhow!("Failed to load Orpheus model from {}: {:?}", self.config.model_path.display(), e))?;
+                let model =
+                    LlamaModel::load_from_file(&backend, &self.config.model_path, &model_params)
+                        .map_err(|e| {
+                            anyhow::anyhow!(
+                                "Failed to load Orpheus model from {}: {:?}",
+                                self.config.model_path.display(),
+                                e
+                            )
+                        })?;
 
                 Ok(Arc::new(model))
             })
@@ -113,18 +120,23 @@ impl VoiceSynthesizer for OrpheusProvider {
         let tagged_text = self.wrap_with_emotion_tags(&request.text, &request.emotion);
 
         // 1. Tokenize input
-        let tokens_list = model.str_to_token(&tagged_text, llama_cpp_2::model::AddBos::Always)
+        let tokens_list = model
+            .str_to_token(&tagged_text, llama_cpp_2::model::AddBos::Always)
             .map_err(|e| anyhow::anyhow!("Tokenization failed: {:?}", e))?;
 
-        let backend_guard = Self::get_backend()?.lock().map_err(|_| anyhow::anyhow!("Backend lock poisoned"))?;
+        let backend_guard = Self::get_backend()?
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Backend lock poisoned"))?;
         let ctx_params = LlamaContextParams::default();
-        let mut ctx = model.new_context(&backend_guard, ctx_params)
+        let mut ctx = model
+            .new_context(&backend_guard, ctx_params)
             .map_err(|e| anyhow::anyhow!("Failed to create context: {:?}", e))?;
 
         // 2. Initial decode (Prompt processing)
         let mut batch = LlamaBatch::new(tokens_list.len(), 1);
         for (i, &token) in tokens_list.iter().enumerate() {
-            batch.add(token, i as i32, &[0], i == tokens_list.len() - 1)
+            batch
+                .add(token, i as i32, &[0], i == tokens_list.len() - 1)
                 .map_err(|e| anyhow::anyhow!("Failed to add token to batch: {:?}", e))?;
         }
 
@@ -154,7 +166,8 @@ impl VoiceSynthesizer for OrpheusProvider {
 
             // Prepare next token for inference
             batch.clear();
-            batch.add(token, n_cur, &[0], true)
+            batch
+                .add(token, n_cur, &[0], true)
                 .map_err(|e| anyhow::anyhow!("Failed to add sampled token to batch: {:?}", e))?;
             n_cur += 1;
 
@@ -168,7 +181,10 @@ impl VoiceSynthesizer for OrpheusProvider {
         }
 
         if speech_tokens.is_empty() {
-            warn!("Orpheus-3B generated no speech tokens for text: {}", request.text);
+            warn!(
+                "Orpheus-3B generated no speech tokens for text: {}",
+                request.text
+            );
         }
 
         // 4. SNAC Decoding to PCM

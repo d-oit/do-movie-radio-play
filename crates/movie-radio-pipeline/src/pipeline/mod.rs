@@ -1,0 +1,527 @@
+pub mod decode;
+pub mod features;
+pub mod framing;
+pub mod nonvoice_expand;
+pub mod prompts;
+pub mod resample;
+pub mod segmenter;
+pub mod speech_evidence;
+pub mod tags;
+pub mod tail_recovery;
+pub mod tri_state;
+pub mod vad;
+
+use std::{path::Path, time::Instant};
+
+use anyhow::Result;
+use tracing::info;
+
+use crate::pipeline::vad::{adapt_spectral_thresholds, create_engine, VadEngine};
+use movie_radio_types::{AnalysisConfig, MergeStrategy};
+use movie_radio_types::{BenchmarkResult, StageDurations, TimelineOutput};
+use movie_radio_verification::{
+    default_filter_segment_confidence_ceiling, filter_low_confidence_non_voice_segments,
+};
+
+const MAX_FILTER_MIN_NON_VOICE_MS: u32 = 1_000;
+const FILTER_MERGE_STRATEGY: MergeStrategy = MergeStrategy::Sparse;
+const MAX_RESIDUAL_BRIDGE_GAP_MS: u64 = 2_500;
+const NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS: u64 = 400;
+
+struct PipelineArtifacts {
+    timeline: TimelineOutput,
+    frame_count: usize,
+    speech_segment_count: usize,
+    stage_ms: StageDurations,
+}
+
+pub fn extract_timeline(input: &Path, cfg: &AnalysisConfig) -> Result<TimelineOutput> {
+    info!(input = %input.display(), sample_rate = cfg.sample_rate_hz, frame_ms = cfg.frame_ms, "extract start");
+    let total_start = Instant::now();
+    let PipelineArtifacts {
+        timeline,
+        frame_count,
+        speech_segment_count,
+        stage_ms,
+    } = run_pipeline(input, cfg)?;
+    info!(
+        total_ms = total_start.elapsed().as_millis() as u64,
+        frames = frame_count,
+        speech_segments = speech_segment_count,
+        non_voice_segments = timeline.segments.len(),
+        decode_ms = stage_ms.decode_ms,
+        vad_ms = stage_ms.vad_ms,
+        "extract done"
+    );
+    Ok(timeline)
+}
+
+fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts> {
+    let effective_threshold = cfg.energy_threshold + cfg.vad_threshold_delta;
+    let mut stage_ms = StageDurations::default();
+
+    let decode_start = Instant::now();
+    let (mono, source_rate) = decode::decode_audio(input, cfg.sample_rate_hz)?;
+    stage_ms.decode_ms = decode_start.elapsed().as_millis() as u64;
+    info!(
+        stage = "decode",
+        ms = stage_ms.decode_ms,
+        source_rate,
+        samples = mono.len(),
+        "stage complete"
+    );
+
+    stage_ms.resample_ms = 0; // Resampling is now integrated into decode
+
+    let frame_start = Instant::now();
+    let frames = framing::build_frames(
+        &mono,
+        cfg.sample_rate_hz,
+        cfg.frame_ms,
+        cfg.parallel_features,
+    );
+    stage_ms.frame_ms = frame_start.elapsed().as_millis() as u64;
+    info!(
+        stage = "frame",
+        ms = stage_ms.frame_ms,
+        frames = frames.len(),
+        frame_ms = cfg.frame_ms,
+        "stage complete"
+    );
+    let frame_count = frames.len();
+
+    let (vad_threshold, vad_flatness_max, vad_entropy_min, vad_centroid_min, vad_centroid_max) =
+        if cfg.vad_engine == "spectral" {
+            let adapted = adapt_spectral_thresholds(
+                &frames,
+                effective_threshold,
+                cfg.spectral_flatness_max,
+                cfg.spectral_entropy_min,
+                cfg.spectral_centroid_min,
+                cfg.spectral_centroid_max,
+            );
+            info!(
+                stage = "vad_adapt",
+                threshold = adapted.threshold,
+                flatness_max = adapted.flatness_max,
+                entropy_min = adapted.entropy_min,
+                centroid_min = adapted.centroid_min,
+                centroid_max = adapted.centroid_max,
+                "adaptive spectral thresholds computed"
+            );
+            (
+                adapted.threshold,
+                Some(adapted.flatness_max),
+                Some(adapted.entropy_min),
+                Some(adapted.centroid_min),
+                Some(adapted.centroid_max),
+            )
+        } else {
+            (
+                effective_threshold,
+                cfg.spectral_flatness_max,
+                cfg.spectral_entropy_min,
+                cfg.spectral_centroid_min,
+                cfg.spectral_centroid_max,
+            )
+        };
+
+    let vad_engine: Box<dyn VadEngine> = create_engine(
+        &cfg.vad_engine,
+        vad_threshold,
+        vad_flatness_max,
+        vad_entropy_min,
+        vad_centroid_min,
+        vad_centroid_max,
+    )?;
+
+    let vad_name = vad_engine.name();
+
+    let vad_start = Instant::now();
+    let vad_output = vad_engine.classify(&frames);
+    let speech = vad_output.decisions;
+    let frame_likelihoods = vad_output.likelihoods;
+    stage_ms.vad_ms = vad_start.elapsed().as_millis() as u64;
+    let speech_frames = speech.iter().filter(|&&v| v).count();
+    info!(
+        stage = "vad",
+        ms = stage_ms.vad_ms,
+        engine = vad_name,
+        speech_frames,
+        threshold = vad_threshold,
+        base_threshold = cfg.energy_threshold,
+        delta = cfg.vad_threshold_delta,
+        "stage complete"
+    );
+
+    let smooth_start = Instant::now();
+    let smoothed = tri_state::resolve_speech_with_ambiguity(
+        &speech,
+        &frames,
+        &frame_likelihoods,
+        cfg.frame_ms,
+        cfg.speech_hangover_ms,
+    );
+    stage_ms.smooth_ms = smooth_start.elapsed().as_millis() as u64;
+    let smoothed_frames = smoothed.iter().filter(|&&v| v).count();
+    info!(
+        stage = "smooth",
+        ms = stage_ms.smooth_ms,
+        speech_frames = smoothed_frames,
+        hangover_ms = cfg.speech_hangover_ms,
+        "stage complete"
+    );
+
+    let speech_stage = Instant::now();
+    let speech_segments = segmenter::speech_segments(
+        &smoothed,
+        cfg.frame_ms,
+        cfg.min_speech_ms,
+        &frame_likelihoods,
+    );
+    stage_ms.speech_ms = speech_stage.elapsed().as_millis() as u64;
+    info!(
+        stage = "speech_segments",
+        ms = stage_ms.speech_ms,
+        segments = speech_segments.len(),
+        min_speech_ms = cfg.min_speech_ms,
+        "stage complete"
+    );
+
+    let merge_start = Instant::now();
+    let merged_speech = segmenter::merge_close_segments(&speech_segments, cfg.merge_gap_ms);
+    let prune_floor_ms = cfg
+        .merge_options
+        .as_ref()
+        .map(|opts| opts.min_speech_duration)
+        .unwrap_or(cfg.min_speech_ms);
+    let pruned_speech = segmenter::prune_short_speech_segments(&merged_speech, prune_floor_ms);
+    let segments_after_prune = pruned_speech.len();
+    let filtered_speech = if should_apply_speech_evidence_filter(cfg) {
+        speech_evidence::filter_implausible_speech_segments(&pruned_speech, &frames, cfg.frame_ms)
+    } else {
+        pruned_speech
+    };
+    stage_ms.merge_ms = merge_start.elapsed().as_millis() as u64;
+    info!(
+        stage = "merge_segments",
+        ms = stage_ms.merge_ms,
+        segments_before_prune = merged_speech.len(),
+        segments_after_prune,
+        segments_after_evidence = filtered_speech.len(),
+        prune_floor_ms,
+        merge_gap_ms = cfg.merge_gap_ms,
+        "stage complete"
+    );
+    let speech_segment_count = filtered_speech.len();
+
+    let total_audio_ms = mono.len() as u64 * 1000 / cfg.sample_rate_hz as u64;
+    let invert_start = Instant::now();
+    let non_voice = segmenter::invert_to_non_voice(
+        &filtered_speech,
+        total_audio_ms,
+        cfg.min_non_voice_ms,
+        cfg.frame_ms,
+        &frame_likelihoods,
+    );
+    let segments_before_bridge = non_voice.len();
+    let bridge_speech_ms = cfg
+        .merge_options
+        .as_ref()
+        .map(|opts| opts.min_speech_duration)
+        .unwrap_or(0);
+    let non_voice = segmenter::bridge_non_voice_segments(&non_voice, bridge_speech_ms);
+    let non_voice = if let Some(merge_options) = cfg.merge_options.as_ref() {
+        segmenter::apply_non_voice_merge_policy(&non_voice, merge_options)
+    } else {
+        non_voice
+    };
+    let non_voice = nonvoice_expand::expand_non_voice_segments_into_ambiguous(
+        &non_voice,
+        &frame_likelihoods,
+        cfg.frame_ms,
+        ambiguous_expand_max_ms(cfg),
+    );
+    stage_ms.invert_ms = invert_start.elapsed().as_millis() as u64;
+    let segments_before_split = non_voice.len();
+    let segments = if let Some(max_ms) = cfg.max_non_voice_ms {
+        let split_start = Instant::now();
+        let split = segmenter::split_long_segments(
+            non_voice,
+            max_ms,
+            cfg.min_non_voice_ms,
+            cfg.frame_ms,
+            &frame_likelihoods,
+        );
+        stage_ms.invert_ms += split_start.elapsed().as_millis() as u64;
+        info!(
+            stage = "split",
+            ms = split_start.elapsed().as_millis() as u64,
+            segments_before = segments_before_split,
+            segments_after = split.len(),
+            max_non_voice_ms = max_ms,
+            "stage complete"
+        );
+        split
+    } else {
+        non_voice
+    };
+    let verification_filter_start = Instant::now();
+    let segments_before_filter = segments.len();
+    let segments = if should_apply_verification_filter(cfg) {
+        filter_low_confidence_non_voice_segments(
+            input,
+            &segments,
+            default_filter_segment_confidence_ceiling(),
+        )
+    } else {
+        segments
+    };
+    let segments =
+        segmenter::bridge_residual_non_voice_gaps(&segments, residual_bridge_gap_ms(cfg));
+    let segments = tail_recovery::extend_terminal_non_voice_segment(
+        &segments,
+        &frame_likelihoods,
+        cfg.frame_ms,
+        total_audio_ms,
+        cfg.min_non_voice_ms,
+    );
+    stage_ms.invert_ms += verification_filter_start.elapsed().as_millis() as u64;
+    info!(
+        stage = "invert",
+        ms = stage_ms.invert_ms,
+        segments = segments.len(),
+        segments_before_bridge,
+        segments_before_filter,
+        bridge_speech_ms,
+        total_ms = total_audio_ms,
+        min_non_voice_ms = cfg.min_non_voice_ms,
+        "stage complete"
+    );
+
+    let timeline = TimelineOutput {
+        file: input
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "unknown".to_string()),
+        analysis_sample_rate: cfg.sample_rate_hz,
+        frame_ms: cfg.frame_ms,
+        segments,
+    };
+
+    Ok(PipelineArtifacts {
+        timeline,
+        frame_count,
+        speech_segment_count,
+        stage_ms,
+    })
+}
+
+pub fn benchmark_file(input: &Path, cfg: &AnalysisConfig) -> Result<BenchmarkResult> {
+    let total_start = Instant::now();
+    let PipelineArtifacts {
+        timeline,
+        frame_count,
+        stage_ms,
+        ..
+    } = run_pipeline(input, cfg)?;
+    let segment_count = timeline.segments.len();
+    Ok(BenchmarkResult {
+        input_file: input.display().to_string(),
+        total_ms: total_start.elapsed().as_millis() as u64,
+        decode_ms: stage_ms.decode_ms,
+        frame_count,
+        segment_count,
+        stage_ms,
+    })
+}
+
+fn should_apply_verification_filter(cfg: &AnalysisConfig) -> bool {
+    cfg.min_non_voice_ms <= MAX_FILTER_MIN_NON_VOICE_MS
+        && cfg
+            .merge_options
+            .as_ref()
+            .map(|opts| opts.merge_strategy == FILTER_MERGE_STRATEGY)
+            .unwrap_or(false)
+}
+
+fn residual_bridge_gap_ms(cfg: &AnalysisConfig) -> u64 {
+    let Some(options) = cfg.merge_options.as_ref() else {
+        return MAX_RESIDUAL_BRIDGE_GAP_MS;
+    };
+    if options.merge_strategy == FILTER_MERGE_STRATEGY {
+        MAX_RESIDUAL_BRIDGE_GAP_MS
+    } else {
+        options.min_gap_to_merge.max(options.min_silence_duration) as u64
+    }
+}
+
+fn ambiguous_expand_max_ms(cfg: &AnalysisConfig) -> Option<u64> {
+    let Some(options) = cfg.merge_options.as_ref() else {
+        return Some(NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS);
+    };
+    if options.merge_strategy == FILTER_MERGE_STRATEGY {
+        None
+    } else {
+        Some(NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS)
+    }
+}
+
+fn should_apply_speech_evidence_filter(cfg: &AnalysisConfig) -> bool {
+    cfg.merge_options
+        .as_ref()
+        .map(|opts| opts.merge_strategy == FILTER_MERGE_STRATEGY)
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use movie_radio_types::MergeOptions;
+
+    #[test]
+    fn verification_filter_applies_to_sparse_low_min_non_voice_profiles() {
+        let cfg = AnalysisConfig {
+            min_non_voice_ms: 800,
+            merge_options: Some(MergeOptions {
+                merge_strategy: MergeStrategy::Sparse,
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert!(should_apply_verification_filter(&cfg));
+    }
+
+    #[test]
+    fn verification_filter_skips_non_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            min_non_voice_ms: 500,
+            merge_options: Some(MergeOptions {
+                merge_strategy: MergeStrategy::All,
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert!(!should_apply_verification_filter(&cfg));
+    }
+
+    #[test]
+    fn residual_bridge_gap_stays_wide_for_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: MergeStrategy::Sparse,
+                min_gap_to_merge: 600,
+                min_silence_duration: 500,
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert_eq!(residual_bridge_gap_ms(&cfg), MAX_RESIDUAL_BRIDGE_GAP_MS);
+    }
+
+    #[test]
+    fn residual_bridge_gap_is_bounded_for_non_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: MergeStrategy::All,
+                min_gap_to_merge: 400,
+                min_silence_duration: 300,
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert_eq!(residual_bridge_gap_ms(&cfg), 400);
+    }
+
+    #[test]
+    fn ambiguous_expand_unbounded_for_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: MergeStrategy::Sparse,
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert_eq!(ambiguous_expand_max_ms(&cfg), None);
+    }
+
+    #[test]
+    fn ambiguous_expand_bounded_for_non_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: MergeStrategy::All,
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert_eq!(
+            ambiguous_expand_max_ms(&cfg),
+            Some(NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS)
+        );
+    }
+
+    #[test]
+    fn speech_evidence_filter_enabled_for_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: MergeStrategy::Sparse,
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert!(should_apply_speech_evidence_filter(&cfg));
+    }
+
+    #[test]
+    fn speech_evidence_filter_disabled_for_non_sparse_profiles() {
+        let cfg = AnalysisConfig {
+            merge_options: Some(MergeOptions {
+                merge_strategy: MergeStrategy::All,
+                ..MergeOptions::default()
+            }),
+            ..AnalysisConfig::default()
+        };
+
+        assert!(!should_apply_speech_evidence_filter(&cfg));
+    }
+}
+
+#[cfg(test)]
+mod pipeline_tests {
+    use super::*;
+    use hound::{WavSpec, WavWriter};
+    use movie_radio_types::AnalysisConfig;
+
+    #[test]
+    fn test_run_pipeline_smoke() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("test.wav");
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        // 1 second of silence
+        for _ in 0..16000 {
+            writer.write_sample(0i16).unwrap();
+        }
+        writer.finalize().unwrap();
+
+        let cfg = AnalysisConfig {
+            min_non_voice_ms: 100, // Small enough to detect silence in 1s
+            ..AnalysisConfig::default()
+        };
+        let result = run_pipeline(&wav_path, &cfg).unwrap();
+        assert!(!result.timeline.segments.is_empty());
+        assert_eq!(result.timeline.analysis_sample_rate, 16000);
+    }
+}

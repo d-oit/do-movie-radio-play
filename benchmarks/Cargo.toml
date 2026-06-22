@@ -1,0 +1,19 @@
+[package]
+name = "benchmarks"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+movie-radio-pipeline = { path = "../crates/movie-radio-pipeline" }
+movie-radio-types = { path = "../crates/movie-radio-types" }
+movie-radio-verification = { path = "../crates/movie-radio-verification" }
+criterion = { version = "0.8", features = ["html_reports"] }
+
+[[bench]]
+name = "pipeline_bench"
+harness = false
+
+[[bench]]
+name = "analysis_bench"
+harness = false

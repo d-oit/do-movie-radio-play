@@ -40,12 +40,12 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
-      - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
+      - run: cargo run --quiet -p movie-radio-timeline -- gen-fixtures --output-dir testdata/generated
       - run: python3 scripts/check_validation_coverage.py --tier A --strict-files
-      - run: cargo build
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo test
+      - run: cargo build --workspace
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: cargo test --workspace
 
   benchmark:
     runs-on: ubuntu-latest
@@ -57,12 +57,12 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
       - run: bash scripts/benchmark.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/ci.json
-      - run: cargo run --quiet -- bench testdata/raw/elephantsdream_teaser.mp4 --output analysis/benchmarks/ci-elephantsdream-teaser-2006.json
-      - run: cargo run --quiet -- bench testdata/raw/caminandes_gran_dillama.mp4 --output analysis/benchmarks/ci-caminandes-gran-dillama-2013.json
+      - run: cargo run --quiet -p movie-radio-timeline -- bench testdata/raw/elephantsdream_teaser.mp4 --output analysis/benchmarks/ci-elephantsdream-teaser-2006.json
+      - run: cargo run --quiet -p movie-radio-timeline -- bench testdata/raw/caminandes_gran_dillama.mp4 --output analysis/benchmarks/ci-caminandes-gran-dillama-2013.json
       - run: python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/ci.json
       - run: python3 scripts/optimize_fp_sweep.py --media testdata/raw/elephantsdream_teaser.mp4 --media testdata/raw/caminandes_gran_dillama.mp4 --output analysis/optimization/fp-sweep-modern-extra-ci.json --work-dir analysis/optimization/fp-sweep-modern-extra-ci-runs
       - run: python3 scripts/build_modern_ci_summary.py --benchmark analysis/benchmarks/ci-elephantsdream-teaser-2006.json --benchmark analysis/benchmarks/ci-caminandes-gran-dillama-2013.json --fp-sweep analysis/optimization/fp-sweep-modern-extra-ci.json --output-md analysis/optimization/modern-extra-ci-summary.md
-      - run: cargo bench --bench pipeline_bench -- --noplot
+      - run: cargo bench -p benchmarks --bench pipeline_bench -- --noplot
       - uses: actions/upload-artifact@v7
         with:
           name: benchmark-modern-movies
@@ -87,20 +87,20 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
-      - run: cargo build --quiet
+      - run: cargo build --workspace --quiet
       - name: Extract timeline for verification
         run: |
           mkdir -p analysis/verification
-          cargo run --quiet -- extract testdata/raw/sintel_trailer_2010.mp4 \
+          cargo run --quiet -p movie-radio-timeline -- extract testdata/raw/sintel_trailer_2010.mp4 \
             --output analysis/verification/sintel-extracted.json
       - name: Verify timeline
         run: |
-          cargo run --quiet -- verify-timeline testdata/raw/sintel_trailer_2010.mp4 \
+          cargo run --quiet -p movie-radio-timeline -- verify-timeline testdata/raw/sintel_trailer_2010.mp4 \
             --timeline analysis/verification/sintel-extracted.json \
             --output analysis/verification/sintel-verified.json
       - name: Update thresholds from verification
         run: |
           mkdir -p analysis/thresholds
-          cargo run --quiet -- update-thresholds \
+          cargo run --quiet -p movie-radio-timeline -- update-thresholds \
             --learning-state analysis/thresholds/learning-state.json \
             --output analysis/thresholds/recommendations.json || true

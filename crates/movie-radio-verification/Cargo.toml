@@ -1,0 +1,24 @@
+[package]
+name = "movie-radio-verification"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Verification analysis and fingerprinting"
+
+[dependencies]
+movie-radio-types.workspace = true
+movie-radio-io.workspace = true
+movie-radio-learning.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+realfft.workspace = true
+tokio.workspace = true
+tempfile.workspace = true
+
+[dev-dependencies]
+rand = "0.10"
+
+[lints]
+workspace = true

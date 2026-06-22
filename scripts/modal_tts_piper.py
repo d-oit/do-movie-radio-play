@@ -1,5 +1,4 @@
 import modal
-import os
 
 app = modal.App("do-movie-radio-play-tts-piper")
 

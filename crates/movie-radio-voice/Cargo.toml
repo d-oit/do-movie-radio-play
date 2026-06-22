@@ -1,0 +1,19 @@
+[package]
+name = "movie-radio-voice"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "TTS voice synthesis providers"
+
+[dependencies]
+movie-radio-types.workspace = true
+anyhow.workspace = true
+async-trait.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+ort.workspace = true
+reqwest.workspace = true
+
+[lints]
+workspace = true

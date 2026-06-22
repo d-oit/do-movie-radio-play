@@ -1,17 +1,17 @@
-[package]
-name = "movie-nonvoice-timeline"
+[workspace]
+members = [
+    "crates/*",
+    "benchmarks",
+]
+resolver = "3"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/d-oit/do-movie-radio-play"
 
-[[bin]]
-name = "timeline"
-path = "src/main.rs"
-
-[features]
-default = []
-high-quality-resample = ["dep:rubato"]
-
-[dependencies]
+[workspace.dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
@@ -20,29 +20,53 @@ thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+async-trait = "0.1"
+reqwest = { version = "0.12", features = ["json"] }
 hound = "3"
 realfft = "3"
 tempfile = "3"
 libsql = { version = "0.9", default-features = false, features = ["core"] }
 symphonia = { version = "0.6", features = ["mp3", "wav", "flac", "ogg", "pcm"] }
 rayon = "1.10"
-rubato = { version = "3.0", optional = true }
-async-trait = "0.1"
+rubato = "3.0"
 ort = { version = "2.0.0-rc.9", features = ["load-dynamic"] }
-reqwest = { version = "0.12", features = ["json"] }
+rand = "0.10"
+movie-radio-types = { path = "crates/movie-radio-types" }
+movie-radio-pipeline = { path = "crates/movie-radio-pipeline" }
+movie-radio-io = { path = "crates/movie-radio-io" }
+movie-radio-learning = { path = "crates/movie-radio-learning" }
+movie-radio-verification = { path = "crates/movie-radio-verification" }
+movie-radio-validation = { path = "crates/movie-radio-validation" }
+movie-radio-voice = { path = "crates/movie-radio-voice" }
+movie-radio-goap = { path = "crates/movie-radio-goap" }
+movie-radio-timeline = { path = "crates/movie-radio-timeline" }
 
-[dev-dependencies]
-assert_cmd = "2"
-predicates = "3"
-tempfile = "3"
-rand = "0.10.1"
-jsonschema = "0.46"
-criterion = { version = "0.8", features = ["html_reports"] }
+[workspace.lints.rust]
+unsafe_code = "forbid"
 
-[[bench]]
-name = "pipeline_bench"
-harness = false
-
-[[bench]]
-name = "analysis_bench"
-harness = false
+[workspace.lints.clippy]
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+struct_excessive_bools = "allow"
+similar_names = "allow"
+too_many_lines = "allow"
+too_many_arguments = "allow"
+wildcard_imports = "allow"
+manual_contains = "allow"
+items_after_statements = "allow"
+module_inception = "allow"
+single_match_else = "allow"
+match_wildcard_for_single_variants = "allow"
+if_not_else = "allow"
+redundant_else = "allow"
+unnecessary_lazy_evaluations = "allow"
+needless_pass_by_value = "allow"
+return_self_not_must_use = "allow"
+trivially_copy_pass_by_ref = "allow"
+unused_self = "allow"
+implicit_saturating_sub = "allow"
+needless_ifs = "allow"

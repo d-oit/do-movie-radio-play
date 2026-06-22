@@ -9,6 +9,7 @@
 | 003 | JSON contract | Accepted (stub) | `plans/010-architecture/ADR-003-json-contract.md` | Stable serde model with snake_case enums and deterministic field ordering via fixed structs. 2 lines. |
 | 003 | VAD Trait System | Accepted (54 lines) | `plans/020-triz/ADR-003-vad-trait-system.md` | Introduce a `VadEngine` trait system allowing runtime selection of VAD engines. Factory pattern with `create_engine(name, threshold)`. Covers energy (impl), webrtc (planned), silero (planned). |
 | 004 | Self-learning boundaries | Accepted (stub) | `plans/010-architecture/ADR-004-self-learning-boundaries.md` | Allow only offline calibration via explicit correction records and versioned reports. 2 lines. |
+| 005 | Workspace Crate Restructure | Accepted | `plans/adr/0005-workspace-restructure.md` | Restructure monolithic crate into 8 library crates + 1 binary crate following rust-2026-template pattern. Fixes LOC violations, enables independent testing, and aligns with template. |
 
 | 120 | GOAP Radio Play Pipeline | Proposed | `plans/120-goap-radio-play-pipeline/ADR-120-goap-architecture.md` | GOAP-based orchestration for full movie-to-radio-play conversion with A* planning, replanning on failure, and resource-aware action selection. |
 | 121 | Voice Synthesis Providers | Proposed | `plans/120-goap-radio-play-pipeline/ADR-121-voice-synthesis-providers.md` | Pluggable TTS provider architecture: Kokoro-82M (free/CPU), Qwen3-TTS (emotion/local), Orpheus-3B (GGUF/emotion tags), ElevenLabs/OpenAI (paid API). User-configurable with fallback chains. |

@@ -1,5 +1,4 @@
 import modal
-import os
 
 app = modal.App("do-movie-radio-play-tts")
 
@@ -20,7 +19,6 @@ image = modal.Image.debian_slim(python_version="3.11").pip_install(
 def generate_speech(text: str, speaker_wav: str = None, language: str = "de"):
     from TTS.api import TTS
     import tempfile
-    import io
 
     # Load model (cached in container)
     tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2", gpu=True)

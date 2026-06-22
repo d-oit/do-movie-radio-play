@@ -1,0 +1,20 @@
+[package]
+name = "movie-radio-learning"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Self-learning and calibration subsystem"
+
+[dependencies]
+movie-radio-types.workspace = true
+movie-radio-io.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+libsql.workspace = true
+tokio.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

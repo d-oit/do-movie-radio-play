@@ -23,8 +23,12 @@ impl ModalTtsProvider {
 #[async_trait]
 impl VoiceSynthesizer for ModalTtsProvider {
     async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
-        let endpoint_url = env::var(&self.config.endpoint_url_env)
-            .with_context(|| format!("Environment variable {} not set", self.config.endpoint_url_env))?;
+        let endpoint_url = env::var(&self.config.endpoint_url_env).with_context(|| {
+            format!(
+                "Environment variable {} not set",
+                self.config.endpoint_url_env
+            )
+        })?;
 
         let response = self
             .client
@@ -51,7 +55,7 @@ impl VoiceSynthesizer for ModalTtsProvider {
         // Basic 16-bit PCM WAV decoding (Symphonia would be better for general use,
         // but for this provider's expected output format):
         if bytes.len() < 44 {
-             anyhow::bail!("Modal response too short to be a valid WAV");
+            anyhow::bail!("Modal response too short to be a valid WAV");
         }
 
         // Skip 44-byte WAV header and convert to f32

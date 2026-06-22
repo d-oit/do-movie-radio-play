@@ -151,5 +151,8 @@ async fn test_modal_synthesis_no_endpoint() {
     };
     let result = provider.synthesize(&request).await;
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Environment variable NON_EXISTENT_MODAL_URL not set"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Environment variable NON_EXISTENT_MODAL_URL not set"));
 }

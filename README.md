@@ -58,6 +58,7 @@ Profiles are stored as JSON in `config/profiles/`. Options can be overridden via
 - **VTT**: WebVTT subtitle format.
 
 ## TTS Providers
+
 - **Modal.com (Free Tier)**: Serverless GPU inference for German Hörspiel generation.
   - Supports Coqui XTTS v2 (voice cloning) and Piper TTS.
   - Setup: Deploy scripts from `scripts/modal_tts_deploy.py` and set `MODAL_TTS_ENDPOINT`.
@@ -66,9 +67,11 @@ Profiles are stored as JSON in `config/profiles/`. Options can be overridden via
 - **Local Providers**: Kokoro, PocketTTS, Qwen3, Orpheus (require local model files/GPU).
 
 ## Known Limitations
+
 - 16-bit PCM WAV is the only natively supported format; others require FFmpeg.
 - Spectral analysis is CPU-bound.
 - Memory usage increases with the number of segments during HTML report generation.
 
 ## Contributing
+
 Refer to [AGENTS.md](AGENTS.md) for development workflows and agent coordination policies.

@@ -10,7 +10,6 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
 # --- Configuration ---
-readonly GIT_EXCLUDE="./.git/*"
 readonly MAX_LINES_PER_SOURCE_FILE=500
 
 # --- Parse arguments ---

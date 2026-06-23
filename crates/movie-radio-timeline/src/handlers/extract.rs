@@ -4,7 +4,7 @@ use tracing::info;
 
 use movie_radio_io::json::write_json_pretty;
 use movie_radio_learning::profiles::CalibrationProfile;
-use movie_radio_pipeline::pipeline::{benchmark_file, extract_timeline};
+use movie_radio_pipeline::pipeline::{benchmark::benchmark_file, extract_timeline};
 use movie_radio_validation::synthetic;
 
 use crate::util;

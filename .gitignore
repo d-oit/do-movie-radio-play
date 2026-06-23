@@ -14,3 +14,4 @@ analysis/optimization/fp-sweep-runs/
 /timeline.json
 /verified.json
 /*.wav
+__pycache__

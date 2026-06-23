@@ -37,7 +37,7 @@ while IFS= read -r file; do
     warn "  $file: $lines lines (max $MAX_LINES)"
     LOC_VIOLATIONS=$((LOC_VIOLATIONS + 1))
   fi
-done < <(find src -name "*.rs" -type f 2>/dev/null)
+done < <(find crates -name "*.rs" -type f 2>/dev/null)
 
 if [[ $LOC_VIOLATIONS -gt 0 ]]; then
   fail "LOC: $LOC_VIOLATIONS files exceed $MAX_LINES lines"

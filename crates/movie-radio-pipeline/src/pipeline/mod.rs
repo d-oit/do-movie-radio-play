@@ -1,5 +1,8 @@
+pub use benchmark::benchmark_file;
+pub mod benchmark;
 pub mod decode;
 pub mod features;
+pub mod filters;
 pub mod framing;
 pub mod nonvoice_expand;
 pub mod prompts;
@@ -17,8 +20,12 @@ use anyhow::Result;
 use tracing::info;
 
 use crate::pipeline::vad::{adapt_spectral_thresholds, create_engine, VadEngine};
+use filters::{
+    ambiguous_expand_max_ms, residual_bridge_gap_ms, should_apply_speech_evidence_filter,
+    should_apply_verification_filter,
+};
 use movie_radio_types::{AnalysisConfig, MergeStrategy};
-use movie_radio_types::{BenchmarkResult, StageDurations, TimelineOutput};
+use movie_radio_types::{StageDurations, TimelineOutput};
 use movie_radio_verification::{
     default_filter_segment_confidence_ceiling, filter_low_confidence_non_voice_segments,
 };
@@ -317,63 +324,6 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     })
 }
 
-pub fn benchmark_file(input: &Path, cfg: &AnalysisConfig) -> Result<BenchmarkResult> {
-    let total_start = Instant::now();
-    let PipelineArtifacts {
-        timeline,
-        frame_count,
-        stage_ms,
-        ..
-    } = run_pipeline(input, cfg)?;
-    let segment_count = timeline.segments.len();
-    Ok(BenchmarkResult {
-        input_file: input.display().to_string(),
-        total_ms: total_start.elapsed().as_millis() as u64,
-        decode_ms: stage_ms.decode_ms,
-        frame_count,
-        segment_count,
-        stage_ms,
-    })
-}
-
-fn should_apply_verification_filter(cfg: &AnalysisConfig) -> bool {
-    cfg.min_non_voice_ms <= MAX_FILTER_MIN_NON_VOICE_MS
-        && cfg
-            .merge_options
-            .as_ref()
-            .map(|opts| opts.merge_strategy == FILTER_MERGE_STRATEGY)
-            .unwrap_or(false)
-}
-
-fn residual_bridge_gap_ms(cfg: &AnalysisConfig) -> u64 {
-    let Some(options) = cfg.merge_options.as_ref() else {
-        return MAX_RESIDUAL_BRIDGE_GAP_MS;
-    };
-    if options.merge_strategy == FILTER_MERGE_STRATEGY {
-        MAX_RESIDUAL_BRIDGE_GAP_MS
-    } else {
-        options.min_gap_to_merge.max(options.min_silence_duration) as u64
-    }
-}
-
-fn ambiguous_expand_max_ms(cfg: &AnalysisConfig) -> Option<u64> {
-    let Some(options) = cfg.merge_options.as_ref() else {
-        return Some(NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS);
-    };
-    if options.merge_strategy == FILTER_MERGE_STRATEGY {
-        None
-    } else {
-        Some(NON_SPARSE_AMBIGUOUS_EXPAND_MAX_MS)
-    }
-}
-
-fn should_apply_speech_evidence_filter(cfg: &AnalysisConfig) -> bool {
-    cfg.merge_options
-        .as_ref()
-        .map(|opts| opts.merge_strategy == FILTER_MERGE_STRATEGY)
-        .unwrap_or(false)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -497,7 +447,6 @@ mod tests {
 mod pipeline_tests {
     use super::*;
     use hound::{WavSpec, WavWriter};
-    use movie_radio_types::AnalysisConfig;
 
     #[test]
     fn test_run_pipeline_smoke() {
@@ -510,14 +459,13 @@ mod pipeline_tests {
             sample_format: hound::SampleFormat::Int,
         };
         let mut writer = WavWriter::create(&wav_path, spec).unwrap();
-        // 1 second of silence
         for _ in 0..16000 {
             writer.write_sample(0i16).unwrap();
         }
         writer.finalize().unwrap();
 
         let cfg = AnalysisConfig {
-            min_non_voice_ms: 100, // Small enough to detect silence in 1s
+            min_non_voice_ms: 100,
             ..AnalysisConfig::default()
         };
         let result = run_pipeline(&wav_path, &cfg).unwrap();

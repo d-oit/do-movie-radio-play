@@ -20,6 +20,7 @@ pub struct VoiceProvidersConfig {
     pub orpheus: Option<OrpheusConfig>,
     pub elevenlabs: Option<ElevenLabsConfig>,
     pub modal: Option<ModalConfig>,
+    pub openai: Option<OpenAiConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,4 +62,12 @@ pub struct ElevenLabsConfig {
     pub model: String,
     pub stability: f32,
     pub similarity_boost: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenAiConfig {
+    pub api_key_env: String,
+    pub model: String,
+    pub voice: String,
+    pub response_format: String,
 }

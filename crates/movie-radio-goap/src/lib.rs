@@ -1,4 +1,8 @@
+use anyhow::Result;
+use async_trait::async_trait;
+use movie_radio_types::{AnalysisConfig, GapAnalysisOutput, TimelineOutput};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub struct WorldState {
@@ -31,6 +35,38 @@ impl WorldState {
     }
 }
 
+pub struct PipelineContext {
+    pub movie_path: PathBuf,
+    pub output_path: PathBuf,
+    pub subtitles_path: Option<PathBuf>,
+    pub config: AnalysisConfig,
+    pub timeline: Option<TimelineOutput>,
+    pub gap_analysis: Option<GapAnalysisOutput>,
+    pub scripts: Option<Vec<narrate::NarrationScript>>,
+    pub narration_audio: Vec<movie_radio_voice::AudioOutput>,
+    pub original_audio: Option<Vec<f32>>,
+    pub sample_rate: u32,
+}
+
+impl PipelineContext {
+    pub fn new(movie_path: PathBuf, output_path: PathBuf) -> Self {
+        let config = AnalysisConfig::default();
+        Self {
+            movie_path,
+            output_path,
+            subtitles_path: None,
+            sample_rate: config.sample_rate_hz,
+            config,
+            timeline: None,
+            gap_analysis: None,
+            scripts: None,
+            narration_audio: Vec::new(),
+            original_audio: None,
+        }
+    }
+}
+
+#[async_trait]
 pub trait Action: std::fmt::Debug + Send + Sync {
     fn name(&self) -> &str;
     fn preconditions(&self) -> WorldState;
@@ -79,6 +115,8 @@ pub trait Action: std::fmt::Debug + Send + Sync {
         }
         new_state
     }
+
+    async fn execute(&self, ctx: &mut PipelineContext) -> Result<()>;
 }
 
 pub mod actions;

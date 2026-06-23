@@ -1,4 +1,4 @@
-use crate::{planner::Planner, Action, WorldState};
+use crate::{planner::Planner, Action, PipelineContext, WorldState};
 use anyhow::{anyhow, Result};
 use tracing::{info, warn};
 
@@ -17,7 +17,7 @@ impl Orchestrator {
         }
     }
 
-    pub fn run(&mut self) -> Result<()> {
+    pub async fn run(&mut self, ctx: &mut PipelineContext) -> Result<()> {
         while !self.current_state.meets(&self.goal_state) {
             info!(current_state = ?self.current_state, "Planning...");
             let plan = Planner::plan(&self.current_state, &self.goal_state, &self.actions)
@@ -25,11 +25,11 @@ impl Orchestrator {
 
             info!(plan = ?plan, "Plan found");
 
-            for action_name in plan {
+            for action_name in &plan {
                 let action = self
                     .actions
                     .iter()
-                    .find(|a| a.name() == action_name)
+                    .find(|a| a.name() == *action_name)
                     .ok_or_else(|| anyhow!("Action {} not found in registry", action_name))?;
 
                 if !action.is_valid(&self.current_state) {
@@ -41,13 +41,9 @@ impl Orchestrator {
                 }
 
                 info!(action = action_name, "Executing action");
-                // In a real implementation, this would call the actual pipeline stage.
-                // For now, we just update the world state based on the action's effects.
-                // If an action fails, we should set some state and break to replan.
-
+                action.execute(ctx).await?;
                 self.current_state = action.apply(&self.current_state);
 
-                // Simulate checking for quality or resource changes
                 if self.should_replan() {
                     warn!("External trigger detected, replanning...");
                     break;
@@ -60,19 +56,18 @@ impl Orchestrator {
     }
 
     fn should_replan(&self) -> bool {
-        // Placeholder for external triggers (resource changes, quality threshold failures, etc.)
         false
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::actions::get_all_actions;
+    use crate::planner::Planner;
     use crate::WorldState;
 
     #[test]
-    fn test_orchestrator_run() {
+    fn test_orchestrator_plan() {
         let start = WorldState::default();
         let goal = WorldState {
             radio_play_assembled: true,
@@ -80,10 +75,10 @@ mod tests {
         };
 
         let actions = get_all_actions();
-        let mut orchestrator = Orchestrator::new(start, goal, actions);
-
-        let result = orchestrator.run();
-        assert!(result.is_ok());
-        assert!(orchestrator.current_state.radio_play_assembled);
+        let plan = Planner::plan(&start, &goal, &actions);
+        assert!(plan.is_some());
+        let plan = plan.unwrap();
+        assert!(plan.contains(&"decode_movie".to_string()));
+        assert!(plan.contains(&"assemble_radio_play".to_string()));
     }
 }

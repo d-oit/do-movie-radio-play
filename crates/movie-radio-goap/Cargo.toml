@@ -12,8 +12,11 @@ movie-radio-voice.workspace = true
 movie-radio-learning.workspace = true
 movie-radio-validation.workspace = true
 anyhow.workspace = true
+async-trait.workspace = true
+hound.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 
 [lints]

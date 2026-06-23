@@ -139,15 +139,23 @@ Dependency security (GitHub Dependabot):
 | # | Title | Status | Notes |
 |---|-------|--------|-------|
 | 97 | German narration text generator | **DONE** | Implemented in `movie-radio-goap/src/narrate.rs` |
-| 96 | End-to-end radio-play CLI | **PARTIAL** | `radio-play` subcommand exists; only analyze-only mode |
+| 96 | End-to-end radio-play CLI | **DONE** | Full pipeline wired; `--analyze-only` flag preserved |
 | 95 | Autonomous self-learning system | **MOSTLY DONE** | Learning crate has adaptive thresholds, calibration, database |
 | 94 | Radio play assembly | **DONE** | Implemented in `movie-radio-goap/src/assemble.rs` |
-| 93 | Provider fallback chain | **DONE** | Implemented in `src/voice/mod.rs` SynthesisOrchestrator |
-| 92 | ElevenLabs and OpenAI TTS | **PARTIAL** | ElevenLabs HTTP works; OpenAI not implemented |
-| 91 | Orpheus-3B TTS provider | **PARTIAL** | Struct exists, inference stubbed |
+| 93 | Provider fallback chain | **DONE** | Implemented in `movie-radio-voice/src/voice/mod.rs` SynthesisOrchestrator |
+| 92 | ElevenLabs and OpenAI TTS | **DONE** | ElevenLabs MP3 decode via symphonia; OpenAI TTS provider added |
+| 91 | Orpheus-3B TTS provider | **PARTIAL** | Struct exists, inference stubbed (needs llama-cpp-2) |
 | 110 | Modal.com TTS provider | **DONE** | PR #110 merged; real HTTP + PCM decode |
 
 ## Recent Changes
+
+### GOAP Pipeline Wiring (2026-06-23)
+- ElevenLabs MP3 decode via symphonia (replaced mock return)
+- OpenAI TTS provider added (`crates/movie-radio-voice/src/voice/openai.rs`)
+- GOAP orchestrator wired to real pipeline stages (`async fn execute()` on Action trait)
+- Radio-play CLI full pipeline verified as default mode
+- `reqwest` query feature enabled for modal.rs
+- Pre-existing clippy warnings fixed
 
 ### Workspace Restructure (2026-06-22)
 - 128 files changed, 14,890 insertions
@@ -171,9 +179,5 @@ Dependency security (GitHub Dependabot):
 
 ## Open Action Items
 
-1. **Wire GOAP orchestrator to real pipeline stages** — orchestrator currently simulates state transitions
-2. **Implement TTS inference for local providers** — Kokoro/Orpheus/Qwen3 need actual neural inference
-3. **Add MP3 decode for ElevenLabs** — HTTP works but response not decoded
-4. **Wire radio-play CLI to full pipeline** — currently only analyze-only mode
-5. **Add OpenAI TTS provider** — not implemented at all
-6. **#76 AGENTS.md gaps** — Deferred by design
+1. **Implement TTS inference for local providers** — Kokoro/Orpheus/Qwen3 need actual neural inference (Orpheus issue #91)
+2. **#76 AGENTS.md gaps** — Deferred by design

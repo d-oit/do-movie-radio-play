@@ -74,6 +74,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - **16-bit PCM WAV only**: Direct reader supports only 16-bit PCM WAV; all other formats require ffmpeg on PATH.
 - **Deterministic output**: All pipeline stages must produce deterministic output for identical inputs.
 - **No test/dummy/runtime files in root**: Never commit `dummy.*`, `*.wav`, `merged.json`, `timeline.json`, `verified.json`, or any other test fixture, template, or runtime-output file to the repository root. All such files belong in `testdata/` (fixtures), `analysis/` (outputs), or are listed in `.gitignore`.
+- **Pre-existing issues**: When implementing a task, always address pre-existing warnings, lint errors, and quality gate failures encountered during the run. Fix them if possible within the current scope. If a fix is out of scope (e.g., large refactor, unrelated module), document it in `plans/FOLLOWUPS.md` with file path, description, and priority. Never leave pre-existing issues silently ignored.
 
 ## Template Sync
 | Pattern | Status | Notes |

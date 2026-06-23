@@ -57,11 +57,11 @@ Each step in the plan must pass:
 
 1.  **Analyze**: Read `ADR-120` and `plans/120-goap-radio-play-pipeline/ROADMAP.md`.
 2.  **Decompose**:
-    - Define `NarrationGap` struct in `src/types/`.
-    - Implement gap detection heuristics in `src/goap/gaps.rs`.
-    - Add `--analyze-only` flag to CLI.
+    - Define gap types in `crates/movie-radio-types/`.
+    - Implement gap detection heuristics in `crates/movie-radio-goap/src/gaps.rs`.
+    - Add `--analyze-only` flag to CLI (`crates/movie-radio-timeline/src/cli.rs`).
 3.  **Strategize**: Sequential. Heuristics depend on the data structures.
-4.  **Execute**: Implement `src/types/`, then `src/goap/gaps.rs`.
+4.  **Execute**: Implement types, then gaps module.
 5.  **Verify**: Run `timeline radio-play --analyze-only` on `testdata/generated/alternating.wav`.
 
 ### Scenario B: Adding a New TTS Provider (Milestone F)
@@ -70,11 +70,11 @@ Each step in the plan must pass:
 
 1.  **Analyze**: Read `ADR-121`.
 2.  **Decompose**:
-    - Implement `VoiceSynthesizer` trait for Qwen3.
-    - Add provider-specific configuration to `src/config.rs`.
+    - Implement `VoiceSynthesizer` trait for Qwen3 in `crates/movie-radio-voice/src/voice/qwen3.rs`.
+    - Add provider-specific configuration to `crates/movie-radio-voice/src/config.rs`.
     - Create unit tests with mock API/model output.
 3.  **Strategize**: Parallel-safe (Config and Trait implementation can happen in any order).
-4.  **Execute**: Update `src/config.rs`, then implement `src/voice/qwen3.rs`.
+4.  **Execute**: Update config, then implement provider.
 5.  **Synthesize**: Verify end-to-end synthesis in a test case.
 
 ## Rules

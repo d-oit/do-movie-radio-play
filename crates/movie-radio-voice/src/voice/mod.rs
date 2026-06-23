@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub mod elevenlabs;
 pub mod kokoro;
 pub mod modal;
+pub mod openai;
 pub mod orpheus;
 pub mod pockettts;
 pub mod qwen3;
@@ -119,6 +120,12 @@ impl SynthesisOrchestrator {
             providers.insert(
                 "modal".to_string(),
                 Box::new(modal::ModalTtsProvider::new(c)),
+            );
+        }
+        if let Some(c) = config.providers.openai {
+            providers.insert(
+                "openai".to_string(),
+                Box::new(openai::OpenAiTtsProvider::new(c)),
             );
         }
 

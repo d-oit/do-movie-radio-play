@@ -2,7 +2,7 @@
 
 Gaps between the current specification and the implemented runtime behavior.
 
-**Updated:** 2026-06-22
+**Updated:** 2026-06-23
 
 ## Voice Synthesis: Most Providers Return Silence
 
@@ -11,44 +11,29 @@ Gaps between the current specification and the implemented runtime behavior.
 
 **Spec:** All configured TTS providers should produce actual audio output.
 
-**Actual:** Only Modal (PR #110) and partially ElevenLabs produce real audio. The remaining providers (Kokoro, Orpheus, Qwen3, PocketTts) have correct trait implementations, config structs, and capability declarations, but their `synthesize()` methods return silence or zero-filled buffers.
+**Actual:** Modal (PR #110) and ElevenLabs now produce real audio. OpenAI TTS is now implemented. The remaining providers (Kokoro, Orpheus, Qwen3, PocketTts) have correct trait implementations, config structs, and capability declarations, but their `synthesize()` methods return silence or zero-filled buffers.
 
 **Provider Status:**
 
 | Provider | Infrastructure | Real Synthesis | Blocker |
 |----------|---------------|----------------|---------|
 | Modal | Complete | Yes | None |
-| ElevenLabs | Complete (HTTP) | Partial (no MP3 decode) | Need `symphonia` or `minimp3` for MP3→PCM |
+| ElevenLabs | Complete (HTTP) | Yes (MP3 decode via symphonia) | None |
+| OpenAI | Complete (HTTP) | Yes (MP3 decode via symphonia) | None |
 | Kokoro | Complete (ONNX download) | No (silence) | ONNX inference not wired to output |
 | Orpheus | Partial (emotion tags) | No (silence) | Needs `llama-cpp-2` integration |
 | Qwen3 | Partial (emotion prompts) | No (silence) | Needs model inference |
 | PocketTts | None | No (silence) | Fully stubbed |
 
-**Fix:** Prioritize Modal (already working) + ElevenLabs MP3 decode for immediate radio-play capability. Local providers need model inference wiring.
+**Fix:** Prioritize local providers (Kokoro ONNX, Orpheus GGUF, Qwen3) for offline capability.
 
-## GOAP Orchestrator Doesn't Execute Real Work
+## GOAP Orchestrator Executes Real Pipeline Stages
 
-**Affected:** End-to-end radio-play pipeline
-**Location:** `crates/movie-radio-goap/src/orchestrator.rs`
+**Status:** Resolved — orchestrator now has `async fn execute()` on `Action` trait, wired to real pipeline functions (decode, extract, gaps, narrate, TTS, assemble).
 
-**Spec:** The orchestrator should execute actual pipeline stages (decode, VAD, TTS, assembly).
+## Radio-Play CLI Fully Wired
 
-**Actual:** The orchestrator runs the A* planner and iterates through the plan, but each action only updates `WorldState` boolean flags. No ffmpeg calls, no VAD processing, no TTS synthesis, no audio assembly happens.
-
-**Comment in code:** *"In a real implementation, this would call the actual pipeline stage. For now, we just update the world state based on the action's effects."*
-
-**Fix:** Add `execute()` method to `Action` trait or wire orchestrator to call pipeline crate functions directly.
-
-## Radio-Play CLI Not Fully Wired
-
-**Affected:** User-facing radio-play command
-**Location:** `crates/movie-radio-timeline/src/handlers/radio_play.rs`
-
-**Spec:** `timeline radio-play <MOVIE> --output <FILE>` should produce a complete radio play.
-
-**Actual:** The `handle_radio_play()` function only implements `--analyze-only` mode (runs `GapIdentifier`, outputs gap list). The full pipeline (narration → TTS → assembly) is marked as "not yet implemented."
-
-**Fix:** Wire the handler through: gap identification → narration generation → TTS synthesis → audio assembly → output.
+**Status:** Resolved — `handle_radio_play()` runs full pipeline by default (gap → narrate → TTS → assembly → output). `--analyze-only` flag preserved for gap analysis mode.
 
 ## Coverage Scope Gap: Full Raw Fixture Output Parity
 
@@ -76,22 +61,12 @@ Gaps between the current specification and the implemented runtime behavior.
 
 ## Benchmark Gap: HybridVad Not Benchmarked
 
-**Affected:** Performance visibility
-**Location:** `benchmarks/benches/pipeline_bench.rs`
-
-**Spec:** All VAD engines should have benchmark coverage.
-
-**Actual:** Only `EnergyVad` is benchmarked. `SpectralVad` and `HybridVad` are not included in the benchmark harness.
-
 **Status:** Resolved — `SpectralVad` and `HybridVad` benchmarks added in PR #62. All three engines now report Criterion results.
 
-## OpenAI TTS Provider Missing
+## OpenAI TTS Provider
 
-**Affected:** Provider diversity
-**Location:** N/A (not implemented)
+**Status:** Resolved — REST client for OpenAI TTS API implemented in `crates/movie-radio-voice/src/voice/openai.rs`. Registered in `SynthesisOrchestrator` fallback chain.
 
-**Spec:** OpenAI TTS-1 HD as alternative paid provider (ADR-121).
+## Pre-existing LOC Violations
 
-**Actual:** Not implemented at all. Only ElevenLabs exists as a paid cloud provider.
-
-**Fix:** Add `src/voice/openai.rs` with REST client for OpenAI TTS API.
+**Status:** Resolved — All 4 files split into submodules. See `plans/FOLLOWUPS.md` for details.

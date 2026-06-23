@@ -1,18 +1,11 @@
 use anyhow::{Context, Result};
 use libsql::Value;
 
-use super::{FalsePositive, LearningDb, SpectralFeatures, VerifiedSegment};
-use crate::{gap_store, threshold_store};
+use super::types::*;
+use super::LearningDb;
 
+#[allow(dead_code)]
 impl LearningDb {
-    pub async fn record_gap_decision(&self, decision: gap_store::GapDecision) -> Result<i64> {
-        gap_store::record_gap_decision(&self.conn, decision).await
-    }
-
-    pub async fn get_gap_decisions(&self, movie_hash: &str) -> Result<Vec<gap_store::GapDecision>> {
-        gap_store::get_gap_decisions(&self.conn, movie_hash).await
-    }
-
     pub async fn record_verification(&self, segment: VerifiedSegment) -> Result<i64> {
         let was_fp: i64 = if segment.was_false_positive { 1 } else { 0 };
 
@@ -90,29 +83,6 @@ impl LearningDb {
         Ok(results)
     }
 
-    pub async fn get_threshold_recommendations(
-        &self,
-    ) -> Result<threshold_store::ThresholdRecommendation> {
-        threshold_store::get_threshold_recommendations(&self.conn).await
-    }
-
-    pub async fn record_threshold(
-        &self,
-        flatness_max: f64,
-        entropy_min: f64,
-        centroid_min: f64,
-        centroid_max: f64,
-    ) -> Result<i64> {
-        threshold_store::record_threshold(
-            &self.conn,
-            flatness_max,
-            entropy_min,
-            centroid_min,
-            centroid_max,
-        )
-        .await
-    }
-
     pub async fn get_total_verifications(&self) -> Result<usize> {
         let mut rows = self
             .conn
@@ -145,7 +115,7 @@ impl LearningDb {
         Ok(fps as f64 / total as f64)
     }
 
-    pub async fn get_statistics(&self) -> Result<super::LearningStatistics> {
+    pub async fn get_statistics(&self) -> Result<LearningStatistics> {
         let total = self.get_total_verifications().await?;
         let fps = self.get_false_positive_count().await?;
         let fp_rate = if total > 0 {
@@ -167,7 +137,7 @@ impl LearningDb {
             0.0
         };
 
-        Ok(super::LearningStatistics {
+        Ok(LearningStatistics {
             total_verifications: total,
             total_false_positives: fps,
             false_positive_rate: fp_rate,
@@ -227,11 +197,5 @@ impl LearningDb {
         }
 
         Ok(results)
-    }
-
-    pub async fn get_latest_threshold(
-        &self,
-    ) -> Result<Option<threshold_store::ThresholdHistoryEntry>> {
-        threshold_store::get_latest_threshold(&self.conn).await
     }
 }

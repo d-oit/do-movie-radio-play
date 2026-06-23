@@ -1,6 +1,6 @@
 use movie_radio_types::{Segment, SegmentKind};
 
-use super::speech::confidence_for_range;
+use super::confidence::confidence_for_range;
 
 pub fn invert_to_non_voice(
     speech: &[Segment],
@@ -128,7 +128,7 @@ pub fn split_long_segments(
     out
 }
 
-pub(crate) fn push_nv(
+fn push_nv(
     out: &mut Vec<Segment>,
     start: u64,
     end: u64,

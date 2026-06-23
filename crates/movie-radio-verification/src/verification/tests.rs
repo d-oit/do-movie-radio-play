@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use crate::verification::{
-        build_thresholds, determine_verification_status, AppliedThresholds, SpectralFeatures,
-        VerificationStatus, VerificationSummary, DEFAULT_CENTROID_MAX, DEFAULT_CENTROID_MIN,
-        DEFAULT_ENERGY_MIN, DEFAULT_ENTROPY_MAX, DEFAULT_ENTROPY_MIN, DEFAULT_FLATNESS_MAX,
+    use crate::verification::scoring::{
+        build_thresholds, determine_verification_status, AppliedThresholds, DEFAULT_CENTROID_MAX,
+        DEFAULT_CENTROID_MIN, DEFAULT_ENERGY_MIN, DEFAULT_ENTROPY_MAX, DEFAULT_ENTROPY_MIN,
+        DEFAULT_FLATNESS_MAX,
     };
+    use crate::verification::{SpectralFeatures, VerificationStatus, VerificationSummary};
 
     #[test]
     fn verification_status_determination() {

@@ -5,17 +5,16 @@ use std::path::Path;
 use tracing::{info, warn};
 
 pub mod analysis;
-pub mod determine;
 pub mod extractor;
 pub mod fingerprint;
+pub mod scoring;
 
 #[cfg(test)]
 mod tests;
 
 pub use analysis::{analyze_audio_features, SegmentAnalysis, SpectralFeatures, VerificationStatus};
 pub use extractor::extract_segment_audio;
-
-use determine::determine_verification_status;
+pub use scoring::AppliedThresholds;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerificationReport {
@@ -48,24 +47,6 @@ pub struct VerificationSummary {
     pub thresholds_applied: AppliedThresholds,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AppliedThresholds {
-    pub entropy_min: f32,
-    pub entropy_max: f32,
-    pub flatness_max: f32,
-    pub energy_min: f32,
-    pub centroid_min: f32,
-    pub centroid_max: f32,
-}
-
-const DEFAULT_ENTROPY_MIN: f32 = 3.5;
-const DEFAULT_ENTROPY_MAX: f32 = 7.0;
-const DEFAULT_FLATNESS_MAX: f32 = 0.45;
-const DEFAULT_ENERGY_MIN: f32 = 0.001;
-const DEFAULT_CENTROID_MIN: f32 = 100.0;
-const DEFAULT_CENTROID_MAX: f32 = 6000.0;
-const DEFAULT_FILTER_SEGMENT_CONFIDENCE_CEILING: f32 = 0.55;
-
 #[allow(clippy::too_many_arguments)]
 pub fn verify_timeline(
     media_path: &Path,
@@ -87,7 +68,7 @@ pub fn verify_timeline(
         bail!("Media file not found: {}", media_path_buf.display());
     }
 
-    let thresholds = build_thresholds(
+    let thresholds = scoring::build_thresholds(
         entropy_min,
         entropy_max,
         flatness_max,
@@ -287,7 +268,7 @@ pub fn filter_low_confidence_non_voice_segments(
         return segments.to_vec();
     }
 
-    let thresholds = build_thresholds(None, None, None, None, None, None);
+    let thresholds = scoring::build_thresholds(None, None, None, None, None, None);
     segments
         .iter()
         .filter(|segment| {
@@ -311,25 +292,7 @@ pub fn filter_low_confidence_non_voice_segments(
 }
 
 pub fn default_filter_segment_confidence_ceiling() -> f32 {
-    DEFAULT_FILTER_SEGMENT_CONFIDENCE_CEILING
-}
-
-pub(crate) fn build_thresholds(
-    entropy_min: Option<f32>,
-    entropy_max: Option<f32>,
-    flatness_max: Option<f32>,
-    energy_min: Option<f32>,
-    centroid_min: Option<f32>,
-    centroid_max: Option<f32>,
-) -> AppliedThresholds {
-    AppliedThresholds {
-        entropy_min: entropy_min.unwrap_or(DEFAULT_ENTROPY_MIN),
-        entropy_max: entropy_max.unwrap_or(DEFAULT_ENTROPY_MAX),
-        flatness_max: flatness_max.unwrap_or(DEFAULT_FLATNESS_MAX),
-        energy_min: energy_min.unwrap_or(DEFAULT_ENERGY_MIN),
-        centroid_min: centroid_min.unwrap_or(DEFAULT_CENTROID_MIN),
-        centroid_max: centroid_max.unwrap_or(DEFAULT_CENTROID_MAX),
-    }
+    scoring::default_filter_segment_confidence_ceiling()
 }
 
 fn analyze_segment(
@@ -374,7 +337,7 @@ fn analyze_segment_with_fingerprints(
 
     let fingerprints = fingerprint::fingerprint_segment(&samples, fingerprint::DEFAULT_SAMPLE_RATE);
 
-    let status = determine_verification_status(&features, segment.confidence, thresholds);
+    let status = scoring::determine_verification_status(&features, segment.confidence, thresholds);
 
     (
         Ok(SegmentAnalysis {

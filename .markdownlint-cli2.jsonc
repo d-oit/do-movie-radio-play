@@ -6,5 +6,5 @@
     "MD041": false,
     "MD024": { "siblings_only": true }
   },
-  "ignores": ["target/**", "node_modules/**"]
+  "ignores": ["target/**", "node_modules/**", ".agents/**"]
 }

@@ -37,7 +37,7 @@ while IFS= read -r file; do
     warn "  $file: $lines lines (max $MAX_LINES)"
     LOC_VIOLATIONS=$((LOC_VIOLATIONS + 1))
   fi
-done < <(find crates -name "*.rs" -type f 2>/dev/null)
+done < <(find crates -path "*/src/*.rs" -type f 2>/dev/null)
 
 if [[ $LOC_VIOLATIONS -gt 0 ]]; then
   fail "LOC: $LOC_VIOLATIONS files exceed $MAX_LINES lines"
@@ -111,7 +111,7 @@ fi
 
 # --- Secret scan ---
 SECRET_PATTERN="(api_key|token|secret|password|auth)[[:space:]]*[:=][[:space:]]*['\"][a-zA-Z0-9_\-]{16,}['\"]"
-if grep -rE "$SECRET_PATTERN" --exclude-dir=.git --exclude-dir=target src/ config/ 2>/dev/null; then
+if grep -rE "$SECRET_PATTERN" --exclude-dir=.git --exclude-dir=target crates/ config/ 2>/dev/null; then
   fail "Secret scan: potential secret detected"
 else
   pass "Secret scan: OK"

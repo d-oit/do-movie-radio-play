@@ -1,4 +1,39 @@
-use movie_radio_types::{MergeOptions, MergeStrategy, Segment};
+use movie_radio_types::{MergeOptions, MergeStrategy, Segment, SegmentKind};
+
+use super::confidence::SHORT_SPEECH_CONFIDENCE_KEEP_FLOOR;
+
+pub fn merge_close_segments(segments: &[Segment], merge_gap_ms: u32) -> Vec<Segment> {
+    if segments.is_empty() {
+        return Vec::new();
+    }
+    let mut merged = vec![segments[0].clone()];
+    for seg in segments.iter().skip(1) {
+        if let Some(last) = merged.last_mut() {
+            if seg.start_ms <= last.end_ms + merge_gap_ms as u64 && last.kind == seg.kind {
+                last.end_ms = last.end_ms.max(seg.end_ms);
+                last.confidence = last.confidence.min(seg.confidence);
+            } else {
+                merged.push(seg.clone());
+            }
+        }
+    }
+    merged
+}
+
+pub fn prune_short_speech_segments(segments: &[Segment], min_speech_ms: u32) -> Vec<Segment> {
+    segments
+        .iter()
+        .filter(|seg| {
+            if seg.kind != SegmentKind::Speech {
+                return true;
+            }
+            let duration_ms = seg.end_ms.saturating_sub(seg.start_ms);
+            duration_ms >= min_speech_ms as u64
+                || seg.confidence >= SHORT_SPEECH_CONFIDENCE_KEEP_FLOOR
+        })
+        .cloned()
+        .collect()
+}
 
 pub fn apply_non_voice_merge_policy(segments: &[Segment], options: &MergeOptions) -> Vec<Segment> {
     if segments.is_empty() {

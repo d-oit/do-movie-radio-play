@@ -1,0 +1,26 @@
+# .clippy.toml - Clippy lint configuration
+# Agents: read this file before running clippy to understand which lints are intentionally suppressed.
+
+# Cognitive complexity threshold for functions
+cognitive-complexity-threshold = 15
+
+# Allow certain naming patterns
+allow-mixed-uninlined-format-args = false
+
+# Minimum items before suggest collect
+array-size-threshold = 512
+
+# Enforce documentation for public items
+missing-docs-in-crate-items = false
+
+# Maximum struct field count before suggesting builder
+too-many-arguments-threshold = 7
+
+# Vec<Box<T>> warn threshold
+vec-box-size-threshold = 4096
+
+# Maximum number of single char bindings
+single-char-binding-names-threshold = 4
+
+# MSRV
+msrv = "1.88"

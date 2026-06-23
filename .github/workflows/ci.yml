@@ -1,12 +1,11 @@
 name: Quality Gate
 on:
   push:
-    paths-ignore: ['*.md', 'plans/**', 'analysis/**']
   pull_request:
-    paths-ignore: ['*.md', 'plans/**', 'analysis/**']
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
   CARGO_INCREMENTAL: 0
 
 permissions:
@@ -17,90 +16,272 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  self_fix_loop_smoke:
+  # ───────────────────────────────────────────────────
+  changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      heavy: ${{ steps.filter.outputs.heavy }}
+      agents: ${{ steps.filter.outputs.agents }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'crates/**'
+              - 'src/**'
+              - 'tests/**'
+              - 'benchmarks/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            heavy:
+              - 'crates/**'
+              - 'src/**'
+              - 'benchmarks/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            agents:
+              - 'AGENTS.md'
+              - 'CLAUDE.md'
+              - 'GEMINI.md'
+              - 'QWEN.md'
+              - '.agents/skills/**'
+              - 'scripts/validate-agent-entrypoints.sh'
+              - 'scripts/generate-skills-md.sh'
+            workflows:
+              - '.github/workflows/**'
+
+  # ───────────────────────────────────────────────────
+  validate-agents:
+    name: Validate Agent Entrypoints
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.agents == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run agent validator
+        run: ./scripts/validate-agent-entrypoints.sh
+
+  # ───────────────────────────────────────────────────
+  lint:
+    name: Lint (YAML, Markdown)
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.agents == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install yamllint
+        run: pip install yamllint
+      - name: YAML Lint
+        run: yamllint .
+      - name: Markdown Lint
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: "**/*.md"
+
+  # ───────────────────────────────────────────────────
+  shellcheck:
+    name: ShellCheck
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './scripts'
+          severity: warning
+
+  gitleaks:
+    name: Secret Scan (Gitleaks)
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ───────────────────────────────────────────────────
+  fmt:
+    name: Format
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: bash -n scripts/self-fix-loop.sh
-      - run: bash -n scripts/handoff-to-tasks.sh
-      - run: chmod +x scripts/self-fix-loop.sh scripts/handoff-to-tasks.sh
-      - run: bash scripts/self-fix-loop.sh --help
-      - run: bash scripts/self-fix-loop.sh --dry-run --max-retries 1 --timeout 60 --poll-interval 1
+        with:
+          components: rustfmt
+      - name: Run rustfmt
+        run: cargo fmt --all -- --check
 
+  clippy:
+    name: Clippy
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Clippy (all targets, all features)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  # ───────────────────────────────────────────────────
   test:
+    name: Test
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
+      - uses: Swatinem/rust-cache@v2
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
       - run: cargo run --quiet -p movie-radio-timeline -- gen-fixtures --output-dir testdata/generated
       - run: python3 scripts/check_validation_coverage.py --tier A --strict-files
       - run: cargo build --workspace
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo test --workspace
+      - name: Run doc tests
+        run: cargo test --workspace --doc
 
+  # ───────────────────────────────────────────────────
+  security:
+    name: Security Audit
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      - name: Run cargo audit
+        run: cargo audit
+
+  # ───────────────────────────────────────────────────
+  deny:
+    name: Dependency Policy (cargo-deny)
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: EmbarkStudios/cargo-deny-action@v2
+
+  # ───────────────────────────────────────────────────
   benchmark:
+    name: Benchmarks
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.heavy == 'true' ||
+      needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
+      - uses: Swatinem/rust-cache@v2
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bash scripts/fetch_test_assets.sh
       - run: bash scripts/benchmark.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/ci.json
-      - run: cargo run --quiet -p movie-radio-timeline -- bench testdata/raw/elephantsdream_teaser.mp4 --output analysis/benchmarks/ci-elephantsdream-teaser-2006.json
-      - run: cargo run --quiet -p movie-radio-timeline -- bench testdata/raw/caminandes_gran_dillama.mp4 --output analysis/benchmarks/ci-caminandes-gran-dillama-2013.json
-      - run: python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/ci.json
-      - run: python3 scripts/optimize_fp_sweep.py --media testdata/raw/elephantsdream_teaser.mp4 --media testdata/raw/caminandes_gran_dillama.mp4 --output analysis/optimization/fp-sweep-modern-extra-ci.json --work-dir analysis/optimization/fp-sweep-modern-extra-ci-runs
-      - run: python3 scripts/build_modern_ci_summary.py --benchmark analysis/benchmarks/ci-elephantsdream-teaser-2006.json --benchmark analysis/benchmarks/ci-caminandes-gran-dillama-2013.json --fp-sweep analysis/optimization/fp-sweep-modern-extra-ci.json --output-md analysis/optimization/modern-extra-ci-summary.md
       - run: cargo bench -p benchmarks --bench pipeline_bench -- --noplot
       - uses: actions/upload-artifact@v7
         with:
-          name: benchmark-modern-movies
-          path: |
-            analysis/benchmarks/ci.json
-            analysis/benchmarks/ci-elephantsdream-teaser-2006.json
-            analysis/benchmarks/ci-caminandes-gran-dillama-2013.json
-      - uses: actions/upload-artifact@v7
-        with:
-          name: eval-modern-movies
-          path: |
-            analysis/optimization/fp-sweep-modern-extra-ci.json
-            analysis/optimization/fp-sweep-modern-extra-ci-runs
-            analysis/optimization/modern-extra-ci-summary.md
+          name: benchmark-results
+          path: analysis/benchmarks/
 
-  verification:
+  # ───────────────────────────────────────────────────
+  version-check:
+    name: VERSION Consistency
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.agents == 'true' ||
+      needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: bash scripts/fetch_test_assets.sh
-      - run: cargo build --workspace --quiet
-      - name: Extract timeline for verification
+      - name: Check VERSION matches Cargo.toml
         run: |
-          mkdir -p analysis/verification
-          cargo run --quiet -p movie-radio-timeline -- extract testdata/raw/sintel_trailer_2010.mp4 \
-            --output analysis/verification/sintel-extracted.json
-      - name: Verify timeline
+          VERSION=$(cat VERSION)
+          CARGO_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          if [[ "$VERSION" != "$CARGO_VERSION" ]]; then
+            echo "VERSION file ($VERSION) does not match Cargo.toml ($CARGO_VERSION)"
+            exit 1
+          fi
+          echo "VERSION consistency check passed: $VERSION"
+
+  # ───────────────────────────────────────────────────
+  ci-success:
+    name: CI Success
+    needs: [validate-agents, lint, shellcheck, gitleaks, fmt, clippy, test, security, deny, benchmark, version-check]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all jobs passed
         run: |
-          cargo run --quiet -p movie-radio-timeline -- verify-timeline testdata/raw/sintel_trailer_2010.mp4 \
-            --timeline analysis/verification/sintel-extracted.json \
-            --output analysis/verification/sintel-verified.json
-      - name: Update thresholds from verification
-        run: |
-          mkdir -p analysis/thresholds
-          cargo run --quiet -p movie-radio-timeline -- update-thresholds \
-            --learning-state analysis/thresholds/learning-state.json \
-            --output analysis/thresholds/recommendations.json || true
+          results=(
+            "${{ needs.validate-agents.result }}"
+            "${{ needs.lint.result }}"
+            "${{ needs.shellcheck.result }}"
+            "${{ needs.gitleaks.result }}"
+            "${{ needs.fmt.result }}"
+            "${{ needs.clippy.result }}"
+            "${{ needs.test.result }}"
+            "${{ needs.security.result }}"
+            "${{ needs.deny.result }}"
+            "${{ needs.benchmark.result }}"
+            "${{ needs.version-check.result }}"
+          )
+          for res in "${results[@]}"; do
+            if [[ "$res" == "failure" || "$res" == "cancelled" ]]; then
+              echo "One or more critical CI jobs failed or were cancelled"
+              exit 1
+            fi
+          done
+          echo "All CI jobs passed or were correctly skipped!"

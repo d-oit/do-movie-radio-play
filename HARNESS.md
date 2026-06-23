@@ -1,7 +1,7 @@
 # Harness Engineering
 
 > Agent = Model + Harness. This document is the harness map for do-movie-radio-play.
-> Based on: https://martinfowler.com/articles/harness-engineering.html
+> Based on: [Harness Engineering](https://martinfowler.com/articles/harness-engineering.html)
 
 ## Mental Model
 

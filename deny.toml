@@ -10,7 +10,10 @@ feature-depth = 1
 
 [advisories]
 version = 2
-ignore = []
+ignore = [
+  "RUSTSEC-2025-0119",  # number_prefix unmaintained — transitive dep of candle
+  "RUSTSEC-2024-0436",  # paste unmaintained — transitive dep of tokenizers
+]
 
 [licenses]
 version = 2

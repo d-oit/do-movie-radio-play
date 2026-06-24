@@ -24,8 +24,9 @@ pub fn handle_extract(
     calibration_profile: Option<PathBuf>,
     save_calibration: bool,
     parallel_features: Option<bool>,
+    chunk_duration: Option<u64>,
 ) -> Result<()> {
-    let cfg = load_analysis_config(
+    let mut cfg = load_analysis_config(
         config_path,
         threshold,
         min_speech_ms,
@@ -35,6 +36,8 @@ pub fn handle_extract(
         calibration_profile,
         parallel_features,
     )?;
+
+    cfg.chunk_duration_sec = chunk_duration;
 
     if let Some(delta) = cfg.vad_threshold_delta.abs().partial_cmp(&0.0_f32) {
         if delta != std::cmp::Ordering::Equal {

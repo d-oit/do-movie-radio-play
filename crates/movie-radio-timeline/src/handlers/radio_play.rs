@@ -9,9 +9,11 @@ use movie_radio_io::json::{read_timeline, write_json_pretty};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_pipeline::pipeline::extract_timeline;
 use movie_radio_types::AnalysisConfig;
-use movie_radio_voice::config::ModalConfig;
-use movie_radio_voice::voice::modal::ModalTtsProvider;
-use movie_radio_voice::voice::{SynthesisRequest, VoiceSynthesizer};
+use movie_radio_voice::config::{
+    ElevenLabsConfig, ModalConfig, OpenAiConfig, VoiceProvidersConfig, VoiceSynthesisConfig,
+};
+use movie_radio_voice::voice::SynthesisOrchestrator;
+use movie_radio_voice::voice::SynthesisRequest;
 
 pub fn handle_radio_play(
     movie: PathBuf,
@@ -59,7 +61,7 @@ fn run_full_pipeline(
 ) -> Result<()> {
     let output_path = output_path.unwrap_or_else(|| {
         let mut out = movie.clone();
-        out.set_extension("radio-play.wav");
+        out.set_extension("radio-play.mp3");
         out
     });
 
@@ -86,7 +88,10 @@ fn run_full_pipeline(
     if gap_analysis.gaps.is_empty() {
         info!("No gaps found — copying original audio as radio play");
         let (samples, sample_rate) = decode_audio(&movie, cfg.sample_rate_hz)?;
-        write_wav(&output_path, &samples, sample_rate)?;
+        let wav_path = output_path.with_extension("tmp.wav");
+        write_wav(&wav_path, &samples, sample_rate)?;
+        encode_to_mp3(&wav_path, &output_path)?;
+        let _ = std::fs::remove_file(&wav_path);
         return Ok(());
     }
 
@@ -97,15 +102,52 @@ fn run_full_pipeline(
     if scripts.is_empty() {
         info!("No narration scripts — copying original audio as radio play");
         let (samples, sample_rate) = decode_audio(&movie, cfg.sample_rate_hz)?;
-        write_wav(&output_path, &samples, sample_rate)?;
+        let wav_path = output_path.with_extension("tmp.wav");
+        write_wav(&wav_path, &samples, sample_rate)?;
+        encode_to_mp3(&wav_path, &output_path)?;
+        let _ = std::fs::remove_file(&wav_path);
         return Ok(());
     }
 
-    let modal_config = ModalConfig {
-        endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
-        max_monthly_cost: 25.0,
+    let voice_config = VoiceSynthesisConfig {
+        provider: "modal".to_string(),
+        fallback_chain: vec![
+            "modal".to_string(),
+            "elevenlabs".to_string(),
+            "openai".to_string(),
+        ],
+        emotion_mapping: true,
+        language: "de".to_string(),
+        voice_id: None,
+        max_cost_per_run_usd: 25.0,
+        providers: VoiceProvidersConfig {
+            kokoro: None,
+            pockettts: None,
+            qwen3: None,
+            orpheus: None,
+            elevenlabs: std::env::var("ELEVENLABS_API_KEY")
+                .ok()
+                .map(|_| ElevenLabsConfig {
+                    api_key_env: "ELEVENLABS_API_KEY".to_string(),
+                    voice_id: "pNInz6obpgDQGcFmaJgB".to_string(),
+                    model: "eleven_multilingual_v2".to_string(),
+                    stability: 0.5,
+                    similarity_boost: 0.75,
+                }),
+            modal: Some(ModalConfig {
+                endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
+                max_monthly_cost: 25.0,
+            }),
+            openai: std::env::var("OPENAI_API_KEY").ok().map(|_| OpenAiConfig {
+                api_key_env: "OPENAI_API_KEY".to_string(),
+                model: "tts-1-hd".to_string(),
+                voice: "onyx".to_string(),
+                response_format: "mp3".to_string(),
+            }),
+        },
     };
-    let provider = ModalTtsProvider::new(modal_config);
+
+    let orchestrator = SynthesisOrchestrator::new(voice_config);
 
     let sample_rate = cfg.sample_rate_hz;
     let runtime = tokio::runtime::Runtime::new()?;
@@ -129,7 +171,7 @@ fn run_full_pipeline(
             sample_rate_hz: sample_rate,
         };
 
-        match runtime.block_on(provider.synthesize(&request)) {
+        match runtime.block_on(orchestrator.synthesize(&request)) {
             Ok(audio) => {
                 let segment = RadioPlayAssembler::new(sample_rate, 50, 0.3)
                     .narration_to_segment(script, &audio.samples);
@@ -155,7 +197,11 @@ fn run_full_pipeline(
     let assembler = RadioPlayAssembler::new(sample_rate, 50, 0.3);
     let radio_play = assembler.assemble(&original, &narration_segments)?;
 
-    write_wav(&output_path, &radio_play, sample_rate)?;
+    let wav_path = output_path.with_extension("tmp.wav");
+    write_wav(&wav_path, &radio_play, sample_rate)?;
+    encode_to_mp3(&wav_path, &output_path)?;
+    let _ = std::fs::remove_file(&wav_path);
+
     info!(
         output = %output_path.display(),
         duration_s = radio_play.len() as f64 / sample_rate as f64,
@@ -182,5 +228,29 @@ fn write_wav(path: &std::path::Path, samples: &[f32], sample_rate: u32) -> Resul
         writer.write_sample(sample)?;
     }
     writer.finalize()?;
+    Ok(())
+}
+
+fn encode_to_mp3(wav_path: &std::path::Path, mp3_path: &std::path::Path) -> Result<()> {
+    use std::process::Command;
+
+    let status = Command::new("ffmpeg")
+        .args([
+            "-y",
+            "-i",
+            wav_path.to_str().unwrap_or_default(),
+            "-codec:a",
+            "libmp3lame",
+            "-b:a",
+            "192k",
+            "-q:a",
+            "2",
+            mp3_path.to_str().unwrap_or_default(),
+        ])
+        .status()?;
+
+    if !status.success() {
+        bail!("ffmpeg MP3 encoding failed");
+    }
     Ok(())
 }

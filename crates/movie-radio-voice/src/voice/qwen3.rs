@@ -1,16 +1,63 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
+use candle_core::Device;
+use qwen_tts::model::loader::{LoaderConfig, ModelLoader};
+use std::sync::{Arc, Mutex};
+use tracing::info;
 
 use super::{AudioOutput, Emotion, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer};
 use crate::config::Qwen3Config;
 
 pub struct Qwen3Provider {
-    _config: Qwen3Config,
+    config: Qwen3Config,
+    model: Arc<Mutex<Option<qwen_tts::model::Model>>>,
 }
 
 impl Qwen3Provider {
     pub fn new(config: Qwen3Config) -> Self {
-        Self { _config: config }
+        Self {
+            config,
+            model: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    fn ensure_model(&self) -> Result<()> {
+        let mut guard = self
+            .model
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Model lock poisoned"))?;
+
+        if guard.is_some() {
+            return Ok(());
+        }
+
+        let model_dir = &self.config.model_path;
+        if !model_dir.exists() {
+            anyhow::bail!("Qwen3 model directory not found: {}", model_dir.display());
+        }
+
+        info!(path = %model_dir.display(), "Loading Qwen3-TTS model");
+
+        let device = if self.config.device.to_lowercase() == "cpu" {
+            Device::Cpu
+        } else {
+            Device::new_cuda(0).unwrap_or_else(|_| {
+                info!("CUDA not available, falling back to CPU");
+                Device::Cpu
+            })
+        };
+
+        let loader = ModelLoader::from_local_dir(model_dir)
+            .context("Failed to create Qwen3 model loader")?;
+
+        let tts_model = loader
+            .load_tts_model(&device, &LoaderConfig::default())
+            .context("Failed to load Qwen3 TTS model")?;
+
+        *guard = Some(tts_model);
+        info!("Qwen3-TTS model loaded successfully");
+
+        Ok(())
     }
 
     fn get_emotion_prompt(&self, emotion: &Emotion) -> String {
@@ -26,17 +73,83 @@ impl Qwen3Provider {
             Emotion::Custom(p) => p.clone(),
         }
     }
+
+    fn resample(&self, samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
+        if from_rate == to_rate {
+            return samples.to_vec();
+        }
+        let ratio = to_rate as f64 / from_rate as f64;
+        let output_len = (samples.len() as f64 * ratio) as usize;
+        let mut resampled = Vec::with_capacity(output_len);
+        for i in 0..output_len {
+            let src_idx = i as f64 / ratio;
+            let idx = src_idx as usize;
+            let frac = src_idx - idx as f64;
+            let s0 = samples[idx.min(samples.len() - 1)];
+            let s1 = samples[(idx + 1).min(samples.len() - 1)];
+            resampled.push(s0 + (s1 - s0) * frac as f32);
+        }
+        resampled
+    }
 }
 
 #[async_trait]
 impl VoiceSynthesizer for Qwen3Provider {
     async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
-        // Implementation for Qwen3-TTS (Primary German quality tier)
-        // Would use the emotion prompt to guide synthesis
-        let _prompt = self.get_emotion_prompt(&request.emotion);
+        self.ensure_model()?;
+
+        let guard = self
+            .model
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Model lock poisoned"))?;
+
+        let model = guard.as_ref().context("Qwen3 model not loaded")?;
+
+        let prompt = self.get_emotion_prompt(&request.emotion);
+        let text_with_prompt = format!("{} {}", prompt, request.text);
+
+        let language = match request.language.as_str() {
+            "de" => "german",
+            "en" => "english",
+            "es" => "spanish",
+            "fr" => "french",
+            "zh" => "chinese",
+            _ => "english",
+        };
+
+        info!(
+            text_len = request.text.len(),
+            language = language,
+            "Running Qwen3-TTS inference"
+        );
+
+        let result = model
+            .generate_custom_voice_from_text(
+                &text_with_prompt,
+                &self.config.voice_description,
+                language,
+                None,
+                None,
+            )
+            .context("Qwen3-TTS inference failed")?;
+
+        let raw_samples: Vec<f32> = result
+            .audio
+            .to_vec1()
+            .context("Failed to extract audio samples from tensor")?;
+        let source_rate = result.sample_rate as u32;
+
+        let samples = self.resample(&raw_samples, source_rate, request.sample_rate_hz);
+
+        info!(
+            raw_len = raw_samples.len(),
+            output_len = samples.len(),
+            source_rate,
+            "Qwen3-TTS inference complete"
+        );
 
         Ok(AudioOutput {
-            samples: vec![0.0; 16000],
+            samples,
             sample_rate_hz: request.sample_rate_hz,
         })
     }

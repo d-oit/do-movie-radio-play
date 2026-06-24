@@ -33,6 +33,8 @@ pub enum Commands {
         save_calibration: bool,
         #[arg(long)]
         parallel_features: Option<bool>,
+        #[arg(long)]
+        chunk_duration: Option<u64>,
     },
     Tag {
         input_media: PathBuf,

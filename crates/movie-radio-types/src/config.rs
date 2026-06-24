@@ -69,6 +69,8 @@ pub struct AnalysisConfig {
     pub spectral_centroid_max: Option<f32>,
     #[serde(default)]
     pub voice_synthesis: Option<VoiceSynthesisConfig>,
+    #[serde(default)]
+    pub chunk_duration_sec: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,6 +150,7 @@ impl Default for AnalysisConfig {
             spectral_centroid_min: None,
             spectral_centroid_max: None,
             voice_synthesis: None,
+            chunk_duration_sec: None,
         }
     }
 }

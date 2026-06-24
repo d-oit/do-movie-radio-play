@@ -18,6 +18,8 @@ symphonia.workspace = true
 llama-cpp-2 = "0.1"
 once_cell = "1"
 rand = "0.10"
+qwen_tts = { version = "0.1", default-features = false }
+candle-core = "0.9"
 
 [lints]
 workspace = true

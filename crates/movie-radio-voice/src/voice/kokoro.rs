@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use ort::session::Session;
 use std::path::PathBuf;
-use std::sync::Arc;
-use tracing::info;
+use std::sync::{Arc, Mutex};
+use tracing::{debug, info, warn};
 
 use super::{AudioOutput, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer};
 use crate::config::KokoroConfig;
@@ -11,9 +11,11 @@ use crate::config::KokoroConfig;
 const KOKORO_MODEL_URL: &str =
     "https://huggingface.co/Godelaune/Kokoro-82M-ONNX-German-Martin/resolve/main/model.onnx";
 
+const KOKORO_SAMPLE_RATE: u32 = 24000;
+
 pub struct KokoroProvider {
     config: KokoroConfig,
-    session: Option<Arc<Session>>,
+    session: Option<Arc<Mutex<Session>>>,
 }
 
 impl KokoroProvider {
@@ -69,7 +71,7 @@ impl KokoroProvider {
         Ok(())
     }
 
-    fn load_session(&self) -> Result<Arc<Session>> {
+    fn load_session(&self) -> Result<Arc<Mutex<Session>>> {
         if let Some(session) = &self.session {
             return Ok(Arc::clone(session));
         }
@@ -86,8 +88,19 @@ impl KokoroProvider {
             .commit_from_file(&onnx_path)
             .map_err(|e| anyhow::anyhow!("Failed to load model: {}", e))?;
 
-        info!("Kokoro session loaded successfully");
-        Ok(Arc::new(session))
+        info!(
+            inputs = session.inputs().len(),
+            outputs = session.outputs().len(),
+            "Kokoro session loaded"
+        );
+        for input in session.inputs() {
+            debug!(name = %input.name(), "model input");
+        }
+        for output in session.outputs() {
+            debug!(name = %output.name(), "model output");
+        }
+
+        Ok(Arc::new(Mutex::new(session)))
     }
 
     fn phonemize_german(&self, text: &str) -> String {
@@ -97,6 +110,9 @@ impl KokoroProvider {
                 'ä' => result.push_str("ae"),
                 'ö' => result.push_str("oe"),
                 'ü' => result.push_str("ue"),
+                'Ä' => result.push_str("Ae"),
+                'Ö' => result.push_str("Oe"),
+                'Ü' => result.push_str("Ue"),
                 'ß' => result.push_str("ss"),
                 'é' | 'è' | 'ê' => result.push('e'),
                 'á' | 'à' => result.push('a'),
@@ -109,33 +125,92 @@ impl KokoroProvider {
         result
     }
 
-    fn estimate_duration_samples(&self, text: &str, sample_rate: u32) -> usize {
-        let word_count = text.split_whitespace().count().max(1);
-        let seconds = word_count as f64 / 150.0 * 60.0;
-        (seconds * sample_rate as f64) as usize
+    fn text_to_tokens(&self, text: &str) -> Vec<i64> {
+        let phonemes = self.phonemize_german(text);
+        phonemes.chars().map(|c| c as i64).collect()
     }
 
-    fn synthesize_silence(&self, duration_samples: usize, sample_rate: u32) -> AudioOutput {
-        AudioOutput {
-            samples: vec![0.0; duration_samples],
-            sample_rate_hz: sample_rate,
+    fn resample(&self, samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
+        if from_rate == to_rate {
+            return samples.to_vec();
         }
+        let ratio = to_rate as f64 / from_rate as f64;
+        let output_len = (samples.len() as f64 * ratio) as usize;
+        let mut resampled = Vec::with_capacity(output_len);
+        for i in 0..output_len {
+            let src_idx = i as f64 / ratio;
+            let idx = src_idx as usize;
+            let frac = src_idx - idx as f64;
+            let s0 = samples[idx.min(samples.len() - 1)];
+            let s1 = samples[(idx + 1).min(samples.len() - 1)];
+            resampled.push(s0 + (s1 - s0) * frac as f32);
+        }
+        resampled
     }
 
     fn synthesize_with_session(
         &self,
-        _session: &Session,
+        session: &Mutex<Session>,
         request: &SynthesisRequest,
     ) -> Result<AudioOutput> {
-        let phonemes = self.phonemize_german(&request.text);
-        info!(phonemes = %phonemes, "Phonemized input");
+        let tokens = self.text_to_tokens(&request.text);
+        info!(token_count = tokens.len(), "Running Kokoro inference");
 
-        let duration_samples =
-            self.estimate_duration_samples(&request.text, request.sample_rate_hz);
+        let mut guard = session
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Session lock poisoned"))?;
 
-        let output = self.synthesize_silence(duration_samples, request.sample_rate_hz);
+        let input_name = guard
+            .inputs()
+            .first()
+            .context("Model has no inputs")?
+            .name()
+            .to_owned();
 
-        Ok(output)
+        let output_name = guard
+            .outputs()
+            .first()
+            .context("Model has no outputs")?
+            .name()
+            .to_owned();
+
+        let input_shape = [1usize, tokens.len()];
+        let input_value = ort::value::TensorRef::from_array_view((input_shape, tokens.as_slice()))
+            .context("Failed to create input tensor")?;
+
+        let outputs = guard
+            .run(ort::inputs![input_name.as_str() => input_value.into_dyn()])
+            .context("ONNX inference failed")?;
+
+        let output_tensor = outputs
+            .get(output_name.as_str())
+            .context("Output tensor not found")?;
+
+        let (shape, data) = output_tensor
+            .try_extract_tensor::<f32>()
+            .context("Failed to extract f32 output tensor")?;
+
+        let raw_samples: Vec<f32> = data.to_vec();
+
+        if raw_samples.iter().all(|&s| s == 0.0) {
+            warn!(
+                shape = ?shape,
+                "Kokoro produced all-zero output, model may not be loaded correctly"
+            );
+        }
+
+        let samples = self.resample(&raw_samples, KOKORO_SAMPLE_RATE, request.sample_rate_hz);
+
+        info!(
+            raw_len = raw_samples.len(),
+            output_len = samples.len(),
+            "Kokoro inference complete"
+        );
+
+        Ok(AudioOutput {
+            samples,
+            sample_rate_hz: request.sample_rate_hz,
+        })
     }
 }
 
@@ -161,5 +236,51 @@ impl VoiceSynthesizer for KokoroProvider {
 
     fn estimate_cost(&self, _text_len: usize) -> f64 {
         0.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_phonemize_german() {
+        let config = KokoroConfig {
+            model_path: "models/dummy.onnx".into(),
+            device: "cpu".into(),
+        };
+        let provider = KokoroProvider::new(config);
+
+        assert_eq!(provider.phonemize_german("Hallo"), "Hallo");
+        assert_eq!(provider.phonemize_german("Über"), "Ueber");
+        assert_eq!(provider.phonemize_german("über"), "ueber");
+        assert_eq!(provider.phonemize_german("Straße"), "Strasse");
+        assert_eq!(provider.phonemize_german("schön"), "schoen");
+    }
+
+    #[test]
+    fn test_text_to_tokens() {
+        let config = KokoroConfig {
+            model_path: "models/dummy.onnx".into(),
+            device: "cpu".into(),
+        };
+        let provider = KokoroProvider::new(config);
+
+        let tokens = provider.text_to_tokens("Hi");
+        assert_eq!(tokens, vec![72, 105]);
+    }
+
+    #[test]
+    fn test_resample() {
+        let config = KokoroConfig {
+            model_path: "models/dummy.onnx".into(),
+            device: "cpu".into(),
+        };
+        let provider = KokoroProvider::new(config);
+
+        let input = vec![1.0, 2.0, 3.0, 4.0];
+        let output = provider.resample(&input, 24000, 16000);
+        assert!(!output.is_empty());
+        assert!((output.len() as f64 - 4.0 * 16000.0 / 24000.0).abs() < 2.0);
     }
 }

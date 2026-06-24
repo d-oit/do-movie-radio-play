@@ -91,10 +91,18 @@ impl OrpheusProvider {
 
     /// Decodes Orpheus-3B speech tokens into PCM samples.
     /// Orpheus uses a specific SNAC (Spectral Neural Audio Codec) representation.
+    ///
+    /// WARNING: This is a synthetic fallback. Real SNAC decoding requires a neural
+    /// audio codec decoder (not yet available). Output will sound like tones, not speech.
     fn decode_snac_tokens(&self, tokens: &[LlamaToken]) -> Vec<f32> {
         if tokens.is_empty() {
             return Vec::new();
         }
+
+        warn!(
+            token_count = tokens.len(),
+            "Orpheus SNAC decode: using synthetic fallback (not real audio)"
+        );
 
         let samples_per_token = 320; // 20ms at 16kHz for Orpheus-3B
         let mut samples = Vec::with_capacity(tokens.len() * samples_per_token);

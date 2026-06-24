@@ -6,16 +6,20 @@ The tool identifies audio intervals without speech, such as music, sound effects
 spectral feature analysis to classify audio frames and clusters them into segments.
 
 ## Prerequisites
+
 - Rust 2021 toolchain (v1.75+)
 - FFmpeg (optional; required only for video container inputs or non-WAV audio)
 
 ## Build
+
 ```bash
 cargo build --release
 ```
+
 The binary is located at `target/release/timeline`.
 
 ## Commands
+
 - `extract <INPUT> --output <JSON>`: Run the extraction pipeline on a media file.
 - `tag <MEDIA> --input <JSON> --output <JSON>`: Apply acoustic tags (music, ambience) to segments.
 - `prompt <JSON> --output <JSON>`: Generate text prompts for identified segments.
@@ -33,9 +37,11 @@ The binary is located at `target/release/timeline`.
 - `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Convert timeline to external formats.
 
 ## Configuration
+
 Profiles are stored as JSON in `config/profiles/`. Options can be overridden via `TIMELINE_` environment variables.
 
 ### AnalysisConfig Fields
+
 - `sample_rate_hz`: Processing sample rate (default: 16000).
 - `frame_ms`: Analysis window size (default: 20).
 - `energy_threshold`: Baseline RMS sensitivity (0.0 to 1.0).
@@ -48,16 +54,19 @@ Profiles are stored as JSON in `config/profiles/`. Options can be overridden via
 - `parallel_features`: Enable multi-threaded feature extraction.
 
 ## Validation Workflow
+
 1. Run the validation suite: `python3 scripts/run_validation_manifest.py`.
 2. Generate the readiness report: `python3 scripts/build_radio_play_readiness_report.py`.
 3. Check codebase integrity: `bash scripts/quality_gate.sh`.
 
 ## Export Formats
+
 - **JSON**: Internal format with timestamps, confidence, tags, and prompts.
 - **EDL**: CMX 3600 Edit Decision List for NLE import.
 - **VTT**: WebVTT subtitle format.
 
 ## TTS Providers
+
 - **Modal.com (Free Tier)**: Serverless GPU inference for German Hörspiel generation.
   - Supports Coqui XTTS v2 (voice cloning) and Piper TTS.
   - Setup: Deploy scripts from `scripts/modal_tts_deploy.py` and set `MODAL_TTS_ENDPOINT`.
@@ -66,9 +75,11 @@ Profiles are stored as JSON in `config/profiles/`. Options can be overridden via
 - **Local Providers**: Kokoro, PocketTTS, Qwen3, Orpheus (require local model files/GPU).
 
 ## Known Limitations
+
 - 16-bit PCM WAV is the only natively supported format; others require FFmpeg.
 - Spectral analysis is CPU-bound.
 - Memory usage increases with the number of segments during HTML report generation.
 
 ## Contributing
+
 Refer to [AGENTS.md](AGENTS.md) for development workflows and agent coordination policies.

@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 mkdir -p testdata/raw
+FAIL_COUNT=0
 fetch(){
   local url="$1"; local out="$2"
   if [[ -s "$out" ]]; then echo "ok $out"; return 0; fi
-  curl -L --fail --retry 3 "$url" -o "$out"
-  [[ -s "$out" ]] || { echo "empty: $out"; exit 1; }
+  local attempt
+  for attempt in 1 2 3; do
+    if curl -L --fail --connect-timeout 15 --max-time 120 -o "$out" "$url" 2>/dev/null; then
+      if [[ -s "$out" ]]; then echo "ok $out"; return 0; fi
+    fi
+    echo "retry $attempt for $out"
+    sleep $((attempt * 5))
+  done
+  echo "WARN: failed to fetch $out from $url"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+  return 0
 }
 
 extract_first_mp4_from_zip(){
@@ -26,7 +36,10 @@ with zipfile.ZipFile(zip_path) as zf:
     with zf.open(mp4_names[0]) as src, out_path.open('wb') as dst:
         dst.write(src.read())
 PY
-  [[ -s "$out" ]] || { echo "empty extracted movie: $out"; exit 1; }
+  if [[ ! -s "$out" ]]; then
+    echo "WARN: empty extracted movie: $out"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
 }
 # Layer 3: Post-2000 video fixtures only.
 # Elephants Dream (2006) - Blender Open Movie
@@ -45,7 +58,33 @@ extract_first_mp4_from_zip "testdata/raw/elephantsdream_teaser.mp4.zip" "testdat
 fetch "https://download.blender.org/demo/movies/caminandes_gran_dillama.mp4.zip" "testdata/raw/caminandes_gran_dillama.mp4.zip"
 extract_first_mp4_from_zip "testdata/raw/caminandes_gran_dillama.mp4.zip" "testdata/raw/caminandes_gran_dillama.mp4"
 
-for f in testdata/raw/elephants_dream_2006.mp4 testdata/raw/elephants_dream_2006.es.srt testdata/raw/elephants_dream_2006.de.srt testdata/raw/big_buck_bunny_trailer_2008.mov testdata/raw/sintel_trailer_2010.mp4 testdata/raw/elephantsdream_teaser.mp4 testdata/raw/caminandes_gran_dillama.mp4; do
-  [[ -s "$f" ]] || { echo "missing $f"; exit 1; }
+CRITICAL_ASSETS="testdata/raw/elephants_dream_2006.mp4 testdata/raw/sintel_trailer_2010.mp4"
+ALL_ASSETS="testdata/raw/elephants_dream_2006.mp4 testdata/raw/elephants_dream_2006.es.srt testdata/raw/elephants_dream_2006.de.srt testdata/raw/big_buck_bunny_trailer_2008.mov testdata/raw/sintel_trailer_2010.mp4 testdata/raw/elephantsdream_teaser.mp4 testdata/raw/caminandes_gran_dillama.mp4"
+
+missing_critical=0
+for f in $CRITICAL_ASSETS; do
+  if [[ ! -s "$f" ]]; then
+    echo "CRITICAL: missing $f"
+    missing_critical=1
+  fi
 done
+if [[ "$missing_critical" -eq 1 ]]; then
+  echo "aborting: critical assets missing"
+  exit 1
+fi
+
+missing_optional=0
+for f in $ALL_ASSETS; do
+  if [[ ! -s "$f" ]]; then
+    echo "WARN: optional asset missing $f"
+    missing_optional=$((missing_optional + 1))
+  fi
+done
+
+if [[ "$missing_optional" -gt 0 ]]; then
+  echo "$missing_optional optional asset(s) missing; continuing with available assets"
+fi
+if [[ "$FAIL_COUNT" -gt 0 ]]; then
+  echo "$FAIL_COUNT download(s) failed but all critical assets present"
+fi
 echo "assets ready in testdata/raw"

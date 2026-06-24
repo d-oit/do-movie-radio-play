@@ -28,6 +28,7 @@ allow = [
   "BSL-1.0",
   "OpenSSL",
   "MPL-2.0",
+  "CDLA-Permissive-2.0",
 ]
 
 [bans]

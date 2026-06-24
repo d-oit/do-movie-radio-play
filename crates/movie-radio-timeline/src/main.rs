@@ -43,6 +43,7 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             calibration_profile,
             save_calibration,
             parallel_features,
+            chunk_duration,
         } => handlers::handle_extract(
             input,
             output,
@@ -55,6 +56,7 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             calibration_profile,
             save_calibration,
             parallel_features,
+            chunk_duration,
         ),
         Commands::Validate {
             input_media,

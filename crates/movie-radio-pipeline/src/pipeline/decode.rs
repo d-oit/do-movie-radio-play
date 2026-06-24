@@ -31,6 +31,85 @@ pub fn decode_audio(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u
     decode_via_ffmpeg(path, target_sample_rate)
 }
 
+pub fn decode_audio_chunked(
+    path: &Path,
+    target_sample_rate: u32,
+    chunk_duration_sec: u64,
+) -> Result<Vec<Vec<f32>>> {
+    if !path.exists() {
+        return Err(TimelineError::MissingInput(path.display().to_string()).into());
+    }
+
+    let chunk_ms = chunk_duration_sec * 1000;
+    let mut all_chunks = Vec::new();
+    let mut offset_ms: u64 = 0;
+
+    loop {
+        let output = Command::new("ffmpeg")
+            .arg("-nostdin")
+            .arg("-protocol_whitelist")
+            .arg("file,pipe,fd")
+            .args(["-hide_banner", "-loglevel", "error"])
+            .arg("-ss")
+            .arg(offset_ms.to_string())
+            .arg("-t")
+            .arg(chunk_ms.to_string())
+            .arg("-i")
+            .arg(path)
+            .args([
+                "-vn",
+                "-ac",
+                "1",
+                "-ar",
+                &target_sample_rate.to_string(),
+                "-f",
+                "s16le",
+                "-",
+            ])
+            .output()
+            .context("failed to execute ffmpeg")?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            if stderr.contains("Stream map") || stderr.contains("could not find") {
+                bail!(TimelineError::Decode(stderr));
+            }
+            break;
+        }
+
+        let bytes = output.stdout;
+        if bytes.is_empty() {
+            break;
+        }
+
+        let mut samples = Vec::with_capacity(bytes.len() / 2);
+        for chunk in bytes.chunks_exact(2) {
+            let s = i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / i16::MAX as f32;
+            samples.push(s);
+        }
+
+        if samples.is_empty() {
+            break;
+        }
+
+        info!(
+            chunk = all_chunks.len(),
+            offset_ms,
+            samples = samples.len(),
+            "decoded chunk"
+        );
+
+        all_chunks.push(samples);
+        offset_ms += chunk_ms;
+
+        if (bytes.len() as u64) < (chunk_ms * target_sample_rate as u64 / 1000 * 2) {
+            break;
+        }
+    }
+
+    Ok(all_chunks)
+}
+
 fn decode_via_symphonia(
     path: &Path,
     extension: Option<&str>,

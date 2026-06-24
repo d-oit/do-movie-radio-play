@@ -6,10 +6,12 @@
 ## Mental Model
 
 The harness has two axes:
+
 - **Feedforward (guides):** What to do *before* writing code — context, constraints, conventions
 - **Feedback (sensors):** What fires *after* writing code — automated checks that catch violations
 
 And two modes:
+
 - **Computational:** Deterministic (clippy, tests, deny) — always trust the output
 - **Inferential:** LLM-based (skill docs, agent context) — direction, not commands
 
@@ -57,6 +59,7 @@ And two modes:
 ## Steering Loop
 
 When any sensor fires **repeatedly** (>2 times in one sprint):
+
 1. Identify the root cause category (maintainability / architecture / behaviour)
 2. Update the corresponding **feedforward guide** to prevent recurrence
 3. If no guide exists, create one in `.agents/skills/` using the `skill-creator` skill
@@ -67,6 +70,7 @@ The steering loop closes the harness: sensors fire → humans and agents update 
 ## Self-Correction Protocol for Agents
 
 When a computational sensor fires:
+
 1. Read the full error message — it includes a fix hint
 2. Identify category: fmt / lint / test / arch / security
 3. Apply the minimal fix (do not refactor unrelated code)

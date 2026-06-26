@@ -235,18 +235,14 @@ fn encode_to_mp3(wav_path: &std::path::Path, mp3_path: &std::path::Path) -> Resu
     use std::process::Command;
 
     let status = Command::new("ffmpeg")
-        .args([
-            "-y",
-            "-i",
-            wav_path.to_str().unwrap_or_default(),
-            "-codec:a",
-            "libmp3lame",
-            "-b:a",
-            "192k",
-            "-q:a",
-            "2",
-            mp3_path.to_str().unwrap_or_default(),
-        ])
+        .arg("-nostdin")
+        .arg("-protocol_whitelist")
+        .arg("file,pipe,fd")
+        .args(["-hide_banner", "-loglevel", "error"])
+        .arg("-i")
+        .arg(wav_path)
+        .args(["-codec:a", "libmp3lame", "-b:a", "192k", "-q:a", "2", "-y"])
+        .arg(mp3_path)
         .status()?;
 
     if !status.success() {

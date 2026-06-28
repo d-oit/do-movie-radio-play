@@ -37,3 +37,8 @@ allow = [
 [bans]
 multiple-versions = "warn"
 wildcards = "allow"
+
+[[bans.skip]]
+name = "symphonia"
+# rodio 0.22 still depends on symphonia 0.5.5; our workspace uses 0.6
+# Remove this skip once rodio upgrades to symphonia 0.6

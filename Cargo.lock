@@ -2250,6 +2250,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "movie-radio-render"
+version = "0.1.0"
+dependencies = [
+ "movie-radio-types",
+ "rodio",
+ "serde",
+]
+
+[[package]]
 name = "movie-radio-timeline"
 version = "0.1.0"
 dependencies = [

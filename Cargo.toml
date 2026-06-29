@@ -46,6 +46,7 @@ movie-radio-validation = { path = "crates/movie-radio-validation" }
 movie-radio-voice = { path = "crates/movie-radio-voice" }
 movie-radio-goap = { path = "crates/movie-radio-goap" }
 movie-radio-timeline = { path = "crates/movie-radio-timeline" }
+movie-radio-render = { path = "crates/movie-radio-render" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

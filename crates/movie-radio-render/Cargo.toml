@@ -1,0 +1,19 @@
+[package]
+name = "movie-radio-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Final audio mix rendering with AGC and spatial positioning"
+
+[dependencies]
+movie-radio-types.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+hound.workspace = true
+rodio = { version = "0.22", default-features = false, features = ["wav_output", "symphonia-simd"] }
+serde.workspace = true
+tempfile = "3"
+thiserror.workspace = true
+
+[lints]
+workspace = true

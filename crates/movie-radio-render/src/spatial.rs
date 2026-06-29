@@ -8,11 +8,26 @@ pub struct ReverbConfig {
 }
 
 impl ReverbConfig {
-    pub const DRY: Self = Self { delay_ms: 0, amplitude: 0.0 };
-    pub const SMALL_ROOM: Self = Self { delay_ms: 30, amplitude: 0.3 };
-    pub const MEDIUM_ROOM: Self = Self { delay_ms: 60, amplitude: 0.4 };
-    pub const LARGE_HALL: Self = Self { delay_ms: 150, amplitude: 0.6 };
-    pub const OUTDOOR: Self = Self { delay_ms: 80, amplitude: 0.2 };
+    pub const DRY: Self = Self {
+        delay_ms: 0,
+        amplitude: 0.0,
+    };
+    pub const SMALL_ROOM: Self = Self {
+        delay_ms: 30,
+        amplitude: 0.3,
+    };
+    pub const MEDIUM_ROOM: Self = Self {
+        delay_ms: 60,
+        amplitude: 0.4,
+    };
+    pub const LARGE_HALL: Self = Self {
+        delay_ms: 150,
+        amplitude: 0.6,
+    };
+    pub const OUTDOOR: Self = Self {
+        delay_ms: 80,
+        amplitude: 0.2,
+    };
 }
 
 /// Minimal placeholder for stereo positioning

@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use crate::agc::{apply_agc, apply_reverb};
 use crate::spatial::{ReverbConfig, StereoPosition};
+use serde::{Deserialize, Serialize};
 
 /// Input track for the mixer
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,22 +54,25 @@ mod tests {
 
     #[test]
     fn reverb_does_not_produce_nan() {
-        let samples: Vec<f32> = (0..4800)
-            .map(|i| (i as f32 * 0.001).sin() * 0.5)
-            .collect();
+        let samples: Vec<f32> = (0..4800).map(|i| (i as f32 * 0.001).sin() * 0.5).collect();
         let result = crate::agc::apply_reverb(
-            samples, 48000,
+            samples,
+            48000,
             ReverbConfig::MEDIUM_ROOM.delay_ms,
-            ReverbConfig::MEDIUM_ROOM.amplitude
+            ReverbConfig::MEDIUM_ROOM.amplitude,
         );
-        assert!(result.iter().all(|s| s.is_finite()), "reverb produced NaN/Inf");
+        assert!(
+            result.iter().all(|s| s.is_finite()),
+            "reverb produced NaN/Inf"
+        );
     }
 
     #[test]
     fn dry_reverb_is_passthrough() {
         let samples: Vec<f32> = vec![0.1, 0.2, 0.3, -0.1, -0.2];
         let result = crate::agc::apply_reverb(
-            samples.clone(), 44100,
+            samples.clone(),
+            44100,
             ReverbConfig::DRY.delay_ms,
             ReverbConfig::DRY.amplitude,
         );

@@ -1,6 +1,6 @@
-use std::time::Duration;
-use std::num::{NonZeroU16, NonZeroU32};
 use rodio::Source;
+use std::num::{NonZeroU16, NonZeroU32};
+use std::time::Duration;
 
 /// Apply rodio reverb to a mono f32 sample buffer.
 /// Returns a new Vec<f32> with reverb applied.
@@ -18,10 +18,7 @@ pub fn apply_reverb(
     let sample_rate_nz = NonZeroU32::new(sample_rate).expect("sample rate is non-zero");
 
     let source = rodio::buffer::SamplesBuffer::new(channels, sample_rate_nz, samples);
-    let with_reverb = source.reverb(
-        Duration::from_millis(delay_ms),
-        amplitude,
-    );
+    let with_reverb = source.reverb(Duration::from_millis(delay_ms), amplitude);
     with_reverb.collect()
 }
 

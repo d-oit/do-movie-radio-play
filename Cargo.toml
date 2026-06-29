@@ -27,6 +27,12 @@ realfft = "3"
 tempfile = "3"
 libsql = { version = "0.9", default-features = false, features = ["core"] }
 symphonia = { version = "0.6", features = ["mp3", "wav", "flac", "ogg", "pcm"] }
+rodio = { version = "0.22", default-features = false, features = [
+    "playback",
+    "wav_output",
+    "noise",
+    "symphonia-simd",
+] }
 rayon = "1.10"
 rubato = "3.0"
 ort = { version = "2.0.0-rc.9", features = ["load-dynamic"] }

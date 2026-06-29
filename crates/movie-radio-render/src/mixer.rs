@@ -42,7 +42,7 @@ pub struct RenderOutput {
 ///   3. Apply constant-power stereo pan
 ///   4. Write into output stereo interleaved buffer at start_offset
 pub fn render_mix(config: &RenderConfig) -> Result<RenderOutput> {
-    use hound::{WavReader, WavWriter, WavSpec, SampleFormat};
+    use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
     use tracing::info;
 
     // Determine total length needed
@@ -50,7 +50,7 @@ pub fn render_mix(config: &RenderConfig) -> Result<RenderOutput> {
     let mut track_data: Vec<(TrackInput, Vec<f32>, u32)> = Vec::new();
 
     for track in &config.tracks {
-        let mut reader = WavReader::open(&track.wav_path)?;
+        let reader = WavReader::open(&track.wav_path)?;
         let spec = reader.spec();
         let raw: Vec<f32> = match spec.sample_format {
             hound::SampleFormat::Float => reader
@@ -80,7 +80,9 @@ pub fn render_mix(config: &RenderConfig) -> Result<RenderOutput> {
             track.agc_max_gain,
         );
         let end = track.start_offset_samples + normalized.len() as u64;
-        if end > total_len { total_len = end; }
+        if end > total_len {
+            total_len = end;
+        }
         track_data.push((track.clone(), normalized, sample_rate));
     }
 
@@ -91,7 +93,7 @@ pub fn render_mix(config: &RenderConfig) -> Result<RenderOutput> {
         let (l_gain, r_gain) = track.position.gains();
         for (i, &s) in samples.iter().enumerate() {
             let base = (track.start_offset_samples as usize + i) * 2;
-            stereo[base]     += s * l_gain;
+            stereo[base] += s * l_gain;
             stereo[base + 1] += s * r_gain;
         }
     }
@@ -99,7 +101,9 @@ pub fn render_mix(config: &RenderConfig) -> Result<RenderOutput> {
     // Normalise to prevent clipping
     let peak = stereo.iter().copied().map(f32::abs).fold(0.0f32, f32::max);
     if peak > 1.0 {
-        for s in &mut stereo { *s /= peak; }
+        for s in &mut stereo {
+            *s /= peak;
+        }
     }
 
     // Write output WAV
@@ -133,7 +137,7 @@ pub fn render_mix(config: &RenderConfig) -> Result<RenderOutput> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hound::{WavWriter, WavSpec, SampleFormat};
+    use hound::{SampleFormat, WavSpec, WavWriter};
     use tempfile::tempdir;
 
     #[test]
@@ -195,23 +199,25 @@ mod tests {
 
         // Verify output
         let reader = hound::WavReader::open(output)?;
-        let samples: Vec<f32> = reader.into_samples::<f32>().collect::<std::result::Result<_, _>>()?;
+        let samples: Vec<f32> = reader
+            .into_samples::<f32>()
+            .collect::<std::result::Result<_, _>>()?;
 
         // Track 1: L=0.5, R=0.0 (from 0 to 44100)
         // Track 2: L=0.0, R=0.5 (from 22050 to 66150)
         // Overlap (22050 to 44100): L=0.5, R=0.5.
 
         for i in 0..22050 {
-            assert!(samples[i*2] > 0.0); // L
-            assert!(samples[i*2+1].abs() < 1e-6); // R should be 0.0
+            assert!(samples[i * 2] > 0.0); // L
+            assert!(samples[i * 2 + 1].abs() < 1e-6); // R should be 0.0
         }
         for i in 22050..44100 {
-            assert!(samples[i*2] > 0.0); // L
-            assert!(samples[i*2+1] > 0.0); // R
+            assert!(samples[i * 2] > 0.0); // L
+            assert!(samples[i * 2 + 1] > 0.0); // R
         }
         for i in 44100..66150 {
-            assert!(samples[i*2].abs() < 1e-6); // L should be 0.0
-            assert!(samples[i*2+1] > 0.0); // R
+            assert!(samples[i * 2].abs() < 1e-6); // L should be 0.0
+            assert!(samples[i * 2 + 1] > 0.0); // R
         }
 
         Ok(())
@@ -237,23 +243,23 @@ mod tests {
         let config = RenderConfig {
             output_sample_rate: 44100,
             output_path: output.clone(),
-            tracks: vec![
-                TrackInput {
-                    wav_path: wav,
-                    character_id: "Loud".to_string(),
-                    position: StereoPosition::CENTRE,
-                    start_offset_samples: 0,
-                    agc_attack: 0.1,
-                    agc_release: 0.15,
-                    agc_max_gain: 1.0, // Prevent AGC from changing it too much for this test
-                },
-            ],
+            tracks: vec![TrackInput {
+                wav_path: wav,
+                character_id: "Loud".to_string(),
+                position: StereoPosition::CENTRE,
+                start_offset_samples: 0,
+                agc_attack: 0.1,
+                agc_release: 0.15,
+                agc_max_gain: 1.0, // Prevent AGC from changing it too much for this test
+            }],
         };
 
         render_mix(&config)?;
 
         let reader = hound::WavReader::open(output)?;
-        let samples: Vec<f32> = reader.into_samples::<f32>().collect::<std::result::Result<_, _>>()?;
+        let samples: Vec<f32> = reader
+            .into_samples::<f32>()
+            .collect::<std::result::Result<_, _>>()?;
         for &s in &samples {
             assert!(s.abs() <= 1.0);
         }

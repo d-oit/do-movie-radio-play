@@ -12,7 +12,10 @@ impl StereoPosition {
 
     /// Validate position is in [-1.0, 1.0]
     pub fn new(pos: f32) -> anyhow::Result<Self> {
-        anyhow::ensure!((-1.0..=1.0).contains(&pos), "position must be in [-1.0, 1.0]");
+        anyhow::ensure!(
+            (-1.0..=1.0).contains(&pos),
+            "position must be in [-1.0, 1.0]"
+        );
         Ok(Self(pos))
     }
 

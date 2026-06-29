@@ -1,0 +1,14 @@
+[package]
+name = "movie-radio-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Audio rendering and mixing for radio plays"
+
+[dependencies]
+movie-radio-types.workspace = true
+rodio = { version = "0.22", default-features = false, features = ["wav_output", "noise"] }
+serde.workspace = true
+
+[lints]
+workspace = true

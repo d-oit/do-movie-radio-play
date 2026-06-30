@@ -8,12 +8,12 @@ spectral feature analysis to classify audio frames and clusters them into segmen
 ## Prerequisites
 
 - Rust 2021 toolchain (v1.75+)
-- FFmpeg (optional; required only for video container inputs or non-WAV audio)
+- FFmpeg (required for video containers or non-WAV audio)
 
 ## Build
 
 ```bash
-cargo build --release
+cargo build --workspace --release
 ```
 
 The binary is located at `target/release/timeline`.
@@ -21,20 +21,21 @@ The binary is located at `target/release/timeline`.
 ## Commands
 
 - `extract <INPUT> --output <JSON>`: Run the extraction pipeline on a media file.
-- `tag <MEDIA> --input <JSON> --output <JSON>`: Apply acoustic tags (music, ambience) to segments.
-- `prompt <JSON> --output <JSON>`: Generate text prompts for identified segments.
-- `review <MEDIA> --input <JSON> --output <HTML>`: Generate an interactive review player.
-- `calibrate <DIR> --profile <NAME>`: Generate a calibration report from manual corrections.
+- `tag <INPUT_MEDIA> --input <JSON> --output <JSON>`: Apply acoustic tags (music, ambience) to segments.
+- `prompt <INPUT_JSON> --output <JSON>`: Generate text prompts for identified segments.
+- `review <INPUT_MEDIA> --input <JSON> --output <HTML>`: Generate an interactive review player.
+- `calibrate <CORRECTIONS_DIR> --profile <NAME>`: Generate a calibration report from manual corrections.
 - `apply-calibration --report <JSON>`: Update the active profile with a calibration report.
-- `bench <MEDIA> --output <JSON>`: Measure pipeline performance and stage durations.
+- `bench <INPUT_MEDIA> --output <JSON>`: Measure pipeline performance and stage durations.
 - `gen-fixtures`: Create synthetic audio test cases.
-- `validate <MEDIA> --output <JSON>`: Compare extraction results against ground truth or subtitles.
-- `ai-voice-extract <JSON> --output <JSON>`: Extract only speech segments for voice replacement workflows.
-- `verify-timeline <MEDIA> --timeline <JSON>`: Validate segments against spectral feature bounds.
-- `update-thresholds`: Adjust adaptive thresholds using the learning database.
-- `learning-stats`: Display statistics from the SQL-based learning database.
+- `validate <INPUT_MEDIA> --output <JSON>`: Compare extraction results against ground truth or subtitles.
+- `ai-voice-extract <INPUT_JSON> --output <JSON>`: Extract only speech segments for voice replacement workflows.
+- `verify-timeline <MEDIA> --timeline <JSON> --output <JSON>`: Validate segments against spectral feature bounds.
+- `update-thresholds`: Adjust adaptive thresholds using the SQL-based learning database.
+- `learning-stats`: Display statistics from the learning database.
 - `merge-timeline <INPUT> --output <JSON>`: Combine adjacent segments based on gap thresholds.
 - `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Convert timeline to external formats.
+- `radio-play <MOVIE>`: Perform visual gap analysis by correlating VAD segments with subtitles.
 
 ## Configuration
 
@@ -64,15 +65,6 @@ Profiles are stored as JSON in `config/profiles/`. Options can be overridden via
 - **JSON**: Internal format with timestamps, confidence, tags, and prompts.
 - **EDL**: CMX 3600 Edit Decision List for NLE import.
 - **VTT**: WebVTT subtitle format.
-
-## TTS Providers
-
-- **Modal.com (Free Tier)**: Serverless GPU inference for German Hörspiel generation.
-  - Supports Coqui XTTS v2 (voice cloning) and Piper TTS.
-  - Setup: Deploy scripts from `scripts/modal_tts_deploy.py` and set `MODAL_TTS_ENDPOINT`.
-  - Benefits: Zero idle cost, $30/month free credits.
-- **ElevenLabs**: High-quality cloud synthesis (paid).
-- **Local Providers**: Kokoro, PocketTTS, Qwen3, Orpheus (require local model files/GPU).
 
 ## Known Limitations
 

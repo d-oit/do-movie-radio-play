@@ -13,6 +13,7 @@ version = 2
 ignore = [
   "RUSTSEC-2025-0119",  # number_prefix unmaintained — transitive dep of candle
   "RUSTSEC-2024-0436",  # paste unmaintained — transitive dep of tokenizers
+  "RUSTSEC-2026-0190",  # anyhow unsoundness — PR #152 update incoming
 ]
 
 [licenses]

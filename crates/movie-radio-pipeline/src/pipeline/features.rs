@@ -123,9 +123,16 @@ impl FeatureExtractor {
         let rms = (sum_sq / samples.len() as f32).sqrt();
 
         let mut zero_crosses = 0u32;
-        for w in samples.windows(2) {
-            if (w[0] >= 0.0) != (w[1] >= 0.0) {
-                zero_crosses += 1;
+        // Optimization: Single-pass ZCR calculation to reduce redundant sign comparisons.
+        // We track the sign of the previous sample to avoid 2*N comparisons from .windows(2).
+        if !samples.is_empty() {
+            let mut prev_sign = samples[0] >= 0.0;
+            for &s in &samples[1..] {
+                let sign = s >= 0.0;
+                if sign != prev_sign {
+                    zero_crosses += 1;
+                    prev_sign = sign;
+                }
             }
         }
         let zcr = zero_crosses as f32 / samples.len() as f32;
@@ -302,9 +309,15 @@ fn compute_frame_features_impl(
     let rms = (sum_sq / samples.len() as f32).sqrt();
 
     let mut zero_crosses = 0u32;
-    for w in samples.windows(2) {
-        if (w[0] >= 0.0) != (w[1] >= 0.0) {
-            zero_crosses += 1;
+    // Optimization: Single-pass ZCR calculation to reduce redundant sign comparisons.
+    if !samples.is_empty() {
+        let mut prev_sign = samples[0] >= 0.0;
+        for &s in &samples[1..] {
+            let sign = s >= 0.0;
+            if sign != prev_sign {
+                zero_crosses += 1;
+                prev_sign = sign;
+            }
         }
     }
     let zcr = zero_crosses as f32 / samples.len().max(1) as f32;

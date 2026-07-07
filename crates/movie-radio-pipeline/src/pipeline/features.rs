@@ -38,13 +38,11 @@ impl SpectralAnalyzer {
     /// Optimized analysis that computes magnitudes into the internal buffer.
     pub fn analyze(&mut self, samples: &[f32]) -> &[f32] {
         let n = samples.len().min(self.fft_len);
-        self.input_buf[..n].copy_from_slice(&samples[..n]);
-        self.input_buf[n..].fill(0.0);
-
-        // Fuse windowing with input preparation if possible, but here we just optimize the loop
-        for (s, h) in self.input_buf.iter_mut().zip(self.hann.iter()) {
-            *s *= h;
+        // Optimization: Fuse copy and windowing into a single pass to reduce memory traffic.
+        for ((b, &s), &h) in self.input_buf[..n].iter_mut().zip(samples).zip(&self.hann) {
+            *b = s * h;
         }
+        self.input_buf[n..].fill(0.0);
 
         if self
             .fft
@@ -66,12 +64,11 @@ impl SpectralAnalyzer {
     /// This eliminates one copy of the spectral data.
     pub fn analyze_into(&mut self, samples: &[f32], out_mag: &mut [f32]) {
         let n = samples.len().min(self.fft_len);
-        self.input_buf[..n].copy_from_slice(&samples[..n]);
-        self.input_buf[n..].fill(0.0);
-
-        for (s, h) in self.input_buf.iter_mut().zip(self.hann.iter()) {
-            *s *= h;
+        // Optimization: Fuse copy and windowing into a single pass to reduce memory traffic.
+        for ((b, &s), &h) in self.input_buf[..n].iter_mut().zip(samples).zip(&self.hann) {
+            *b = s * h;
         }
+        self.input_buf[n..].fill(0.0);
 
         if self
             .fft
@@ -119,15 +116,14 @@ impl FeatureExtractor {
             };
         }
 
-        let sum_sq: f32 = samples.iter().map(|v| v * v).sum();
-        let rms = (sum_sq / samples.len() as f32).sqrt();
-
+        let mut sum_sq = 0.0;
         let mut zero_crosses = 0u32;
-        // Optimization: Single-pass ZCR calculation to reduce redundant sign comparisons.
-        // We track the sign of the previous sample to avoid 2*N comparisons from .windows(2).
+        // Optimization: Fuse RMS and ZCR calculation into a single pass to minimize memory accesses.
         if !samples.is_empty() {
             let mut prev_sign = samples[0] >= 0.0;
+            sum_sq += samples[0] * samples[0];
             for &s in &samples[1..] {
+                sum_sq += s * s;
                 let sign = s >= 0.0;
                 if sign != prev_sign {
                     zero_crosses += 1;
@@ -135,6 +131,7 @@ impl FeatureExtractor {
                 }
             }
         }
+        let rms = (sum_sq / samples.len() as f32).sqrt();
         let zcr = zero_crosses as f32 / samples.len() as f32;
 
         let bin_width = sample_rate as f32 / self.fft_len as f32;
@@ -305,14 +302,14 @@ fn compute_frame_features_impl(
     sample_rate: u32,
     fft_len: usize,
 ) -> FeatureSet {
-    let sum_sq: f32 = samples.iter().map(|v| v * v).sum();
-    let rms = (sum_sq / samples.len() as f32).sqrt();
-
+    let mut sum_sq = 0.0;
     let mut zero_crosses = 0u32;
-    // Optimization: Single-pass ZCR calculation to reduce redundant sign comparisons.
+    // Optimization: Fuse RMS and ZCR calculation into a single pass to minimize memory accesses.
     if !samples.is_empty() {
         let mut prev_sign = samples[0] >= 0.0;
+        sum_sq += samples[0] * samples[0];
         for &s in &samples[1..] {
+            sum_sq += s * s;
             let sign = s >= 0.0;
             if sign != prev_sign {
                 zero_crosses += 1;
@@ -320,6 +317,7 @@ fn compute_frame_features_impl(
             }
         }
     }
+    let rms = (sum_sq / samples.len().max(1) as f32).sqrt();
     let zcr = zero_crosses as f32 / samples.len().max(1) as f32;
 
     let bin_width = sample_rate as f32 / fft_len as f32;

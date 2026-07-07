@@ -1,5 +1,6 @@
 use crate::agc::{apply_agc, apply_reverb};
 use crate::spatial::{ReverbConfig, StereoPosition};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 /// Input track for the mixer
@@ -18,18 +19,18 @@ pub struct TrackInput {
 }
 
 /// Renders a mix of tracks into a stereo output.
-pub fn render_mix(tracks: Vec<TrackInput>) -> Vec<f32> {
+pub fn render_mix(tracks: Vec<TrackInput>) -> Result<Vec<f32>> {
     let mut _mixed = Vec::new();
 
     for track in tracks {
         let sample_rate = track.sample_rate;
 
         // 1. Apply AGC
-        let normalized = apply_agc(track.samples, sample_rate);
+        let normalized = apply_agc(track.samples, sample_rate)?;
 
         // 2. Apply Reverb
         let with_reverb = if let Some(ref rev) = track.reverb {
-            apply_reverb(normalized, sample_rate, rev.delay_ms, rev.amplitude)
+            apply_reverb(normalized, sample_rate, rev.delay_ms, rev.amplitude)?
         } else {
             normalized
         };
@@ -40,7 +41,7 @@ pub fn render_mix(tracks: Vec<TrackInput>) -> Vec<f32> {
         // Mixing logic would go here
     }
 
-    _mixed
+    Ok(_mixed)
 }
 
 /// Placeholder for spatial panning
@@ -51,31 +52,34 @@ fn apply_spatial(samples: Vec<f32>, _position: StereoPosition) -> Vec<f32> {
 #[cfg(test)]
 mod tests {
     use crate::spatial::ReverbConfig;
+    use anyhow::Result;
 
     #[test]
-    fn reverb_does_not_produce_nan() {
+    fn reverb_does_not_produce_nan() -> Result<()> {
         let samples: Vec<f32> = (0..4800).map(|i| (i as f32 * 0.001).sin() * 0.5).collect();
         let result = crate::agc::apply_reverb(
             samples,
             48000,
             ReverbConfig::MEDIUM_ROOM.delay_ms,
             ReverbConfig::MEDIUM_ROOM.amplitude,
-        );
+        )?;
         assert!(
             result.iter().all(|s| s.is_finite()),
             "reverb produced NaN/Inf"
         );
+        Ok(())
     }
 
     #[test]
-    fn dry_reverb_is_passthrough() {
+    fn dry_reverb_is_passthrough() -> Result<()> {
         let samples: Vec<f32> = vec![0.1, 0.2, 0.3, -0.1, -0.2];
         let result = crate::agc::apply_reverb(
             samples.clone(),
             44100,
             ReverbConfig::DRY.delay_ms,
             ReverbConfig::DRY.amplitude,
-        );
+        )?;
         assert_eq!(result, samples);
+        Ok(())
     }
 }

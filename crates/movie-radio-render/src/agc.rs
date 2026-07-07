@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use rodio::Source;
 use std::num::{NonZeroU16, NonZeroU32};
 use std::time::Duration;
@@ -9,21 +10,22 @@ pub fn apply_reverb(
     sample_rate: u32,
     delay_ms: u64,
     amplitude: f32,
-) -> Vec<f32> {
+) -> Result<Vec<f32>> {
     if delay_ms == 0 || amplitude == 0.0 {
-        return samples; // skip processing for dry signal
+        return Ok(samples); // skip processing for dry signal
     }
 
-    let channels = NonZeroU16::new(1).expect("1 is non-zero");
-    let sample_rate_nz = NonZeroU32::new(sample_rate).expect("sample rate is non-zero");
+    let channels = NonZeroU16::new(1).context("1 is non-zero")?;
+    let sample_rate_nz =
+        NonZeroU32::new(sample_rate).context("sample rate must be greater than zero")?;
 
     let source = rodio::buffer::SamplesBuffer::new(channels, sample_rate_nz, samples);
     let with_reverb = source.reverb(Duration::from_millis(delay_ms), amplitude);
-    with_reverb.collect()
+    Ok(with_reverb.collect())
 }
 
 /// Placeholder for Automatic Gain Control.
-pub fn apply_agc(samples: Vec<f32>, _sample_rate: u32) -> Vec<f32> {
+pub fn apply_agc(samples: Vec<f32>, _sample_rate: u32) -> Result<Vec<f32>> {
     // Current placeholder logic: pass-through
-    samples
+    Ok(samples)
 }

@@ -27,7 +27,7 @@ jobs:
       workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - uses: actions/checkout@v7
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -86,7 +86,7 @@ jobs:
       - name: YAML Lint
         run: yamllint .
       - name: Markdown Lint
-        uses: DavidAnson/markdownlint-cli2-action@v19
+        uses: DavidAnson/markdownlint-cli2-action@v24
         with:
           globs: "**/*.md"
 

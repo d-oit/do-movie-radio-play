@@ -59,14 +59,14 @@ fn try_open_wsl(path_str: &str, absolute: &std::path::Path) -> Result<bool> {
     }
 
     if let Some(win_path) = wsl_to_windows_path(path_str)? {
-        if try_open("cmd.exe", &["/C", "start", "", &win_path])? {
-            info!(path = %absolute.display(), opener = "cmd.exe/start", "opened review output in browser");
+        // Use explorer.exe directly to avoid cmd.exe shell parsing risks (RS-W1051)
+        if try_open("explorer.exe", &[&win_path])? {
+            info!(path = %absolute.display(), opener = "explorer.exe", "opened review output in browser");
             return Ok(true);
         }
-        if try_open(
-            "powershell.exe",
-            &["-NoProfile", "-Command", "Start-Process", &win_path],
-        )? {
+        // Harden powershell call by using properly escaped FilePath
+        let ps_cmd = format!("Start-Process -FilePath '{}'", win_path.replace("'", "''"));
+        if try_open("powershell.exe", &["-NoProfile", "-Command", &ps_cmd])? {
             info!(path = %absolute.display(), opener = "powershell.exe", "opened review output in browser");
             return Ok(true);
         }
@@ -88,14 +88,14 @@ fn try_open_macos(path_str: &str, absolute: &std::path::Path) -> Result<()> {
 
 /// Try browser openers on Windows.
 fn try_open_windows(path_str: &str, absolute: &std::path::Path) -> Result<()> {
-    if try_open("cmd", &["/C", "start", "", path_str])? {
-        info!(path = %absolute.display(), opener = "cmd/start", "opened review output in browser");
+    // Use explorer directly to avoid cmd shell parsing risks (RS-W1051)
+    if try_open("explorer", &[path_str])? {
+        info!(path = %absolute.display(), opener = "explorer", "opened review output in browser");
         return Ok(());
     }
-    if try_open(
-        "powershell",
-        &["-NoProfile", "-Command", "Start-Process", path_str],
-    )? {
+    // Harden powershell call by using properly escaped FilePath
+    let ps_cmd = format!("Start-Process -FilePath '{}'", path_str.replace("'", "''"));
+    if try_open("powershell", &["-NoProfile", "-Command", &ps_cmd])? {
         info!(path = %absolute.display(), opener = "powershell", "opened review output in browser");
         return Ok(());
     }

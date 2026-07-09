@@ -13,7 +13,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 
 ## Repository Map
 | Directory | Purpose |
-|-----------|---------|
+| ----------- | --------- |
 | `crates/movie-radio-types/` | Shared types (Frame, Segment, Metrics, Emotion, AudioOutput) |
 | `crates/movie-radio-pipeline/` | VAD, framing, segmentation, features, tags, prompts, decode |
 | `crates/movie-radio-voice/` | TTS providers (Kokoro, Orpheus, ElevenLabs, Modal, etc.) |
@@ -30,7 +30,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 
 ## Quick Reference
 | Task | Command |
-|------|---------|
+| ------ | --------- |
 | Build | `cargo build --workspace` |
 | Test | `cargo test --workspace` |
 | Quality Gate | `bash scripts/quality_gate.sh` |
@@ -55,7 +55,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 
 ## Template Sync
 | Pattern | Status | Notes |
-|---------|--------|-------|
+| --------- | -------- | ------- |
 | Gitleaks Scan | Adopted | `.gitleaks.toml` present |
 | Named Constants | Adopted | `bash readonly` block above |
 | Single Source Version | Adopted | `VERSION` file is the source of truth |

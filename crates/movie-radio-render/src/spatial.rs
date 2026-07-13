@@ -30,10 +30,26 @@ impl ReverbConfig {
     };
 }
 
-/// Minimal placeholder for stereo positioning
+/// Pan position from -1.0 (hard left) to 1.0 (hard right)
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
-pub enum StereoPosition {
-    Center,
-    Left,
-    Right,
+pub struct StereoPosition(pub f32);
+
+impl StereoPosition {
+    pub const CENTRE: Self = Self(0.0);
+    pub const LEFT: Self = Self(-0.7);
+    pub const RIGHT: Self = Self(0.7);
+    pub const HARD_LEFT: Self = Self(-1.0);
+    pub const HARD_RIGHT: Self = Self(1.0);
+
+    pub fn new(pos: f32) -> anyhow::Result<Self> {
+        if !(-1.0..=1.0).contains(&pos) {
+            anyhow::bail!("StereoPosition must be in [-1.0, 1.0], got {pos}");
+        }
+        Ok(Self(pos))
+    }
+
+    pub fn gains(self) -> (f32, f32) {
+        let angle = (self.0 + 1.0) * std::f32::consts::FRAC_PI_4;
+        (angle.cos(), angle.sin())
+    }
 }

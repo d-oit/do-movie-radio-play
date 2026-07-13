@@ -159,6 +159,11 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             corrections_dir,
             profile,
         } => handlers::handle_calibrate(corrections_dir, profile),
+        Commands::Preview {
+            input,
+            skip,
+            duration,
+        } => handlers::preview::handle_preview(input, skip, duration),
         rest => dispatch_verification_and_output(rest),
     }
 }

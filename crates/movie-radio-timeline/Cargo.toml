@@ -18,6 +18,7 @@ movie-radio-learning.workspace = true
 movie-radio-verification.workspace = true
 movie-radio-io.workspace = true
 movie-radio-validation.workspace = true
+movie-radio-render.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 hound.workspace = true

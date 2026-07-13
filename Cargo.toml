@@ -33,7 +33,7 @@ rodio = { version = "0.22", default-features = false, features = [
     "symphonia-simd",
 ] }
 rayon = "1.10"
-rubato = "3.0"
+rubato = "4.0"
 ort = { version = "2.0.0-rc.9", features = ["load-dynamic"] }
 rand = "0.10"
 movie-radio-types = { path = "crates/movie-radio-types" }

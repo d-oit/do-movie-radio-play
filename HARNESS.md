@@ -82,7 +82,9 @@ When a computational sensor fires:
 The `scripts/harness-check.sh` wrapper runs each sensor and emits structured error output with `HARNESS VIOLATION` prefix and agent-parseable fix hints. Use it for richer feedback than raw sensor output:
 
 ```bash
-bash scripts/harness-check.sh <fmt|clippy|deny|test|arch|all>
+bash scripts/harness-check.sh <fmt| clippy | deny | test | arch |all>
+
+
 ```
 
 See `scripts/harness-check.sh` for the full sensor → hint mapping.

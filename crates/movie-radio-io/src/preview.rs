@@ -109,9 +109,11 @@ impl Source for PcmSource {
 mod tests {
     use super::*;
 
+    const CI_ENV: &str = "CI";
+
     #[test]
     fn test_preview_output_init() {
-        if std::env::var("CI").is_ok() {
+        if std::env::var(CI_ENV).is_ok() {
             eprintln!("skipping audio test in CI");
             return;
         }

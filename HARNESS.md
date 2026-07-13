@@ -20,7 +20,7 @@ And two modes:
 ### Inferential (read before coding)
 
 | Guide | Path | Purpose |
-| --- | --- | --- |
+| ----- | ---- | ------- |
 | Agent contract | `AGENTS.md` | Root coding conventions, change workflow, quality gates |
 | Skills index | `.agents/SKILLS.md` | Available executable task knowledge |
 | Harness overview | `HARNESS.md` (this file) | How guides and sensors connect |
@@ -31,7 +31,7 @@ And two modes:
 ### Computational (structural constraints)
 
 | Constraint | File | Enforced by |
-| --- | --- | --- |
+| ---------- | ---- | ----------- |
 | Unsafe code forbidden | `Cargo.toml` `[workspace.lints.rust]` | `rustc` |
 | Max 500 LOC/file | `AGENTS.md` | Agent self-check |
 | Conventional commits | `commitlint.config.cjs` | `commitlint` pre-commit hook |
@@ -41,7 +41,7 @@ And two modes:
 ### Computational (deterministic — always trust)
 
 | Sensor | Trigger | Config | LLM Fix Hint |
-| --- | --- | --- | --- |
+| ------ | ------- | ------ | ------------- |
 | `cargo fmt --check` | pre-commit | `rustfmt.toml` | Run `cargo fmt --all` |
 | `cargo clippy -D warnings` | pre-commit + CI | `.clippy.toml`, `Cargo.toml` lints | Fix all warnings; see `.clippy.toml` for allowed exceptions |
 | `cargo deny check` | pre-commit + CI | `deny.toml` | Check crate layering diagram in `Cargo.toml` comments |
@@ -52,7 +52,7 @@ And two modes:
 ### Inferential (LLM-based — use for direction)
 
 | Sensor | Path | Purpose |
-| --- | --- | --- |
+| ------ | ---- | ------- |
 | Codacy quality review | `.codacy.yml`, CI | Code quality suggestions |
 | Codecov coverage | `.codecov.yml`, CI | Coverage regression detection |
 

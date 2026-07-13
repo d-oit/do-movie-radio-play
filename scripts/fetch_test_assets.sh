@@ -43,7 +43,10 @@ PY
 }
 # Layer 3: Post-2000 video fixtures only.
 # Elephants Dream (2006) - Blender Open Movie
-fetch "https://archive.org/download/ElephantsDream/ed_1024_512kb.mp4" "testdata/raw/elephants_dream_2006.mp4"
+fetch "https://archive.org/download/ElephantsDream/ed_1024_512kb.mp4" "testdata/raw/elephants_dream_2006.mp4" || true
+if [[ ! -s "testdata/raw/elephants_dream_2006.mp4" ]]; then
+  fetch "https://download.blender.org/ED/elephantsdream-480-h264-st-aac.mov" "testdata/raw/elephants_dream_2006.mp4"
+fi
 # Multilingual subtitle fixtures for non-English validation coverage
 fetch "https://commons.wikimedia.org/wiki/TimedText:Elephants_Dream_(2006).webm.es.srt?action=raw" "testdata/raw/elephants_dream_2006.es.srt"
 fetch "https://commons.wikimedia.org/wiki/TimedText:Elephants_Dream_(2006).webm.de.srt?action=raw" "testdata/raw/elephants_dream_2006.de.srt"

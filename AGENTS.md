@@ -55,7 +55,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 
 ## Template Sync
 | Pattern | Status | Notes |
-| --------- | -------- | ------- |
+| --------- | ------ | ----- |
 | Gitleaks Scan | Adopted | `.gitleaks.toml` present |
 | Named Constants | Adopted | `bash readonly` block above |
 | Single Source Version | Adopted | `VERSION` file is the source of truth |

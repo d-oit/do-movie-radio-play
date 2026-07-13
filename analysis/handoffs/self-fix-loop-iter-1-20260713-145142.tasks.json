@@ -1,0 +1,29 @@
+{
+  "source_handoff": "/workspaces/do-movie-radio-play/analysis/handoffs/self-fix-loop-iter-1-20260713-145142.md",
+  "pr": "139",
+  "failure_type": "rust",
+  "ci_log": "/workspaces/do-movie-radio-play/analysis/handoffs/ci-checks-139-20260713-144907.log",
+  "recommended_skill": "code-quality",
+  "tasks": [
+    {
+      "task": "Analyzer agent",
+      "notes": "Analyzer agent (root-cause triage)",
+      "recommended_skill": "code-quality"
+    },
+    {
+      "task": "Fixer agent",
+      "notes": "Fixer agent (apply minimal fix)",
+      "recommended_skill": "code-quality"
+    },
+    {
+      "task": "Validator agent",
+      "notes": "Validator agent (run quality gate + focused checks)",
+      "recommended_skill": "code-quality"
+    },
+    {
+      "task": "Researcher agent",
+      "notes": "Researcher agent (web/docs references for uncommon failures)",
+      "recommended_skill": "code-quality"
+    }
+  ]
+}

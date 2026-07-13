@@ -16,11 +16,26 @@ pub struct TrackInput {
     #[serde(default)]
     pub reverb: Option<ReverbConfig>,
     /// AGC attack time in seconds
+    #[serde(default = "default_agc_attack")]
     pub agc_attack: f32,
     /// AGC release time in seconds
+    #[serde(default = "default_agc_release")]
     pub agc_release: f32,
     /// AGC maximum gain multiplier
+    #[serde(default = "default_agc_max_gain")]
     pub agc_max_gain: f32,
+}
+
+fn default_agc_attack() -> f32 {
+    0.01
+}
+
+fn default_agc_release() -> f32 {
+    0.1
+}
+
+fn default_agc_max_gain() -> f32 {
+    20.0
 }
 
 /// Renders a mix of tracks into a stereo output.
@@ -57,15 +72,11 @@ pub fn render_mix(tracks: Vec<TrackInput>) -> Result<Vec<f32>> {
     }
 
     // Peak normalisation — prevent clipping
-    if let Some(&peak) = mix
-        .iter()
-        .max_by(|a, b| a.abs().partial_cmp(&b.abs()).unwrap())
-    {
-        let scale = 1.0 / peak.abs();
-        if scale < 1.0 {
-            for s in &mut mix {
-                *s *= scale;
-            }
+    let peak = mix.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
+    if peak > 1.0 {
+        let scale = 1.0 / peak;
+        for s in &mut mix {
+            *s *= scale;
         }
     }
 

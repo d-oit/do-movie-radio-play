@@ -1,30 +1,17 @@
 # GOAP State
 
-**Current Goal**: Fix all CI failures on PR #139 (perf/pipeline-loop-fusion)
+**Current Goal**: Implement issues #120, #122, #123 — render crate enhancement, ambient noise, and --preview CLI
 **Status**: In-Progress
 
-## Failure Analysis
-
-| Check | Root Cause | Fix Strategy |
-|-------|-----------|--------------|
-| Clippy | `candle_core` v0.11.0 vs v0.9.2 mismatch in `qwen3.rs:54` — `Device` type path differs | Pin `candle-core` to `"0.9"` in `movie-radio-voice/Cargo.toml` |
-| Test | Same compile error as Clippy | Same fix |
-| Benchmarks | Same compile error as Clippy | Same fix |
-| Lint (YAML, Markdown) | MD060 table column style in AGENTS.md + HARNESS.md — separator rows lack spaces | Add spaces to separator rows |
-| Security Audit | `crossbeam-epoch v0.9.18` - RUSTSEC-2026-0204 | `cargo update -p crossbeam-epoch` |
-| Dependency Policy | Same `crossbeam-epoch` vulnerability | `cargo update -p crossbeam-epoch` |
-| CI Success | Composite — depends on above | All above must pass |
-
 ## Task Graph
-- [x] Checkout PR #139 branch
-- [x] Fetch and analyze CI logs
-- [x] **Task 1**: Fix `candle_core` version in `crates/movie-radio-voice/Cargo.toml` (downgrade to 0.9)
-- [x] **Task 2**: Fix markdown table style in `AGENTS.md` (MD060)
-- [x] **Task 3**: Fix markdown table style in `HARNESS.md` (MD060)
-- [x] **Task 4**: Update `crossbeam-epoch` in Cargo.lock
-- [x] **Task 5**: Run local quality gate to verify fixes
-- [ ] **Task 6**: Commit and push fixes
-- [ ] **Task 7**: Run self-fix-loop to verify CI passes
+- [x] Task 0: Analyze open issues and current codebase
+- [ ] Task 1: Add workspace infra (playback feature, render workspace dep)
+- [ ] Task 2: Implement noise.rs for ambient generation (Issue #122)
+- [ ] Task 3: Implement PreviewOutput in movie-radio-io (Issue #123)
+- [ ] Task 4: Enhance render crate (AGC, spatial, mixer - Issue #120)
+- [ ] Task 5: Add Preview CLI subcommand and wire handler
+- [ ] Task 6: Quality gate - cargo check, clippy, test, quality_gate.sh
+- [ ] Task 7: PR with passing CI
 
 ## History
-- 2026-07-13: Analyzed CI logs — identified 3 root causes across 7 failing checks
+- 2026-07-13: Analyzed issues. movie-radio-render crate skeleton exists but needs enhancement. Needed: workspace dep for render, playback feature for rodio, noise.rs, preview output, CLI subcommand

@@ -218,4 +218,17 @@ pub enum Commands {
         #[arg(long)]
         analyze_only: bool,
     },
+    /// Preview a WAV file by streaming to system audio output.
+    /// Useful for quick QA without writing intermediate files.
+    Preview {
+        /// Path to the WAV file to preview.
+        #[arg(short, long)]
+        input: PathBuf,
+        /// Skip first N seconds of the file.
+        #[arg(long, default_value = "0")]
+        skip: f32,
+        /// Play only the first N seconds.
+        #[arg(long)]
+        duration: Option<f32>,
+    },
 }

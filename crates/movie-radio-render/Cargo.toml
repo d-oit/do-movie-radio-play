@@ -8,7 +8,9 @@ description = "Audio rendering and mixing for radio plays"
 [dependencies]
 anyhow.workspace = true
 movie-radio-types.workspace = true
-rodio = { version = "0.22", default-features = false, features = ["wav_output", "noise"] }
+rodio.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
 serde.workspace = true
 
 [lints]

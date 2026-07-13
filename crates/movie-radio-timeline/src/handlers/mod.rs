@@ -21,6 +21,8 @@ pub use validate::{
     handle_verify_timeline,
 };
 
+pub mod preview;
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn load_analysis_config(
     config_path: Option<PathBuf>,

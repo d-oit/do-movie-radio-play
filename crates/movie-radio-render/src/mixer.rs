@@ -13,40 +13,74 @@ pub struct TrackInput {
     /// Spatial position of the track
     pub position: StereoPosition,
     /// Optional reverb configuration for this track
-    /// If None, defaults to ReverbConfig::DRY (no reverb)
     #[serde(default)]
     pub reverb: Option<ReverbConfig>,
+    /// AGC attack time in seconds
+    pub agc_attack: f32,
+    /// AGC release time in seconds
+    pub agc_release: f32,
+    /// AGC maximum gain multiplier
+    pub agc_max_gain: f32,
 }
 
 /// Renders a mix of tracks into a stereo output.
 pub fn render_mix(tracks: Vec<TrackInput>) -> Result<Vec<f32>> {
-    let mut _mixed = Vec::new();
+    let max_len = tracks.iter().map(|t| t.samples.len()).max().unwrap_or(0);
+    if max_len == 0 {
+        return Ok(Vec::new());
+    }
+
+    let mut mix = vec![0.0_f32; max_len * 2];
 
     for track in tracks {
         let sample_rate = track.sample_rate;
 
-        // 1. Apply AGC
-        let normalized = apply_agc(track.samples, sample_rate)?;
+        let agc = apply_agc(
+            track.samples,
+            sample_rate,
+            track.agc_attack,
+            track.agc_release,
+            track.agc_max_gain,
+        )?;
 
-        // 2. Apply Reverb
-        let with_reverb = if let Some(ref rev) = track.reverb {
-            apply_reverb(normalized, sample_rate, rev.delay_ms, rev.amplitude)?
+        let reverb = if let Some(ref rev) = track.reverb {
+            apply_reverb(agc, sample_rate, rev.delay_ms, rev.amplitude)?
         } else {
-            normalized
+            agc
         };
 
-        // 3. Spatial Pan (placeholder: returns mono buffer for now)
-        let _spatial = apply_spatial(with_reverb, track.position);
+        let stereo = apply_spatial(reverb, track.position);
 
-        // Mixing logic would go here
+        for (i, s) in stereo.iter().enumerate() {
+            mix[i] += s;
+        }
     }
 
-    Ok(_mixed)
+    // Peak normalisation — prevent clipping
+    if let Some(&peak) = mix
+        .iter()
+        .max_by(|a, b| a.abs().partial_cmp(&b.abs()).unwrap())
+    {
+        let scale = 1.0 / peak.abs();
+        if scale < 1.0 {
+            for s in &mut mix {
+                *s *= scale;
+            }
+        }
+    }
+
+    Ok(mix)
 }
 
-/// Placeholder for spatial panning
-fn apply_spatial(samples: Vec<f32>, _position: StereoPosition) -> Vec<f32> {
-    samples
+/// Apply constant-power spatial panning to mono samples, returning stereo interleaved.
+fn apply_spatial(samples: Vec<f32>, position: StereoPosition) -> Vec<f32> {
+    let (left_gain, right_gain) = position.gains();
+    let mut stereo = Vec::with_capacity(samples.len() * 2);
+    for s in samples {
+        stereo.push(s * left_gain);
+        stereo.push(s * right_gain);
+    }
+    stereo
 }
 
 #[cfg(test)]

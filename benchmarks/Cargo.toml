@@ -9,6 +9,7 @@ publish = false
 movie-radio-pipeline = { path = "../crates/movie-radio-pipeline" }
 movie-radio-types = { path = "../crates/movie-radio-types" }
 movie-radio-verification = { path = "../crates/movie-radio-verification" }
+movie-radio-render = { path = "../crates/movie-radio-render" }
 criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
@@ -17,4 +18,8 @@ harness = false
 
 [[bench]]
 name = "analysis_bench"
+harness = false
+
+[[bench]]
+name = "render_bench"
 harness = false

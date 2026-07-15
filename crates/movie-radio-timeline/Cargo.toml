@@ -9,6 +9,9 @@ description = "CLI binary for movie radio play timeline extraction"
 name = "timeline"
 path = "src/main.rs"
 
+[features]
+playback = ["movie-radio-io/playback"]
+
 [dependencies]
 movie-radio-types.workspace = true
 movie-radio-pipeline.workspace = true

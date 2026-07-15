@@ -18,9 +18,19 @@ pub fn handle_preview(input: PathBuf, _skip: f32, _duration: Option<f32>) -> Res
         info!("--duration is not yet implemented; playing full file");
     }
 
-    let preview = movie_radio_io::preview::PreviewOutput::new()
-        .context("failed to initialize audio output (no audio device?)")?;
-    preview.play_wav(&bytes)?;
-    info!("preview finished");
-    Ok(())
+    #[cfg(feature = "playback")]
+    {
+        let preview = movie_radio_io::preview::PreviewOutput::new()
+            .context("failed to initialize audio output (no audio device?)")?;
+        preview.play_wav(&bytes)?;
+    }
+    #[cfg(not(feature = "playback"))]
+    {
+        anyhow::bail!("playback feature is disabled; cannot play audio");
+    }
+    #[cfg(feature = "playback")]
+    {
+        info!("preview finished");
+        Ok(())
+    }
 }

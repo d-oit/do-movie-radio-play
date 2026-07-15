@@ -64,10 +64,10 @@ pub fn render_mix(tracks: Vec<TrackInput>) -> Result<Vec<f32>> {
             agc
         };
 
-        let stereo = apply_spatial(reverb, track.position);
-
-        for (i, s) in stereo.iter().enumerate() {
-            mix[i] += s;
+        let (left_gain, right_gain) = track.position.gains();
+        for (i, &s) in reverb.iter().enumerate() {
+            mix[i * 2] += s * left_gain;
+            mix[i * 2 + 1] += s * right_gain;
         }
     }
 
@@ -81,17 +81,6 @@ pub fn render_mix(tracks: Vec<TrackInput>) -> Result<Vec<f32>> {
     }
 
     Ok(mix)
-}
-
-/// Apply constant-power spatial panning to mono samples, returning stereo interleaved.
-fn apply_spatial(samples: Vec<f32>, position: StereoPosition) -> Vec<f32> {
-    let (left_gain, right_gain) = position.gains();
-    let mut stereo = Vec::with_capacity(samples.len() * 2);
-    for s in samples {
-        stereo.push(s * left_gain);
-        stereo.push(s * right_gain);
-    }
-    stereo
 }
 
 #[cfg(test)]

@@ -1,18 +1,21 @@
 use anyhow::{Context, Result};
-use rodio::{source::Source, Decoder, DeviceSinkBuilder, MixerDeviceSink, Player};
+use rodio::source::Source;
+#[cfg(feature = "playback")]
+use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player};
 use std::num::NonZero;
-use std::sync::Arc;
 use std::time::Duration;
 
+#[cfg(feature = "playback")]
 pub struct PreviewOutput {
-    sink: Arc<MixerDeviceSink>,
+    sink: std::sync::Arc<MixerDeviceSink>,
 }
 
+#[cfg(feature = "playback")]
 impl PreviewOutput {
     pub fn new() -> Result<Self> {
         let sink = DeviceSinkBuilder::open_default_sink().context("no audio device available")?;
         Ok(Self {
-            sink: Arc::new(sink),
+            sink: std::sync::Arc::new(sink),
         })
     }
 
@@ -107,11 +110,15 @@ impl Source for PcmSource {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "playback")]
     use super::*;
 
+    #[cfg(feature = "playback")]
     const CI_ENV: &str = "CI";
 
     #[test]
+    #[cfg(feature = "playback")]
+    #[allow(unused_imports)]
     fn test_preview_output_init() {
         if std::env::var(CI_ENV).is_ok() {
             eprintln!("skipping audio test in CI");

@@ -1,5 +1,6 @@
 import modal
 import logging
+from fastapi import Body
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,10 @@ image = (
     scaledown_window=60,
 )
 @modal.fastapi_endpoint(method="POST")
-def generate_speech(text: str, language: str = "de"):
+def generate_speech(
+    text: str = Body(...),
+    language: str = Body("de"),
+):
     import io
     import wave
     from fastapi.responses import Response

@@ -1,4 +1,5 @@
 import modal
+from fastapi import Body
 
 app = modal.App("do-movie-radio-play-tts")
 
@@ -15,7 +16,11 @@ image = modal.Image.debian_slim(python_version="3.11").pip_install(
     scaledown_window=60,
 )
 @modal.fastapi_endpoint(method="POST")
-def generate_speech(text: str, speaker_wav: str = None, language: str = "de"):
+def generate_speech(
+    text: str = Body(...),
+    speaker_wav: str = Body(None),
+    language: str = Body("de"),
+):
     from TTS.api import TTS
     import tempfile
 

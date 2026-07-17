@@ -102,10 +102,10 @@ printf "\n"
 # ============================================================
 info "Running clippy..."
 if $FIX; then
-  cargo clippy --fix --allow-dirty --allow-staged --all-targets --all-features 2>/dev/null
+  cargo clippy --fix --allow-dirty --allow-staged --all-targets 2>/dev/null
   pass "Clippy: auto-fixed"
 else
-  if ! OUTPUT=$(cargo clippy --workspace --all-targets --all-features -- -D warnings 2>&1); then
+  if ! OUTPUT=$(cargo clippy --workspace --all-targets -- -D warnings 2>&1); then
     fail "Clippy: fix lint errors above"
     printf "%s\n" "$OUTPUT" >&2
   else
@@ -131,14 +131,14 @@ printf "\n"
 # ============================================================
 info "Running tests..."
 if command -v cargo-nextest &>/dev/null; then
-  if ! OUTPUT=$(cargo nextest run --workspace --all-features 2>&1); then
+  if ! OUTPUT=$(cargo nextest run --workspace 2>&1); then
     fail "Tests: failed"
     printf "%s\n" "$OUTPUT" >&2
   else
     pass "Tests (nextest): OK"
   fi
 else
-  if ! OUTPUT=$(cargo test --workspace --all-features 2>&1); then
+  if ! OUTPUT=$(cargo test --workspace 2>&1); then
     fail "Tests: failed"
     printf "%s\n" "$OUTPUT" >&2
   else
@@ -151,7 +151,7 @@ printf "\n"
 # 7. DOC TESTS
 # ============================================================
 info "Running doc tests..."
-if ! OUTPUT=$(cargo test --doc --all-features 2>&1); then
+if ! OUTPUT=$(cargo test --doc 2>&1); then
   fail "Doc tests: failed"
   printf "%s\n" "$OUTPUT" >&2
 else

@@ -1,0 +1,76 @@
+name: Performance change
+description: Performance-focused change with measurable impact
+title: "[perf] <area>: <short summary>"
+labels: ["perf", "planning"]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why this performance change is needed
+      placeholder: >
+        E.g., render_mix takes 2x longer on 2h movies; memory usage scales linearly with input...
+    validations:
+      required: true
+
+  - type: textarea
+    id: performance-goals
+    attributes:
+      label: Performance goals
+      description: Specific, measurable performance targets
+      placeholder: >
+        - Reduce render_mix time by 50% for 2h inputs
+        - Limit memory usage to 2GB for 2h movies
+        - Maintain accuracy within 1% of current baseline
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Design and scope
+      description: High-level design and affected components
+      placeholder: >
+        - Crates/modules:
+        - Algorithmic changes:
+        - Data structures:
+        - I/O patterns:
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-plan
+    attributes:
+      label: Implementation plan
+      description: Step-by-step coding tasks
+      placeholder: |
+        - [ ] Profile current implementation with perf tools
+        - [ ] Implement streaming buffer API
+        - [ ] Add memory usage monitoring
+        - [ ] Optimize hot code paths
+    validations:
+      required: true
+
+  - type: textarea
+    id: benchmarking-plan
+    attributes:
+      label: Benchmarking and validation plan
+      description: How to measure and verify performance improvements
+      placeholder: >
+        - Benchmark suites: (list specific benchmarks)
+        - Test fixtures: (list input sizes/durations)
+        - Baseline comparison: (how to compare before/after)
+        - Regression testing: (how to ensure no functional regressions)
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and guardrails
+      description: Potential performance regressions and mitigation
+      placeholder: >
+        - Risk: ...
+        - Mitigation: ...
+    validations:
+      required: false

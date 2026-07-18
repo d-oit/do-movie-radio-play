@@ -19,18 +19,8 @@ struct ReviewSegment {
     prompt: Option<String>,
     #[serde(default)]
     verification_status: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct VerifiedOutput {
-    segment_results: Vec<SegmentResult>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SegmentResult {
-    start_ms: u64,
-    end_ms: u64,
-    verification_status: String,
+    #[serde(default)]
+    priority_review: bool,
 }
 
 #[allow(dead_code)]
@@ -74,24 +64,58 @@ pub fn write_review_html_with_options(
     let pre_roll_json = escape_json_for_script(serde_json::to_string(&pre_roll_s)?);
     let post_roll_json = escape_json_for_script(serde_json::to_string(&post_roll_s)?);
 
-    let verification_map: HashMap<String, String> = if let Some(verified_path) = verified {
+    let (verification_map, maybe_thresholds): (
+        HashMap<
+            String,
+            (
+                String,
+                movie_radio_verification::verification::SpectralFeatures,
+            ),
+        >,
+        Option<movie_radio_verification::verification::AppliedThresholds>,
+    ) = if let Some(verified_path) = verified {
         if verified_path.exists() {
             let content = std::fs::read_to_string(verified_path)?;
-            let verified_data: VerifiedOutput = serde_json::from_str(&content)?;
-            verified_data
+            let verified_data: movie_radio_verification::verification::VerificationReport =
+                serde_json::from_str(&content)?;
+            let thresholds = verified_data.summary.thresholds_applied.clone();
+            let map: HashMap<
+                String,
+                (
+                    String,
+                    movie_radio_verification::verification::SpectralFeatures,
+                ),
+            > = verified_data
                 .segment_results
                 .into_iter()
                 .map(|r| {
                     let key = format!("{}-{}", r.start_ms, r.end_ms);
-                    (key, r.verification_status)
+                    let status_str = match r.verification_status {
+                        movie_radio_verification::verification::VerificationStatus::Verified => {
+                            "verified"
+                        }
+                        movie_radio_verification::verification::VerificationStatus::Suspicious => {
+                            "suspicious"
+                        }
+                        movie_radio_verification::verification::VerificationStatus::Rejected => {
+                            "rejected"
+                        }
+                        movie_radio_verification::verification::VerificationStatus::Inconclusive => {
+                            "inconclusive"
+                        }
+                    };
+                    (key, (status_str.to_string(), r.spectral_features))
                 })
-                .collect()
+                .collect();
+            (map, Some(thresholds))
         } else {
-            HashMap::new()
+            (HashMap::new(), None)
         }
     } else {
-        HashMap::new()
+        (HashMap::new(), None)
     };
+
+    let selector = movie_radio_learning::active_learning::ActiveLearningSelector::default();
 
     let segments: Vec<ReviewSegment> = if merged {
         let non_voice_segments: Vec<_> = timeline
@@ -122,6 +146,7 @@ pub fn write_review_html_with_options(
                 tags: all_tags,
                 prompt: None,
                 verification_status: None,
+                priority_review: false,
             }]
         }
     } else {
@@ -132,7 +157,39 @@ pub fn write_review_html_with_options(
             .enumerate()
             .map(|(i, segment)| {
                 let key = format!("{}-{}", segment.start_ms, segment.end_ms);
-                let verification_status = verification_map.get(&key).cloned();
+                let (verification_status, maybe_features): (
+                    Option<String>,
+                    Option<movie_radio_verification::verification::SpectralFeatures>,
+                ) = if let Some((status, features)) = verification_map.get(&key) {
+                    (Some(status.clone()), Some(features.clone()))
+                } else {
+                    (None, None)
+                };
+
+                let priority_review = if let (Some(features), Some(ref thresholds)) =
+                    (&maybe_features, &maybe_thresholds)
+                {
+                    selector.select_segment(
+                        i + 1,
+                        segment.confidence as f64,
+                        features.rms as f64,
+                        features.spectral_flatness as f64,
+                        features.spectral_entropy as f64,
+                        features.centroid_hz as f64,
+                        thresholds.flatness_max as f64,
+                        thresholds.entropy_min as f64,
+                        thresholds.centroid_min as f64,
+                        thresholds.centroid_max as f64,
+                        thresholds.energy_min as f64,
+                    )
+                } else {
+                    // Confidence-only and random sample checks
+                    (segment.confidence >= selector.config.confidence_min as f32
+                        && segment.confidence <= selector.config.confidence_max as f32)
+                        || (((i + 1) * 2654435761) % 1000
+                            < (selector.config.random_sample_rate * 1000.0) as usize)
+                };
+
                 ReviewSegment {
                     index: i + 1,
                     start_ms: segment.start_ms,
@@ -142,6 +199,7 @@ pub fn write_review_html_with_options(
                     tags: segment.tags.clone(),
                     prompt: segment.prompt.clone(),
                     verification_status,
+                    priority_review,
                 }
             })
             .collect()
@@ -279,5 +337,45 @@ mod tests {
         assert!(!script_vars.contains('<'));
         assert!(!script_vars.contains('>'));
         assert!(!script_vars.contains('&'));
+    }
+
+    #[test]
+    fn test_priority_review_generation() {
+        let dir = tempdir().unwrap();
+        let media_file = dir.path().join("test.wav");
+        std::fs::write(&media_file, "dummy").unwrap();
+
+        let timeline = TimelineOutput {
+            file: "test.wav".to_string(),
+            analysis_sample_rate: 16000,
+            frame_ms: 20,
+            segments: vec![
+                Segment {
+                    start_ms: 0,
+                    end_ms: 1000,
+                    kind: SegmentKind::NonVoice,
+                    confidence: 0.5,
+                    tags: vec![],
+                    prompt: None,
+                },
+                Segment {
+                    start_ms: 2000,
+                    end_ms: 3000,
+                    kind: SegmentKind::NonVoice,
+                    confidence: 0.95,
+                    tags: vec![],
+                    prompt: None,
+                },
+            ],
+        };
+
+        let output_html = dir.path().join("review.html");
+        write_review_html_with_options(&media_file, &timeline, &output_html, 1.0, 1.0, None, false)
+            .unwrap();
+
+        let html = std::fs::read_to_string(output_html).unwrap();
+        println!("HTML OUTPUT:\n{}", html);
+        assert!(html.contains("priority_review"));
+        assert!(html.contains("Priority Review Candidates"));
     }
 }

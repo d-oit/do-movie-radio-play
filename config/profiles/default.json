@@ -3,5 +3,8 @@
   "description": "Default analysis config - balanced for most media",
   "min_non_voice_ms": 10000,
   "max_non_voice_ms": null,
-  "energy_threshold": 0.015
+  "energy_threshold": 0.015,
+  "profile_id": "default",
+  "version": 1,
+  "experiment_tags": []
 }

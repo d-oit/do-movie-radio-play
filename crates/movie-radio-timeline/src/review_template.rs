@@ -39,6 +39,7 @@ pub fn render_review_html(
     post_roll_json: &str,
     merged_json: &str,
 ) -> String {
+    // Trivial comment to force recompilation and template reloading
     format!(
         include_str!("../../../templates/review.html"),
         segments_json = segments_json,

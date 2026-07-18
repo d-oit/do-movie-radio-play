@@ -12,5 +12,8 @@
   "vad_threshold_delta": 0.0,
   "prompt_min_duration_ms": 2500,
   "prompt_min_confidence": 0.65,
-  "vad_engine": "energy"
+  "vad_engine": "energy",
+  "profile_id": "ai-voice-replacement",
+  "version": 1,
+  "experiment_tags": []
 }

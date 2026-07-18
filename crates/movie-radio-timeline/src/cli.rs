@@ -185,6 +185,12 @@ pub enum Commands {
         #[arg(long)]
         output: Option<PathBuf>,
     },
+    LearningExperiments {
+        #[arg(long, default_value = "analysis/thresholds/learning.db")]
+        learning_db: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
     MergeTimeline {
         input: PathBuf,
         #[arg(long)]

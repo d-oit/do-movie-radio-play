@@ -61,6 +61,10 @@ All human and agent-driven development must follow this standard "plan → execu
    - Use `🤖 Agent/Harness Change` template for updates to agent skills, plans, or harness settings (labels: `agent`, `harness`).
 2. **Execute**: Create/update the plan (e.g. `plans/GOAP_STATE.md`), then write code in minimal, atomic commits using `scripts/ai-commit.sh`.
 3. **Review**: Ensure general correctness and verify code by running `scripts/quality_gate.sh` and workspace tests before submission.
+## Active Learning & Calibration Loop
+For any calibration/VAD verification task:
+- Always check priority review candidates first using the active learning filters.
+- Ensure profile changes are registered as experiments with unique `profile_id` and incremented `version` fields.
 
 ## Template Sync
 | Pattern | Status | Notes |

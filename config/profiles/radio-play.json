@@ -19,5 +19,8 @@
     "min_speech_duration": 250,
     "min_silence_duration": 300,
     "silence_threshold_db": -42
-  }
+  },
+  "profile_id": "radio-play",
+  "version": 1,
+  "experiment_tags": []
 }

@@ -26,6 +26,10 @@ pub struct CalibrationProfile {
     pub version: u32,
     #[serde(default)]
     pub tag_thresholds: Option<TagThresholds>,
+    #[serde(default)]
+    pub profile_id: Option<String>,
+    #[serde(default)]
+    pub experiment_tags: Vec<String>,
 }
 
 pub fn profile(name: &str) -> CalibrationProfile {
@@ -35,24 +39,32 @@ pub fn profile(name: &str) -> CalibrationProfile {
             energy_threshold_delta: 0.01,
             version: 1,
             tag_thresholds: None,
+            profile_id: Some("action".to_string()),
+            experiment_tags: vec![],
         },
         "documentary" => CalibrationProfile {
             name: name.to_string(),
             energy_threshold_delta: -0.003,
             version: 1,
             tag_thresholds: None,
+            profile_id: Some("documentary".to_string()),
+            experiment_tags: vec![],
         },
         "animation" => CalibrationProfile {
             name: name.to_string(),
             energy_threshold_delta: 0.0,
             version: 1,
             tag_thresholds: None,
+            profile_id: Some("animation".to_string()),
+            experiment_tags: vec![],
         },
         _ => CalibrationProfile {
             name: "drama".to_string(),
             energy_threshold_delta: -0.001,
             version: 1,
             tag_thresholds: None,
+            profile_id: Some("drama".to_string()),
+            experiment_tags: vec![],
         },
     }
 }

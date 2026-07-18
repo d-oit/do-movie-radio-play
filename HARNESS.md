@@ -88,3 +88,10 @@ bash scripts/harness-check.sh <fmt| clippy | deny | test | arch |all>
 ```
 
 See `scripts/harness-check.sh` for the full sensor → hint mapping.
+
+## Active Learning & Experimentation Guidelines
+
+For human engineers and autonomous agents conducting experiments:
+1. **Experiment Tracking:** Register new active learning runs using the `--learning-db` option or via SQL `record_experiment`. List active calibration loops via `timeline learning-experiments`.
+2. **Review Priorities:** Focus manual QA on flagged candidates in `reports/nonvoice-review.html`'s *Priority Review Candidates* panel.
+3. **Reproducibility:** When applying recommendations, ensure profile changes are checked in under `config/profiles/` with incremented `version` numbers and distinct `profile_id` strings.

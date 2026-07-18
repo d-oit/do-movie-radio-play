@@ -71,6 +71,12 @@ pub struct AnalysisConfig {
     pub voice_synthesis: Option<VoiceSynthesisConfig>,
     #[serde(default)]
     pub chunk_duration_sec: Option<u64>,
+    #[serde(default)]
+    pub profile_id: Option<String>,
+    #[serde(default)]
+    pub version: Option<u32>,
+    #[serde(default)]
+    pub experiment_tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,6 +157,9 @@ impl Default for AnalysisConfig {
             spectral_centroid_max: None,
             voice_synthesis: None,
             chunk_duration_sec: None,
+            profile_id: None,
+            version: None,
+            experiment_tags: vec![],
         }
     }
 }

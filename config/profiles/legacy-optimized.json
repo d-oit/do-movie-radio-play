@@ -24,5 +24,8 @@
   "spectral_entropy_max": 7.4,
   "spectral_centroid_min": 180.0,
   "spectral_centroid_max": 3800.0,
-  "spectral_flatness_max": 0.32
+  "spectral_flatness_max": 0.32,
+  "profile_id": "legacy-optimized",
+  "version": 1,
+  "experiment_tags": []
 }

@@ -1,3 +1,4 @@
+pub mod active_learning;
 pub mod adaptive_thresholds;
 pub mod calibrator;
 pub mod corrections;

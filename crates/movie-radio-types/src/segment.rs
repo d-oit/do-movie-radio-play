@@ -31,9 +31,7 @@ impl PartialEq for Segment {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum SegmentEvent {
-    SegmentDetected {
-        segment: Segment,
-    },
+    SegmentDetected { segment: Segment },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

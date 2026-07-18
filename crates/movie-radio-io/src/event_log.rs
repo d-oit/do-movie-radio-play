@@ -1,7 +1,7 @@
+use anyhow::{Context, Result};
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
-use anyhow::{Context, Result};
 
 use movie_radio_types::SegmentEvent;
 
@@ -13,8 +13,9 @@ impl EventLogWriter {
     pub fn create<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path = path.as_ref();
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .with_context(|| format!("failed to create parent directories for {}", path.display()))?;
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("failed to create parent directories for {}", path.display())
+            })?;
         }
         let file = OpenOptions::new()
             .write(true)
@@ -28,11 +29,11 @@ impl EventLogWriter {
     pub fn append<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path = path.as_ref();
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .with_context(|| format!("failed to create parent directories for {}", path.display()))?;
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("failed to create parent directories for {}", path.display())
+            })?;
         }
         let file = OpenOptions::new()
-            .write(true)
             .create(true)
             .append(true)
             .open(path)
@@ -41,10 +42,9 @@ impl EventLogWriter {
     }
 
     pub fn write_event(&mut self, event: &SegmentEvent) -> Result<()> {
-        let serialized = serde_json::to_string(event)
-            .context("failed to serialize SegmentEvent to JSON")?;
-        writeln!(self.file, "{}", serialized)
-            .context("failed to write event to log file")?;
+        let serialized =
+            serde_json::to_string(event).context("failed to serialize SegmentEvent to JSON")?;
+        writeln!(self.file, "{}", serialized).context("failed to write event to log file")?;
         Ok(())
     }
 }
@@ -69,8 +69,9 @@ impl EventLogReader {
             if line.trim().is_empty() {
                 continue;
             }
-            let event: SegmentEvent = serde_json::from_str(&line)
-                .with_context(|| format!("failed to deserialize SegmentEvent from line: {}", line))?;
+            let event: SegmentEvent = serde_json::from_str(&line).with_context(|| {
+                format!("failed to deserialize SegmentEvent from line: {}", line)
+            })?;
             events.push(event);
         }
         Ok(events)

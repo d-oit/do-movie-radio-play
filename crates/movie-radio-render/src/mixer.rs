@@ -47,6 +47,7 @@ pub fn render_mix(tracks: Vec<TrackInput>) -> Result<Vec<f32>> {
 
 /// Renders a mix of tracks into a stereo output in a block-by-block streaming manner.
 /// Calls the optional `on_event` callback when segment events are detected.
+#[allow(clippy::needless_range_loop)]
 pub fn render_mix_streaming<F>(
     tracks: Vec<TrackInput>,
     block_size: usize,
@@ -60,10 +61,7 @@ where
         return Ok(Vec::new());
     }
 
-    let sample_rate = tracks
-        .first()
-        .map(|t| t.sample_rate)
-        .unwrap_or(48000);
+    let sample_rate = tracks.first().map(|t| t.sample_rate).unwrap_or(48000);
 
     let mut processed_tracks = Vec::new();
     for track in tracks {

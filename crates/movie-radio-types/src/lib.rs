@@ -17,7 +17,7 @@ pub use fingerprint::Fingerprint;
 pub use frame::Frame;
 pub use metrics::{BenchmarkResult, StageDurations};
 pub use segment::{
-    AiVoiceOutput, GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap,
+    AiVoiceOutput, GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap, SegmentEvent,
 };
 pub use voice_types::{
     AudioOutput, Emotion, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer,

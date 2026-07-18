@@ -77,6 +77,8 @@ pub fn apply_calibration_report(report_path: &Path, output_profile: &Path) -> Re
         energy_threshold_delta: report.recommended_energy_threshold_delta,
         version: report.version + 1,
         tag_thresholds: None,
+        profile_id: Some(report.profile.clone()),
+        experiment_tags: vec![],
     };
     if let Some(parent) = output_profile.parent() {
         fs::create_dir_all(parent)?;

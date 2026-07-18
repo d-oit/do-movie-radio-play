@@ -62,6 +62,8 @@ pub fn handle_extract(
             energy_threshold_delta: cfg.vad_threshold_delta,
             version: 1,
             tag_thresholds: None,
+            profile_id: Some("runtime".to_string()),
+            experiment_tags: vec![],
         };
         if let Some(parent) = profile_path.parent() {
             std::fs::create_dir_all(parent)?;

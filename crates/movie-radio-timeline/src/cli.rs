@@ -80,13 +80,6 @@ pub enum Commands {
         #[arg(long)]
         output: Option<PathBuf>,
     },
-    #[command(alias = "learning-experiments")]
-    LearningExperiments {
-        #[arg(long, default_value = "analysis/thresholds/learning.db")]
-        learning_db: PathBuf,
-        #[arg(long)]
-        output: Option<PathBuf>,
-    },
     Bench {
         input_media: PathBuf,
         #[arg(long)]
@@ -187,6 +180,12 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
     LearningStats {
+        #[arg(long, default_value = "analysis/thresholds/learning.db")]
+        learning_db: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+    LearningExperiments {
         #[arg(long, default_value = "analysis/thresholds/learning.db")]
         learning_db: PathBuf,
         #[arg(long)]

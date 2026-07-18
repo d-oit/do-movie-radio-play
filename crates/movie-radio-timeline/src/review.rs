@@ -79,16 +79,30 @@ pub fn write_review_html_with_options(
             let verified_data: movie_radio_verification::verification::VerificationReport =
                 serde_json::from_str(&content)?;
             let thresholds = verified_data.summary.thresholds_applied.clone();
-            let map: HashMap<String, (String, movie_radio_verification::verification::SpectralFeatures)> = verified_data
+            let map: HashMap<
+                String,
+                (
+                    String,
+                    movie_radio_verification::verification::SpectralFeatures,
+                ),
+            > = verified_data
                 .segment_results
                 .into_iter()
                 .map(|r| {
                     let key = format!("{}-{}", r.start_ms, r.end_ms);
                     let status_str = match r.verification_status {
-                        movie_radio_verification::verification::VerificationStatus::Verified => "verified",
-                        movie_radio_verification::verification::VerificationStatus::Suspicious => "suspicious",
-                        movie_radio_verification::verification::VerificationStatus::Rejected => "rejected",
-                        movie_radio_verification::verification::VerificationStatus::Inconclusive => "inconclusive",
+                        movie_radio_verification::verification::VerificationStatus::Verified => {
+                            "verified"
+                        }
+                        movie_radio_verification::verification::VerificationStatus::Suspicious => {
+                            "suspicious"
+                        }
+                        movie_radio_verification::verification::VerificationStatus::Rejected => {
+                            "rejected"
+                        }
+                        movie_radio_verification::verification::VerificationStatus::Inconclusive => {
+                            "inconclusive"
+                        }
                     };
                     (key, (status_str.to_string(), r.spectral_features))
                 })
@@ -360,6 +374,7 @@ mod tests {
             .unwrap();
 
         let html = std::fs::read_to_string(output_html).unwrap();
+        println!("HTML OUTPUT:\n{}", html);
         assert!(html.contains("priority_review"));
         assert!(html.contains("Priority Review Candidates"));
     }

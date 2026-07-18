@@ -38,12 +38,16 @@ Choose your coordination strategy:
 
 ## Basic Workflow
 
-1. **Choose strategy** based on task structure
-2. **Select agents** matching required capabilities
-3. **Execute** with quality gates between phases
-4. **Write handoff** notes to `analysis/handoffs/` with ownership and next action
-5. **Validate** outputs before proceeding
-6. **Synthesize** results into a single result
+1. **Plan & Issue Creation**: Before starting any tasks, propose or select an issue utilizing the structured GitHub issue templates:
+   - For code modifications, features, or refactoring, use `🛠️ Coding Change` (labels: `coding`, `radio-play`).
+   - For profiling, optimization, or performance checks, use `⚡ Performance Change` (labels: `perf`, `learning`).
+   - For agent skills, plans, or harness modifications, use `🤖 Agent/Harness Change` (labels: `agent`, `harness`).
+2. **Choose strategy** based on task structure
+3. **Select agents** matching required capabilities
+4. **Execute**: Implement tasks, tracking progress in `plans/GOAP_STATE.md`. Verify with quality gates between phases.
+5. **Write handoff** notes to `analysis/handoffs/` with ownership and next action
+6. **Validate** outputs before proceeding
+7. **Synthesize** results into a single result
 
 ## Language Support
 
@@ -83,12 +87,14 @@ Loop with performance-optimizer until:
 ## Quality Gates
 
 Between each phase, verify:
-- Code compiles/parses correctly
-- Tests pass with adequate coverage
-- At least one relevant automated test is executed and passing per coding session
-- Security scans clean
-- Performance acceptable
-- No regressions introduced
+- Proposed changes are explicitly tracked via the appropriate GitHub issue template.
+- Run `bash scripts/quality_gate.sh` as the default verification path.
+- Code compiles/parses correctly.
+- Tests pass with adequate coverage.
+- At least one relevant automated test is executed and passing per coding session.
+- Security scans clean.
+- Performance acceptable.
+- No regressions introduced.
 
 ## Next Steps
 

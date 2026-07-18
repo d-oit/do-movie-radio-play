@@ -106,6 +106,14 @@ Prioritize critical fixes before release
 
 ## Workflow
 
+### Step 0: Plan & File Issue
+Before initiating any swarm coordination or analysis:
+1. File/select an issue using the appropriate structured GitHub issue template:
+   - For codebase / feature / refactoring investigations, use `🛠️ Coding Change` (labels: `coding`, `radio-play`).
+   - For benchmarking / optimization investigations, use `⚡ Performance Change` (labels: `perf`, `learning`).
+   - For agent skill or harness investigations, use `🤖 Agent/Harness Change` (labels: `agent`, `harness`).
+2. Map out the verification expectations, emphasizing `scripts/quality_gate.sh` and workspace testing.
+
 ### Step 1: Identify Experts Needed
 What perspectives are valuable?
 - Technical domain (performance, security, architecture)
@@ -179,12 +187,13 @@ Apply solution, verify it works.
 
 ## Quality Criteria
 
+- [ ] Task/investigation is tracked using the appropriate GitHub issue template
 - [ ] All agents completed investigation
 - [ ] Findings synthesized comprehensively
 - [ ] Agreement and conflicts identified
 - [ ] Root cause determined
 - [ ] Resolution plan created
-- [ ] Solution validated
+- [ ] Solution validated using `bash scripts/quality_gate.sh` and workspace tests
 
 ## Common Issues
 

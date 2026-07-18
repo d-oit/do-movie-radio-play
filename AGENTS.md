@@ -53,6 +53,15 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)
 - [.agents/skills/agent-coordination/PARALLEL.md](.agents/skills/agent-coordination/PARALLEL.md)
 
+## Standard Workflow Loop
+All human and agent-driven development must follow this standard "plan → execute → review" loop:
+1. **Plan**: Propose/select an issue before editing code using GitHub issue templates:
+   - Use `🛠️ Coding Change` template for bug fixes, features, or architectural tasks (labels: `coding`, `radio-play`).
+   - Use `⚡ Performance Change` template for profiling, optimization, or database improvements (labels: `perf`, `learning`).
+   - Use `🤖 Agent/Harness Change` template for updates to agent skills, plans, or harness settings (labels: `agent`, `harness`).
+2. **Execute**: Create/update the plan (e.g. `plans/GOAP_STATE.md`), then write code in minimal, atomic commits using `scripts/ai-commit.sh`.
+3. **Review**: Ensure general correctness and verify code by running `scripts/quality_gate.sh` and workspace tests before submission.
+
 ## Template Sync
 | Pattern | Status | Notes |
 | --------- | ------ | ----- |

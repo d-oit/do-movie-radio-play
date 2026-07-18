@@ -1,0 +1,41 @@
+name: "🛠️ Coding Change"
+description: "Propose a coding change, bug fix, or feature."
+labels: ["coding", "radio-play"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a coding change! Please fill out the details below to help us and our agents implement and verify it consistently.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Provide a clear and concise description of the coding change or feature.
+      placeholder: E.g., Implement visual gap detection heuristics...
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Motivation & Context
+      description: What problem does this solve? What crates/modules are affected?
+      placeholder: E.g., This addresses the issue of identifying cinematic moments for narration in movie-radio-goap...
+    validations:
+      required: true
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Proposed Implementation
+      description: Outline the steps or architectural choices for the change.
+      placeholder: E.g., Add a Gaps struct under crates/movie-radio-goap/src/gaps.rs...
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification Plan
+      description: How will the change be verified?
+      value: |
+        - Run `scripts/quality_gate.sh` to verify style, compilation, clippy, and unit tests.
+        - Run tests specifically for affected crates: `RUSTUP_TOOLCHAIN=stable cargo test -p <crate>`
+        - [Provide any manual/integration tests or CLI commands to verify output]
+    validations:
+      required: true

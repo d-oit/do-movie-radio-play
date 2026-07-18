@@ -36,12 +36,42 @@ for workflow in "$WORKFLOWS_DIR"/*.yml "$WORKFLOWS_DIR"/*.yaml; do
     continue
   fi
 
-  echo "✅ $name: valid structure"
+  echo "✅ $name: valid workflow structure"
 done
 
+# Validate GitHub issue templates
+TEMPLATES_DIR="$REPO_ROOT/.github/ISSUE_TEMPLATE"
+if [[ -d "$TEMPLATES_DIR" ]]; then
+  for template in "$TEMPLATES_DIR"/*.yml "$TEMPLATES_DIR"/*.yaml; do
+    [[ -f "$template" ]] || continue
+    name=$(basename "$template")
+
+    # Check required top-level keys
+    if ! grep -q "^name:" "$template" && ! grep -q "^name[[:space:]]*:" "$template"; then
+      echo "❌ $name: missing 'name' field"
+      FAILED=1
+      continue
+    fi
+
+    if ! grep -q "^description:" "$template" && ! grep -q "^description[[:space:]]*:" "$template"; then
+      echo "❌ $name: missing 'description' field"
+      FAILED=1
+      continue
+    fi
+
+    if ! grep -q "^body:" "$template" && ! grep -q "^body[[:space:]]*:" "$template"; then
+      echo "❌ $name: missing 'body' section"
+      FAILED=1
+      continue
+    fi
+
+    echo "✅ $name: valid issue template structure"
+  done
+fi
+
 if [[ $FAILED -eq 0 ]]; then
-  echo "All workflows valid."
+  echo "All workflows and issue templates valid."
 else
-  echo "Workflow validation failed."
+  echo "Validation failed."
   exit 1
 fi

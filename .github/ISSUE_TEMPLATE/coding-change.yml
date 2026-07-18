@@ -1,0 +1,64 @@
+name: Coding change
+description: Implementation-level change with clear scope
+title: "[code] <area>: <short summary>"
+labels: ["code", "planning"]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why this change is needed (perf, correctness, DX, harness, etc.)
+      placeholder: >
+        E.g., Spectral VAD is CPU-bound on 2h movies; render_mix allocates too often...
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Design and scope
+      description: High-level design and affected crates/files.
+      placeholder: >
+        - Crates/modules:
+        - Public APIs:
+        - Behavioral changes:
+        - Backward compatibility:
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-plan
+    attributes:
+      label: Implementation plan
+      description: Step-by-step coding tasks.
+      placeholder: |
+        - [ ] Refactor render_mix to streaming buffer API
+        - [ ] Add benchmark case for 120min input
+        - [ ] Update tests in tests/render_mix_*.rs
+        - [ ] Document perf budgets in HARNESS.md
+    validations:
+      required: true
+
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: Test and validation plan
+      description: How to verify the change (unit, integration, validation scripts).
+      placeholder: >
+        - Unit tests:
+        - Integration/CLI:
+        - Validation suite (run_validation_manifest.py):
+        - Benchmarks (bench --output ...):
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and guardrails
+      description: Potential regressions and mitigation.
+      placeholder: >
+        - Risk: ...
+        - Mitigation: ...
+    validations:
+      required: false

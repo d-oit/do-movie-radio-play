@@ -17,6 +17,23 @@ pub struct Segment {
     pub prompt: Option<String>,
 }
 
+impl PartialEq for Segment {
+    fn eq(&self, other: &Self) -> bool {
+        self.start_ms == other.start_ms
+            && self.end_ms == other.end_ms
+            && self.kind == other.kind
+            && (self.confidence - other.confidence).abs() < 1e-5
+            && self.tags == other.tags
+            && self.prompt == other.prompt
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum SegmentEvent {
+    SegmentDetected { segment: Segment },
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineOutput {
     pub file: String,

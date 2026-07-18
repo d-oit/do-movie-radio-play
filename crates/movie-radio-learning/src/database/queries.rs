@@ -199,3 +199,212 @@ impl LearningDb {
         Ok(results)
     }
 }
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ExperimentRow {
+    pub id: i64,
+    pub experiment_id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CalibrationReportRow {
+    pub id: i64,
+    pub profile_id: Option<String>,
+    pub version: Option<i64>,
+    pub records_seen: i64,
+    pub speech_to_non_voice: i64,
+    pub non_voice_to_speech: i64,
+    pub recommended_energy_threshold_delta: f64,
+    pub experiment_id: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ProfileVersionRow {
+    pub id: i64,
+    pub profile_id: String,
+    pub version: i64,
+    pub config_json: String,
+    pub calibration_report_id: Option<i64>,
+    pub created_at: String,
+}
+
+#[allow(dead_code)]
+impl LearningDb {
+    pub async fn record_experiment(
+        &self,
+        experiment_id: &str,
+        name: &str,
+        description: Option<&str>,
+    ) -> Result<i64> {
+        self.conn
+            .execute(
+                "INSERT OR REPLACE INTO experiments (experiment_id, name, description)
+                 VALUES (?1, ?2, ?3)",
+                [
+                    Value::Text(experiment_id.to_string()),
+                    Value::Text(name.to_string()),
+                    match description {
+                        Some(d) => Value::Text(d.to_string()),
+                        None => Value::Null,
+                    },
+                ],
+            )
+            .await?;
+
+        let mut rows = self.conn.query("SELECT last_insert_rowid()", ()).await?;
+        let row = rows
+            .next()
+            .await?
+            .context("failed to get last insert rowid")?;
+        let last_id: i64 = row.get(0)?;
+        Ok(last_id)
+    }
+
+    pub async fn record_calibration_report(
+        &self,
+        profile_id: &str,
+        version: u32,
+        records_seen: usize,
+        speech_to_non_voice: usize,
+        non_voice_to_speech: usize,
+        recommended_energy_threshold_delta: f32,
+        experiment_id: Option<&str>,
+    ) -> Result<i64> {
+        self.conn
+            .execute(
+                "INSERT INTO calibration_reports (
+                    profile_id, version, records_seen, speech_to_non_voice,
+                    non_voice_to_speech, recommended_energy_threshold_delta, experiment_id
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                [
+                    Value::Text(profile_id.to_string()),
+                    Value::Integer(version as i64),
+                    Value::Integer(records_seen as i64),
+                    Value::Integer(speech_to_non_voice as i64),
+                    Value::Integer(non_voice_to_speech as i64),
+                    Value::Real(recommended_energy_threshold_delta as f64),
+                    match experiment_id {
+                        Some(id) => Value::Text(id.to_string()),
+                        None => Value::Null,
+                    },
+                ],
+            )
+            .await?;
+
+        let mut rows = self.conn.query("SELECT last_insert_rowid()", ()).await?;
+        let row = rows
+            .next()
+            .await?
+            .context("failed to get last insert rowid")?;
+        let last_id: i64 = row.get(0)?;
+        Ok(last_id)
+    }
+
+    pub async fn record_profile_version(
+        &self,
+        profile_id: &str,
+        version: u32,
+        config_json: &str,
+        calibration_report_id: Option<i64>,
+    ) -> Result<i64> {
+        self.conn
+            .execute(
+                "INSERT OR REPLACE INTO profile_versions (
+                    profile_id, version, config_json, calibration_report_id
+                ) VALUES (?1, ?2, ?3, ?4)",
+                [
+                    Value::Text(profile_id.to_string()),
+                    Value::Integer(version as i64),
+                    Value::Text(config_json.to_string()),
+                    match calibration_report_id {
+                        Some(id) => Value::Integer(id),
+                        None => Value::Null,
+                    },
+                ],
+            )
+            .await?;
+
+        let mut rows = self.conn.query("SELECT last_insert_rowid()", ()).await?;
+        let row = rows
+            .next()
+            .await?
+            .context("failed to get last insert rowid")?;
+        let last_id: i64 = row.get(0)?;
+        Ok(last_id)
+    }
+
+    pub async fn list_experiments(&self) -> Result<Vec<ExperimentRow>> {
+        let mut results = Vec::new();
+        let mut rows = self
+            .conn
+            .query("SELECT id, experiment_id, name, description, created_at FROM experiments ORDER BY id DESC", ())
+            .await?;
+
+        while let Some(row) = rows.next().await? {
+            results.push(ExperimentRow {
+                id: row.get(0)?,
+                experiment_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                created_at: row.get(4)?,
+            });
+        }
+        Ok(results)
+    }
+
+    pub async fn list_calibration_reports(&self) -> Result<Vec<CalibrationReportRow>> {
+        let mut results = Vec::new();
+        let mut rows = self
+            .conn
+            .query(
+                "SELECT id, profile_id, version, records_seen, speech_to_non_voice,
+                        non_voice_to_speech, recommended_energy_threshold_delta, experiment_id, created_at
+                 FROM calibration_reports ORDER BY id DESC",
+                (),
+            )
+            .await?;
+
+        while let Some(row) = rows.next().await? {
+            results.push(CalibrationReportRow {
+                id: row.get(0)?,
+                profile_id: row.get(1)?,
+                version: row.get(2)?,
+                records_seen: row.get(3)?,
+                speech_to_non_voice: row.get(4)?,
+                non_voice_to_speech: row.get(5)?,
+                recommended_energy_threshold_delta: row.get(6)?,
+                experiment_id: row.get(7)?,
+                created_at: row.get(8)?,
+            });
+        }
+        Ok(results)
+    }
+
+    pub async fn list_profile_versions(&self) -> Result<Vec<ProfileVersionRow>> {
+        let mut results = Vec::new();
+        let mut rows = self
+            .conn
+            .query(
+                "SELECT id, profile_id, version, config_json, calibration_report_id, created_at
+                 FROM profile_versions ORDER BY id DESC",
+                (),
+            )
+            .await?;
+
+        while let Some(row) = rows.next().await? {
+            results.push(ProfileVersionRow {
+                id: row.get(0)?,
+                profile_id: row.get(1)?,
+                version: row.get(2)?,
+                config_json: row.get(3)?,
+                calibration_report_id: row.get(4)?,
+                created_at: row.get(5)?,
+            });
+        }
+        Ok(results)
+    }
+}

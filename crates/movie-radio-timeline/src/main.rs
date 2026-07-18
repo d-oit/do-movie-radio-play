@@ -214,6 +214,10 @@ fn dispatch_verification_and_output(cmd: Commands) -> Result<()> {
             learning_db,
             output,
         } => handlers::handle_learning_stats(learning_db, output),
+        Commands::LearningExperiments {
+            learning_db,
+            output,
+        } => handlers::handle_learning_experiments(learning_db, output),
         Commands::MergeTimeline {
             input,
             output,

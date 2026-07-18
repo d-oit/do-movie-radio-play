@@ -328,3 +328,48 @@ async fn test_gap_decisions_storage() {
     assert_eq!(results[0].start_ms, 5000);
     assert_eq!(results[0].user_approved, Some(true));
 }
+
+#[tokio::test]
+async fn test_experiment_tracking_and_profile_versioning() {
+    let temp_file = setup_test_db_path();
+    let db = LearningDb::new(temp_file.path()).await.unwrap();
+
+    let exp_id = db
+        .record_experiment(
+            "exp_001",
+            "Model Calibration Suite v2",
+            Some("Boundary testing with synthetic fixtures"),
+        )
+        .await
+        .unwrap();
+    assert!(exp_id > 0);
+
+    let report_id = db
+        .record_calibration_report("radio-play", 1, 150, 5, 12, -0.002, Some("exp_001"))
+        .await
+        .unwrap();
+    assert!(report_id > 0);
+
+    let pv_id = db
+        .record_profile_version(
+            "radio-play",
+            2,
+            "{\"energy_threshold\": 0.015}",
+            Some(report_id),
+        )
+        .await
+        .unwrap();
+    assert!(pv_id > 0);
+
+    let exps = db.list_experiments().await.unwrap();
+    assert_eq!(exps.len(), 1);
+    assert_eq!(exps[0].experiment_id, "exp_001");
+
+    let profiles = db.list_profile_versions().await.unwrap();
+    assert_eq!(profiles.len(), 1);
+    assert_eq!(profiles[0].version, 2);
+
+    let reports = db.list_calibration_reports().await.unwrap();
+    assert_eq!(reports.len(), 1);
+    assert_eq!(reports[0].records_seen, 150);
+}

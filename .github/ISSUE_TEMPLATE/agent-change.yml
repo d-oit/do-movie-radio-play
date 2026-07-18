@@ -1,0 +1,77 @@
+name: Agent/Harness change
+description: Changes to agent workflows, coordination, or harness infrastructure
+title: "[agent] <area>: <short summary>"
+labels: ["agent", "harness", "planning"]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why this agent/harness change is needed
+      placeholder: >
+        E.g., Agents need better coordination for complex workflows; current harness lacks quality gates...
+    validations:
+      required: true
+
+  - type: textarea
+    id: design
+    attributes:
+      label: Design and scope
+      description: High-level design and affected components
+      placeholder: >
+        - Agent configurations affected:
+        - Harness components:
+        - Workflow changes:
+        - Integration points:
+    validations:
+      required: true
+
+  - type: textarea
+    id: agent-impact
+    attributes:
+      label: Agent impact
+      description: How this change affects agent behavior and capabilities
+      placeholder: >
+        - New capabilities:
+        - Behavior changes:
+        - Coordination improvements:
+        - Safety/quality improvements:
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-plan
+    attributes:
+      label: Implementation plan
+      description: Step-by-step tasks for implementation
+      placeholder: |
+        - [ ] Update agent configuration files
+        - [ ] Modify coordination scripts
+        - [ ] Add quality gate checks
+        - [ ] Update documentation
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation-plan
+    attributes:
+      label: Validation plan
+      description: How to test and validate the changes
+      placeholder: >
+        - Agent workflow testing:
+        - Coordination scenarios:
+        - Quality gate verification:
+        - Regression testing:
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and guardrails
+      description: Potential issues and mitigation strategies
+      placeholder: >
+        - Risk: ...
+        - Mitigation: ...
+    validations:
+      required: false

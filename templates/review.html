@@ -131,11 +131,17 @@
       <p class="muted" id="status"></p>
     </section>
     <aside class="panel">
+      <div id="priority-section" style="display: none; margin-bottom: 20px;">
+        <h2 style="font-size: 1.1rem; color: var(--accent); margin: 0 0 10px;">Priority Review Candidates</h2>
+        <div class="segment-list" id="priority-list" style="max-height: 25vh; overflow-y: auto; display: grid; gap: 8px;"></div>
+        <hr style="border: 0; border-top: 1px solid var(--line); margin: 15px 0;" />
+      </div>
       <h1>Segments</h1>
       <div class="segment-controls">
         <label for="segment-filter">Filter:</label>
         <select id="segment-filter">
           <option value="all">All Segments</option>
+          <option value="priority">Priority Review</option>
           <option value="unverified">Unverified</option>
           <option value="verified">Verified</option>
           <option value="suspicious">Suspicious</option>
@@ -211,6 +217,8 @@
       let filtered = mergedMode ? getMergedSegments() : allSegments.filter(seg => !excluded.has(segKey(seg)));
       if (currentFilter === 'verified') {{
         filtered = filtered.filter(seg => seg.verification_status === 'verified');
+      }} else if (currentFilter === 'priority') {{
+        filtered = filtered.filter(seg => seg.priority_review);
       }} else if (currentFilter === 'unverified') {{
         filtered = filtered.filter(seg => !seg.verification_status);
       }} else if (currentFilter === 'suspicious') {{
@@ -331,6 +339,63 @@
         segmentList.appendChild(el);
       }}
       highlight();
+      renderPriorityList();
+    }}
+
+    function renderPriorityList() {{
+      const priorityList = document.getElementById('priority-list');
+      const prioritySection = document.getElementById('priority-section');
+      if (!priorityList || !prioritySection) return;
+
+      const prioritySegs = allSegments.filter(seg => seg.priority_review && !excluded.has(segKey(seg)));
+      if (prioritySegs.length === 0) {{
+        prioritySection.style.display = 'none';
+        return;
+      }}
+
+      prioritySection.style.display = 'block';
+      priorityList.innerHTML = '';
+
+      for (let i = 0; i < prioritySegs.length; i++) {{
+        const seg = prioritySegs[i];
+        const el = document.createElement('div');
+        el.className = 'segment';
+        if (seg.verification_status === 'suspicious') el.classList.add('suspicious');
+        if (seg.verification_status === 'rejected') el.classList.add('rejected');
+
+        const tags = (seg.tags || []).map(t => '<span class="badge">' + esc(t) + '</span>').join('');
+        let verificationBadge = '<span class="badge" style="border-color:#b65328; color:#b65328; font-weight:bold;">Priority</span>';
+        if (seg.verification_status === 'verified') {{
+          verificationBadge += '<span class="badge badge-verified">Verified</span>';
+        }} else if (seg.verification_status === 'suspicious') {{
+          verificationBadge += '<span class="badge badge-suspicious">Suspicious</span>';
+        }} else if (seg.verification_status === 'rejected') {{
+          verificationBadge += '<span class="badge badge-rejected">Rejected</span>';
+        }}
+        const prompt = seg.prompt ? '<div class="meta">Prompt: ' + esc(seg.prompt) + '</div>' : '';
+
+        el.innerHTML = '<div><strong>#' + seg.index + '</strong> ' + seconds(seg.start_ms) + 's - ' + seconds(seg.end_ms) + 's ' + verificationBadge + '</div>' +
+          '<div class="meta">duration ' + seconds(seg.duration_ms) + 's | confidence ' + Number(seg.confidence).toFixed(2) + '</div>' +
+          '<div>' + tags + '</div>' +
+          prompt;
+
+        el.addEventListener('click', () => {{
+          const idx = segments.findIndex(s => s.start_ms === seg.start_ms && s.end_ms === seg.end_ms);
+          if (idx !== -1) {{
+            currentIndex = idx;
+            jumpToCurrent(true);
+          }} else {{
+            const startAt = Math.max(0, seg.start_ms / 1000 - preRoll);
+            stopAt = seg.end_ms / 1000 + postRoll;
+            try {{
+              video.currentTime = startAt;
+              video.play().catch(() => {{}});
+            }} catch (_) {{}}
+            windowInfo.innerHTML = '<strong>Selected Priority:</strong> #' + seg.index + ' | <strong>start:</strong> ' + formatClock(seg.start_ms / 1000) + ' | <strong>end:</strong> ' + formatClock(seg.end_ms / 1000) + ' | <strong>duration:</strong> ' + seconds(seg.duration_ms) + 's | <strong>confidence:</strong> ' + Number(seg.confidence).toFixed(2);
+          }}
+        }});
+        priorityList.appendChild(el);
+      }}
     }}
 
     function highlight() {{

@@ -115,6 +115,39 @@ pub fn handle_validate(
     Ok(())
 }
 
+pub fn handle_learning_experiments(
+    learning_db: std::path::PathBuf,
+    output: Option<std::path::PathBuf>,
+) -> Result<()> {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .context("failed to create async runtime for learning db")?;
+    let db = rt.block_on(database::LearningDb::new(&learning_db))?;
+
+    let experiments = rt.block_on(db.list_experiments())?;
+    let profile_versions = rt.block_on(db.list_profile_versions())?;
+    let calibration_reports = rt.block_on(db.list_calibration_reports())?;
+
+    let report = serde_json::json!({
+        "learning_db": learning_db,
+        "experiments": experiments,
+        "profile_versions": profile_versions,
+        "calibration_reports": calibration_reports,
+    });
+
+    if let Some(output_path) = output {
+        if let Some(parent) = output_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&output_path, serde_json::to_vec_pretty(&report)?)?;
+        tracing::info!(output = %output_path.display(), "learning experiments written");
+    } else {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    }
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn handle_verify_timeline(
     media: PathBuf,

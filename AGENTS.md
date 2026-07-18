@@ -53,6 +53,11 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)
 - [.agents/skills/agent-coordination/PARALLEL.md](.agents/skills/agent-coordination/PARALLEL.md)
 
+## Active Learning & Calibration Loop
+For any calibration/VAD verification task:
+- Always check priority review candidates first using the active learning filters.
+- Ensure profile changes are registered as experiments with unique `profile_id` and incremented `version` fields.
+
 ## Template Sync
 | Pattern | Status | Notes |
 | --------- | ------ | ----- |

@@ -10,6 +10,7 @@ pub mod types;
 #[cfg(test)]
 mod tests;
 
+pub use queries::{CalibrationReportRow, ExperimentRow, ProfileVersionRow};
 pub use types::{FalsePositive, LearningStatistics, SpectralFeatures, VerifiedSegment};
 
 #[derive(Clone)]
@@ -89,6 +90,51 @@ impl LearningDb {
             .await?;
 
         gap_store::create_gap_tables(&self.conn).await?;
+
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS experiments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    experiment_id TEXT NOT NULL UNIQUE,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    created_at TEXT DEFAULT (datetime('now'))
+                )",
+                (),
+            )
+            .await?;
+
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS calibration_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    profile_id TEXT,
+                    version INTEGER,
+                    records_seen INTEGER,
+                    speech_to_non_voice INTEGER,
+                    non_voice_to_speech INTEGER,
+                    recommended_energy_threshold_delta REAL,
+                    experiment_id TEXT REFERENCES experiments(experiment_id) ON DELETE SET NULL,
+                    created_at TEXT DEFAULT (datetime('now'))
+                )",
+                (),
+            )
+            .await?;
+
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS profile_versions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    profile_id TEXT NOT NULL,
+                    version INTEGER NOT NULL,
+                    config_json TEXT NOT NULL,
+                    calibration_report_id INTEGER REFERENCES calibration_reports(id) ON DELETE SET NULL,
+                    created_at TEXT DEFAULT (datetime('now')),
+                    UNIQUE(profile_id, version)
+                )",
+                (),
+            )
+            .await?;
 
         Ok(())
     }

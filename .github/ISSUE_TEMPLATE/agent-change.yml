@@ -1,0 +1,43 @@
+name: "🤖 Agent/Harness Change"
+description: "Propose updates to agent skills, plans, or harness configs."
+labels: ["agent", "harness"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a change to the agent or harness workflow! Please detail the skill or config adjustments below.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Provide a clear and concise description of the agent, skill, or harness change.
+      placeholder: E.g., Standardize issue creation and agent coordination workflows...
+    validations:
+      required: true
+  - type: textarea
+    id: target
+    attributes:
+      label: Affected Files & Skills
+      description: Which agent config, skill files, or workflows are targeted (e.g., .agents/skills/..., AGENTS.md, HARNESS.md)?
+      placeholder: E.g., .agents/skills/agent-coordination/SKILL.md, AGENTS.md
+    validations:
+      required: true
+  - type: textarea
+    id: changes
+    attributes:
+      label: Proposed Adjustments
+      description: What specific instructions or guidelines are we introducing or changing?
+      placeholder: E.g., Add guidelines for issue template usage to AGENTS.md and agent coordination.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification Plan
+      description: How will the agent/harness change be validated?
+      value: |
+        - Run `scripts/validate-skills.sh` to verify skills schema and compliance.
+        - Run `scripts/validate-workflows.sh` to verify Github workflows syntax.
+        - Run `scripts/quality_gate.sh` to ensure overall environment remains healthy.
+    validations:
+      required: true

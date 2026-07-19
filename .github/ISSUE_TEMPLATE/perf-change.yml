@@ -1,0 +1,43 @@
+name: "⚡ Performance Change"
+description: "Propose an optimization or resource reduction."
+labels: ["perf", "learning"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a performance change! Please specify the metrics, targets, and benchmark plan.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Provide a clear and concise description of the performance change or optimization.
+      placeholder: E.g., Fusing RMS and ZCR calculations in movie-radio-pipeline...
+    validations:
+      required: true
+  - type: textarea
+    id: baseline
+    attributes:
+      label: Current Performance (Baseline)
+      description: What is the current resource footprint or execution time? Please provide metrics if possible.
+      placeholder: E.g., Feature extraction takes ~12.3ms per audio chunk...
+    validations:
+      required: true
+  - type: textarea
+    id: target
+    attributes:
+      label: Proposed Target & Optimization
+      description: What is the proposed change and what is the expected target (e.g. 10% speedup)?
+      placeholder: E.g., Fusion should reduce iteration overhead and yield ~10% improvement in pipeline speed...
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification & Benchmark Plan
+      description: How will the performance improvement be measured and verified without introducing regression?
+      value: |
+        - Run `scripts/quality_gate.sh` to ensure general correctness and safety gates.
+        - Run relevant benchmark suites or specific criterion benchmarks (e.g. `scripts/benchmark.sh` or cargo bench).
+        - Verify results against baseline profiles or optimization thresholds.
+    validations:
+      required: true

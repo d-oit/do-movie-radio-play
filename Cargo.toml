@@ -34,7 +34,7 @@ rodio = { version = "0.22", default-features = false, features = [
 ] }
 movie-radio-render = { path = "crates/movie-radio-render" }
 rayon = "1.10"
-rubato = "3"
+rubato = "4"
 ort = { version = "2.0.0-rc.9", features = ["load-dynamic"] }
 rand = "0.10"
 movie-radio-types = { path = "crates/movie-radio-types" }

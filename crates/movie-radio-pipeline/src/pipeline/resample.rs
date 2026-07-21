@@ -16,7 +16,7 @@ pub fn resample(input: &[f32], src_rate: u32, dst_rate: u32) -> Result<Vec<f32>>
     let ratio = dst_rate as f64 / src_rate as f64;
     let params = SincInterpolationParameters {
         sinc_len: 256,
-        f_cutoff: 0.95,
+        f_cutoff: Some(0.95),
         interpolation: SincInterpolationType::Linear,
         oversampling_factor: 256,
         window: WindowFunction::Blackman2,
@@ -27,7 +27,7 @@ pub fn resample(input: &[f32], src_rate: u32, dst_rate: u32) -> Result<Vec<f32>>
     let buffer_in = InterleavedOwned::<f32>::new_from(input.to_vec(), 1, input.len())
         .context("failed to create resampler input buffer")?;
     let result = resampler
-        .process(&buffer_in, 0, None)
+        .process(&buffer_in, None)
         .context("resampling process failed")?;
     let frames_out = result.frames();
     let mut output = result.take_data();

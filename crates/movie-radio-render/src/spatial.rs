@@ -50,6 +50,7 @@ impl StereoPosition {
 
     pub fn gains(self) -> (f32, f32) {
         let angle = (self.0 + 1.0) * std::f32::consts::FRAC_PI_4;
-        (angle.cos(), angle.sin())
+        let (sin, cos) = angle.sin_cos();
+        (cos, sin)
     }
 }

@@ -32,6 +32,7 @@ pub fn escape_json_for_script(json: String) -> String {
 
 /// Render the complete review player HTML page.
 /// All JSON parameters must be pre-escaped via [`escape_json_for_script`].
+#[allow(dead_code)]
 pub fn render_review_html(
     segments_json: &str,
     media_json: &str,

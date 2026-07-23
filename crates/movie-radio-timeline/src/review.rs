@@ -6,7 +6,7 @@ use std::path::Path;
 
 use movie_radio_types::{SegmentKind, TimelineOutput};
 
-use crate::review_template::{escape_json_for_script, render_review_html};
+use crate::review_template::escape_json_for_script;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ReviewSegment {
@@ -117,16 +117,33 @@ pub fn write_review_html_with_options(
 
     let selector = movie_radio_learning::active_learning::ActiveLearningSelector::default();
 
-    let segments: Vec<ReviewSegment> = if merged {
+    let template = include_str!("../../../templates/review.html");
+    let parts: Vec<&str> = template.split("{segments_json}").collect();
+    if parts.len() != 2 {
+        bail!("HTML template does not contain exactly one {{segments_json}} placeholder");
+    }
+    let part1 = parts[0].replace("{{", "{").replace("}}", "}");
+    let part2 = parts[1].replace("{{", "{").replace("}}", "}");
+
+    if let Some(parent) = output.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let file = std::fs::File::create(output)?;
+    let mut writer = std::io::BufWriter::new(file);
+
+    use std::io::Write;
+    writer.write_all(part1.as_bytes())?;
+    writer.write_all(b"[")?;
+
+    let mut count = 0;
+    if merged {
         let non_voice_segments: Vec<_> = timeline
             .segments
             .iter()
             .filter(|segment| segment.kind == SegmentKind::NonVoice)
             .collect();
 
-        if non_voice_segments.is_empty() {
-            vec![]
-        } else {
+        if !non_voice_segments.is_empty() {
             let first_start = non_voice_segments.first().map_or(0, |s| s.start_ms);
             let last_end = non_voice_segments.last().map_or(0, |s| s.end_ms);
             let duration_ms = last_end.saturating_sub(first_start);
@@ -137,7 +154,7 @@ pub fn write_review_html_with_options(
                 .flat_map(|s| s.tags.clone())
                 .collect();
 
-            vec![ReviewSegment {
+            let seg = ReviewSegment {
                 index: 1,
                 start_ms: first_start,
                 end_ms: last_end,
@@ -147,10 +164,13 @@ pub fn write_review_html_with_options(
                 prompt: None,
                 verification_status: None,
                 priority_review: false,
-            }]
+            };
+            let seg_json = escape_json_for_script(serde_json::to_string(&seg)?);
+            writer.write_all(seg_json.as_bytes())?;
+            count = 1;
         }
     } else {
-        timeline
+        let segments_iter = timeline
             .segments
             .iter()
             .filter(|segment| segment.kind == SegmentKind::NonVoice)
@@ -201,25 +221,35 @@ pub fn write_review_html_with_options(
                     verification_status,
                     priority_review,
                 }
-            })
-            .collect()
-    };
+            });
 
-    let segments_json = escape_json_for_script(serde_json::to_string(&segments)?);
-    let merged_json = escape_json_for_script(serde_json::to_string(&merged)?);
-    let html = render_review_html(
-        &segments_json,
-        &media_json,
-        &pre_roll_json,
-        &post_roll_json,
-        &merged_json,
-    );
-
-    if let Some(parent) = output.parent() {
-        std::fs::create_dir_all(parent)?;
+        for seg in segments_iter {
+            if count > 0 {
+                writer.write_all(b",")?;
+            }
+            let seg_json = escape_json_for_script(serde_json::to_string(&seg)?);
+            writer.write_all(seg_json.as_bytes())?;
+            count += 1;
+        }
     }
-    std::fs::write(output, html)?;
-    Ok(segments.len())
+
+    writer.write_all(b"]")?;
+
+    let merged_json = escape_json_for_script(serde_json::to_string(&merged)?);
+    let part2_filled = part2
+        .replace("{media_json}", &media_json)
+        .replace("{pre_roll_json}", &pre_roll_json)
+        .replace("{post_roll_json}", &post_roll_json)
+        .replace("{merged_json}", &merged_json)
+        .replace(
+            "{url_revoke_timeout_ms}",
+            &crate::review_template::URL_REVOKE_TIMEOUT_MS.to_string(),
+        );
+
+    writer.write_all(part2_filled.as_bytes())?;
+    writer.flush()?;
+
+    Ok(count)
 }
 
 #[cfg(test)]

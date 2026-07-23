@@ -38,49 +38,96 @@ fn default_agc_max_gain() -> f32 {
     20.0
 }
 
+/// Context for audio mixing that reuses internal buffers to avoid redundant allocations.
+#[derive(Debug, Clone, Default)]
+pub struct Mixer {
+    left_channel: Vec<f32>,
+    right_channel: Vec<f32>,
+    interleaved_output: Vec<f32>,
+}
+
+impl Mixer {
+    /// Creates a new `Mixer` instance.
+    pub fn new() -> Self {
+        Self {
+            left_channel: Vec::new(),
+            right_channel: Vec::new(),
+            interleaved_output: Vec::new(),
+        }
+    }
+
+    /// Renders a mix of tracks into an interleaved stereo output buffer.
+    /// Resizes and reuses internal buffers to minimize memory allocations.
+    pub fn render_mix(&mut self, tracks: Vec<TrackInput>) -> Result<&[f32]> {
+        let max_len = tracks.iter().map(|t| t.samples.len()).max().unwrap_or(0);
+        if max_len == 0 {
+            self.interleaved_output.clear();
+            return Ok(&[]);
+        }
+
+        // Clean and prepare internal contiguous per-channel buffers
+        self.left_channel.clear();
+        self.left_channel.resize(max_len, 0.0);
+        self.right_channel.clear();
+        self.right_channel.resize(max_len, 0.0);
+
+        for track in tracks {
+            let sample_rate = track.sample_rate;
+
+            let agc = apply_agc(
+                track.samples,
+                sample_rate,
+                track.agc_attack,
+                track.agc_release,
+                track.agc_max_gain,
+            )?;
+
+            let reverb = if let Some(ref rev) = track.reverb {
+                apply_reverb(agc, sample_rate, rev.delay_ms, rev.amplitude)?
+            } else {
+                agc
+            };
+
+            let (left_gain, right_gain) = track.position.gains();
+            for (i, &s) in reverb.iter().enumerate() {
+                if i < max_len {
+                    self.left_channel[i] += s * left_gain;
+                    self.right_channel[i] += s * right_gain;
+                }
+            }
+        }
+
+        // Interleave the separate contiguous channel buffers into the contiguous interleaved output buffer
+        self.interleaved_output.clear();
+        self.interleaved_output.resize(max_len * 2, 0.0);
+
+        for i in 0..max_len {
+            self.interleaved_output[i * 2] = self.left_channel[i];
+            self.interleaved_output[i * 2 + 1] = self.right_channel[i];
+        }
+
+        // Peak normalisation — prevent clipping
+        let peak = self
+            .interleaved_output
+            .iter()
+            .map(|s| s.abs())
+            .fold(0.0_f32, f32::max);
+        if peak > 1.0 {
+            let scale = 1.0 / peak;
+            for s in &mut self.interleaved_output {
+                *s *= scale;
+            }
+        }
+
+        Ok(&self.interleaved_output)
+    }
+}
+
 /// Renders a mix of tracks into a stereo output.
 pub fn render_mix(tracks: Vec<TrackInput>) -> Result<Vec<f32>> {
-    let max_len = tracks.iter().map(|t| t.samples.len()).max().unwrap_or(0);
-    if max_len == 0 {
-        return Ok(Vec::new());
-    }
-
-    let mut mix = vec![0.0_f32; max_len * 2];
-
-    for track in tracks {
-        let sample_rate = track.sample_rate;
-
-        let agc = apply_agc(
-            track.samples,
-            sample_rate,
-            track.agc_attack,
-            track.agc_release,
-            track.agc_max_gain,
-        )?;
-
-        let reverb = if let Some(ref rev) = track.reverb {
-            apply_reverb(agc, sample_rate, rev.delay_ms, rev.amplitude)?
-        } else {
-            agc
-        };
-
-        let (left_gain, right_gain) = track.position.gains();
-        for (i, &s) in reverb.iter().enumerate() {
-            mix[i * 2] += s * left_gain;
-            mix[i * 2 + 1] += s * right_gain;
-        }
-    }
-
-    // Peak normalisation — prevent clipping
-    let peak = mix.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
-    if peak > 1.0 {
-        let scale = 1.0 / peak;
-        for s in &mut mix {
-            *s *= scale;
-        }
-    }
-
-    Ok(mix)
+    let mut mixer = Mixer::new();
+    let res = mixer.render_mix(tracks)?;
+    Ok(res.to_vec())
 }
 
 #[cfg(test)]

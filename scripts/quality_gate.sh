@@ -240,6 +240,43 @@ fi
 printf "\n"
 
 # ============================================================
+# 13. RENDER PERFORMANCE & REGRESSION
+# ============================================================
+info "Running render performance checks..."
+BENCH_OUT=$(mktemp)
+if ! RUSTUP_TOOLCHAIN=stable cargo bench -p benchmarks --bench render_bench -- --quick > "$BENCH_OUT" 2>&1; then
+  fail "Render Benchmarks: failed to run"
+  cat "$BENCH_OUT"
+else
+  pass "Render Benchmarks: executed successfully"
+  printf "\nCaptured Performance Metrics:\n"
+  grep -E "(Mixer_render_mix_reusing_buffers_3_tracks_5s|Mixer_render_complex_radio_play_scenario_5s|render_mix_varying_tracks)" -A 2 "$BENCH_OUT" || true
+  printf "\n"
+
+  # Perform regression checks against acceptable limits
+  val_reusing=$(grep -A 1 "Mixer_render_mix_reusing_buffers_3_tracks_5s" "$BENCH_OUT" | grep "time:" | sed -E 's/.*\[.* (.*) ms .*/\1/')
+  val_complex=$(grep -A 1 "Mixer_render_complex_radio_play_scenario_5s" "$BENCH_OUT" | grep "time:" | sed -E 's/.*\[.* (.*) ms .*/\1/')
+
+  if [[ -n "$val_reusing" ]]; then
+    if (( $(echo "$val_reusing > 50.0" | bc -l 2>/dev/null || [ "${val_reusing%.*}" -gt 50 ]) )); then
+       fail "Render Benchmarks: Reusable 3-track mix performance regression detected ($val_reusing ms > 50.0 ms)"
+    else
+       pass "Render Benchmarks: Reusable 3-track mix performance is within limit ($val_reusing ms <= 50.0 ms)"
+    fi
+  fi
+
+  if [[ -n "$val_complex" ]]; then
+    if (( $(echo "$val_complex > 100.0" | bc -l 2>/dev/null || [ "${val_complex%.*}" -gt 100 ]) )); then
+       fail "Render Benchmarks: Complex radio-play performance regression detected ($val_complex ms > 100.0 ms)"
+    else
+       pass "Render Benchmarks: Complex radio-play performance is within limit ($val_complex ms <= 100.0 ms)"
+    fi
+  fi
+fi
+rm -f "$BENCH_OUT"
+printf "\n"
+
+# ============================================================
 # SUMMARY
 # ============================================================
 if [[ $FAILED -ne 0 ]]; then

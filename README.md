@@ -70,7 +70,7 @@ Profiles are stored as JSON in `config/profiles/`. Options can be overridden via
 
 - 16-bit PCM WAV is the only natively supported format; others require FFmpeg.
 - Spectral analysis is CPU-bound.
-- Memory usage increases with the number of segments during HTML report generation.
+- HTML report generation uses incremental streaming to maintain constant memory footprint regardless of segment count.
 
 ## Contributing
 

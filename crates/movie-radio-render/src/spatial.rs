@@ -112,3 +112,55 @@ impl StereoPosition {
         (self.left_gain, self.right_gain)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_stereo_position_new_valid() {
+        assert!(StereoPosition::new(0.0).is_ok());
+        assert!(StereoPosition::new(-1.0).is_ok());
+        assert!(StereoPosition::new(1.0).is_ok());
+        assert!(StereoPosition::new(0.5).is_ok());
+    }
+
+    #[test]
+    fn test_stereo_position_new_invalid() {
+        assert!(StereoPosition::new(-1.01).is_err());
+        assert!(StereoPosition::new(1.01).is_err());
+        assert!(StereoPosition::new(-5.0).is_err());
+        assert!(StereoPosition::new(5.0).is_err());
+    }
+
+    #[test]
+    fn test_stereo_position_exact_gains() {
+        // CENTRE (0.0): angle = FRAC_PI_4. cos = ~0.70710678, sin = ~0.70710678
+        let centre_gains = StereoPosition::CENTRE.gains();
+        assert!((centre_gains.0 - 0.70710678).abs() < 1e-6);
+        assert!((centre_gains.1 - 0.70710678).abs() < 1e-6);
+
+        // HARD_LEFT (-1.0): angle = 0. cos = 1.0, sin = 0.0
+        let hard_left_gains = StereoPosition::HARD_LEFT.gains();
+        assert_eq!(hard_left_gains.0, 1.0);
+        assert_eq!(hard_left_gains.1, 0.0);
+
+        // HARD_RIGHT (1.0): angle = PI_2. cos = 0.0, sin = 1.0
+        let hard_right_gains = StereoPosition::HARD_RIGHT.gains();
+        assert_eq!(hard_right_gains.0, 0.0);
+        assert_eq!(hard_right_gains.1, 1.0);
+    }
+
+    #[test]
+    fn test_stereo_position_serde() -> anyhow::Result<()> {
+        let original = StereoPosition::new(0.5)?;
+        let serialized = serde_json::to_string(&original)?;
+        // Must serialize exactly as a plain float
+        assert_eq!(serialized, "0.5");
+
+        let deserialized: StereoPosition = serde_json::from_str("0.5")?;
+        assert_eq!(deserialized.pos(), 0.5);
+        assert_eq!(deserialized.gains(), original.gains());
+        Ok(())
+    }
+}

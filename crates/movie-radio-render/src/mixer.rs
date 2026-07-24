@@ -132,6 +132,7 @@ pub fn render_mix(tracks: Vec<TrackInput>) -> Result<Vec<f32>> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::spatial::ReverbConfig;
     use anyhow::Result;
 
@@ -161,6 +162,80 @@ mod tests {
             ReverbConfig::DRY.amplitude,
         )?;
         assert_eq!(result, samples);
+        Ok(())
+    }
+
+    #[test]
+    fn test_render_mix_empty() -> Result<()> {
+        let result = render_mix(Vec::new())?;
+        assert!(result.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn test_render_mix_single_track() -> Result<()> {
+        let track = TrackInput {
+            samples: vec![0.5, -0.5, 0.5, -0.5],
+            sample_rate: 44100,
+            position: StereoPosition::CENTRE,
+            reverb: None,
+            agc_attack: 0.01,
+            agc_release: 0.1,
+            agc_max_gain: 1.0, // Prevent gain scaling
+        };
+
+        let result = render_mix(vec![track])?;
+        // Length must be 4 * 2 = 8 samples (stereo interleaved)
+        assert_eq!(result.len(), 8);
+        Ok(())
+    }
+
+    #[test]
+    fn test_render_mix_mismatched_lengths() -> Result<()> {
+        let track1 = TrackInput {
+            samples: vec![0.2, -0.2],
+            sample_rate: 44100,
+            position: StereoPosition::HARD_LEFT,
+            reverb: None,
+            agc_attack: 0.01,
+            agc_release: 0.1,
+            agc_max_gain: 1.0,
+        };
+
+        let track2 = TrackInput {
+            samples: vec![0.1, -0.1, 0.1, -0.1, 0.1, -0.1],
+            sample_rate: 44100,
+            position: StereoPosition::HARD_RIGHT,
+            reverb: None,
+            agc_attack: 0.01,
+            agc_release: 0.1,
+            agc_max_gain: 1.0,
+        };
+
+        let result = render_mix(vec![track1, track2])?;
+        // Length must be equal to max length (6) * 2 = 12 samples
+        assert_eq!(result.len(), 12);
+        Ok(())
+    }
+
+    #[test]
+    fn test_mixer_reusability() -> Result<()> {
+        let track = TrackInput {
+            samples: vec![0.1, 0.2, 0.3],
+            sample_rate: 44100,
+            position: StereoPosition::CENTRE,
+            reverb: None,
+            agc_attack: 0.01,
+            agc_release: 0.1,
+            agc_max_gain: 1.0,
+        };
+
+        let mut mixer = Mixer::new();
+        let res1 = mixer.render_mix(vec![track.clone()])?.to_vec();
+        let res2 = mixer.render_mix(vec![track])?.to_vec();
+
+        // Sequential mixes of the same input must be completely identical (no state pollution)
+        assert_eq!(res1, res2);
         Ok(())
     }
 }

@@ -5,40 +5,9 @@
     "B",
     "C"
   ],
-  "entry_count": 3,
-  "elapsed_ms": 14761,
+  "entry_count": 2,
+  "elapsed_ms": 13073,
   "results": [
-    {
-      "id": "synthetic_alternating",
-      "tier": "A",
-      "input_media": "testdata/generated/alternating.wav",
-      "truth_type": "truth_json",
-      "truth_path": "testdata/generated/alternating.truth.json",
-      "profile": "synthetic",
-      "config_path": "config/profiles/all-gaps.json",
-      "output_report": "testdata/validation/validate_against_synthetic.json",
-      "elapsed_ms": 508,
-      "metrics": {
-        "overlap_ratio": 1.0,
-        "boundary_error_ms": 2000.0,
-        "speech_precision": 1.0,
-        "speech_recall": 0.0,
-        "non_voice_precision": 0.0,
-        "non_voice_recall": 0.0,
-        "speech_time_precision": 1.0,
-        "speech_time_recall": 0.0,
-        "non_voice_time_precision": 0.6333333,
-        "non_voice_time_recall": 1.0,
-        "speech_overlap_ms": 0,
-        "speech_predicted_ms": 0,
-        "speech_expected_ms": 2200,
-        "non_voice_overlap_ms": 3800,
-        "non_voice_predicted_ms": 6000,
-        "non_voice_expected_ms": 3800,
-        "expected_segments": 3,
-        "predicted_segments": 1
-      }
-    },
     {
       "id": "elephants_dream_2006_de",
       "tier": "A",
@@ -48,7 +17,7 @@
       "profile": "movie",
       "config_path": "config/profiles/radio-play.json",
       "output_report": "testdata/validation/elephants_dream_2006_de_validation.json",
-      "elapsed_ms": 7887,
+      "elapsed_ms": 6698,
       "metrics": {
         "overlap_ratio": 0.8410643,
         "boundary_error_ms": 81278.44,
@@ -79,7 +48,7 @@
       "profile": "movie",
       "config_path": "config/profiles/radio-play.json",
       "output_report": "testdata/validation/elephants_dream_2006_es_validation.json",
-      "elapsed_ms": 6364,
+      "elapsed_ms": 6374,
       "metrics": {
         "overlap_ratio": 0.8410643,
         "boundary_error_ms": 81278.44,

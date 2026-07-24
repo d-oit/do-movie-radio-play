@@ -89,11 +89,13 @@ impl Mixer {
             };
 
             let (left_gain, right_gain) = track.position.gains();
-            for (i, &s) in reverb.iter().enumerate() {
-                if i < max_len {
-                    self.left_channel[i] += s * left_gain;
-                    self.right_channel[i] += s * right_gain;
-                }
+            for ((&s, l), r) in reverb
+                .iter()
+                .zip(self.left_channel.iter_mut())
+                .zip(self.right_channel.iter_mut())
+            {
+                *l += s * left_gain;
+                *r += s * right_gain;
             }
         }
 
@@ -101,9 +103,13 @@ impl Mixer {
         self.interleaved_output.clear();
         self.interleaved_output.resize(max_len * 2, 0.0);
 
-        for i in 0..max_len {
-            self.interleaved_output[i * 2] = self.left_channel[i];
-            self.interleaved_output[i * 2 + 1] = self.right_channel[i];
+        for (chunk, (&l, &r)) in self
+            .interleaved_output
+            .chunks_exact_mut(2)
+            .zip(self.left_channel.iter().zip(self.right_channel.iter()))
+        {
+            chunk[0] = l;
+            chunk[1] = r;
         }
 
         // Peak normalisation — prevent clipping
@@ -124,6 +130,11 @@ impl Mixer {
 }
 
 /// Renders a mix of tracks into a stereo output.
+///
+/// # Performance Note
+/// This is a convenience wrapper that creates a new `Mixer` on every call,
+/// resulting in a `to_vec()` allocation. For hot rendering paths or continuous
+/// processing, prefer instantiating and reusing a `Mixer` directly.
 pub fn render_mix(tracks: Vec<TrackInput>) -> Result<Vec<f32>> {
     let mut mixer = Mixer::new();
     let res = mixer.render_mix(tracks)?;

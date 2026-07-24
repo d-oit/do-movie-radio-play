@@ -242,6 +242,43 @@ printf "\n"
 # ============================================================
 # 13. RENDER PERFORMANCE & REGRESSION
 # ============================================================
+parse_to_ms() {
+  local line="$1"
+  if [[ -z "$line" ]]; then
+    echo ""
+    return
+  fi
+  # line is like "time:   [16.317 ms 16.473 ms 17.097 ms]"
+  # Extract the middle number and the unit.
+  local num2
+  num2=$(echo "$line" | sed -E 's/.*\[[^ ]+ [^ ]+ ([0-9.]+) ([^ ]+) .*/\1/')
+  local unit2
+  unit2=$(echo "$line" | sed -E 's/.*\[[^ ]+ [^ ]+ ([0-9.]+) ([^ ]+) .*/\2/')
+
+  if [[ ! "$num2" =~ ^[0-9.]+$ ]]; then
+    echo ""
+    return
+  fi
+
+  case "$unit2" in
+    ms)
+      echo "$num2"
+      ;;
+    µs|us)
+      echo "$num2 / 1000" | bc -l 2>/dev/null || echo "0.${num2//./}"
+      ;;
+    ns)
+      echo "$num2 / 1000000" | bc -l 2>/dev/null || echo "0.000${num2//./}"
+      ;;
+    s)
+      echo "$num2 * 1000" | bc -l 2>/dev/null || echo "999999"
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
 info "Running render performance checks..."
 BENCH_OUT=$(mktemp)
 if ! RUSTUP_TOOLCHAIN=stable cargo bench -p benchmarks --bench render_bench -- --quick > "$BENCH_OUT" 2>&1; then
@@ -254,8 +291,11 @@ else
   printf "\n"
 
   # Perform regression checks against acceptable limits
-  val_reusing=$(grep -A 1 "Mixer_render_mix_reusing_buffers_3_tracks_5s" "$BENCH_OUT" | grep "time:" | sed -E 's/.*\[.* (.*) ms .*/\1/')
-  val_complex=$(grep -A 1 "Mixer_render_complex_radio_play_scenario_5s" "$BENCH_OUT" | grep "time:" | sed -E 's/.*\[.* (.*) ms .*/\1/')
+  line_reusing=$(grep -A 1 "Mixer_render_mix_reusing_buffers_3_tracks_5s" "$BENCH_OUT" | grep "time:")
+  line_complex=$(grep -A 1 "Mixer_render_complex_radio_play_scenario_5s" "$BENCH_OUT" | grep "time:")
+
+  val_reusing=$(parse_to_ms "$line_reusing")
+  val_complex=$(parse_to_ms "$line_complex")
 
   if [[ -n "$val_reusing" ]]; then
     if (( $(echo "$val_reusing > 50.0" | bc -l 2>/dev/null || [ "${val_reusing%.*}" -gt 50 ]) )); then
@@ -263,6 +303,8 @@ else
     else
        pass "Render Benchmarks: Reusable 3-track mix performance is within limit ($val_reusing ms <= 50.0 ms)"
     fi
+  else
+    warn "Render Benchmarks: Could not parse metric value for Reusable 3-track mix"
   fi
 
   if [[ -n "$val_complex" ]]; then
@@ -271,6 +313,8 @@ else
     else
        pass "Render Benchmarks: Complex radio-play performance is within limit ($val_complex ms <= 100.0 ms)"
     fi
+  else
+    warn "Render Benchmarks: Could not parse metric value for Complex radio-play"
   fi
 fi
 rm -f "$BENCH_OUT"

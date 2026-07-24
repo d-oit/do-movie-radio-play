@@ -1,5 +1,3 @@
-#![allow(clippy::excessive_precision, clippy::approx_constant)]
-
 /// Reverb preset for a scene or individual track.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ReverbConfig {
@@ -66,16 +64,19 @@ fn calculate_gains(pos: f32) -> (f32, f32) {
 }
 
 impl StereoPosition {
+    #[allow(clippy::approx_constant)]
     pub const CENTRE: Self = Self {
         pos: 0.0,
         left_gain: 0.70710678,
         right_gain: 0.70710678,
     };
+    #[allow(clippy::excessive_precision)]
     pub const LEFT: Self = Self {
         pos: -0.7,
         left_gain: 0.97236992,
         right_gain: 0.23344536,
     };
+    #[allow(clippy::excessive_precision)]
     pub const RIGHT: Self = Self {
         pos: 0.7,
         left_gain: 0.23344536,
@@ -134,6 +135,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::approx_constant)]
     fn test_stereo_position_exact_gains() {
         // CENTRE (0.0): angle = FRAC_PI_4. cos = ~0.70710678, sin = ~0.70710678
         let centre_gains = StereoPosition::CENTRE.gains();

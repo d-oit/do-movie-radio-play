@@ -15,6 +15,8 @@ Traditionally, calculating these gains on every block or frame involved trigonom
 $$\text{angle} = (pos + 1.0) \times \frac{\pi}{4}$$
 $$left = \cos(\text{angle}), \quad right = \sin(\text{angle})$$
 
+*(Prose Fallback: The angle is calculated as `(position + 1.0) * PI / 4`. The left channel gain is the cosine of that angle, and the right channel gain is the sine of that angle.)*
+
 Computing `sin_cos()` per-frame or per-track is computationally intensive. To solve this:
 - **Precomputed Fields**: `StereoPosition` stores `pos`, `left_gain`, and `right_gain` directly.
 - **Single Computation**: Trigonometric panning calculation is performed **once** during `StereoPosition::new` (or during deserialization).

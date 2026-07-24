@@ -60,6 +60,14 @@ Profiles are stored as JSON in `config/profiles/`. Options can be overridden via
 2. Generate the readiness report: `python3 scripts/build_radio_play_readiness_report.py`.
 3. Check codebase integrity: `bash scripts/quality_gate.sh`.
 
+### Spectral VAD Performance Gate
+
+The quality gate (`scripts/quality_gate.sh`) automatically runs a performance benchmark using `perf-manifest.json` on every check. It enforces:
+- `vad_ms` < 30ms (VAD classification)
+- `spectral_vad_ms` < 30ms (Spectral VAD duration)
+- `frame_ms` < 150ms (framing and feature extraction)
+- `total_ms` < 500ms (total pipeline duration)
+
 ## Export Formats
 
 - **JSON**: Internal format with timestamps, confidence, tags, and prompts.

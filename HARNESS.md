@@ -95,3 +95,14 @@ For human engineers and autonomous agents conducting experiments:
 1. **Experiment Tracking:** Register new active learning runs using the `--learning-db` option or via SQL `record_experiment`. List active calibration loops via `timeline learning-experiments`.
 2. **Review Priorities:** Focus manual QA on flagged candidates in `reports/nonvoice-review.html`'s *Priority Review Candidates* panel.
 3. **Reproducibility:** When applying recommendations, ensure profile changes are checked in under `config/profiles/` with incremented `version` numbers and distinct `profile_id` strings.
+
+## Spectral VAD Performance Gate
+
+To prevent performance regressions of the Voice Activity Detection pipeline in continuous integration, the quality gate enforces deterministic execution checks against the performance manifest `testdata/perf-manifest.json` under the `--vad-engine spectral` mode:
+
+- **Benchmark Manifest**: Runs short (5s), medium (6s), and long (12s) audio clips.
+- **Enforced Thresholds**:
+  - `vad_ms` (VAD stage classification duration) must be **< 30ms** per file.
+  - `spectral_vad_ms` (specific spectral classification) must be **< 30ms** per file.
+  - `frame_ms` (framing and spectral feature extraction) must be **< 150ms** per file.
+  - `total_ms` (total pipeline duration) must be **< 500ms** per file.

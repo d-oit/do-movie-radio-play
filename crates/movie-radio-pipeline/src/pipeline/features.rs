@@ -4,42 +4,66 @@ use std::sync::Arc;
 
 pub use movie_radio_types::FeatureSet;
 
-pub struct SpectralAnalyzer {
-    fft_len: usize,
-    fft: Arc<dyn RealToComplex<f32>>,
-    hann: Vec<f32>,
-    input_buf: Vec<f32>,
-    output_buf: Vec<realfft::num_complex::Complex<f32>>,
-    mag_buf: Vec<f32>,
+#[derive(Clone)]
+pub struct SpectralVadContext {
+    pub fft_len: usize,
+    pub fft: Arc<dyn RealToComplex<f32>>,
+    pub window: Arc<Vec<f32>>,
 }
 
-impl SpectralAnalyzer {
+impl SpectralVadContext {
     pub fn new(fft_len: usize) -> Self {
         let mut planner = RealFftPlanner::new();
         let fft = planner.plan_fft_forward(fft_len);
-        let hann: Vec<f32> = (0..fft_len)
-            .map(|i| {
-                0.5 * (1.0 - (2.0 * std::f32::consts::PI * i as f32 / (fft_len - 1) as f32).cos())
-            })
-            .collect();
-        let input_buf = fft.make_input_vec();
-        let output_buf = fft.make_output_vec();
-        let mag_buf = vec![0.0; fft_len / 2];
+        let window = Arc::new(
+            (0..fft_len)
+                .map(|i| {
+                    0.5 * (1.0
+                        - (2.0 * std::f32::consts::PI * i as f32 / (fft_len - 1) as f32).cos())
+                })
+                .collect::<Vec<f32>>(),
+        );
         Self {
             fft_len,
             fft,
-            hann,
+            window,
+        }
+    }
+
+    pub fn local_context(&self) -> LocalSpectralVadContext {
+        let input_buf = self.fft.make_input_vec();
+        let output_buf = self.fft.make_output_vec();
+        let mag_buf = vec![0.0; self.fft_len / 2];
+        LocalSpectralVadContext {
+            fft_len: self.fft_len,
+            fft: Arc::clone(&self.fft),
+            window: Arc::clone(&self.window),
             input_buf,
             output_buf,
             mag_buf,
         }
     }
+}
 
+pub struct LocalSpectralVadContext {
+    pub fft_len: usize,
+    pub fft: Arc<dyn RealToComplex<f32>>,
+    pub window: Arc<Vec<f32>>,
+    pub input_buf: Vec<f32>,
+    pub output_buf: Vec<realfft::num_complex::Complex<f32>>,
+    pub mag_buf: Vec<f32>,
+}
+
+impl LocalSpectralVadContext {
     /// Optimized analysis that computes magnitudes into the internal buffer.
     pub fn analyze(&mut self, samples: &[f32]) -> &[f32] {
         let n = samples.len().min(self.fft_len);
         // Optimization: Fuse copy and windowing into a single pass to reduce memory traffic.
-        for ((b, &s), &h) in self.input_buf[..n].iter_mut().zip(samples).zip(&self.hann) {
+        for ((b, &s), &h) in self.input_buf[..n]
+            .iter_mut()
+            .zip(samples)
+            .zip(&*self.window)
+        {
             *b = s * h;
         }
         self.input_buf[n..].fill(0.0);
@@ -53,7 +77,7 @@ impl SpectralAnalyzer {
             return &self.mag_buf;
         }
 
-        // Manual magnitude calculation to avoid Complex::norm() overhead if any
+        // Manual magnitude calculation to avoid Complex::norm() overhead
         for (c, m) in self.output_buf.iter().zip(self.mag_buf.iter_mut()) {
             *m = (c.re * c.re + c.im * c.im).sqrt();
         }
@@ -65,7 +89,11 @@ impl SpectralAnalyzer {
     pub fn analyze_into(&mut self, samples: &[f32], out_mag: &mut [f32]) {
         let n = samples.len().min(self.fft_len);
         // Optimization: Fuse copy and windowing into a single pass to reduce memory traffic.
-        for ((b, &s), &h) in self.input_buf[..n].iter_mut().zip(samples).zip(&self.hann) {
+        for ((b, &s), &h) in self.input_buf[..n]
+            .iter_mut()
+            .zip(samples)
+            .zip(&*self.window)
+        {
             *b = s * h;
         }
         self.input_buf[n..].fill(0.0);
@@ -88,17 +116,16 @@ impl SpectralAnalyzer {
 }
 
 pub struct FeatureExtractor {
-    analyzer: SpectralAnalyzer,
+    local_ctx: LocalSpectralVadContext,
     prev_mags: Vec<f32>,
-    fft_len: usize,
 }
 
 impl FeatureExtractor {
     pub fn new(fft_len: usize) -> Self {
+        let global_ctx = SpectralVadContext::new(fft_len);
         Self {
-            analyzer: SpectralAnalyzer::new(fft_len),
+            local_ctx: global_ctx.local_context(),
             prev_mags: vec![0.0; fft_len / 2],
-            fft_len,
         }
     }
 
@@ -134,10 +161,10 @@ impl FeatureExtractor {
         let rms = (sum_sq / samples.len() as f32).sqrt();
         let zcr = zero_crosses as f32 / samples.len() as f32;
 
-        let bin_width = sample_rate as f32 / self.fft_len as f32;
+        let bin_width = sample_rate as f32 / self.local_ctx.fft_len as f32;
         let low_bin = (300.0 / bin_width) as usize;
         let high_bin = (2000.0 / bin_width) as usize;
-        let half_bins = self.fft_len / 2;
+        let half_bins = self.local_ctx.fft_len / 2;
         let inv_half_bins = 1.0 / half_bins as f32;
 
         let mut flux_acc = 0.0;
@@ -152,11 +179,13 @@ impl FeatureExtractor {
         let mut entropy_count = 0usize;
         let mut has_prev = false;
 
+        let fft_len = self.local_ctx.fft_len;
+
         for chunk in samples
-            .chunks(self.fft_len / 2)
-            .take_while(|c| c.len() >= self.fft_len / 4)
+            .chunks(fft_len / 2)
+            .take_while(|c| c.len() >= fft_len / 4)
         {
-            let mags = self.analyzer.analyze(chunk);
+            let mags = self.local_ctx.analyze(chunk);
 
             let mut chunk_mag_sum = 0.0f32;
             let mut chunk_sum_m_ln_m = 0.0f32;
@@ -233,9 +262,9 @@ impl FeatureExtractor {
         sample_rate: u32,
         prev_mags: Option<&[f32]>,
     ) -> (FeatureSet, &[f32]) {
-        let mags = self.analyzer.analyze(samples);
-        let features =
-            compute_frame_features_impl(samples, mags, prev_mags, sample_rate, self.fft_len);
+        let fft_len = self.local_ctx.fft_len;
+        let mags = self.local_ctx.analyze(samples);
+        let features = compute_frame_features_impl(samples, mags, prev_mags, sample_rate, fft_len);
         (features, mags)
     }
 }
@@ -265,32 +294,44 @@ pub fn compute_features_parallel(frames: &[&[f32]], sample_rate: u32) -> Vec<Fea
         return Vec::new();
     }
     let fft_len = frames[0].len().next_power_of_two().max(256);
-    let half_bins = fft_len / 2;
+    let global_ctx = SpectralVadContext::new(fft_len);
 
-    let mut all_mags = vec![0.0f32; frames.len() * half_bins];
-    all_mags
-        .par_chunks_mut(half_bins)
-        .zip(frames.par_iter())
-        .for_each_init(
-            || SpectralAnalyzer::new(fft_len),
-            |analyzer, (mags_out, chunk)| {
-                analyzer.analyze_into(chunk, mags_out);
-            },
-        );
+    const CHUNK_FRAMES: usize = 50; // Roughly 1 second of audio at 20ms frames
 
     frames
-        .par_iter()
+        .par_chunks(CHUNK_FRAMES)
         .enumerate()
-        .map(|(i, chunk)| {
-            let start = i * half_bins;
-            let mags = &all_mags[start..start + half_bins];
-            let prev_mags = if i > 0 {
-                let prev_start = (i - 1) * half_bins;
-                Some(&all_mags[prev_start..prev_start + half_bins])
-            } else {
-                None
-            };
-            compute_frame_features_impl(chunk, mags, prev_mags, sample_rate, fft_len)
+        .flat_map_iter(|(chunk_idx, chunk_frames)| {
+            let mut local_ctx = global_ctx.local_context();
+            let mut prev_mags = vec![0.0f32; fft_len / 2];
+            let start_idx = chunk_idx * CHUNK_FRAMES;
+
+            let mut has_prev = false;
+            if start_idx > 0 {
+                let prev_frame = frames[start_idx - 1];
+                local_ctx.analyze_into(prev_frame, &mut prev_mags);
+                has_prev = true;
+            }
+
+            let mut chunk_features = Vec::with_capacity(chunk_frames.len());
+
+            for frame in chunk_frames {
+                let mags = local_ctx.analyze(frame);
+
+                let features = compute_frame_features_impl(
+                    frame,
+                    mags,
+                    if has_prev { Some(&prev_mags) } else { None },
+                    sample_rate,
+                    fft_len,
+                );
+                chunk_features.push(features);
+
+                prev_mags.copy_from_slice(mags);
+                has_prev = true;
+            }
+
+            chunk_features
         })
         .collect()
 }

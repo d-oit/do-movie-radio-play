@@ -6,7 +6,7 @@
     "C"
   ],
   "entry_count": 2,
-  "elapsed_ms": 13073,
+  "elapsed_ms": 17389,
   "results": [
     {
       "id": "elephants_dream_2006_de",
@@ -17,7 +17,7 @@
       "profile": "movie",
       "config_path": "config/profiles/radio-play.json",
       "output_report": "testdata/validation/elephants_dream_2006_de_validation.json",
-      "elapsed_ms": 6698,
+      "elapsed_ms": 9682,
       "metrics": {
         "overlap_ratio": 0.8410643,
         "boundary_error_ms": 81278.44,
@@ -48,7 +48,7 @@
       "profile": "movie",
       "config_path": "config/profiles/radio-play.json",
       "output_report": "testdata/validation/elephants_dream_2006_es_validation.json",
-      "elapsed_ms": 6374,
+      "elapsed_ms": 7705,
       "metrics": {
         "overlap_ratio": 0.8410643,
         "boundary_error_ms": 81278.44,

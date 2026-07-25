@@ -54,6 +54,11 @@ Profiles are stored as JSON in `config/profiles/`. Options can be overridden via
 - `merge_gap_ms`: Maximum gap to merge adjacent segments.
 - `parallel_features`: Enable multi-threaded feature extraction.
 
+### Tuning Guidance
+
+- **frame_ms**: Increasing frame_ms from 20ms to 25ms or 30ms reduces the frames per second, lowering total CPU time.
+- **parallel_features**: Set parallel_features to true to enable parallel feature extraction using Rayon.
+
 ## Validation Workflow
 
 1. Run the validation suite: `python3 scripts/run_validation_manifest.py`.

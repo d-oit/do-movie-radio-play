@@ -60,8 +60,8 @@ Agents must load skill playbooks on demand when touching their domain. Current a
 ## Standard Workflow Loop
 All development must follow this standard "plan → execute → review" loop:
 1. **Plan**: Select/propose issues using GitHub templates (`coding`, `perf`, `agent`).
-2. **Execute**: Create/update a plan file, write code, and make minimal, atomic commits with `ai-commit.sh`.
-3. **Review**: Verify with `scripts/quality_gate.sh` and workspace tests before submission.
+1. **Execute**: Create/update a plan file, write code, and make minimal, atomic commits with `ai-commit.sh`.
+1. **Review**: Verify with `scripts/quality_gate.sh` and workspace tests before submission.
 
 ## Template Sync
 | Pattern | Status | Notes |

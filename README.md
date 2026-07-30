@@ -86,11 +86,11 @@ To run the complete validation manifest and build readiness reports:
 ```bash
 python3 scripts/run_validation_manifest.py
 ```
-2. Build the release readiness validation report:
+1. Build the release readiness validation report:
 ```bash
 python3 scripts/build_radio_play_readiness_report.py
 ```
-3. Run the complete codebase quality gate:
+1. Run the complete codebase quality gate:
 ```bash
 bash scripts/quality_gate.sh
 ```

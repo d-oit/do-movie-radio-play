@@ -37,44 +37,40 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | Docs Update | `bash scripts/update-all-docs.sh` |
 | Commit | `bash scripts/ai-commit.sh` |
 
+## Skill Activation Policy
+Agents must load skill playbooks on demand when touching their domain. Current active skills map:
+- Non-Voice Segmentation: [.agents/skills/nonvoice-segmentation/SKILL.md](.agents/skills/nonvoice-segmentation/SKILL.md)
+- Audio VAD on CPU: [.agents/skills/audio-vad-cpu/SKILL.md](.agents/skills/audio-vad-cpu/SKILL.md)
+- Self Learning & Calibration: [.agents/skills/self-learning-calibration/SKILL.md](.agents/skills/self-learning-calibration/SKILL.md)
+
 ## Rules
-- **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.
-- **Lint**: Always run `cargo fmt --check && cargo clippy --workspace --all-targets --all-features -- -D warnings`.
-- **Atomic Commits**: Use `bash scripts/ai-commit.sh`.
-- **No unwrap() or expect()** in `crates/*/src/`. Use `Result` and `?`.
+- **Verification**: `bash scripts/quality_gate.sh` must pass cleanly.
+- **Lint**: Run `cargo fmt --check && cargo clippy --workspace --all-targets --all-features -- -D warnings`.
+- **Atomic Commits**: Use `bash scripts/ai-commit.sh` to compile, check quality gates, and commit atomically.
+- **No unwrap() or expect()** in `crates/*/src/`. Use `Result` and the `?` operator.
 - **MAX_SOURCE_FILE_LOC**: Limit Rust source files to 500 lines.
-- **Secret Scanning**: Gitleaks enforcement via `.gitleaks.toml`.
+- **Secret Scanning**: Secret scanning is enforced via Gitleaks with `.gitleaks.toml`.
 - **Root Cleanliness**: Never commit test fixtures or runtime-output files to the repository root.
 - **Deterministic output**: All pipeline stages must produce deterministic output for identical inputs.
-- **Pre-existing issues**: Address pre-existing warnings or document in `plans/FOLLOWUPS.md`.
 
 ## Agent Coordination References
-- [.agents/ORCHESTRATION.md](.agents/ORCHESTRATION.md)
-- [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)
-- [.agents/skills/agent-coordination/PARALLEL.md](.agents/skills/agent-coordination/PARALLEL.md)
+- Coordinator: [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)
+- Parallelism: [.agents/skills/agent-coordination/PARALLEL.md](.agents/skills/agent-coordination/PARALLEL.md)
 
 ## Standard Workflow Loop
-All human and agent-driven development must follow this standard "plan → execute → review" loop:
-1. **Plan**: Propose/select an issue before editing code using GitHub issue templates:
-   - Use `🛠️ Coding Change` template for bug fixes, features, or architectural tasks (labels: `coding`, `radio-play`).
-   - Use `⚡ Performance Change` template for profiling, optimization, or database improvements (labels: `perf`, `learning`).
-   - Use `🤖 Agent/Harness Change` template for updates to agent skills, plans, or harness settings (labels: `agent`, `harness`).
-2. **Execute**: Create/update the plan (e.g. `plans/GOAP_STATE.md`), then write code in minimal, atomic commits using `scripts/ai-commit.sh`.
-3. **Review**: Ensure general correctness and verify code by running `scripts/quality_gate.sh` and workspace tests before submission.
-## Active Learning & Calibration Loop
-For any calibration/VAD verification task:
-- Always check priority review candidates first using the active learning filters.
-- Ensure profile changes are registered as experiments with unique `profile_id` and incremented `version` fields.
+All development must follow this standard "plan → execute → review" loop:
+1. **Plan**: Select/propose issues using GitHub templates (`coding`, `perf`, `agent`).
+2. **Execute**: Create/update a plan file, write code, and make minimal, atomic commits with `ai-commit.sh`.
+3. **Review**: Verify with `scripts/quality_gate.sh` and workspace tests before submission.
 
 ## Template Sync
 | Pattern | Status | Notes |
 | --------- | ------ | ----- |
-| Gitleaks Scan | Adopted | `.gitleaks.toml` present |
-| Named Constants | Adopted | `bash readonly` block above |
-| Single Source Version | Adopted | `VERSION` file is the source of truth |
+| Gitleaks Scan | Adopted | `.gitleaks.toml` is used for pre-commit checks |
+| Named Constants | Adopted | Specified in the fenced `bash readonly` block above |
+| Single Source Version | Gap | `agents-docs/VERSION.md` is missing (no `agents-docs/` dir in repo) |
 | `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines |
-| Skill Frontmatter | Adopted | Verified in all `.agents/skills/*.md` |
-| `ai-commit.sh` | Adopted | Available in `scripts/` |
-| `update-all-docs.sh` | Adopted | Available in `scripts/` |
-| Agent Config Dirs | Adopted | `.jules/`, `.opencode/`, `.qwen/` present |
-| `VERSION` policy | Gap | `agents-docs/VERSION.md` missing (no `agents-docs/` dir) |
+| Skill Frontmatter | Adopted | Verified in all `.agents/skills/*.md` files |
+| `ai-commit.sh` | Adopted | Script exists in `scripts/ai-commit.sh` |
+| `update-all-docs.sh` | Adopted | Script exists in `scripts/update-all-docs.sh` |
+| Agent Config Dirs | Adopted | `.jules/`, `.opencode/`, `.qwen/` are present |

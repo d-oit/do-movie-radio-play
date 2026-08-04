@@ -124,12 +124,14 @@ fn compute_zcr(samples: &[f32]) -> f32 {
     if samples.len() < 2 {
         return 0.0;
     }
-    // Optimization: true single pass manual branchless loop
+    // Optimization: true single pass manual loop
     let mut crossings = 0usize;
     let mut prev_sign = samples[0] >= 0.0;
     for &s in &samples[1..] {
         let sign = s >= 0.0;
-        crossings += (sign != prev_sign) as usize;
+        if sign != prev_sign {
+            crossings += 1;
+        }
         prev_sign = sign;
     }
     crossings as f32 / (samples.len() - 1) as f32
@@ -177,11 +179,10 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
         let mut mag_log_mag_sum = 0.0f32;
         let mut pos_count = 0usize;
 
-        let mut i_f32 = 0.0f32;
         for (i, c) in output[..output_size].iter().enumerate() {
             let mag = (c.re * c.re + c.im * c.im).sqrt();
 
-            weighted_sum += i_f32 * mag;
+            weighted_sum += i as f32 * mag;
             total_mag += mag;
 
             if i < low_bin_limit {
@@ -196,7 +197,6 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
                 mag_log_mag_sum += mag * ln_mag;
                 pos_count += 1;
             }
-            i_f32 += 1.0;
         }
 
         if total_mag > 0.0 {

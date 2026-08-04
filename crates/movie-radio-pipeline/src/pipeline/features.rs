@@ -118,15 +118,17 @@ impl FeatureExtractor {
 
         let mut sum_sq = 0.0;
         let mut zero_crosses = 0u32;
-        // Optimization: Fuse RMS and branchless ZCR calculation into a single pass to minimize memory accesses and pipeline stalls.
+        // Optimization: Fuse RMS and ZCR calculation into a single pass to minimize memory accesses.
         if !samples.is_empty() {
             let mut prev_sign = samples[0] >= 0.0;
             sum_sq += samples[0] * samples[0];
             for &s in &samples[1..] {
                 sum_sq += s * s;
                 let sign = s >= 0.0;
-                zero_crosses += (sign != prev_sign) as u32;
-                prev_sign = sign;
+                if sign != prev_sign {
+                    zero_crosses += 1;
+                    prev_sign = sign;
+                }
             }
         }
         let rms = (sum_sq / samples.len() as f32).sqrt();
@@ -169,10 +171,9 @@ impl FeatureExtractor {
                 high += mags[high_start..high_limit].iter().sum::<f32>();
             }
 
-            let mut i_f32 = 0.0f32;
             for (i, &m) in mags.iter().enumerate().take(half_bins) {
                 chunk_mag_sum += m;
-                weighted_bin_sum += i_f32 * m;
+                weighted_bin_sum += i as f32 * m;
                 mag_sum += m;
 
                 if m > 1e-10 {
@@ -187,7 +188,6 @@ impl FeatureExtractor {
                     let diff = m - self.prev_mags[i];
                     flux_acc += diff.max(0.0);
                 }
-                i_f32 += 1.0;
             }
 
             if chunk_mag_sum > 1e-10 {
@@ -307,7 +307,7 @@ fn compute_frame_features_impl(
 ) -> FeatureSet {
     let mut sum_sq = 0.0;
     let mut zero_crosses = 0u32;
-    // Optimization: Fuse RMS and branchless ZCR calculation into a single pass to minimize memory accesses and pipeline stalls.
+    // Optimization: Fuse RMS and ZCR calculation into a single pass to minimize memory accesses.
     if !samples.is_empty() {
         let mut prev_sign = samples[0] >= 0.0;
         sum_sq += samples[0] * samples[0];

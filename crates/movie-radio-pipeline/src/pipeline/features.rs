@@ -169,17 +169,8 @@ impl FeatureExtractor {
                 high += mags[high_start..high_limit].iter().sum::<f32>();
             }
 
-            if has_prev {
-                flux_acc += mags
-                    .iter()
-                    .zip(self.prev_mags.iter())
-                    .take(half_bins)
-                    .map(|(&m, &p)| (m - p).max(0.0))
-                    .sum::<f32>();
-            }
-
             let mut i_f32 = 0.0f32;
-            for &m in mags.iter().take(half_bins) {
+            for (i, &m) in mags.iter().enumerate().take(half_bins) {
                 chunk_mag_sum += m;
                 weighted_bin_sum += i_f32 * m;
                 mag_sum += m;
@@ -190,6 +181,11 @@ impl FeatureExtractor {
                     arithmetic_mean += m;
                     valid_mag_count += 1;
                     chunk_sum_m_ln_m += m * ln_m;
+                }
+
+                if has_prev {
+                    let diff = m - self.prev_mags[i];
+                    flux_acc += diff.max(0.0);
                 }
                 i_f32 += 1.0;
             }
@@ -353,17 +349,8 @@ fn compute_frame_features_impl(
         0.0
     };
 
-    if let Some(prev) = prev_mags {
-        flux_acc = mags
-            .iter()
-            .zip(prev.iter())
-            .take(half_bins)
-            .map(|(&m, &p)| (m - p).max(0.0))
-            .sum();
-    }
-
     let mut i_f32 = 0.0f32;
-    for &m in mags.iter().take(half_bins) {
+    for (i, &m) in mags.iter().enumerate().take(half_bins) {
         weighted_bin_sum += i_f32 * m;
         mag_sum += m;
 
@@ -373,6 +360,10 @@ fn compute_frame_features_impl(
             arithmetic_mean += m;
             valid_mag_count += 1;
             sum_m_ln_m += m * ln_m;
+        }
+
+        if let Some(prev) = prev_mags {
+            flux_acc += (m - prev[i]).max(0.0);
         }
         i_f32 += 1.0;
     }

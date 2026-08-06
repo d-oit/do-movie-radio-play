@@ -349,9 +349,8 @@ fn compute_frame_features_impl(
         0.0
     };
 
-    let mut i_f32 = 0.0f32;
     for (i, &m) in mags.iter().enumerate().take(half_bins) {
-        weighted_bin_sum += i_f32 * m;
+        weighted_bin_sum += i as f32 * m;
         mag_sum += m;
 
         if m > 1e-10 {
@@ -365,7 +364,6 @@ fn compute_frame_features_impl(
         if let Some(prev) = prev_mags {
             flux_acc += (m - prev[i]).max(0.0);
         }
-        i_f32 += 1.0;
     }
 
     let spectral_entropy = if mag_sum > 1e-10 {

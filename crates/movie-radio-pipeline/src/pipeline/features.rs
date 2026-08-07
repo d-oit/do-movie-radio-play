@@ -314,10 +314,8 @@ fn compute_frame_features_impl(
         for &s in &samples[1..] {
             sum_sq += s * s;
             let sign = s >= 0.0;
-            if sign != prev_sign {
-                zero_crosses += 1;
-                prev_sign = sign;
-            }
+            zero_crosses += (sign != prev_sign) as u32;
+            prev_sign = sign;
         }
     }
     let rms = (sum_sq / samples.len().max(1) as f32).sqrt();

@@ -17,10 +17,6 @@ impl Default for GapIdentifier {
 }
 
 impl GapIdentifier {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Identifies silent gaps in the timeline that are suitable candidates for audio description.
     ///
     /// It parses an optional subtitles SRT file and analyzes timeline segments using
@@ -246,7 +242,7 @@ mod tests {
             ],
         };
 
-        let identifier = GapIdentifier::new();
+        let identifier = GapIdentifier::default();
         let output = identifier.identify_gaps(&timeline, None).unwrap();
 
         assert!(!output.gaps.is_empty());

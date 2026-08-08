@@ -37,7 +37,7 @@ pub fn handle_radio_play(
             None
         };
 
-        let identifier = GapIdentifier::new();
+        let identifier = GapIdentifier::default();
         let gap_analysis = identifier.identify_gaps(&timeline, srt_content.as_deref())?;
 
         if let Some(out) = output_path {
@@ -81,7 +81,7 @@ fn run_full_pipeline(
         None
     };
 
-    let identifier = GapIdentifier::new();
+    let identifier = GapIdentifier::default();
     let gap_analysis = identifier.identify_gaps(&timeline, srt_content.as_deref())?;
     info!(gaps = gap_analysis.gaps.len(), "Identified visual gaps");
 

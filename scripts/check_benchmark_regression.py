@@ -140,4 +140,4 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except ValueError as err:
         print(f"benchmark artifact error: {err}", file=sys.stderr)
-        raise SystemExit(1) from err
+        raise SystemExit(1)

@@ -108,7 +108,7 @@ impl Action for IdentifyVisualGaps {
             .transpose()?;
 
         info!("Identifying visual gaps");
-        let identifier = GapIdentifier::new();
+        let identifier = GapIdentifier::default();
         let gap_analysis = identifier.identify_gaps(timeline, srt_content.as_deref())?;
         info!(gaps = gap_analysis.gaps.len(), "Gaps identified");
         ctx.gap_analysis = Some(gap_analysis);

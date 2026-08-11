@@ -12,6 +12,7 @@ struct AnalysisCache {
     output: Vec<Complex<f32>>,
     spectrum_a: Vec<f32>,
     spectrum_b: Vec<f32>,
+    mags: Vec<f32>,
 }
 
 impl AnalysisCache {
@@ -23,6 +24,7 @@ impl AnalysisCache {
             output: Vec::new(),
             spectrum_a: Vec::new(),
             spectrum_b: Vec::new(),
+            mags: Vec::new(),
         }
     }
 
@@ -40,6 +42,9 @@ impl AnalysisCache {
         let output_size = fft_size / 2 + 1;
         if self.output.len() < output_size {
             self.output.resize(output_size, Complex::new(0.0, 0.0));
+        }
+        if self.mags.len() < output_size {
+            self.mags.resize(output_size, 0.0);
         }
     }
 
@@ -171,25 +176,32 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
         let low_bin_limit = (250.0 / bin_width).floor() as usize;
         let high_bin_limit = (4000.0 / bin_width).ceil() as usize;
 
+        // Populate pre-allocated mags buffer
+        let mags = &mut cache_ptr.mags[..output_size];
+        for (c, m) in output[..output_size].iter().zip(mags.iter_mut()) {
+            *m = (c.re * c.re + c.im * c.im).sqrt();
+        }
+
+        // Slice-based summation to remove inner loop branching entirely
+        let low_limit = low_bin_limit.min(output_size);
+        let low_mag_sum: f32 = mags[..low_limit].iter().sum();
+
+        let high_start = (high_bin_limit + 1).min(output_size);
+        let high_mag_sum: f32 = if high_start < output_size {
+            mags[high_start..output_size].iter().sum()
+        } else {
+            0.0
+        };
+
         let mut weighted_sum = 0.0f32;
         let mut total_mag = 0.0f32;
-        let mut low_mag_sum = 0.0f32;
-        let mut high_mag_sum = 0.0f32;
         let mut log_mag_sum = 0.0f32;
         let mut mag_log_mag_sum = 0.0f32;
         let mut pos_count = 0usize;
 
-        for (i, c) in output[..output_size].iter().enumerate() {
-            let mag = (c.re * c.re + c.im * c.im).sqrt();
-
+        for (i, &mag) in mags.iter().enumerate() {
             weighted_sum += i as f32 * mag;
             total_mag += mag;
-
-            if i < low_bin_limit {
-                low_mag_sum += mag;
-            } else if i > high_bin_limit {
-                high_mag_sum += mag;
-            }
 
             if mag > 1e-10 {
                 let ln_mag = mag.ln();

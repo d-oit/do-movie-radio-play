@@ -187,11 +187,7 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
         let low_mag_sum: f32 = mags[..low_limit].iter().sum();
 
         let high_start = (high_bin_limit + 1).min(output_size);
-        let high_mag_sum: f32 = if high_start < output_size {
-            mags[high_start..output_size].iter().sum()
-        } else {
-            0.0
-        };
+        let high_mag_sum: f32 = mags[high_start..output_size].iter().sum();
 
         let mut weighted_sum = 0.0f32;
         let mut total_mag = 0.0f32;

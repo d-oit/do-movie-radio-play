@@ -142,6 +142,36 @@ fn compute_zcr(samples: &[f32]) -> f32 {
     crossings as f32 / (samples.len() - 1) as f32
 }
 
+/// Fills `mags` with the magnitude spectrum computed from the FFT `output`.
+fn fill_magnitudes(output: &[Complex<f32>], mags: &mut [f32]) {
+    for (c, m) in output.iter().zip(mags.iter_mut()) {
+        *m = (c.re * c.re + c.im * c.im).sqrt();
+    }
+}
+
+/// Single-pass spectral moments over the magnitude spectrum.
+fn spectral_stats(mags: &[f32]) -> (f32, f32, f32, f32, usize) {
+    let mut weighted_sum = 0.0f32;
+    let mut total_mag = 0.0f32;
+    let mut log_mag_sum = 0.0f32;
+    let mut mag_log_mag_sum = 0.0f32;
+    let mut pos_count = 0usize;
+
+    for (i, &mag) in mags.iter().enumerate() {
+        weighted_sum += i as f32 * mag;
+        total_mag += mag;
+
+        if mag > 1e-10 {
+            let ln_mag = mag.ln();
+            log_mag_sum += ln_mag;
+            mag_log_mag_sum += mag * ln_mag;
+            pos_count += 1;
+        }
+    }
+
+    (weighted_sum, total_mag, log_mag_sum, mag_log_mag_sum, pos_count)
+}
+
 fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, f32, f32)> {
     let fft_size = next_power_of_2(samples.len().max(512));
 
@@ -178,9 +208,7 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
 
         // Populate pre-allocated mags buffer
         let mags = &mut cache_ptr.mags[..output_size];
-        for (c, m) in output[..output_size].iter().zip(mags.iter_mut()) {
-            *m = (c.re * c.re + c.im * c.im).sqrt();
-        }
+        fill_magnitudes(&output[..output_size], mags);
 
         // Slice-based summation to remove inner loop branching entirely
         let low_limit = low_bin_limit.min(output_size);
@@ -189,23 +217,8 @@ fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, 
         let high_start = (high_bin_limit + 1).min(output_size);
         let high_mag_sum: f32 = mags[high_start..output_size].iter().sum();
 
-        let mut weighted_sum = 0.0f32;
-        let mut total_mag = 0.0f32;
-        let mut log_mag_sum = 0.0f32;
-        let mut mag_log_mag_sum = 0.0f32;
-        let mut pos_count = 0usize;
-
-        for (i, &mag) in mags.iter().enumerate() {
-            weighted_sum += i as f32 * mag;
-            total_mag += mag;
-
-            if mag > 1e-10 {
-                let ln_mag = mag.ln();
-                log_mag_sum += ln_mag;
-                mag_log_mag_sum += mag * ln_mag;
-                pos_count += 1;
-            }
-        }
+        let (weighted_sum, total_mag, log_mag_sum, mag_log_mag_sum, pos_count) =
+            spectral_stats(mags);
 
         if total_mag > 0.0 {
             let entropy = ((total_mag.ln() - mag_log_mag_sum / total_mag) * inv_ln_2).max(0.0);

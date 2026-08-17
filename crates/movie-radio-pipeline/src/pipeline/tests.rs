@@ -1,4 +1,7 @@
 use super::*;
+use filters::{
+    residual_bridge_gap_ms, should_apply_speech_evidence_filter, should_apply_verification_filter,
+};
 use hound::{WavSpec, WavWriter};
 use movie_radio_types::AnalysisConfig;
 use movie_radio_types::MergeOptions;

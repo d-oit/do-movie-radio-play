@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+- perf(verification): pre-allocated magnitude buffers and branchless spectral summation, ~7.5% faster spectral feature extraction (#193).
+- refactor(pipeline): extracted `run_pipeline` processing stages into focused helpers with a shared `timed_stage!` macro (#189).
+- refactor(goap): split `identify_gaps` signal analysis into dedicated helper methods (#188).
+- build(deps): bumped `clap` to 4.6.6 (#192).
+
 ## 0.1.0
 - Initial production-oriented CLI with `extract`/`tag`/`prompt`/`calibrate`/`bench`.
 - Added spectral VAD path and profile-driven threshold controls.

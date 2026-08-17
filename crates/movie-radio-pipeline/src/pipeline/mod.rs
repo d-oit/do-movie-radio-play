@@ -42,7 +42,8 @@ struct PipelineArtifacts {
     stage_ms: StageDurations,
 }
 
-/// Times a pipeline stage and records the elapsed duration into `stage_ms`.
+/// Times a pipeline stage, records the elapsed duration into `stage_ms`,
+/// and returns the stage result.
 macro_rules! timed_stage {
     ($stage_ms:expr, $field:ident, $body:block) => {{
         let __stage_start = Instant::now();

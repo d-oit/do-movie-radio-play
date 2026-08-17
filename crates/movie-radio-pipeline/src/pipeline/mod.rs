@@ -226,9 +226,10 @@ fn extract_timeline_chunked(
     all_segments.sort_by_key(|s| s.start_ms);
 
     let timeline = TimelineOutput {
-        file: input
-            .file_name()
-            .map_or_else(|| "unknown".to_string(), |s| s.to_string_lossy().to_string()),
+        file: input.file_name().map_or_else(
+            || "unknown".to_string(),
+            |s| s.to_string_lossy().to_string(),
+        ),
         analysis_sample_rate: cfg.sample_rate_hz,
         frame_ms: cfg.frame_ms,
         segments: all_segments,
@@ -269,9 +270,10 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     )?;
 
     let timeline = TimelineOutput {
-        file: input
-            .file_name()
-            .map_or_else(|| "unknown".to_string(), |s| s.to_string_lossy().to_string()),
+        file: input.file_name().map_or_else(
+            || "unknown".to_string(),
+            |s| s.to_string_lossy().to_string(),
+        ),
         analysis_sample_rate: cfg.sample_rate_hz,
         frame_ms: cfg.frame_ms,
         segments,

@@ -42,6 +42,16 @@ struct PipelineArtifacts {
     stage_ms: StageDurations,
 }
 
+/// Times a pipeline stage and records the elapsed duration into `stage_ms`.
+macro_rules! timed_stage {
+    ($stage_ms:expr, $field:ident, $body:block) => {{
+        let __stage_start = Instant::now();
+        let __stage_out = $body;
+        $stage_ms.$field = __stage_start.elapsed().as_millis() as u64;
+        __stage_out
+    }};
+}
+
 pub fn extract_timeline(input: &Path, cfg: &AnalysisConfig) -> Result<TimelineOutput> {
     if let Some(chunk_sec) = cfg.chunk_duration_sec.filter(|&s| s > 0) {
         return extract_timeline_chunked(input, cfg, chunk_sec);
@@ -218,8 +228,7 @@ fn extract_timeline_chunked(
     let timeline = TimelineOutput {
         file: input
             .file_name()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "unknown".to_string()),
+            .map_or_else(|| "unknown".to_string(), |s| s.to_string_lossy().to_string()),
         analysis_sample_rate: cfg.sample_rate_hz,
         frame_ms: cfg.frame_ms,
         segments: all_segments,
@@ -262,8 +271,7 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     let timeline = TimelineOutput {
         file: input
             .file_name()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "unknown".to_string()),
+            .map_or_else(|| "unknown".to_string(), |s| s.to_string_lossy().to_string()),
         analysis_sample_rate: cfg.sample_rate_hz,
         frame_ms: cfg.frame_ms,
         segments,
@@ -279,19 +287,19 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
 
 #[rustfmt::skip]
 fn decode_stage(input: &Path, cfg: &AnalysisConfig, stage_ms: &mut StageDurations) -> Result<(Vec<f32>, u32)> {
-    let start = Instant::now();
-    let (mono, source_rate) = decode::decode_audio(input, cfg.sample_rate_hz)?;
-    stage_ms.decode_ms = start.elapsed().as_millis() as u64;
-    info!(stage = "decode", ms = stage_ms.decode_ms, source_rate, samples = mono.len(), "stage complete");
+    let (mono, source_rate) = timed_stage!(stage_ms, decode_ms, {
+        decode::decode_audio(input, cfg.sample_rate_hz)?
+    });
     stage_ms.resample_ms = 0;
+    info!(stage = "decode", ms = stage_ms.decode_ms, source_rate, samples = mono.len(), "stage complete");
     Ok((mono, source_rate))
 }
 
 #[rustfmt::skip]
 fn framing_stage(mono: &[f32], cfg: &AnalysisConfig, stage_ms: &mut StageDurations) -> Vec<Frame> {
-    let start = Instant::now();
-    let frames = framing::build_frames(mono, cfg.sample_rate_hz, cfg.frame_ms, cfg.parallel_features);
-    stage_ms.frame_ms = start.elapsed().as_millis() as u64;
+    let frames = timed_stage!(stage_ms, frame_ms, {
+        framing::build_frames(mono, cfg.sample_rate_hz, cfg.frame_ms, cfg.parallel_features)
+    });
     info!(stage = "frame", ms = stage_ms.frame_ms, frames = frames.len(), "stage complete");
     frames
 }
@@ -310,66 +318,66 @@ fn vad_stage(frames: &[Frame], cfg: &AnalysisConfig, eff_thresh: f32, stage_ms: 
     };
     let engine: Box<dyn VadEngine> = create_engine(&cfg.vad_engine, thresh, flat, ent, cent_min, cent_max)?;
     let name = engine.name();
-    let start = Instant::now();
-    let output = engine.classify(frames);
-    stage_ms.vad_ms = start.elapsed().as_millis() as u64;
+    let output = timed_stage!(stage_ms, vad_ms, {
+        engine.classify(frames)
+    });
     info!(stage = "vad", ms = stage_ms.vad_ms, engine = name, "stage complete");
     Ok((output.decisions, output.likelihoods))
 }
 
 #[rustfmt::skip]
 fn smoothing_stage(speech: &[bool], frames: &[Frame], frame_likelihoods: &[f32], cfg: &AnalysisConfig, stage_ms: &mut StageDurations) -> Vec<bool> {
-    let start = Instant::now();
-    let smoothed = tri_state::resolve_speech_with_ambiguity(
-        speech, frames, frame_likelihoods, cfg.frame_ms, cfg.speech_hangover_ms,
-    );
-    stage_ms.smooth_ms = start.elapsed().as_millis() as u64;
+    let smoothed = timed_stage!(stage_ms, smooth_ms, {
+        tri_state::resolve_speech_with_ambiguity(
+            speech, frames, frame_likelihoods, cfg.frame_ms, cfg.speech_hangover_ms,
+        )
+    });
     info!(stage = "smooth", ms = stage_ms.smooth_ms, "stage complete");
     smoothed
 }
 
 #[rustfmt::skip]
 fn speech_segments_stage(smoothed: &[bool], frame_likelihoods: &[f32], cfg: &AnalysisConfig, stage_ms: &mut StageDurations) -> Vec<Segment> {
-    let start = Instant::now();
-    let segs = segmenter::speech_segments(smoothed, cfg.frame_ms, cfg.min_speech_ms, frame_likelihoods);
-    stage_ms.speech_ms = start.elapsed().as_millis() as u64;
+    let segs = timed_stage!(stage_ms, speech_ms, {
+        segmenter::speech_segments(smoothed, cfg.frame_ms, cfg.min_speech_ms, frame_likelihoods)
+    });
     info!(stage = "speech_segments", ms = stage_ms.speech_ms, segments = segs.len(), "stage complete");
     segs
 }
 
 #[rustfmt::skip]
 fn merging_stage(speech_segments: &[Segment], frames: &[Frame], cfg: &AnalysisConfig, stage_ms: &mut StageDurations) -> Vec<Segment> {
-    let start = Instant::now();
-    let merged = segmenter::merge_close_segments(speech_segments, cfg.merge_gap_ms);
-    let floor_ms = cfg.merge_options.as_ref().map(|o| o.min_speech_duration).unwrap_or(cfg.min_speech_ms);
-    let pruned = segmenter::prune_short_speech_segments(&merged, floor_ms);
-    let filtered = if should_apply_speech_evidence_filter(cfg) {
-        speech_evidence::filter_implausible_speech_segments(&pruned, frames, cfg.frame_ms)
-    } else {
-        pruned
-    };
-    stage_ms.merge_ms = start.elapsed().as_millis() as u64;
+    let filtered = timed_stage!(stage_ms, merge_ms, {
+        let merged = segmenter::merge_close_segments(speech_segments, cfg.merge_gap_ms);
+        let floor_ms = cfg.merge_options.as_ref().map(|o| o.min_speech_duration).unwrap_or(cfg.min_speech_ms);
+        let pruned = segmenter::prune_short_speech_segments(&merged, floor_ms);
+        if should_apply_speech_evidence_filter(cfg) {
+            speech_evidence::filter_implausible_speech_segments(&pruned, frames, cfg.frame_ms)
+        } else {
+            pruned
+        }
+    });
     info!(stage = "merge_segments", ms = stage_ms.merge_ms, segments = filtered.len(), "stage complete");
     filtered
 }
 
 #[rustfmt::skip]
 fn non_voice_inversion_stage(input: &Path, filtered_speech: &[Segment], frame_likelihoods: &[f32], total_audio_ms: u64, cfg: &AnalysisConfig, stage_ms: &mut StageDurations) -> Result<Vec<Segment>> {
-    let start = Instant::now();
-    let non_voice = segmenter::invert_to_non_voice(
-        filtered_speech, total_audio_ms, cfg.min_non_voice_ms, cfg.frame_ms, frame_likelihoods,
-    );
-    let bridge_ms = cfg.merge_options.as_ref().map(|o| o.min_speech_duration).unwrap_or(0);
-    let non_voice = segmenter::bridge_non_voice_segments(&non_voice, bridge_ms);
-    let non_voice = if let Some(opts) = cfg.merge_options.as_ref() {
-        segmenter::apply_non_voice_merge_policy(&non_voice, opts)
-    } else {
-        non_voice
-    };
-    let non_voice = nonvoice_expand::expand_non_voice_segments_into_ambiguous(
-        &non_voice, frame_likelihoods, cfg.frame_ms, ambiguous_expand_max_ms(cfg),
-    );
-    stage_ms.invert_ms = start.elapsed().as_millis() as u64;
+    let non_voice = timed_stage!(stage_ms, invert_ms, {
+        let non_voice = segmenter::invert_to_non_voice(
+            filtered_speech, total_audio_ms, cfg.min_non_voice_ms, cfg.frame_ms, frame_likelihoods,
+        );
+        let bridge_ms = cfg.merge_options.as_ref().map(|o| o.min_speech_duration).unwrap_or(0);
+        let non_voice = segmenter::bridge_non_voice_segments(&non_voice, bridge_ms);
+        let non_voice = if let Some(opts) = cfg.merge_options.as_ref() {
+            segmenter::apply_non_voice_merge_policy(&non_voice, opts)
+        } else {
+            non_voice
+        };
+        nonvoice_expand::expand_non_voice_segments_into_ambiguous(
+            &non_voice, frame_likelihoods, cfg.frame_ms, ambiguous_expand_max_ms(cfg),
+        )
+    });
     let segments = if let Some(max_ms) = cfg.max_non_voice_ms {
         let s_start = Instant::now();
         let split = segmenter::split_long_segments(

@@ -17,6 +17,7 @@ impl Default for GapIdentifier {
 }
 
 impl GapIdentifier {
+    /// Creates a gap identifier with default signal thresholds.
     pub fn new() -> Self {
         Self::default()
     }

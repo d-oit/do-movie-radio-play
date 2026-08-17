@@ -17,6 +17,10 @@ impl Default for GapIdentifier {
 }
 
 impl GapIdentifier {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Identifies silent gaps in the timeline that are suitable candidates for audio description.
     ///
     /// It parses an optional subtitles SRT file and analyzes timeline segments using

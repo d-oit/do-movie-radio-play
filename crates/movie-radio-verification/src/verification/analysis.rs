@@ -169,7 +169,13 @@ fn spectral_stats(mags: &[f32]) -> (f32, f32, f32, f32, usize) {
         }
     }
 
-    (weighted_sum, total_mag, log_mag_sum, mag_log_mag_sum, pos_count)
+    (
+        weighted_sum,
+        total_mag,
+        log_mag_sum,
+        mag_log_mag_sum,
+        pos_count,
+    )
 }
 
 fn compute_spectral_features(samples: &[f32]) -> anyhow::Result<(f32, f32, f32, f32, f32)> {

@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for proposing a coding change! Please fill out the details below to help us and our agents implement and verify it consistently.
+        Thanks for proposing a coding change! Fill out the details below so we and our agents can implement and verify it consistently. Open issues and PRs are triaged weekly (see CONTRIBUTING.md).
   - type: textarea
     id: description
     attributes:

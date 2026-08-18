@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for proposing a change to the agent or harness workflow! Please detail the skill or config adjustments below.
+        Thanks for proposing a change to the agent or harness workflow! Please detail the skill or config adjustments below. Open issues and PRs are triaged weekly — see CONTRIBUTING.md.
   - type: textarea
     id: description
     attributes:

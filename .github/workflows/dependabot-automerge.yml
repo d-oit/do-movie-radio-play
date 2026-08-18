@@ -13,8 +13,22 @@ jobs:
     if: github.actor == 'dependabot[bot]' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
-      - name: Enable auto-merge for Dependabot PRs
+      - name: Fetch Dependabot metadata
+        id: metadata
+        # Pinned to the commit SHA of the v2 tag for immutability (Codacy rule).
+        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Enable auto-merge for patch/minor updates
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr merge --auto --squash "$PR_URL"
+      - name: Skip major and other updates
+        if: >-
+          steps.metadata.outputs.update-type != 'version-update:semver-patch' &&
+          steps.metadata.outputs.update-type != 'version-update:semver-minor'
+        run: echo "Skipping auto-merge for update-type '${{ steps.metadata.outputs.update-type }}' (manual review required)"

@@ -22,3 +22,5 @@ pub use segment::{
 pub use voice_types::{
     AudioOutput, Emotion, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer,
 };
+
+this is intentionally broken rust {{{

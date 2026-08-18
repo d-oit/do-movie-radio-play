@@ -49,13 +49,37 @@ recovered.
 - GitHub incidents break CodeQL *and* DeepSource webhook delivery simultaneously;
   status contexts for DeepSource are `commit statuses`, not check-runs.
 - DeepSource skips identical-tree commits — re-triggering requires a real diff.
-- No branch protection exists on `main`; CodeQL is not a required check, but was
-  still pushed to green for hygiene.
+- Branch protection did not exist at triage time; it was added in the followups
+  below (see "Followups").
+
+## Followups (completed same day)
+
+| PR | Change |
+|----|--------|
+| 199 | Weekly triage reminder workflow, AGENTS.md Recent-Merges/Triage sections, closeout report |
+| 200 | CONTRIBUTING.md triage policy + issue-template pointers; enabled branch protection |
+| — | Dependabot auto-merge hardened to skip `semver-major` bumps |
+
+### Branch protection (live)
+
+- Required checks: `CI Success`, CodeQL ×4, `Codacy Static Code Analysis`,
+  `DeepSource: Analysis`, `Repowise / code health` (8 contexts).
+- `strict` (branches up to date), `enforce_admins`, no force pushes, no deletions,
+  conversation resolution required, delete-branch-on-merge.
+- No PR-approval requirement (keeps the dependabot auto-merge flow working).
+- Verified with a deliberately broken PR (#201): `mergeable_state: blocked` and the
+  merge API returned 405 ("Required status check \"CI Success\" is failing").
+
+### Weekly triage reminder
+
+- `.github/workflows/triage-reminder.yml` runs Mondays 09:00 UTC (manual trigger
+  supported). Flags open items with no activity in 7+ days into a `triage`-labeled
+  issue; does nothing when the queue is clean (verified end-to-end).
 
 ## Final State
 
-- `main` (41023d7): Quality Gate ✅, CodeQL ✅, Codacy 0 issues, DeepSource clean,
-  fmt clean, 44+17 local tests green.
+- `main` (cf488b6): Quality Gate ✅, CodeQL ✅, Codacy 0 issues, DeepSource clean,
+  fmt clean; branch protection active and verified.
 - Zero open PRs, zero open issues.
-- Followup: weekly triage reminder workflow (`.github/workflows/triage-reminder.yml`)
-  added to keep the queue at zero.
+- Weekly triage reminder + CONTRIBUTING.md policy keep the queue at zero going
+  forward.

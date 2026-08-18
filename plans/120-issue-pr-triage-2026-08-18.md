@@ -55,7 +55,7 @@ recovered.
 ## Followups (completed same day)
 
 | PR | Change |
-|----|--------|
+| --- | ------ |
 | 199 | Weekly triage reminder workflow, AGENTS.md Recent-Merges/Triage sections, closeout report |
 | 200 | CONTRIBUTING.md triage policy + issue-template pointers; enabled branch protection |
 | — | Dependabot auto-merge hardened to skip `semver-major` bumps |

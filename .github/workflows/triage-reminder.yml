@@ -1,0 +1,54 @@
+name: Weekly Triage Reminder
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Mondays 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  triage:
+    name: Triage Open Issues and PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for stale items and open a reminder
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+
+          stale_issues=$(gh issue list --state open --limit 100 \
+            --json number,title,updatedAt \
+            --jq --arg cutoff "$cutoff" '.[] | select(.updatedAt < $cutoff) | "#\(.number) \(.title)"' 2>/dev/null || true)
+          stale_prs=$(gh pr list --state open --limit 100 \
+            --json number,title,updatedAt \
+            --jq --arg cutoff "$cutoff" '.[] | select(.updatedAt < $cutoff) | "#\(.number) \(.title)"' 2>/dev/null || true)
+
+          if [[ -z "$stale_issues" && -z "$stale_prs" ]]; then
+            echo "No stale open issues or PRs — nothing to triage."
+            exit 0
+          fi
+
+          body="## Weekly Triage Reminder
+          Items with no activity in the last 7 days need review:
+
+          ### Stale Issues
+          ${stale_issues:-_none_}
+
+          ### Stale PRs
+          ${stale_prs:-_none_}
+
+          _Generated automatically by the Weekly Triage Reminder workflow._
+          "
+          gh label create triage --description "Weekly triage reminder" --force >/dev/null 2>&1 || true
+          existing=$(gh issue list --state open --label triage --json number --jq '.[0].number' 2>/dev/null || true)
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --body "$body" >/dev/null
+            echo "Updated existing triage reminder #$existing"
+          else
+            gh issue create --title "Weekly Triage Reminder" --body "$body" --label triage
+          fi

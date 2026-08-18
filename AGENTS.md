@@ -66,6 +66,17 @@ For any calibration/VAD verification task:
 - Always check priority review candidates first using the active learning filters.
 - Ensure profile changes are registered as experiments with unique `profile_id` and incremented `version` fields.
 
+## Recent Merges
+| PR | Change |
+| --- | --- |
+| #193 | Spectral feature extraction optimized (pre-allocated `mags`, branchless slice sums); helpers `fill_magnitudes` + `spectral_stats` |
+| #189 | `run_pipeline` refactored into `stages.rs` module; `timed_stage!` macro for timing |
+| #188 | `identify_gaps` modularized into signal-analysis helpers (unit-tested in `gaps.rs`) |
+| #198 | CHANGELOG entries; `dependencies`/`rust`/`ci` labels; gap-helper unit tests |
+
+## Triage
+Maintain zero open issues/PRs. A weekly reminder workflow (`.github/workflows/triage-reminder.yml`) flags stale items — triage them promptly.
+
 ## Template Sync
 | Pattern | Status | Notes |
 | --------- | ------ | ----- |

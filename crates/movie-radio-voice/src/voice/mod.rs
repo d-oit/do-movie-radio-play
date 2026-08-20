@@ -50,6 +50,34 @@ impl Default for SynthesisRequest {
     }
 }
 
+impl SynthesisRequest {
+    /// Validate synthesis parameters to prevent DoS / invalid memory allocation.
+    pub fn validate(&self) -> Result<()> {
+        if !(8000..=48000).contains(&self.sample_rate_hz) {
+            anyhow::bail!(
+                "sample_rate_hz must be between 8000 and 48000 Hz, got {}",
+                self.sample_rate_hz
+            );
+        }
+
+        if !self.speed.is_finite() || !(0.25..=4.0).contains(&self.speed) {
+            anyhow::bail!(
+                "speed must be a finite float between 0.25 and 4.0, got {}",
+                self.speed
+            );
+        }
+
+        if self.text.len() > 10000 {
+            anyhow::bail!(
+                "text length exceeds maximum limit of 10000 characters, got {}",
+                self.text.len()
+            );
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Emotion {
@@ -136,6 +164,8 @@ impl SynthesisOrchestrator {
     }
 
     pub async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
+        request.validate()?;
+
         let mut last_err = anyhow::anyhow!("No provider available in fallback chain");
 
         for provider_id in &self.fallback_chain {
@@ -151,5 +181,81 @@ impl SynthesisOrchestrator {
         }
 
         Err(last_err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_synthesis_request_validate_valid() {
+        let req = SynthesisRequest {
+            text: "Hallo Welt".to_string(),
+            emotion: Emotion::Neutral,
+            voice_id: None,
+            language: "de".to_string(),
+            speed: 1.0,
+            sample_rate_hz: 16000,
+        };
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_synthesis_request_validate_sample_rate() {
+        let mut req = SynthesisRequest {
+            text: "Hallo".to_string(),
+            ..Default::default()
+        };
+
+        req.sample_rate_hz = 7999;
+        assert!(req.validate().is_err());
+
+        req.sample_rate_hz = 48001;
+        assert!(req.validate().is_err());
+
+        req.sample_rate_hz = 8000;
+        assert!(req.validate().is_ok());
+
+        req.sample_rate_hz = 48000;
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_synthesis_request_validate_speed() {
+        let mut req = SynthesisRequest {
+            text: "Hallo".to_string(),
+            ..Default::default()
+        };
+
+        req.speed = 0.2;
+        assert!(req.validate().is_err());
+
+        req.speed = 4.1;
+        assert!(req.validate().is_err());
+
+        req.speed = f32::NAN;
+        assert!(req.validate().is_err());
+
+        req.speed = f32::INFINITY;
+        assert!(req.validate().is_err());
+
+        req.speed = 0.25;
+        assert!(req.validate().is_ok());
+
+        req.speed = 4.0;
+        assert!(req.validate().is_ok());
+    }
+
+    #[test]
+    fn test_synthesis_request_validate_text_length() {
+        let mut req = SynthesisRequest {
+            text: "a".repeat(10001),
+            ..Default::default()
+        };
+        assert!(req.validate().is_err());
+
+        req.text = "a".repeat(10000);
+        assert!(req.validate().is_ok());
     }
 }

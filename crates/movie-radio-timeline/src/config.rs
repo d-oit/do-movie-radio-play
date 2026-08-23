@@ -53,6 +53,12 @@ pub fn build_analysis_config(
 fn apply_env_overrides(mut cfg: AnalysisConfig) -> Result<AnalysisConfig> {
     if let Ok(v) = env::var("TIMELINE_SAMPLE_RATE") {
         cfg.sample_rate_hz = parse_env_value("TIMELINE_SAMPLE_RATE", &v)?;
+        if !(8_000..=48_000).contains(&cfg.sample_rate_hz) {
+            bail!(
+                "invalid TIMELINE_SAMPLE_RATE={}: must be within 8_000..=48_000 Hz",
+                v
+            );
+        }
     }
     if let Ok(v) = env::var("TIMELINE_FRAME_MS") {
         cfg.frame_ms = parse_env_value("TIMELINE_FRAME_MS", &v)?;

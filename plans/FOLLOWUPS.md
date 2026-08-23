@@ -10,16 +10,17 @@ Each entry includes file path, description, priority, and suggested approach.
 
 | File/Path | Description | Priority | Suggested Approach |
 |-----------|-------------|----------|-------------------|
-| `src/` (repo root) | Dead legacy tree from pre-workspace layout (`main.rs`, `lib.rs`, `pipeline/`, `voice/`, `verification/`, …). Referenced by **no** package manifest — workspace members are `crates/*` + `benchmarks`; `movie-radio-timeline`'s `[[bin]] path = "src/main.rs"` resolves inside its own crate dir. Contains stale duplicates of live logic (e.g. old `compute_rms`/`compute_zcr`) that can drift silently and mislead readers/tools. | Medium | Delete the root `src/` tree in a dedicated PR after confirming no external references (scripts, CI, docs). |
-| `crates/movie-radio-timeline/src/config.rs:86` | `TIMELINE_SAMPLE_RATE` env override validated only as `> 0`; currently never reaches the radio-play synthesis path (hardcoded `AnalysisConfig::default()`), but if wired later an out-of-range value would fail per-request at `SynthesisRequest::validate()` after config acceptance. | Low | Validate 8_000..=48_000 in `apply_env_overrides` for loud early failure. |
+| `tests/` (repo root) | Orphaned integration tests from pre-workspace layout (`voice_integration_tests.rs` references the nonexistent `movie_nonvoice_timeline` package). Not compiled by any workspace member; misleading and unbuildable. | Low | Delete in a dedicated PR after confirming no external references. |
 
 ## Resolved
 
 | File/Path | Description | Resolution |
 |-----------|-------------|------------|
+| `src/` (repo root) | Dead legacy tree from pre-workspace layout (`main.rs`, `lib.rs`, `pipeline/`, `voice/`, `verification/`, …). Referenced by **no** package manifest — workspace members are `crates/*` + `benchmarks`. Contains stale duplicates of live logic (e.g. old `compute_rms`/`compute_zcr`). | Deleted (70 files, ~12k LOC); verified no references in scripts/, CI, benchmarks, docs |
 | `movie-radio-goap/src/actions.rs` all-skipped semantics | All narrations failing returned `Ok(())` → exit-0 narration-less output | Bail when scripts exist and every synthesis failed |
 | `movie-radio-goap/src/actions.rs:279` zip misalignment | Script→audio pairing shifted after middle-item failure | `narration_audio: Vec<Option<_>>` aligned with scripts by construction; assemble skips `None` |
 | `movie-radio-voice` per-provider text caps | Global 10k cap exceeded provider capabilities, failing late inside providers | Orchestrator checks `capabilities().max_text_length` pre-dispatch and falls through the chain; goap direct-dispatch caller guards too |
+| `crates/movie-radio-timeline/src/config.rs` env rate validation | `TIMELINE_SAMPLE_RATE` accepted any non-zero value; out-of-range surfaced only per-request later | Range-checked 8_000..=48_000 in `apply_env_overrides` |
 
 ## Resolved (historical)
 

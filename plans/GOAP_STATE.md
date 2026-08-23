@@ -1,7 +1,7 @@
 # GOAP State
 
-**Current Goal**: Implement issue #206 — SynthesisRequest bounds validation (sample rate 8k–48k, finite speed 0.25–4.0, text cap 10k) in movie-radio-voice, orchestrator-level, typed errors, boundary tests
-**Status**: In-Progress
+**Current Goal**: Implement issue #206 — SynthesisRequest bounds validation + audio.cpp TTS spike
+**Status**: Complete
 
 ## Task Graph
 - [x] Task R: Swarm recon — voice crate structure, error types, test conventions, llama feature gating
@@ -9,9 +9,9 @@
 - [x] Task T: Boundary unit tests — absolute pins per review swarm (R2), multibyte chars test, ordering test
 - [x] Task V: Local verification green under bindgen workaround (fmt, clippy -D warnings, 29 tests)
 - [x] Task S: Swarm adversarial review — FIX_FIRST verdict; R1 (speed range) + R2 (self-referential tests) applied
-- [ ] Task P: Push, open PR, full green CI on final SHA
-- [ ] Task M: Merge with head-SHA check, close #206, update docs
-- [x] Task X: audio.cpp CPU spike completed in parallel (/tmp/opencode; report pending)
+- [x] Task P: PR #209 opened, 32/32 checks green on final SHA 04893e2
+- [x] Task M: #209 squash-merged as 076601b; issue #206 auto-closed; FOLLOWUPS/GOAP_STATE updated
+- [x] Task X: audio.cpp CPU spike completed — report in plans/audiocpp-tts-spike.md (RTF ≈ 1.1 CPU German; Phase 2 gated on human listening A/B)
 
 ## Evidence Log
 - Issue #206 contract: sample_rate_hz 8_000..=48_000; speed finite 0.25..=4.0; text ≤ 10_000 chars.

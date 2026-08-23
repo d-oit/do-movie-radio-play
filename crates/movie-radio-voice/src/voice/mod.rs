@@ -1,6 +1,14 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::ops::RangeInclusive;
+
+/// Maximum accepted text length per synthesis request, in characters.
+pub const MAX_REQUEST_TEXT_CHARS: usize = 10_000;
+/// Inclusive bounds for `sample_rate_hz`, in Hz.
+pub const SAMPLE_RATE_RANGE_HZ: RangeInclusive<u32> = 8_000..=48_000;
+/// Inclusive bounds for `speed`.
+pub const SPEED_RANGE: RangeInclusive<f32> = 0.25..=4.0;
 
 pub mod elevenlabs;
 pub mod kokoro;
@@ -29,8 +37,42 @@ pub struct SynthesisRequest {
     pub voice_id: Option<String>,
     #[serde(default = "default_language")]
     pub language: String,
-    pub speed: f32,          // 0.5 - 2.0
+    pub speed: f32,          // 0.25 - 4.0
     pub sample_rate_hz: u32, // output sample rate
+}
+
+/// Errors returned when a [`SynthesisRequest`] fails pre-dispatch validation.
+#[derive(Debug, thiserror::Error, PartialEq)]
+pub enum SynthesisValidationError {
+    #[error("sample_rate_hz {0} Hz outside supported range 8_000..=48_000 Hz")]
+    SampleRateOutOfRange(u32),
+    #[error("speed {0} outside supported finite range 0.25..=4.0")]
+    SpeedOutOfRange(f32),
+    #[error("text length {0} chars exceeds maximum of {MAX_REQUEST_TEXT_CHARS}")]
+    TextTooLong(usize),
+}
+
+impl SynthesisRequest {
+    /// Validates provider-facing parameters before any TTS dispatch.
+    ///
+    /// Rejects sample rates outside [`SAMPLE_RATE_RANGE_HZ`], non-finite or
+    /// out-of-range speeds ([`SPEED_RANGE`]), and texts longer than
+    /// [`MAX_REQUEST_TEXT_CHARS`] characters.
+    pub fn validate(&self) -> Result<(), SynthesisValidationError> {
+        if !SAMPLE_RATE_RANGE_HZ.contains(&self.sample_rate_hz) {
+            return Err(SynthesisValidationError::SampleRateOutOfRange(
+                self.sample_rate_hz,
+            ));
+        }
+        if !SPEED_RANGE.contains(&self.speed) {
+            return Err(SynthesisValidationError::SpeedOutOfRange(self.speed));
+        }
+        let len = self.text.chars().count();
+        if len > MAX_REQUEST_TEXT_CHARS {
+            return Err(SynthesisValidationError::TextTooLong(len));
+        }
+        Ok(())
+    }
 }
 
 fn default_language() -> String {
@@ -136,6 +178,7 @@ impl SynthesisOrchestrator {
     }
 
     pub async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
+        request.validate()?;
         let mut last_err = anyhow::anyhow!("No provider available in fallback chain");
 
         for provider_id in &self.fallback_chain {
@@ -151,5 +194,93 @@ impl SynthesisOrchestrator {
         }
 
         Err(last_err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn request(text: &str, speed: f32, sample_rate_hz: u32) -> SynthesisRequest {
+        SynthesisRequest {
+            text: text.to_string(),
+            emotion: Emotion::Neutral,
+            voice_id: None,
+            language: default_language(),
+            speed,
+            sample_rate_hz,
+        }
+    }
+
+    #[test]
+    fn test_default_request_is_valid() {
+        assert_eq!(SynthesisRequest::default().validate(), Ok(()));
+    }
+
+    #[test]
+    fn test_sample_rate_boundaries() {
+        // Absolute pins against the issue contract (8_000..=48_000 Hz).
+        assert_eq!(request("hi", 1.0, 8_000).validate(), Ok(()));
+        assert_eq!(request("hi", 1.0, 48_000).validate(), Ok(()));
+        for rate in [7_999, 48_001] {
+            assert_eq!(
+                request("hi", 1.0, rate).validate(),
+                Err(SynthesisValidationError::SampleRateOutOfRange(rate))
+            );
+        }
+    }
+
+    #[test]
+    fn test_speed_boundaries() {
+        // Absolute pins against the issue contract (0.25..=4.0), independent
+        // of SPEED_RANGE so a wrong constant cannot self-validate.
+        assert_eq!(request("hi", 0.25, 16_000).validate(), Ok(()));
+        assert_eq!(request("hi", 4.0, 16_000).validate(), Ok(()));
+        for speed in [0.24, 4.5] {
+            assert!(matches!(
+                request("hi", speed, 16_000).validate(),
+                Err(SynthesisValidationError::SpeedOutOfRange(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn test_speed_must_be_finite() {
+        for speed in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert!(matches!(
+                request("hi", speed, 16_000).validate(),
+                Err(SynthesisValidationError::SpeedOutOfRange(_))
+            ));
+        }
+    }
+
+    #[test]
+    fn test_text_length_cap() {
+        let max = "a".repeat(MAX_REQUEST_TEXT_CHARS);
+        assert_eq!(request(&max, 1.0, 16_000).validate(), Ok(()));
+
+        let over = "a".repeat(MAX_REQUEST_TEXT_CHARS + 1);
+        assert_eq!(
+            request(&over, 1.0, 16_000).validate(),
+            Err(SynthesisValidationError::TextTooLong(
+                MAX_REQUEST_TEXT_CHARS + 1
+            ))
+        );
+    }
+
+    #[test]
+    fn test_multibyte_chars_counted_as_chars_not_bytes() {
+        // 'ä' is 2 bytes in UTF-8; 10_000 chars must pass despite 20_000 bytes.
+        let text = "ä".repeat(MAX_REQUEST_TEXT_CHARS);
+        assert_eq!(request(&text, 1.0, 16_000).validate(), Ok(()));
+    }
+
+    #[test]
+    fn test_sample_rate_checked_before_text() {
+        let over = "a".repeat(MAX_REQUEST_TEXT_CHARS + 1);
+        assert!(matches!(
+            request(&over, 1.0, 192_000).validate(),
+            Err(SynthesisValidationError::SampleRateOutOfRange(192_000))
+        ));
     }
 }

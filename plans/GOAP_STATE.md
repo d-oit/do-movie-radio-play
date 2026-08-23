@@ -1,15 +1,15 @@
 # GOAP State
 
-**Current Goal**: Config-option TTS integration — OpenAI-compatible `base_url` (default public OpenAI) enabling audio.cpp German sidecar (`OPENAI_TTS_BASE_URL` → PocketTTS alba/wav)
+**Current Goal**: Fix FOLLOWUPS correctness bugs — narration zip misalignment (structural Option-alignment), all-failed exit-0 degradation, per-provider text caps
 **Status**: In-Progress
 
 ## Task Graph
-- [x] Task W1: Web research — Aug 2026 German CPU TTS SOTA (Kokoro 82M MOS 4.44; PocketTTS de MIT cloning WER 1.84; Supertonic-3 de WER 0.66% @ 8.75x RT; audio.cpp serves pocket_tts/supertonic)
-- [x] Task W2: `OpenAiConfig.base_url` (serde default = public API) + optional `api_key_env` (None = no auth header)
-- [x] Task W3: openai.rs endpoint()/auth_header() helpers + conditional Authorization; 5 unit tests incl. serde defaults
-- [x] Task W4: radio_play.rs env wiring — OPENAI_API_KEY → cloud default; else OPENAI_TTS_BASE_URL → German sidecar defaults (pocket-tts/alba/wav)
-- [ ] Task W5: Issue, PR, full green CI on final SHA, merge
-- [ ] Task W6: Spike report Phase-2 addendum + CHANGELOG entry
+- [x] Task F0: Issue filed; code recon (PipelineContext, assemble pairing, orchestrator loop)
+- [x] Task F1: voice crate — provider cap check in fallback loop before dispatch
+- [x] Task F2: goap lib.rs — `narration_audio: Vec<Option<AudioOutput>>` aligned with scripts
+- [x] Task F3: actions.rs — Some/None pushes, modal cap guard, all-failed bail, assemble skips None
+- [x] Task F4: Tests — fake-provider cap fallback (tokio dev-dep), offline all-failed bail, middle-skip pairing
+- [ ] Task F5: Gates → PR → green CI on final SHA → merge
 
 ## History
 - 2026-08-23: #206 complete (PR #209 → 076601b); audio.cpp spike complete (plans/audiocpp-tts-spike.md).

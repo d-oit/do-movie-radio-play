@@ -22,5 +22,8 @@ rand = "0.10"
 qwen_tts = { version = "0.1", default-features = false }
 candle-core = "0.9"
 
+[dev-dependencies]
+tokio.workspace = true
+
 [lints]
 workspace = true

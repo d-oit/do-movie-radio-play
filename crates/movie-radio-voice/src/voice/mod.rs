@@ -179,10 +179,27 @@ impl SynthesisOrchestrator {
 
     pub async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
         request.validate()?;
+        let text_chars = request.text.chars().count();
         let mut last_err = anyhow::anyhow!("No provider available in fallback chain");
 
         for provider_id in &self.fallback_chain {
             if let Some(provider) = self.providers.get(provider_id) {
+                let cap = provider.capabilities().max_text_length;
+                if text_chars > cap {
+                    tracing::warn!(
+                        provider_id,
+                        cap,
+                        text_chars,
+                        "Text exceeds provider cap; trying next in fallback chain"
+                    );
+                    last_err = anyhow::anyhow!(
+                        "text length {} exceeds provider '{}' cap of {} chars",
+                        text_chars,
+                        provider_id,
+                        cap
+                    );
+                    continue;
+                }
                 match provider.synthesize(request).await {
                     Ok(output) => return Ok(output),
                     Err(e) => {
@@ -282,5 +299,111 @@ mod tests {
             request(&over, 1.0, 192_000).validate(),
             Err(SynthesisValidationError::SampleRateOutOfRange(192_000))
         ));
+    }
+
+    struct FakeProvider {
+        cap: usize,
+        fail: bool,
+    }
+
+    #[async_trait::async_trait]
+    impl VoiceSynthesizer for FakeProvider {
+        async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
+            if self.fail {
+                anyhow::bail!("injected failure");
+            }
+            Ok(AudioOutput {
+                samples: vec![0.0; 8],
+                sample_rate_hz: request.sample_rate_hz,
+            })
+        }
+
+        fn capabilities(&self) -> ProviderCapabilities {
+            ProviderCapabilities {
+                supports_emotion: false,
+                supports_voice_cloning: false,
+                supports_streaming: false,
+                max_text_length: self.cap,
+                languages: vec!["de".to_string()],
+                requires_gpu: false,
+            }
+        }
+
+        fn estimate_cost(&self, _text_len: usize) -> f64 {
+            0.0
+        }
+    }
+
+    fn orchestrator_with(
+        providers: Vec<(&str, FakeProvider)>,
+        chain: &[&str],
+    ) -> SynthesisOrchestrator {
+        let mut map = std::collections::HashMap::new();
+        for (id, provider) in providers {
+            map.insert(
+                id.to_string(),
+                Box::new(provider) as Box<dyn VoiceSynthesizer>,
+            );
+        }
+        SynthesisOrchestrator {
+            providers: map,
+            fallback_chain: chain.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_falls_back_when_text_exceeds_provider_cap() {
+        let orchestrator = orchestrator_with(
+            vec![
+                (
+                    "small",
+                    FakeProvider {
+                        cap: 5,
+                        fail: false,
+                    },
+                ),
+                (
+                    "big",
+                    FakeProvider {
+                        cap: 10_000,
+                        fail: false,
+                    },
+                ),
+            ],
+            &["small", "big"],
+        );
+        let output = orchestrator
+            .synthesize(&request("a".repeat(10).as_str(), 1.0, 16_000))
+            .await
+            .expect("second provider must serve the request");
+        assert_eq!(output.sample_rate_hz, 16_000);
+    }
+
+    #[tokio::test]
+    async fn test_errors_when_no_provider_cap_fits() {
+        let orchestrator = orchestrator_with(
+            vec![
+                (
+                    "a",
+                    FakeProvider {
+                        cap: 5,
+                        fail: false,
+                    },
+                ),
+                (
+                    "b",
+                    FakeProvider {
+                        cap: 6,
+                        fail: false,
+                    },
+                ),
+            ],
+            &["a", "b"],
+        );
+        let err = orchestrator
+            .synthesize(&request("abcdefg", 1.0, 16_000))
+            .await
+            .expect_err("no provider can fit the text");
+        assert!(err.to_string().contains("cap of"), "{}", err);
     }
 }

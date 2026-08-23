@@ -11,12 +11,17 @@ Each entry includes file path, description, priority, and suggested approach.
 | File/Path | Description | Priority | Suggested Approach |
 |-----------|-------------|----------|-------------------|
 | `src/` (repo root) | Dead legacy tree from pre-workspace layout (`main.rs`, `lib.rs`, `pipeline/`, `voice/`, `verification/`, …). Referenced by **no** package manifest — workspace members are `crates/*` + `benchmarks`; `movie-radio-timeline`'s `[[bin]] path = "src/main.rs"` resolves inside its own crate dir. Contains stale duplicates of live logic (e.g. old `compute_rms`/`compute_zcr`) that can drift silently and mislead readers/tools. | Medium | Delete the root `src/` tree in a dedicated PR after confirming no external references (scripts, CI, docs). |
-| `crates/movie-radio-goap/src/actions.rs:234-238` | When every narration fails TTS/validation, `SynthesizeNarrator::execute` still returns `Ok(())` and the run completes exit-0 with a narration-less play (`narrator_voice_synthesized = true`). The #206 validate guard adds a deterministic trigger (e.g. out-of-range sample rate skips all items with WARN logs only). | Medium | Bail with context when `scripts` is non-empty but `narration_audio` ends empty; or surface a degraded-status flag into the run report. |
-| `crates/movie-radio-goap/src/actions.rs:279` | `scripts.iter().zip(ctx.narration_audio.iter())` misaligns script→audio pairing when a middle item is skipped (pre-existing; failure path had it before #206). | Medium | Track surviving script indices alongside audio, or zip over `(script, Option<Audio>)`. |
-| `crates/movie-radio-voice/src/config.rs:86` (timeline) | `TIMELINE_SAMPLE_RATE` env override validated only as `> 0`; currently never reaches the radio-play synthesis path (hardcoded `AnalysisConfig::default()`), but if wired later an out-of-range value would fail per-request at `SynthesisRequest::validate()` after config acceptance. | Low | Validate 8_000..=48_000 in `apply_env_overrides` for loud early failure. |
-| `crates/movie-radio-voice/src/voice/mod.rs` (capabilities) | Global 10k text cap exceeds per-provider `capabilities().max_text_length` (kokoro 1000, qwen3 2000, orpheus 4000, openai 4096, modal 5000); only ElevenLabs matches 10000. Requests near the global cap will fail late inside providers. | Low | Enforce per-provider cap at dispatch using existing capabilities data. |
+| `crates/movie-radio-timeline/src/config.rs:86` | `TIMELINE_SAMPLE_RATE` env override validated only as `> 0`; currently never reaches the radio-play synthesis path (hardcoded `AnalysisConfig::default()`), but if wired later an out-of-range value would fail per-request at `SynthesisRequest::validate()` after config acceptance. | Low | Validate 8_000..=48_000 in `apply_env_overrides` for loud early failure. |
 
 ## Resolved
+
+| File/Path | Description | Resolution |
+|-----------|-------------|------------|
+| `movie-radio-goap/src/actions.rs` all-skipped semantics | All narrations failing returned `Ok(())` → exit-0 narration-less output | Bail when scripts exist and every synthesis failed |
+| `movie-radio-goap/src/actions.rs:279` zip misalignment | Script→audio pairing shifted after middle-item failure | `narration_audio: Vec<Option<_>>` aligned with scripts by construction; assemble skips `None` |
+| `movie-radio-voice` per-provider text caps | Global 10k cap exceeded provider capabilities, failing late inside providers | Orchestrator checks `capabilities().max_text_length` pre-dispatch and falls through the chain; goap direct-dispatch caller guards too |
+
+## Resolved (historical)
 
 All 4 LOC violations have been resolved by splitting files into submodules:
 

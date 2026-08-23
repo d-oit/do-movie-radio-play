@@ -43,7 +43,9 @@ pub struct PipelineContext {
     pub timeline: Option<TimelineOutput>,
     pub gap_analysis: Option<GapAnalysisOutput>,
     pub scripts: Option<Vec<narrate::NarrationScript>>,
-    pub narration_audio: Vec<movie_radio_voice::AudioOutput>,
+    /// Narration audio aligned 1:1 with `scripts` (same order/length);
+    /// `None` marks a script whose synthesis failed.
+    pub narration_audio: Vec<Option<movie_radio_voice::AudioOutput>>,
     pub original_audio: Option<Vec<f32>>,
     pub sample_rate: u32,
 }

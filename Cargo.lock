@@ -2342,6 +2342,7 @@ dependencies = [
  "serde_json",
  "symphonia 0.6.1",
  "thiserror 2.0.20",
+ "tokio",
  "tracing",
 ]
 

@@ -211,6 +211,11 @@ impl Action for SynthesizeNarrator {
                 sample_rate_hz: ctx.sample_rate,
             };
 
+            if let Err(e) = request.validate() {
+                tracing::warn!(i = i + 1, error = %e, "Invalid synthesis request, skipping");
+                continue;
+            }
+
             match provider.synthesize(&request).await {
                 Ok(audio) => {
                     info!(

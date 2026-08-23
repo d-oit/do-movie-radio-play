@@ -1,7 +1,7 @@
 # GOAP State
 
 **Current Goal**: Fix FOLLOWUPS correctness bugs — narration zip misalignment (structural Option-alignment), all-failed exit-0 degradation, per-provider text caps
-**Status**: In-Progress
+**Status**: Complete
 
 ## Task Graph
 - [x] Task F0: Issue filed; code recon (PipelineContext, assemble pairing, orchestrator loop)
@@ -9,7 +9,7 @@
 - [x] Task F2: goap lib.rs — `narration_audio: Vec<Option<AudioOutput>>` aligned with scripts
 - [x] Task F3: actions.rs — Some/None pushes, modal cap guard, all-failed bail, assemble skips None
 - [x] Task F4: Tests — fake-provider cap fallback (tokio dev-dep), offline all-failed bail, middle-skip pairing
-- [ ] Task F5: Gates → PR → green CI on final SHA → merge
+- [x] Task F5: PR #214 green CI on 6cb38f7, squash-merged as 5416dd1
 
 ## History
 - 2026-08-23: #206 complete (PR #209 → 076601b); audio.cpp spike complete (plans/audiocpp-tts-spike.md).

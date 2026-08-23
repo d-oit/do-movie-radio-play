@@ -95,8 +95,7 @@ pub fn analyze_audio_features(samples: &[f32]) -> anyhow::Result<SpectralFeature
         return Err(anyhow::anyhow!("empty audio samples"));
     }
 
-    let rms = compute_rms(samples);
-    let zcr = compute_zcr(samples);
+    let (rms, zcr) = compute_rms_and_zcr(samples);
     let (spectral_entropy, spectral_flatness, centroid_hz, low_band_ratio, high_band_ratio) =
         compute_spectral_features(samples)?;
     let spectral_flux = compute_spectral_flux(samples);
@@ -113,33 +112,31 @@ pub fn analyze_audio_features(samples: &[f32]) -> anyhow::Result<SpectralFeature
     })
 }
 
-fn compute_rms(samples: &[f32]) -> f32 {
+/// Single-pass computation of RMS and ZCR to minimize buffer iteration overhead.
+fn compute_rms_and_zcr(samples: &[f32]) -> (f32, f32) {
     if samples.is_empty() {
-        return 0.0;
+        return (0.0, 0.0);
     }
-    // Optimization: Manual loop for efficiency
-    let mut sum_squares = 0.0f32;
-    for &s in samples {
-        sum_squares += s * s;
-    }
-    (sum_squares / samples.len() as f32).sqrt()
-}
-
-fn compute_zcr(samples: &[f32]) -> f32 {
-    if samples.len() < 2 {
-        return 0.0;
-    }
-    // Optimization: true single pass manual loop
+    let mut sum_squares = samples[0] * samples[0];
     let mut crossings = 0usize;
     let mut prev_sign = samples[0] >= 0.0;
+
     for &s in &samples[1..] {
+        sum_squares += s * s;
         let sign = s >= 0.0;
         if sign != prev_sign {
             crossings += 1;
+            prev_sign = sign;
         }
-        prev_sign = sign;
     }
-    crossings as f32 / (samples.len() - 1) as f32
+
+    let rms = (sum_squares / samples.len() as f32).sqrt();
+    let zcr = if samples.len() > 1 {
+        crossings as f32 / (samples.len() - 1) as f32
+    } else {
+        0.0
+    };
+    (rms, zcr)
 }
 
 /// Fills `mags` with the magnitude spectrum computed from the FFT `output`.
@@ -149,16 +146,17 @@ fn fill_magnitudes(output: &[Complex<f32>], mags: &mut [f32]) {
     }
 }
 
-/// Single-pass spectral moments over the magnitude spectrum.
+/// Single-pass spectral moments over the magnitude spectrum using a running float index.
 fn spectral_stats(mags: &[f32]) -> (f32, f32, f32, f32, usize) {
     let mut weighted_sum = 0.0f32;
     let mut total_mag = 0.0f32;
     let mut log_mag_sum = 0.0f32;
     let mut mag_log_mag_sum = 0.0f32;
     let mut pos_count = 0usize;
+    let mut i_f32 = 0.0f32;
 
-    for (i, &mag) in mags.iter().enumerate() {
-        weighted_sum += i as f32 * mag;
+    for &mag in mags {
+        weighted_sum += i_f32 * mag;
         total_mag += mag;
 
         if mag > 1e-10 {
@@ -167,6 +165,7 @@ fn spectral_stats(mags: &[f32]) -> (f32, f32, f32, f32, usize) {
             mag_log_mag_sum += mag * ln_mag;
             pos_count += 1;
         }
+        i_f32 += 1.0;
     }
 
     (
@@ -336,14 +335,14 @@ mod tests {
     #[test]
     fn rms_computation() {
         let samples = vec![0.5, -0.5, 0.5, -0.5];
-        let rms = compute_rms(&samples);
+        let (rms, _) = compute_rms_and_zcr(&samples);
         assert!((rms - 0.5).abs() < 0.001);
     }
 
     #[test]
     fn zcr_of_silence_is_zero() {
         let samples = vec![0.0f32; 100];
-        let zcr = compute_zcr(&samples);
+        let (_, zcr) = compute_rms_and_zcr(&samples);
         assert_eq!(zcr, 0.0);
     }
 
@@ -450,7 +449,7 @@ mod tests {
         for (i, s) in samples.iter_mut().enumerate() {
             *s = (2.0 * std::f32::consts::PI * 1000.0 * i as f32 / 16000.0).sin();
         }
-        let zcr = compute_zcr(&samples);
+        let (_, zcr) = compute_rms_and_zcr(&samples);
         // 100 cycles, 2 crossings per cycle = 200 crossings.
         // ZCR = 200 / 1599 approx 0.125
         assert!((zcr - 0.125).abs() < 0.01);
@@ -472,12 +471,35 @@ mod tests {
     fn test_rms_known_values() {
         let val = std::f32::consts::FRAC_1_SQRT_2;
         let samples = vec![val; 1000];
-        let rms = compute_rms(&samples);
+        let (rms, _) = compute_rms_and_zcr(&samples);
         assert!((rms - val).abs() < 0.001);
 
         let samples2 = vec![0.0f32, 1.0f32, 0.0f32, -1.0f32];
         // Squares: 0, 1, 0, 1. Sum=2. Avg=0.5. Sqrt=0.7071
-        let rms2 = compute_rms(&samples2);
+        let (rms2, _) = compute_rms_and_zcr(&samples2);
         assert!((rms2 - val).abs() < 0.001);
+    }
+
+    #[test]
+    fn rms_zcr_edge_cases() {
+        // Empty input: both metrics defined as zero.
+        assert_eq!(compute_rms_and_zcr(&[]), (0.0, 0.0));
+
+        // Single sample: RMS is its magnitude, ZCR undefined -> zero.
+        assert_eq!(
+            compute_rms_and_zcr(&[-0.5]),
+            (0.5, 0.0),
+            "single-sample RMS/ZCR mismatch"
+        );
+
+        // Negative zero counts as non-negative: no crossing between +1 and -0.
+        assert_eq!(compute_rms_and_zcr(&[1.0, -0.0]).1, 0.0);
+        // Crossing from -1 to -0 does count (-0.0 >= 0.0).
+        assert_eq!(compute_rms_and_zcr(&[-1.0, -0.0]).1, 1.0);
+
+        // NaN propagates through RMS like the previous per-pass implementation.
+        let nan_samples = [0.5f32, f32::NAN, -0.5];
+        let (rms, _) = compute_rms_and_zcr(&nan_samples);
+        assert!(rms.is_nan());
     }
 }

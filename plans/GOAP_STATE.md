@@ -1,17 +1,28 @@
 # GOAP State
 
-**Current Goal**: Implement issues #120, #122, #123 — render crate enhancement, ambient noise, and --preview CLI
-**Status**: In-Progress
+**Current Goal**: PR queue review & merge — #204 cleanup+merge, #205 close (AI-slop: claimed validation absent), Clippy 1.98 `chunks_exact_to_as_chunks` foundation fix, SynthesisRequest validation follow-up issue
+**Status**: Complete
 
 ## Task Graph
-- [x] Task 0: Analyze open issues and current codebase
-- [ ] Task 1: Add workspace infra (playback feature, render workspace dep)
-- [ ] Task 2: Implement noise.rs for ambient generation (Issue #122)
-- [ ] Task 3: Implement PreviewOutput in movie-radio-io (Issue #123)
-- [ ] Task 4: Enhance render crate (AGC, spatial, mixer - Issue #120)
-- [ ] Task 5: Add Preview CLI subcommand and wire handler
-- [ ] Task 6: Quality gate - cargo check, clippy, test, quality_gate.sh
-- [ ] Task 7: PR with passing CI
+- [x] Task A: Swarm deep-review of PR #204 diff (bit-exact equivalence verified: 23 edge cases + 20k fuzz trials)
+- [x] Task B: Fix #204 — delete dead wrappers, tests use `compute_rms_and_zcr`, edge-case test added
+- [x] Task C: Local verify (fmt, clippy -D warnings, 18/18 tests; full gate blocked locally by missing ALSA/clang sys-deps — CI authoritative)
+- [x] Task D: MERGED #204 (squash d64941d) after 32/32 green checks on final SHA 1394e10
+- [x] Task E: Post-merge refresh; queue re-evaluated
+- [x] Task F: CLOSED #205 with technical rationale
+- [x] Task G: Filed issue #206 (SynthesisRequest bounds validation)
+- [x] Task H: PR #207 opened — real `as_chunks` migrations (render/mixer.rs, pipeline/decode.rs ×2, voice/modal.rs)
+- [x] Task I: Local verify on clean toolchain 1.98 (`cargo clean` first; stale clippy cache gave false pass earlier)
+- [x] Task J: PR #207 green (32/32) on final SHA 3f7214a
+- [x] Task K: MERGED #207 (squash e4460af)
+- [x] Task L: FOLLOWUPS.md updated (dead root src/ tree), GOAP_STATE closed
+
+## Evidence Log
+- PR #204: perf micro-opt verified mathematically equivalent (bit-exact); bot push 1b7553f reverted via force-with-lease (restored wrappers + global lint suppression contradicting #207); audit comment left on PR.
+- PR #205: title claimed SynthesisRequest validation; diff = lint suppressions in wrong crate; CI red. Closed. Idea filed as #206.
+- PR #207: Clippy 1.98 `chunks_exact_to_as_chunks` broke workspace (floating stable toolchain). Migrated all flagged const-size sites; runtime-size `chunks_exact(channels)` sites intentionally untouched (lint does not fire).
+- Root `src/` tree is dead code referenced by no manifest → FOLLOWUPS.md.
 
 ## History
-- 2026-07-13: Analyzed issues. movie-radio-render crate skeleton exists but needs enhancement. Needed: workspace dep for render, playback feature for rodio, noise.rs, preview output, CLI subcommand
+- 2026-08-23: Recon complete. Plan approved by maintainer: #204 cleanup→merge, #205 close + fresh fix PR, file validation issue.
+- 2026-08-23: #207 merged (e4460af), unblocking all CI. #204 head overridden after bot regression push, re-verified, merged (d64941d). Queue empty. Issue #206 open for validation work.

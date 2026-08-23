@@ -138,12 +138,7 @@ fn run_full_pipeline(
                 endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
                 max_monthly_cost: 25.0,
             }),
-            openai: std::env::var("OPENAI_API_KEY").ok().map(|_| OpenAiConfig {
-                api_key_env: "OPENAI_API_KEY".to_string(),
-                model: "tts-1-hd".to_string(),
-                voice: "onyx".to_string(),
-                response_format: "mp3".to_string(),
-            }),
+            openai: openai_config_from_env(),
         },
     };
 
@@ -249,4 +244,36 @@ fn encode_to_mp3(wav_path: &std::path::Path, mp3_path: &std::path::Path) -> Resu
         bail!("ffmpeg MP3 encoding failed");
     }
     Ok(())
+}
+
+/// Builds the OpenAI-compatible TTS config from the environment.
+///
+/// Default remains the public OpenAI API when `OPENAI_API_KEY` is set.
+/// Alternatively, `OPENAI_TTS_BASE_URL` selects an OpenAI-compatible local
+/// server (e.g. an audio.cpp sidecar) without authentication, defaulting to
+/// the German PocketTTS recipe (voice `alba`, WAV output).
+fn openai_config_from_env() -> Option<OpenAiConfig> {
+    if std::env::var("OPENAI_API_KEY").is_ok() {
+        return Some(OpenAiConfig {
+            api_key_env: Some("OPENAI_API_KEY".to_string()),
+            base_url: movie_radio_voice::config::default_openai_base_url(),
+            model: "tts-1-hd".to_string(),
+            voice: "onyx".to_string(),
+            response_format: "mp3".to_string(),
+        });
+    }
+
+    std::env::var("OPENAI_TTS_BASE_URL").ok().map(|base_url| {
+        info!(
+            base_url = %base_url,
+            "Using OpenAI-compatible TTS sidecar (German PocketTTS defaults)"
+        );
+        OpenAiConfig {
+            api_key_env: None,
+            base_url,
+            model: "pocket-tts".to_string(),
+            voice: "alba".to_string(),
+            response_format: "wav".to_string(),
+        }
+    })
 }

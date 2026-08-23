@@ -66,8 +66,20 @@ pub struct ElevenLabsConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAiConfig {
-    pub api_key_env: String,
+    /// Environment variable holding the bearer token. `None` disables the
+    /// Authorization header entirely — for OpenAI-compatible local servers
+    /// such as an audio.cpp sidecar.
+    #[serde(default)]
+    pub api_key_env: Option<String>,
+    /// API root. Defaults to the public OpenAI API; point it at a local
+    /// OpenAI-compatible TTS server (e.g. audio.cpp) to switch engines.
+    #[serde(default = "default_openai_base_url")]
+    pub base_url: String,
     pub model: String,
     pub voice: String,
     pub response_format: String,
+}
+
+pub fn default_openai_base_url() -> String {
+    "https://api.openai.com/v1".to_string()
 }

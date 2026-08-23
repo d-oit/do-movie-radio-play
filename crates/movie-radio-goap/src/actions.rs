@@ -213,6 +213,19 @@ impl Action for SynthesizeNarrator {
 
             if let Err(e) = request.validate() {
                 tracing::warn!(i = i + 1, error = %e, "Invalid synthesis request, skipping");
+                ctx.narration_audio.push(None);
+                continue;
+            }
+
+            let cap = provider.capabilities().max_text_length;
+            if script.text.chars().count() > cap {
+                tracing::warn!(
+                    i = i + 1,
+                    cap,
+                    chars = script.text.chars().count(),
+                    "Text exceeds provider cap, skipping"
+                );
+                ctx.narration_audio.push(None);
                 continue;
             }
 
@@ -223,16 +236,26 @@ impl Action for SynthesizeNarrator {
                         samples = audio.samples.len(),
                         "Narration synthesized"
                     );
-                    ctx.narration_audio.push(audio);
+                    ctx.narration_audio.push(Some(audio));
                 }
                 Err(e) => {
                     tracing::warn!(i = i + 1, error = %e, "TTS failed, skipping");
+                    ctx.narration_audio.push(None);
                 }
             }
         }
 
+        if !scripts.is_empty() && ctx.narration_audio.iter().all(Option::is_none) {
+            anyhow::bail!(
+                "all {} narration syntheses failed; check TTS provider configuration \
+                 (e.g. OPENAI_API_KEY / OPENAI_TTS_BASE_URL / MODAL_TTS_ENDPOINT)",
+                scripts.len()
+            );
+        }
+
         info!(
-            count = ctx.narration_audio.len(),
+            count = ctx.narration_audio.iter().filter(|a| a.is_some()).count(),
+            total = scripts.len(),
             "Narration synthesis complete"
         );
         Ok(())
@@ -274,13 +297,8 @@ impl Action for AssembleRadioPlay {
         let scripts = ctx.scripts.as_ref().context("Scripts not generated")?;
 
         let assembler = RadioPlayAssembler::new(ctx.sample_rate, 50, 0.3);
-        let mut narration_segments = Vec::new();
-
-        for (i, (script, audio)) in scripts.iter().zip(ctx.narration_audio.iter()).enumerate() {
-            let segment = assembler.narration_to_segment(script, &audio.samples);
-            narration_segments.push(segment);
-            info!(i = i + 1, "Narration segment prepared");
-        }
+        let narration_segments =
+            build_narration_segments(scripts, &ctx.narration_audio, &assembler);
 
         let radio_play = assembler.assemble(original, &narration_segments)?;
 
@@ -379,4 +397,79 @@ pub fn get_all_actions() -> Vec<Box<dyn Action>> {
         Box::new(VerifyQuality),
         Box::new(ApplyLearnings),
     ]
+}
+
+fn build_narration_segments(
+    scripts: &[crate::narrate::NarrationScript],
+    narration_audio: &[Option<movie_radio_voice::AudioOutput>],
+    assembler: &crate::assemble::RadioPlayAssembler,
+) -> Vec<crate::assemble::NarrationSegment> {
+    scripts
+        .iter()
+        .zip(narration_audio.iter())
+        .filter_map(|(script, audio)| {
+            audio
+                .as_ref()
+                .map(|audio| assembler.narration_to_segment(script, &audio.samples))
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::narrate::NarrationScript;
+    use movie_radio_voice::Emotion;
+
+    fn script(gap_start_ms: u64) -> NarrationScript {
+        NarrationScript {
+            gap_start_ms,
+            gap_end_ms: gap_start_ms + 5_000,
+            text: "Hallo Welt".to_string(),
+            emotion: Emotion::Neutral,
+            word_count: 2,
+            duration_ms: 1_000,
+        }
+    }
+
+    fn audio(len_samples: usize) -> Option<movie_radio_voice::AudioOutput> {
+        Some(movie_radio_voice::AudioOutput {
+            samples: vec![0.25; len_samples],
+            sample_rate_hz: 16_000,
+        })
+    }
+
+    #[test]
+    fn test_segments_keep_script_alignment_across_failures() {
+        let scripts = vec![script(1_000), script(2_000), script(3_000)];
+        let narration = vec![audio(800), None, audio(1_600)];
+        let assembler = crate::assemble::RadioPlayAssembler::new(16_000, 50, 0.3);
+
+        let segments = build_narration_segments(&scripts, &narration, &assembler);
+
+        assert_eq!(segments.len(), 2);
+        // First surviving segment belongs to script 0, not shifted by the skip.
+        assert_eq!(segments[0].start_sample, 16_000);
+        assert_eq!(segments[0].samples.len(), 800);
+        // Second surviving segment must pair with script 2 (3_000 ms -> 48_000).
+        assert_eq!(segments[1].start_sample, 48_000);
+        assert_eq!(segments[1].samples.len(), 1_600);
+    }
+
+    #[tokio::test]
+    async fn test_synthesize_narrator_bails_when_all_fail() {
+        std::env::remove_var("MODAL_TTS_ENDPOINT");
+        let mut ctx = crate::PipelineContext::new(
+            std::path::PathBuf::from("movie.mp4"),
+            std::path::PathBuf::from("/tmp/opencode/out.wav"),
+        );
+        ctx.scripts = Some(vec![script(500), script(6_000)]);
+
+        let result = SynthesizeNarrator.execute(&mut ctx).await;
+
+        let err = result.expect_err("total synthesis failure must not pass silently");
+        assert!(err.to_string().contains("all 2 narration syntheses failed"));
+        assert_eq!(ctx.narration_audio.len(), 2);
+        assert!(ctx.narration_audio.iter().all(Option::is_none));
+    }
 }

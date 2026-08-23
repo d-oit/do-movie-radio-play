@@ -3,6 +3,20 @@
 **Date**: 2026-08-23 · **Spike branch**: none (all artifacts in `/tmp/opencode/`, repo untouched)
 **Question**: Is audio.cpp (0xShug0/audio.cpp) a better TTS vehicle than our in-process providers?
 
+## Phase 2 addendum — German A/B set (same day, second run)
+
+Incremental build adding supertonic: +60 s. **No 24-layer German PocketTTS exists** — `model_specs/pocket_tts.json` and the HF package tree carry only q8_0/bf16 per language (`_24l` is French-only upstream); bf16 downloaded as best-available higher-quality German variant.
+
+| Config | Package | RTF (CPU) | Notes |
+|---|---|---|---|
+| pocket_tts de q8_0 (122 MB) | baseline | **1.11–1.18** | unchanged from first run |
+| pocket_tts de bf16 (209 MB) | quality candidate | 1.17–1.29 | same distilled arch, higher precision |
+| supertonic de s4 speed (454 MB, 44.1 kHz) | not recommended | 0.71–0.95 | ⚠ clipping on longer lines |
+| supertonic de s8 default | quality candidate | 1.25–1.61 | sweet spot |
+| supertonic de s32 quality | reference | 4.5–6.0 | offline only |
+
+Listening set: `/tmp/opencode/spike/ab/` — compare `pocket_bf16` vs `pocket_q8`, and `super_s8` vs `super_s32`. Supertonic duration predictor is step-independent (identical durations across step counts). No seed flag for pocket_tts; supertonic pinned `--seed 1234`.
+
 ## Verdict
 
 **Promising for scoped adoption — proceed to Phase 2 design only after human listening test.**

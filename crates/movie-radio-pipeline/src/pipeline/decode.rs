@@ -83,7 +83,7 @@ pub fn decode_audio_chunked(
         }
 
         let mut samples = Vec::with_capacity(bytes.len() / 2);
-        for chunk in bytes.chunks_exact(2) {
+        for chunk in bytes.as_chunks::<2>().0 {
             let s = i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / i16::MAX as f32;
             samples.push(s);
         }
@@ -216,7 +216,7 @@ fn decode_via_ffmpeg(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, 
         return Err(TimelineError::EmptyAudio.into());
     }
     let mut samples = Vec::with_capacity(bytes.len() / 2);
-    for chunk in bytes.chunks_exact(2) {
+    for chunk in bytes.as_chunks::<2>().0 {
         let s = i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / i16::MAX as f32;
         samples.push(s);
     }

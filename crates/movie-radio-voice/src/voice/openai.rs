@@ -2,9 +2,15 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use reqwest::Client;
 use std::env;
+use std::time::Duration;
 
 use super::{AudioOutput, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer};
 use crate::config::OpenAiConfig;
+
+/// Attempts per synthesis for transient transport failures (connect/timeout).
+const MAX_CONNECT_ATTEMPTS: usize = 3;
+/// Backoff between connection retries.
+const RETRY_DELAY: Duration = Duration::from_millis(250);
 
 pub struct OpenAiTtsProvider {
     config: OpenAiConfig,
@@ -35,11 +41,8 @@ impl OpenAiTtsProvider {
             None => Ok(None),
         }
     }
-}
 
-#[async_trait]
-impl VoiceSynthesizer for OpenAiTtsProvider {
-    async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
+    fn build_request(&self, request: &SynthesisRequest) -> Result<reqwest::RequestBuilder> {
         let voice = if let Some(ref voice_id) = request.voice_id {
             voice_id.clone()
         } else {
@@ -56,15 +59,56 @@ impl VoiceSynthesizer for OpenAiTtsProvider {
         if let Some(auth) = self.auth_header()? {
             req = req.header("Authorization", auth);
         }
+        Ok(req)
+    }
 
-        let response = req
-            .send()
-            .await
-            .context("Failed to send request to OpenAI-compatible TTS API")?;
+    /// Sends the request, retrying only transport-level failures
+    /// (connection refused/reset, timeouts). HTTP error responses are
+    /// never retried.
+    async fn send_with_retry(&self, request: &SynthesisRequest) -> Result<reqwest::Response> {
+        let endpoint = self.endpoint();
+        let mut last_err: Option<reqwest::Error> = None;
+        for attempt in 1..=MAX_CONNECT_ATTEMPTS {
+            match self.build_request(request)?.send().await {
+                Ok(response) => return Ok(response),
+                Err(e) if e.is_connect() || e.is_timeout() => {
+                    tracing::warn!(
+                        attempt,
+                        endpoint = %endpoint,
+                        error = %e,
+                        "Transient TTS transport failure"
+                    );
+                    last_err = Some(e);
+                    if attempt < MAX_CONNECT_ATTEMPTS {
+                        tokio::time::sleep(RETRY_DELAY).await;
+                    }
+                }
+                Err(e) => {
+                    return Err(e).context(format!("failed to send request to {}", endpoint));
+                }
+            }
+        }
+        Err(last_err.expect("retry loop runs at least once")).with_context(|| {
+            format!(
+                "TTS endpoint unreachable after {} attempts: {}",
+                MAX_CONNECT_ATTEMPTS, endpoint
+            )
+        })
+    }
+}
+
+#[async_trait]
+impl VoiceSynthesizer for OpenAiTtsProvider {
+    async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
+        let response = self.send_with_retry(request).await?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("OpenAI TTS API error: {}", error_text);
+            anyhow::bail!(
+                "OpenAI-compatible TTS API error at {}: {}",
+                self.endpoint(),
+                error_text
+            );
         }
 
         let content_type = response
@@ -190,5 +234,72 @@ mod tests {
         let cfg: OpenAiConfig = serde_json::from_str(json).unwrap();
         assert_eq!(cfg.base_url, "https://api.openai.com/v1");
         assert_eq!(cfg.api_key_env, None);
+    }
+
+    fn sidecar_provider(port: u16) -> OpenAiTtsProvider {
+        OpenAiTtsProvider::new(OpenAiConfig {
+            api_key_env: None,
+            base_url: format!("http://127.0.0.1:{port}/v1"),
+            model: "pocket-tts".to_string(),
+            voice: "alba".to_string(),
+            response_format: "wav".to_string(),
+        })
+    }
+
+    #[tokio::test]
+    async fn test_connection_failure_retries_then_reports_endpoint() {
+        // Bind then drop: nothing listens on this port anymore.
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let provider = sidecar_provider(port);
+        let request = SynthesisRequest {
+            text: "Hallo".to_string(),
+            ..SynthesisRequest::default()
+        };
+
+        let err = provider
+            .send_with_retry(&request)
+            .await
+            .expect_err("dead endpoint must fail");
+
+        let msg = err.to_string();
+        assert!(msg.contains("unreachable after 3 attempts"), "{}", msg);
+        assert!(msg.contains(&format!("127.0.0.1:{port}")), "{}", msg);
+    }
+
+    #[tokio::test]
+    async fn test_http_error_response_is_not_retried() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        let server = std::thread::spawn(move || {
+            let (stream, _) = listener.accept().expect("exactly one connection expected");
+            let mut stream = stream;
+            use std::io::Write;
+            stream
+                .write_all(b"HTTP/1.1 500 Internal Server Error\r\nContent-Length: 3\r\n\r\nbad")
+                .unwrap();
+        });
+
+        let provider = sidecar_provider(port);
+        let request = SynthesisRequest {
+            text: "Hallo".to_string(),
+            ..SynthesisRequest::default()
+        };
+        let err = provider
+            .synthesize(&request)
+            .await
+            .expect_err("HTTP 500 must surface as error");
+
+        assert!(
+            err.to_string()
+                .contains(&format!("http://127.0.0.1:{port}/v1/audio/speech")),
+            "{}",
+            err
+        );
+        server.join().unwrap();
     }
 }

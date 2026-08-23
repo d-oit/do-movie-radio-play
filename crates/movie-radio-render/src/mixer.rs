@@ -105,7 +105,9 @@ impl Mixer {
 
         for (chunk, (&l, &r)) in self
             .interleaved_output
-            .chunks_exact_mut(2)
+            .as_chunks_mut::<2>()
+            .0
+            .iter_mut()
             .zip(self.left_channel.iter().zip(self.right_channel.iter()))
         {
             chunk[0] = l;

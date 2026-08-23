@@ -4,7 +4,13 @@ Pre-existing issues encountered during implementation runs that could not be fix
 Each entry includes file path, description, priority, and suggested approach.
 
 **Created:** 2026-06-23
-**Updated:** 2026-06-23 — All LOC violations resolved
+**Updated:** 2026-08-23 — Added dead root `src/` tree finding (PR review sweep)
+
+## Open
+
+| File/Path | Description | Priority | Suggested Approach |
+|-----------|-------------|----------|-------------------|
+| `src/` (repo root) | Dead legacy tree from pre-workspace layout (`main.rs`, `lib.rs`, `pipeline/`, `voice/`, `verification/`, …). Referenced by **no** package manifest — workspace members are `crates/*` + `benchmarks`; `movie-radio-timeline`'s `[[bin]] path = "src/main.rs"` resolves inside its own crate dir. Contains stale duplicates of live logic (e.g. old `compute_rms`/`compute_zcr`) that can drift silently and mislead readers/tools. | Medium | Delete the root `src/` tree in a dedicated PR after confirming no external references (scripts, CI, docs). |
 
 ## Resolved
 

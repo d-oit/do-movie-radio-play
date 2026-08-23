@@ -18,34 +18,49 @@ impl OpenAiTtsProvider {
             client: Client::new(),
         }
     }
+
+    /// Full TTS endpoint derived from the configured API root.
+    fn endpoint(&self) -> String {
+        let base = self.config.base_url.trim_end_matches('/');
+        format!("{}/audio/speech", base)
+    }
+
+    /// Resolves the bearer token from `api_key_env`, if one is configured.
+    /// `Ok(None)` means "send no Authorization header" (local sidecars).
+    fn auth_header(&self) -> Result<Option<String>> {
+        match &self.config.api_key_env {
+            Some(env_name) => env::var(env_name)
+                .map(|token| Some(format!("Bearer {}", token)))
+                .with_context(|| format!("Environment variable {} not set", env_name)),
+            None => Ok(None),
+        }
+    }
 }
 
 #[async_trait]
 impl VoiceSynthesizer for OpenAiTtsProvider {
     async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
-        let api_key = env::var(&self.config.api_key_env)
-            .with_context(|| format!("Environment variable {} not set", self.config.api_key_env))?;
-
         let voice = if let Some(ref voice_id) = request.voice_id {
             voice_id.clone()
         } else {
             self.config.voice.clone()
         };
 
-        let response = self
-            .client
-            .post("https://api.openai.com/v1/audio/speech")
-            .header("Authorization", format!("Bearer {}", api_key))
-            .json(&serde_json::json!({
-                "model": self.config.model,
-                "voice": voice,
-                "input": request.text,
-                "response_format": self.config.response_format,
-                "speed": request.speed,
-            }))
+        let mut req = self.client.post(self.endpoint()).json(&serde_json::json!({
+            "model": self.config.model,
+            "voice": voice,
+            "input": request.text,
+            "response_format": self.config.response_format,
+            "speed": request.speed,
+        }));
+        if let Some(auth) = self.auth_header()? {
+            req = req.header("Authorization", auth);
+        }
+
+        let response = req
             .send()
             .await
-            .context("Failed to send request to OpenAI TTS API")?;
+            .context("Failed to send request to OpenAI-compatible TTS API")?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -111,5 +126,69 @@ impl VoiceSynthesizer for OpenAiTtsProvider {
             0.000015
         };
         (text_len as f64) * price_per_char
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::default_openai_base_url;
+
+    fn config(base_url: Option<&str>, api_key_env: Option<&str>) -> OpenAiConfig {
+        OpenAiConfig {
+            api_key_env: api_key_env.map(str::to_string),
+            base_url: base_url
+                .map(str::to_string)
+                .unwrap_or_else(default_openai_base_url),
+            model: "tts-1-hd".to_string(),
+            voice: "onyx".to_string(),
+            response_format: "mp3".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_default_endpoint_is_public_api() {
+        let provider = OpenAiTtsProvider::new(config(None, None));
+        assert_eq!(
+            provider.endpoint(),
+            "https://api.openai.com/v1/audio/speech"
+        );
+    }
+
+    #[test]
+    fn test_endpoint_tolerates_trailing_slash() {
+        let provider = OpenAiTtsProvider::new(config(Some("http://127.0.0.1:8080/v1/"), None));
+        assert_eq!(provider.endpoint(), "http://127.0.0.1:8080/v1/audio/speech");
+    }
+
+    #[test]
+    fn test_no_auth_when_api_key_env_absent() {
+        let provider = OpenAiTtsProvider::new(config(None, None));
+        assert_eq!(provider.auth_header().unwrap(), None);
+    }
+
+    #[test]
+    fn test_auth_header_from_env() {
+        const ENV_NAME: &str = "OPENAI_TTS_TEST_TOKEN";
+        std::env::set_var(ENV_NAME, "secret-token");
+        let provider = OpenAiTtsProvider::new(config(None, Some(ENV_NAME)));
+        assert_eq!(
+            provider.auth_header().unwrap(),
+            Some("Bearer secret-token".to_string())
+        );
+        std::env::remove_var(ENV_NAME);
+        assert!(provider.auth_header().is_err());
+    }
+
+    #[test]
+    fn test_serde_defaults_apply_for_local_sidecar() {
+        let json = r#"{
+            "model": "pocket-tts",
+            "voice": "alba",
+            "response_format": "wav"
+        }"#;
+        let cfg: OpenAiConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(cfg.base_url, "https://api.openai.com/v1");
+        assert_eq!(cfg.api_key_env, None);
     }
 }

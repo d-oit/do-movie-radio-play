@@ -1,23 +1,19 @@
 # GOAP State
 
-**Current Goal**: Implement issue #206 — SynthesisRequest bounds validation + audio.cpp TTS spike
-**Status**: Complete
+**Current Goal**: Config-option TTS integration — OpenAI-compatible `base_url` (default public OpenAI) enabling audio.cpp German sidecar (`OPENAI_TTS_BASE_URL` → PocketTTS alba/wav)
+**Status**: In-Progress
 
 ## Task Graph
-- [x] Task R: Swarm recon — voice crate structure, error types, test conventions, llama feature gating
-- [x] Task B: Branch `fix/synthesis-request-validation` off main + implement validation in `SynthesisRequest::validate()` (orchestrator choke point + goap direct-dispatch guard)
-- [x] Task T: Boundary unit tests — absolute pins per review swarm (R2), multibyte chars test, ordering test
-- [x] Task V: Local verification green under bindgen workaround (fmt, clippy -D warnings, 29 tests)
-- [x] Task S: Swarm adversarial review — FIX_FIRST verdict; R1 (speed range) + R2 (self-referential tests) applied
-- [x] Task P: PR #209 opened, 32/32 checks green on final SHA 04893e2
-- [x] Task M: #209 squash-merged as 076601b; issue #206 auto-closed; FOLLOWUPS/GOAP_STATE updated
-- [x] Task X: audio.cpp CPU spike completed — report in plans/audiocpp-tts-spike.md (RTF ≈ 1.1 CPU German; Phase 2 gated on human listening A/B)
+- [x] Task W1: Web research — Aug 2026 German CPU TTS SOTA (Kokoro 82M MOS 4.44; PocketTTS de MIT cloning WER 1.84; Supertonic-3 de WER 0.66% @ 8.75x RT; audio.cpp serves pocket_tts/supertonic)
+- [x] Task W2: `OpenAiConfig.base_url` (serde default = public API) + optional `api_key_env` (None = no auth header)
+- [x] Task W3: openai.rs endpoint()/auth_header() helpers + conditional Authorization; 5 unit tests incl. serde defaults
+- [x] Task W4: radio_play.rs env wiring — OPENAI_API_KEY → cloud default; else OPENAI_TTS_BASE_URL → German sidecar defaults (pocket-tts/alba/wav)
+- [ ] Task W5: Issue, PR, full green CI on final SHA, merge
+- [ ] Task W6: Spike report Phase-2 addendum + CHANGELOG entry
 
-## Evidence Log
-- Issue #206 contract: sample_rate_hz 8_000..=48_000; speed finite 0.25..=4.0; text ≤ 10_000 chars.
-- Speed range decision: 0.25..=4.0 confirmed by maintainer — sole consumer is openai.rs payload (`"speed": request.speed`, OpenAI documents 0.25–4.0); struct's old `0.5 - 2.0` comment was stale.
-- Review findings logged to FOLLOWUPS.md: all-skipped→exit-0 semantics, zip misalignment, per-provider caps, config-side rate validation.
-- Spike (audio.cpp 0.6.1 @ 62735ea): pocket_tts_german_q8_0 (122 MB), CPU RTF ≈ 1.10, 24 kHz out, ~587 MB RSS. Gotchas: german package needs german-native voice embedding sidecar (english alba.safetensors → instant-EOS 240 ms truncation); not bit-deterministic across runs (±80 ms). Artifacts /tmp/opencode/spike/.
+## History
+- 2026-08-23: #206 complete (PR #209 → 076601b); audio.cpp spike complete (plans/audiocpp-tts-spike.md).
+- 2026-08-23: Started config-option integration per maintainer directives: config option with OpenAI default; German TTS focus; research-backed.
 
 ## Evidence Log
 - Issue #206 requirements: reject sample_rate_hz outside 8_000..=48_000; finite speed 0.25..=4.0; text ≤ 10_000 chars; typed errors; validation once in SynthesisOrchestrator::synthesize pre-dispatch.

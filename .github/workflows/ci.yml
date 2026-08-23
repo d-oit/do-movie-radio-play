@@ -33,14 +33,11 @@ jobs:
           filters: |
             code:
               - 'crates/**'
-              - 'src/**'
-              - 'tests/**'
               - 'benchmarks/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
             heavy:
               - 'crates/**'
-              - 'src/**'
               - 'benchmarks/**'
               - 'Cargo.toml'
               - 'Cargo.lock'

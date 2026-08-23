@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # harness-check.sh — run a harness sensor with agent-optimised error output
 # Usage: ./scripts/harness-check.sh <sensor>
-# Sensors: fmt | clippy | deny | test | arch | all
+# Sensors: fmt | clippy | deny | test | all
 set -euo pipefail
 
 SENSOR=${1:-""}
@@ -44,11 +44,6 @@ case "$SENSOR" in
         "cargo nextest run --workspace" \
         "Fix the failing test. If behaviour changed intentionally, update the test and run: cargo insta review"
     ;;
-  arch)
-    run_with_hint "arch fitness" \
-        "cargo test --test arch_fitness" \
-        "LAYERING VIOLATION: Move code to the correct crate layer. See tests/arch_fitness.rs error for the specific fix."
-    ;;
   all)
     run_with_hint "cargo fmt" "cargo fmt --all -- --check" "Run: cargo fmt --all"
     run_with_hint "cargo clippy" "cargo clippy --workspace --all-targets --all-features -- -D warnings" "Fix all warnings. Check .clippy.toml."
@@ -56,7 +51,7 @@ case "$SENSOR" in
     run_with_hint "cargo nextest" "cargo nextest run --workspace" "Fix the failing test."
     ;;
   *)
-    echo "Usage: $0 <fmt|clippy|deny|test|arch|all>"
+    echo "Usage: $0 <fmt|clippy|deny|test|all>"
     exit 1
     ;;
 esac

@@ -8,14 +8,13 @@ Each entry includes file path, description, priority, and suggested approach.
 
 ## Open
 
-| File/Path | Description | Priority | Suggested Approach |
-|-----------|-------------|----------|-------------------|
-| `tests/` (repo root) | Orphaned integration tests from pre-workspace layout (`voice_integration_tests.rs` references the nonexistent `movie_nonvoice_timeline` package). Not compiled by any workspace member; misleading and unbuildable. | Low | Delete in a dedicated PR after confirming no external references. |
+None — all triaged followups resolved.
 
 ## Resolved
 
 | File/Path | Description | Resolution |
 |-----------|-------------|------------|
+| `tests/` (repo root) | Orphaned integration tests from pre-workspace layout (`voice_integration_tests.rs` references the nonexistent `movie_nonvoice_timeline` package). Not compiled by any workspace member; misleading and unbuildable. | Deleted (13 files); stale CI `paths-filter` globs (`src/**`, `tests/**`) removed; broken `arch` sensor (referenced nonexistent `tests/arch_fitness.rs`) dropped from `scripts/harness-check.sh` |
 | `src/` (repo root) | Dead legacy tree from pre-workspace layout (`main.rs`, `lib.rs`, `pipeline/`, `voice/`, `verification/`, …). Referenced by **no** package manifest — workspace members are `crates/*` + `benchmarks`. Contains stale duplicates of live logic (e.g. old `compute_rms`/`compute_zcr`). | Deleted (70 files, ~12k LOC); verified no references in scripts/, CI, benchmarks, docs |
 | `movie-radio-goap/src/actions.rs` all-skipped semantics | All narrations failing returned `Ok(())` → exit-0 narration-less output | Bail when scripts exist and every synthesis failed |
 | `movie-radio-goap/src/actions.rs:279` zip misalignment | Script→audio pairing shifted after middle-item failure | `narration_audio: Vec<Option<_>>` aligned with scripts by construction; assemble skips `None` |

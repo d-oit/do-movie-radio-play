@@ -288,35 +288,40 @@ fn compute_spectral_flux(samples: &[f32]) -> f32 {
                 continue;
             }
 
-            let mut diff_sum = 0.0f32;
-            if current_is_a {
-                for (c, (m, &p)) in cache_ptr.output[..output_size].iter().zip(
-                    cache_ptr.spectrum_a[..output_size]
-                        .iter_mut()
-                        .zip(cache_ptr.spectrum_b[..output_size].iter()),
-                ) {
-                    let mag = (c.re * c.re + c.im * c.im).sqrt();
-                    *m = mag;
-                    diff_sum += (mag - p).max(0.0);
-                }
+            // Select active spectrum buffer and previous spectrum buffer
+            let (curr_spec, prev_spec) = if current_is_a {
+                (
+                    &mut cache_ptr.spectrum_a[..output_size],
+                    &cache_ptr.spectrum_b[..output_size],
+                )
             } else {
-                for (c, (m, &p)) in cache_ptr.output[..output_size].iter().zip(
-                    cache_ptr.spectrum_b[..output_size]
-                        .iter_mut()
-                        .zip(cache_ptr.spectrum_a[..output_size].iter()),
-                ) {
-                    let mag = (c.re * c.re + c.im * c.im).sqrt();
-                    *m = mag;
-                    diff_sum += (mag - p).max(0.0);
-                }
-            }
+                (
+                    &mut cache_ptr.spectrum_b[..output_size],
+                    &cache_ptr.spectrum_a[..output_size],
+                )
+            };
+
+            let output_slice = &cache_ptr.output[..output_size];
 
             if has_prev {
+                // Compute magnitude, store in current spectrum buffer, and accumulate positive flux diff against previous frame
+                let mut diff_sum = 0.0f32;
+                for (c, (m, &p)) in output_slice
+                    .iter()
+                    .zip(curr_spec.iter_mut().zip(prev_spec.iter()))
+                {
+                    let mag = (c.re * c.re + c.im * c.im).sqrt();
+                    *m = mag;
+                    diff_sum += (mag - p).max(0.0);
+                }
                 flux += diff_sum;
                 count += 1;
+            } else {
+                // First frame: populate magnitude spectrum without computing unneeded flux difference
+                fill_magnitudes(output_slice, curr_spec);
+                has_prev = true;
             }
 
-            has_prev = true;
             current_is_a = !current_is_a;
         }
 

@@ -392,8 +392,14 @@ mod tests {
             flatness_noise > flatness_sine,
             "Noise flatness {flatness_noise} should be > sine flatness {flatness_sine}"
         );
-        assert!(flatness_sine < 0.35, "Sine flatness too high: {flatness_sine}");
-        assert!(flatness_noise > 0.45, "Noise flatness too low: {flatness_noise}");
+        assert!(
+            flatness_sine < 0.35,
+            "Sine flatness too high: {flatness_sine}"
+        );
+        assert!(
+            flatness_noise > 0.45,
+            "Noise flatness too low: {flatness_noise}"
+        );
     }
 
     #[test]

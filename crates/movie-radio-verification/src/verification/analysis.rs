@@ -288,35 +288,40 @@ fn compute_spectral_flux(samples: &[f32]) -> f32 {
                 continue;
             }
 
-            let mut diff_sum = 0.0f32;
-            if current_is_a {
-                for (c, (m, &p)) in cache_ptr.output[..output_size].iter().zip(
-                    cache_ptr.spectrum_a[..output_size]
-                        .iter_mut()
-                        .zip(cache_ptr.spectrum_b[..output_size].iter()),
-                ) {
-                    let mag = (c.re * c.re + c.im * c.im).sqrt();
-                    *m = mag;
-                    diff_sum += (mag - p).max(0.0);
-                }
+            // Select active spectrum buffer and previous spectrum buffer
+            let (curr_spec, prev_spec) = if current_is_a {
+                (
+                    &mut cache_ptr.spectrum_a[..output_size],
+                    &cache_ptr.spectrum_b[..output_size],
+                )
             } else {
-                for (c, (m, &p)) in cache_ptr.output[..output_size].iter().zip(
-                    cache_ptr.spectrum_b[..output_size]
-                        .iter_mut()
-                        .zip(cache_ptr.spectrum_a[..output_size].iter()),
-                ) {
-                    let mag = (c.re * c.re + c.im * c.im).sqrt();
-                    *m = mag;
-                    diff_sum += (mag - p).max(0.0);
-                }
-            }
+                (
+                    &mut cache_ptr.spectrum_b[..output_size],
+                    &cache_ptr.spectrum_a[..output_size],
+                )
+            };
+
+            let output_slice = &cache_ptr.output[..output_size];
 
             if has_prev {
+                // Compute magnitude, store in current spectrum buffer, and accumulate positive flux diff against previous frame
+                let mut diff_sum = 0.0f32;
+                for (c, (m, &p)) in output_slice
+                    .iter()
+                    .zip(curr_spec.iter_mut().zip(prev_spec.iter()))
+                {
+                    let mag = (c.re * c.re + c.im * c.im).sqrt();
+                    *m = mag;
+                    diff_sum += (mag - p).max(0.0);
+                }
                 flux += diff_sum;
                 count += 1;
+            } else {
+                // First frame: populate magnitude spectrum without computing unneeded flux difference
+                fill_magnitudes(output_slice, curr_spec);
+                has_prev = true;
             }
 
-            has_prev = true;
             current_is_a = !current_is_a;
         }
 
@@ -360,62 +365,40 @@ mod tests {
         assert!(features.rms < 0.01);
     }
 
-    #[test]
-    fn test_spectral_entropy_white_noise() {
-        // White noise should have high entropy
-        let mut samples = vec![0.0f32; 1024];
+    fn generate_white_noise(len: usize) -> Vec<f32> {
         use rand::rngs::StdRng;
         use rand::{RngExt, SeedableRng};
         let mut rng = StdRng::seed_from_u64(42);
-        for s in samples.iter_mut() {
-            *s = rng.random::<f32>() * 2.0 - 1.0;
-        }
+        (0..len).map(|_| rng.random::<f32>() * 2.0 - 1.0).collect()
+    }
 
+    #[test]
+    fn test_spectral_entropy_white_noise() {
+        let samples = generate_white_noise(1024);
         let (entropy, ..) = compute_spectral_features(&samples).unwrap();
-        // For 512 bins (next_power_of_2 of 1024 is 1024, but realfft gives 513 bins),
-        // max entropy is log2(513) approx 9.0.
         assert!(
             entropy > 7.0,
-            "White noise should have high entropy, got {}",
-            entropy
+            "White noise should have high entropy, got {entropy}"
         );
     }
 
     #[test]
     fn test_spectral_flatness_sine_vs_noise() {
-        let mut sine = vec![0.0f32; 1024];
-        for (i, s) in sine.iter_mut().enumerate() {
-            *s = (i as f32 * 0.1).sin();
-        }
-
-        let mut noise = vec![0.0f32; 1024];
-        use rand::rngs::StdRng;
-        use rand::{RngExt, SeedableRng};
-        let mut rng = StdRng::seed_from_u64(42);
-        for s in noise.iter_mut() {
-            *s = rng.random::<f32>() * 2.0 - 1.0;
-        }
-
+        let sine: Vec<f32> = (0..1024).map(|i| (i as f32 * 0.1).sin()).collect();
+        let noise = generate_white_noise(1024);
         let (_, flatness_sine, ..) = compute_spectral_features(&sine).unwrap();
         let (_, flatness_noise, ..) = compute_spectral_features(&noise).unwrap();
-
         assert!(
             flatness_noise > flatness_sine,
-            "Noise flatness {} should be > sine flatness {}",
-            flatness_noise,
-            flatness_sine
+            "Noise flatness {flatness_noise} should be > sine flatness {flatness_sine}"
         );
-        // Pure sine has 1 peak, white noise is flat. Flatness of noise should be close to 1.
-        // Flatness of a pure sine should be low.
         assert!(
             flatness_sine < 0.35,
-            "Sine flatness too high: {}",
-            flatness_sine
+            "Sine flatness too high: {flatness_sine}"
         );
         assert!(
             flatness_noise > 0.45,
-            "Noise flatness too low: {}",
-            flatness_noise
+            "Noise flatness too low: {flatness_noise}"
         );
     }
 
@@ -468,38 +451,14 @@ mod tests {
     }
 
     #[test]
-    fn test_rms_known_values() {
+    fn test_rms_known_values_and_edge_cases() {
         let val = std::f32::consts::FRAC_1_SQRT_2;
-        let samples = vec![val; 1000];
-        let (rms, _) = compute_rms_and_zcr(&samples);
-        assert!((rms - val).abs() < 0.001);
-
-        let samples2 = vec![0.0f32, 1.0f32, 0.0f32, -1.0f32];
-        // Squares: 0, 1, 0, 1. Sum=2. Avg=0.5. Sqrt=0.7071
-        let (rms2, _) = compute_rms_and_zcr(&samples2);
-        assert!((rms2 - val).abs() < 0.001);
-    }
-
-    #[test]
-    fn rms_zcr_edge_cases() {
-        // Empty input: both metrics defined as zero.
+        assert!((compute_rms_and_zcr(&vec![val; 1000]).0 - val).abs() < 0.001);
+        assert!((compute_rms_and_zcr(&[0.0, 1.0, 0.0, -1.0]).0 - val).abs() < 0.001);
         assert_eq!(compute_rms_and_zcr(&[]), (0.0, 0.0));
-
-        // Single sample: RMS is its magnitude, ZCR undefined -> zero.
-        assert_eq!(
-            compute_rms_and_zcr(&[-0.5]),
-            (0.5, 0.0),
-            "single-sample RMS/ZCR mismatch"
-        );
-
-        // Negative zero counts as non-negative: no crossing between +1 and -0.
+        assert_eq!(compute_rms_and_zcr(&[-0.5]), (0.5, 0.0));
         assert_eq!(compute_rms_and_zcr(&[1.0, -0.0]).1, 0.0);
-        // Crossing from -1 to -0 does count (-0.0 >= 0.0).
         assert_eq!(compute_rms_and_zcr(&[-1.0, -0.0]).1, 1.0);
-
-        // NaN propagates through RMS like the previous per-pass implementation.
-        let nan_samples = [0.5f32, f32::NAN, -0.5];
-        let (rms, _) = compute_rms_and_zcr(&nan_samples);
-        assert!(rms.is_nan());
+        assert!(compute_rms_and_zcr(&[0.5f32, f32::NAN, -0.5]).0.is_nan());
     }
 }

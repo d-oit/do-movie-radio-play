@@ -45,7 +45,7 @@ impl GapIdentifier {
                 continue;
             }
 
-            let duration = seg.end_ms - seg.start_ms;
+            let duration = seg.end_ms.saturating_sub(seg.start_ms);
             let mut confidence = 0.0;
             let mut reasons = Vec::new();
 
@@ -144,9 +144,12 @@ impl GapIdentifier {
         confidence: &mut f32,
         reasons: &mut Vec<String>,
     ) {
+        if index >= segments.len() {
+            return;
+        }
         let has_speech_before = index > 0 && segments[index - 1].kind == SegmentKind::Speech;
         let has_speech_after =
-            index < segments.len() - 1 && segments[index + 1].kind == SegmentKind::Speech;
+            index + 1 < segments.len() && segments[index + 1].kind == SegmentKind::Speech;
 
         if has_speech_before && has_speech_after {
             *confidence += 0.2;
@@ -162,9 +165,11 @@ impl GapIdentifier {
         confidence: &mut f32,
         reasons: &mut Vec<String>,
     ) {
-        if index > 0 && index < segments.len() - 1 {
+        if index == 0 || index >= segments.len() {
+            return;
+        }
+        if let Some(next) = segments.get(index + 1) {
             let prev = &segments[index - 1];
-            let next = &segments[index + 1];
 
             let prev_tags: std::collections::HashSet<_> = prev.tags.iter().collect();
             let next_tags: std::collections::HashSet<_> = next.tags.iter().collect();
@@ -403,5 +408,53 @@ mod tests {
         let mut r = Vec::new();
         id.analyze_subtitle_gap(1200, 1800, &None, &mut c, &mut r);
         assert_eq!(c, 0.0);
+    }
+
+    #[test]
+    fn test_proximity_and_environment_helpers_reject_invalid_slices() {
+        let id = GapIdentifier::default();
+        let empty: Vec<Segment> = Vec::new();
+
+        let mut c = 0.0;
+        let mut r = Vec::new();
+        id.analyze_dialogue_proximity(0, &empty, &mut c, &mut r);
+        assert_eq!(c, 0.0);
+
+        let mut c = 0.0;
+        let mut r = Vec::new();
+        id.analyze_dialogue_proximity(3, &empty, &mut c, &mut r);
+        assert_eq!(c, 0.0);
+
+        let mut c = 0.0;
+        let mut r = Vec::new();
+        id.analyze_audio_environment_change(0, &empty, &mut c, &mut r);
+        assert_eq!(c, 0.0);
+
+        let mut c = 0.0;
+        let mut r = Vec::new();
+        id.analyze_audio_environment_change(3, &empty, &mut c, &mut r);
+        assert_eq!(c, 0.0);
+
+        let segments = vec![
+            segment(0, 1000, SegmentKind::Speech, &["indoor"]),
+            segment(1000, 2000, SegmentKind::NonVoice, &[]),
+        ];
+        let mut c = 0.0;
+        let mut r = Vec::new();
+        id.analyze_audio_environment_change(segments.len(), &segments, &mut c, &mut r);
+        assert_eq!(c, 0.0);
+    }
+
+    #[test]
+    fn test_inverted_segment_yields_no_gap() {
+        let timeline = TimelineOutput {
+            file: "test.mp3".to_string(),
+            analysis_sample_rate: 16000,
+            frame_ms: 20,
+            segments: vec![segment(5000, 1000, SegmentKind::NonVoice, &["ambience"])],
+        };
+        let identifier = GapIdentifier::default();
+        let output = identifier.identify_gaps(&timeline, None).unwrap();
+        assert!(output.gaps.is_empty());
     }
 }

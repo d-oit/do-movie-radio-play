@@ -224,7 +224,9 @@ mod tests {
         let mut wav_bytes = make_valid_wav(&[100, 200]);
         wav_bytes[0..4].copy_from_slice(b"FORM");
         let err = parse_pcm16_mono_wav(&wav_bytes).unwrap_err();
-        assert!(err.to_string().contains("missing or short RIFF/WAVE header"));
+        assert!(err
+            .to_string()
+            .contains("missing or short RIFF/WAVE header"));
     }
 
     #[test]

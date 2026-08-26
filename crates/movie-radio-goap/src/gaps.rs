@@ -45,7 +45,7 @@ impl GapIdentifier {
                 continue;
             }
 
-            let duration = seg.end_ms - seg.start_ms;
+            let duration = seg.end_ms.saturating_sub(seg.start_ms);
             let mut confidence = 0.0;
             let mut reasons = Vec::new();
 
@@ -144,9 +144,14 @@ impl GapIdentifier {
         confidence: &mut f32,
         reasons: &mut Vec<String>,
     ) {
-        let has_speech_before = index > 0 && segments[index - 1].kind == SegmentKind::Speech;
-        let has_speech_after =
-            index < segments.len() - 1 && segments[index + 1].kind == SegmentKind::Speech;
+        let has_speech_before = index > 0
+            && segments
+                .get(index.saturating_sub(1))
+                .is_some_and(|s| s.kind == SegmentKind::Speech);
+        let has_speech_after = index < segments.len().saturating_sub(1)
+            && segments
+                .get(index + 1)
+                .is_some_and(|s| s.kind == SegmentKind::Speech);
 
         if has_speech_before && has_speech_after {
             *confidence += 0.2;
@@ -162,7 +167,7 @@ impl GapIdentifier {
         confidence: &mut f32,
         reasons: &mut Vec<String>,
     ) {
-        if index > 0 && index < segments.len() - 1 {
+        if index > 0 && index < segments.len().saturating_sub(1) {
             let prev = &segments[index - 1];
             let next = &segments[index + 1];
 
@@ -403,5 +408,48 @@ mod tests {
         let mut r = Vec::new();
         id.analyze_subtitle_gap(1200, 1800, &None, &mut c, &mut r);
         assert_eq!(c, 0.0);
+    }
+
+    #[test]
+    fn test_empty_segments_slice_non_panic() {
+        let id = GapIdentifier::default();
+        let mut c = 0.0;
+        let mut r = Vec::new();
+
+        id.analyze_dialogue_proximity(0, &[], &mut c, &mut r);
+        assert_eq!(c, 0.0);
+
+        id.analyze_audio_environment_change(0, &[], &mut c, &mut r);
+        assert_eq!(c, 0.0);
+
+        let timeline = TimelineOutput {
+            file: "empty.mp3".to_string(),
+            analysis_sample_rate: 16000,
+            frame_ms: 20,
+            segments: vec![],
+        };
+        let res = id.identify_gaps(&timeline, None).unwrap();
+        assert!(res.gaps.is_empty());
+    }
+
+    #[test]
+    fn test_inverted_segment_non_panic() {
+        let timeline = TimelineOutput {
+            file: "inverted.mp3".to_string(),
+            analysis_sample_rate: 16000,
+            frame_ms: 20,
+            segments: vec![Segment {
+                start_ms: 5000,
+                end_ms: 1000,
+                kind: SegmentKind::NonVoice,
+                confidence: 1.0,
+                tags: vec![],
+                prompt: None,
+            }],
+        };
+
+        let id = GapIdentifier::default();
+        let res = id.identify_gaps(&timeline, None).unwrap();
+        assert!(res.gaps.is_empty());
     }
 }

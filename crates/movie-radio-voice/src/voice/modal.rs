@@ -51,16 +51,7 @@ impl VoiceSynthesizer for ModalTtsProvider {
             .await
             .context("Failed to read Modal response bytes")?;
 
-        if bytes.len() < 44 {
-            anyhow::bail!("Modal response too short to be a valid WAV");
-        }
-
-        let pcm_data = &bytes[44..];
-        let mut samples = Vec::with_capacity(pcm_data.len() / 2);
-        for chunk in pcm_data.as_chunks::<2>().0 {
-            let s = i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / i16::MAX as f32;
-            samples.push(s);
-        }
+        let samples = parse_pcm16_mono_wav(&bytes).context("Failed to parse Modal WAV response")?;
 
         Ok(AudioOutput {
             samples,
@@ -81,5 +72,180 @@ impl VoiceSynthesizer for ModalTtsProvider {
 
     fn estimate_cost(&self, text_len: usize) -> f64 {
         (text_len as f64) * 0.0000006
+    }
+}
+
+/// Parses a RIFF/WAVE byte buffer containing 16-bit PCM mono audio.
+///
+/// Validates container signatures and format metadata (`fmt ` chunk) and locates
+/// the `data` chunk to extract normalized `f32` samples.
+fn parse_pcm16_mono_wav(bytes: &[u8]) -> Result<Vec<f32>> {
+    if bytes.len() < 12 {
+        anyhow::bail!("Modal response too short to be a valid WAV");
+    }
+
+    if &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
+        anyhow::bail!("Invalid WAV container: missing RIFF/WAVE header");
+    }
+
+    let mut cursor = 12;
+    let mut fmt_checked = false;
+    let mut pcm_data: Option<&[u8]> = None;
+
+    while cursor + 8 <= bytes.len() {
+        let chunk_id = &bytes[cursor..cursor + 4];
+        let chunk_size = u32::from_le_bytes([
+            bytes[cursor + 4],
+            bytes[cursor + 5],
+            bytes[cursor + 6],
+            bytes[cursor + 7],
+        ]) as usize;
+        cursor += 8;
+
+        if cursor + chunk_size > bytes.len() {
+            anyhow::bail!("Invalid WAV chunk bounds: chunk exceeds response buffer");
+        }
+
+        let chunk_body = &bytes[cursor..cursor + chunk_size];
+
+        if chunk_id == b"fmt " {
+            if chunk_size < 16 {
+                anyhow::bail!("Invalid WAV fmt chunk size: must be at least 16 bytes");
+            }
+            let audio_format = u16::from_le_bytes([chunk_body[0], chunk_body[1]]);
+            let num_channels = u16::from_le_bytes([chunk_body[2], chunk_body[3]]);
+            let bits_per_sample = u16::from_le_bytes([chunk_body[14], chunk_body[15]]);
+
+            if audio_format != 1 {
+                anyhow::bail!(
+                    "Unsupported WAV format: expected uncompressed PCM (1), got {}",
+                    audio_format
+                );
+            }
+            if num_channels != 1 {
+                anyhow::bail!(
+                    "Unsupported WAV channel count: expected mono (1), got {}",
+                    num_channels
+                );
+            }
+            if bits_per_sample != 16 {
+                anyhow::bail!(
+                    "Unsupported WAV bit depth: expected 16-bit, got {}",
+                    bits_per_sample
+                );
+            }
+            fmt_checked = true;
+        } else if chunk_id == b"data" {
+            pcm_data = Some(chunk_body);
+            break;
+        }
+
+        // Chunk sizes in RIFF are padded to word boundaries (2 bytes)
+        let pad = if chunk_size % 2 == 1 { 1 } else { 0 };
+        cursor += chunk_size + pad;
+    }
+
+    if !fmt_checked {
+        anyhow::bail!("Invalid WAV container: missing or malformed fmt chunk");
+    }
+
+    let pcm = match pcm_data {
+        Some(data) => data,
+        None => anyhow::bail!("Invalid WAV container: missing data chunk"),
+    };
+
+    let mut samples = Vec::with_capacity(pcm.len() / 2);
+    for chunk in pcm.chunks_exact(2) {
+        let s = i16::from_le_bytes([chunk[0], chunk[1]]) as f32 / i16::MAX as f32;
+        samples.push(s);
+    }
+
+    Ok(samples)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_valid_wav(samples_i16: &[i16]) -> Vec<u8> {
+        let pcm_bytes: Vec<u8> = samples_i16.iter().flat_map(|s| s.to_le_bytes()).collect();
+        let data_size = pcm_bytes.len() as u32;
+        let riff_size = 36 + data_size;
+
+        let mut header = Vec::new();
+        header.extend_from_slice(b"RIFF");
+        header.extend_from_slice(&riff_size.to_le_bytes());
+        header.extend_from_slice(b"WAVE");
+
+        header.extend_from_slice(b"fmt ");
+        header.extend_from_slice(&(16u32.to_le_bytes())); // chunk size
+        header.extend_from_slice(&(1u16.to_le_bytes())); // PCM format
+        header.extend_from_slice(&(1u16.to_le_bytes())); // mono
+        header.extend_from_slice(&(16000u32.to_le_bytes())); // sample rate
+        header.extend_from_slice(&(32000u32.to_le_bytes())); // byte rate
+        header.extend_from_slice(&(2u16.to_le_bytes())); // block align
+        header.extend_from_slice(&(16u16.to_le_bytes())); // bits per sample
+
+        header.extend_from_slice(b"data");
+        header.extend_from_slice(&data_size.to_le_bytes());
+        header.extend_from_slice(&pcm_bytes);
+
+        header
+    }
+
+    #[test]
+    fn test_parse_valid_wav() {
+        let raw_samples = vec![0i16, 16384, -16384, i16::MAX];
+        let wav_bytes = make_valid_wav(&raw_samples);
+
+        let parsed = parse_pcm16_mono_wav(&wav_bytes).unwrap();
+        assert_eq!(parsed.len(), 4);
+        assert_eq!(parsed[0], 0.0);
+        assert!((parsed[1] - (16384.0 / i16::MAX as f32)).abs() < 1e-5);
+        assert!((parsed[2] - (-16384.0 / i16::MAX as f32)).abs() < 1e-5);
+        assert_eq!(parsed[3], 1.0);
+    }
+
+    #[test]
+    fn test_parse_sub_44_byte_body_err() {
+        let short_bytes = vec![0u8; 20];
+        let err = parse_pcm16_mono_wav(&short_bytes).unwrap_err();
+        assert!(err.to_string().contains("Invalid WAV container"));
+    }
+
+    #[test]
+    fn test_parse_invalid_riff_header() {
+        let mut wav_bytes = make_valid_wav(&[100, 200]);
+        wav_bytes[0..4].copy_from_slice(b"FORM");
+        let err = parse_pcm16_mono_wav(&wav_bytes).unwrap_err();
+        assert!(err.to_string().contains("missing RIFF/WAVE header"));
+    }
+
+    #[test]
+    fn test_parse_non_pcm_wav() {
+        let mut wav_bytes = make_valid_wav(&[100, 200]);
+        // Modify audio_format to 3 (IEEE float)
+        wav_bytes[20..22].copy_from_slice(&(3u16.to_le_bytes()));
+        let err = parse_pcm16_mono_wav(&wav_bytes).unwrap_err();
+        assert!(err.to_string().contains("expected uncompressed PCM"));
+    }
+
+    #[test]
+    fn test_parse_stereo_wav() {
+        let mut wav_bytes = make_valid_wav(&[100, 200]);
+        // Modify num_channels to 2
+        wav_bytes[22..24].copy_from_slice(&(2u16.to_le_bytes()));
+        let err = parse_pcm16_mono_wav(&wav_bytes).unwrap_err();
+        assert!(err.to_string().contains("expected mono"));
+    }
+
+    #[test]
+    fn test_parse_truncated_chunk_bounds() {
+        let mut wav_bytes = make_valid_wav(&[100, 200]);
+        // Truncate the buffer in the middle of the data chunk
+        wav_bytes.pop();
+        wav_bytes.pop();
+        let err = parse_pcm16_mono_wav(&wav_bytes).unwrap_err();
+        assert!(err.to_string().contains("chunk exceeds response buffer"));
     }
 }

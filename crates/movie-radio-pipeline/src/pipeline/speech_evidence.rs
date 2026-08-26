@@ -40,11 +40,12 @@ fn average_frame_stats(frames: &[Frame], frame_ms: u32, start_ms: u64, end_ms: u
         return AvgStats::default();
     }
     let frame_ms = frame_ms.max(1) as u64;
-    let start_idx = (start_ms / frame_ms) as usize;
-    let end_idx = (end_ms.div_ceil(frame_ms) as usize)
-        .min(frames.len())
-        .max(start_idx + 1);
-    let slice = &frames[start_idx.min(frames.len().saturating_sub(1))..end_idx];
+    let mut start_idx = (start_ms / frame_ms) as usize;
+    if start_idx >= frames.len() {
+        start_idx = frames.len().saturating_sub(1);
+    }
+    let end_idx = (end_ms.div_ceil(frame_ms) as usize).clamp(start_idx + 1, frames.len());
+    let slice = &frames[start_idx..end_idx];
     let n = slice.len().max(1) as f32;
 
     AvgStats {
@@ -112,5 +113,18 @@ mod tests {
         let kept = filter_implausible_speech_segments(&segments, &frames, 500);
         assert_eq!(kept.len(), 1);
         assert_eq!(kept[0].start_ms, 1000);
+    }
+
+    #[test]
+    fn out_of_range_segment_timestamps_do_not_panic() {
+        let segments = vec![speech_segment(60_000, 61_000, 0.6)];
+        let frames = vec![frame(0.12, 0.2, 4.0, 1800.0, 0.2, 0.2)];
+        let kept = filter_implausible_speech_segments(&segments, &frames, 20);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].start_ms, 60_000);
+
+        let empty_frames: Vec<Frame> = Vec::new();
+        let kept_empty = filter_implausible_speech_segments(&segments, &empty_frames, 20);
+        assert_eq!(kept_empty.len(), 1);
     }
 }

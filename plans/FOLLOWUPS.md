@@ -4,11 +4,16 @@ Pre-existing issues encountered during implementation runs that could not be fix
 Each entry includes file path, description, priority, and suggested approach.
 
 **Created:** 2026-06-23
-**Updated:** 2026-08-23 — Added dead root `src/` tree finding (PR review sweep)
+**Updated:** 2026-08-25 — Added findings from workspace-wide improvement analysis (`plans/130-improvement-analysis-2026-08-25.md`)
 
 ## Open
 
-None — all triaged followups resolved.
+| File/Path | Description | Priority | Suggested Approach |
+|-----------|-------------|----------|--------------------|
+| `crates/movie-radio-pipeline/src/pipeline/speech_evidence.rs:43-47` | Slice-index panic when a segment timestamp exceeds the decoded frame count: `end_idx` becomes `start_idx + 1 > frames.len()` before slicing | P0 | Clamp like the twin implementation in `pipeline/segmenter/confidence.rs:53-58`: `end_idx.clamp(start_idx + 1, frames.len())`; add an out-of-range-timestamp regression test |
+| `crates/movie-radio-voice/src/voice/openai.rs:91` | Sole library-code `.expect()` in the workspace (`last_err.expect("retry loop runs at least once")`); violates the AGENTS.md no-unwrap rule | P1 | Replace with typed error propagation (the invariant holds, but there must be no panic path) |
+| `crates/movie-radio-voice/src/voice/modal.rs:54-63` | Response parsed as WAV via blind 44-byte header skip; assumes little-endian i16 mono PCM with no container validation | P2 | Validate RIFF/WAVE magic, format tag, and channel count; fall through the provider chain on mismatch |
+| `crates/movie-radio-goap/src/gaps.rs:48,149,165` | `segments.len() - 1` would underflow on an empty slice and `seg.end_ms - seg.start_ms` on an inverted segment (unreachable via current callers; fragile private API) | P2 | Bail on empty slices; saturating subtraction for durations |
 
 ## Resolved
 

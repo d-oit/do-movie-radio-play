@@ -2,7 +2,7 @@
 
 New features to extend the pipeline beyond its current scope.
 
-**Updated:** 2026-08-25
+**Updated:** 2026-06-22
 
 ## 6.0 Production Evaluation Correctness First
 
@@ -89,7 +89,7 @@ speech/non-speech decisions.
 - Directly addresses TRIZ-001 (speech vs. music contradiction)
 - No ML required; stays within deterministic constraints
 
-## 6.9 Radio-Play Pipeline Integration ✅ COMPLETE
+## 6.9 Radio-Play Pipeline Integration 🔄 IN PROGRESS
 
 Wire the implemented GOAP modules into an end-to-end radio-play CLI command.
 
@@ -97,19 +97,18 @@ Wire the implemented GOAP modules into an end-to-end radio-play CLI command.
 - ✅ Narration text generation (template-based German in `movie-radio-goap/src/narrate.rs`)
 - ✅ Audio assembly (crossfade + ducking in `movie-radio-goap/src/assemble.rs`)
 - ✅ Modal.com TTS provider (real audio output)
-- ✅ Wire GOAP orchestrator to execute real pipeline stages
-- ✅ Wire radio-play CLI handler to full pipeline (gap → narrate → TTS → assemble → output)
-- ✅ Add MP3 decode for ElevenLabs response (symphonia; reused by OpenAI-compatible provider)
-- ✅ Implement local TTS inference (Qwen3 via candle; Kokoro via ONNX Runtime; Orpheus via llama.cpp — remaining quality caveats tracked in §6.10)
+- 🔄 Wire GOAP orchestrator to execute real pipeline stages
+- 🔄 Wire radio-play CLI handler to full pipeline (gap → narrate → TTS → assemble → output)
+- 🔄 Add MP3 decode for ElevenLabs response
+- ❌ Implement local TTS inference (Kokoro ONNX, Orpheus GGUF, Qwen3)
 
 ## 6.10 Voice Provider Hardening
 
 Complete the voice synthesis providers for production use.
 
-- ✅ Add MP3 decode for ElevenLabs (symphonia; `decode_audio_bytes`)
-- 🔄 Wire Kokoro ONNX inference to output — inference is live, but tokenization maps raw codepoints instead of eSD phoneme vocabulary, so acoustic output is unverified (see plans/130-improvement-analysis-2026-08-25.md §B1)
-- 🔄 Implement Orpheus GGUF loading via llama-cpp-2 — token inference works; SNAC→PCM decode still falls back to synthetic tones
-- ✅ Implement Qwen3 model inference (candle-based, CUDA→CPU fallback)
-- ✅ Add OpenAI TTS REST client (registered in `SynthesisOrchestrator` fallback chain)
+- Add MP3 decode for ElevenLabs (symphonia or minimp3)
+- Wire Kokoro ONNX inference to output (currently returns silence)
+- Implement Orpheus GGUF loading via llama-cpp-2
+- Implement Qwen3 model inference
+- Add OpenAI TTS REST client
 - Ensure voice consistency across provider switching
-- Remove PocketTts stub (returns silence, falsely advertises capabilities — see plans/130-improvement-analysis-2026-08-25.md §B2)

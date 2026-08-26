@@ -12,7 +12,7 @@ mkdir -p reports analysis
 
 echo "Analyzing events in $EVENTS_DIR..."
 
-ALL_EVENTS=$(find "$EVENTS_DIR" -name "*.json" | xargs cat | jq -s '.')
+ALL_EVENTS=$(find "$EVENTS_DIR" -name "*.json" -print0 | xargs -0 cat | jq -s '.')
 
 if [ "$ALL_EVENTS" == "[]" ]; then
   echo "No events found."

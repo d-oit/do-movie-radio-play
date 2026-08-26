@@ -2,30 +2,30 @@
 
 Gaps between the current specification and the implemented runtime behavior.
 
-**Updated:** 2026-06-23
+**Updated:** 2026-08-25
 
-## Voice Synthesis: Most Providers Return Silence
+## Voice Synthesis: Provider Status & Quality Caveats
 
 **Affected:** Radio-play production readiness
 **Location:** `crates/movie-radio-voice/src/voice/`
 
 **Spec:** All configured TTS providers should produce actual audio output.
 
-**Actual:** Modal (PR #110) and ElevenLabs now produce real audio. OpenAI TTS is now implemented. The remaining providers (Kokoro, Orpheus, Qwen3, PocketTts) have correct trait implementations, config structs, and capability declarations, but their `synthesize()` methods return silence or zero-filled buffers.
+**Actual:** Refreshed after workspace-wide analysis (`plans/130-improvement-analysis-2026-08-25.md`). All HTTP providers (Modal, ElevenLabs, OpenAI) produce real audio. Local inference landed for Qwen3 (candle), Kokoro (ONNX Runtime), and Orpheus (llama.cpp token loop), with quality caveats below. PocketTts remains a silence stub and is recommended for removal.
 
 **Provider Status:**
 
 | Provider | Infrastructure | Real Synthesis | Blocker |
 |----------|---------------|----------------|---------|
-| Modal | Complete | Yes | None |
+| Modal | Complete | Yes (no RIFF validation — see FOLLOWUPS) | Header hardening |
 | ElevenLabs | Complete (HTTP) | Yes (MP3 decode via symphonia) | None |
-| OpenAI | Complete (HTTP) | Yes (MP3 decode via symphonia) | None |
-| Kokoro | Complete (ONNX download) | No (silence) | ONNX inference not wired to output |
-| Orpheus | Partial (emotion tags) | No (silence) | Needs `llama-cpp-2` integration |
-| Qwen3 | Partial (emotion prompts) | No (silence) | Needs model inference |
-| PocketTts | None | No (silence) | Fully stubbed |
+| OpenAI | Complete (HTTP) | Yes (MP3 decode via symphonia) | One `.expect()` cleanup (see FOLLOWUPS) |
+| Kokoro | Complete (ONNX download) | Partial — real ONNX inference, but tokenization maps raw codepoints instead of eSD phoneme vocabulary | Phoneme tokenizer; acoustic output unverified |
+| Orpheus | Complete (llama.cpp inference) | Partial — real token generation; SNAC→PCM decoding falls back to synthetic tones | SNAC vocoder decode |
+| Qwen3 | Complete (candle inference) | Yes (CUDA→CPU fallback) | None |
+| PocketTts | Config-only | No (silence stub, falsely advertises cloning/streaming caps) | Recommended for removal |
 
-**Fix:** Prioritize local providers (Kokoro ONNX, Orpheus GGUF, Qwen3) for offline capability.
+**Fix:** Complete Kokoro phoneme tokenization and Orpheus SNAC decode for offline capability; remove PocketTts. Consider feature-gating local-inference dependencies (`local-tts` umbrella) so default builds skip the llama.cpp/candle/ort compile cost.
 
 ## GOAP Orchestrator Executes Real Pipeline Stages
 

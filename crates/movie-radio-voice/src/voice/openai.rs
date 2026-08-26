@@ -88,12 +88,18 @@ impl OpenAiTtsProvider {
                 }
             }
         }
-        Err(last_err.expect("retry loop runs at least once")).with_context(|| {
-            format!(
-                "TTS endpoint unreachable after {} attempts: {}",
-                MAX_CONNECT_ATTEMPTS, endpoint
-            )
-        })
+        match last_err {
+            Some(err) => Err(err).with_context(|| {
+                format!(
+                    "TTS endpoint unreachable after {} attempts: {}",
+                    MAX_CONNECT_ATTEMPTS, endpoint
+                )
+            }),
+            None => anyhow::bail!(
+                "TTS retry loop at {} exhausted without a captured transport error",
+                endpoint
+            ),
+        }
     }
 }
 

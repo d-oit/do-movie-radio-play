@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use reqwest::Client;
 use std::env;
 use std::io::Cursor;
@@ -10,8 +11,29 @@ use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::packet::Packet;
 
-use super::{AudioOutput, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer};
+use super::{
+    is_valid_voice_id, AudioOutput, ProviderCapabilities, SynthesisRequest,
+    SynthesisValidationError, VoiceSynthesizer,
+};
 use crate::config::ElevenLabsConfig;
+
+/// Path-segment encode set: keeps RFC 3986 unreserved characters (`-._~`)
+/// verbatim and percent-encodes everything else, so no character in
+/// `voice_id` can alter URL structure.
+const VOICE_SEGMENT: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'-')
+    .remove(b'.')
+    .remove(b'_')
+    .remove(b'~');
+
+/// Builds the ElevenLabs TTS endpoint with the voice id encoded as a single
+/// URL path segment, so no character in `voice_id` can alter URL structure.
+fn voice_endpoint(voice_id: &str) -> String {
+    format!(
+        "https://api.elevenlabs.io/v1/text-to-speech/{}",
+        utf8_percent_encode(voice_id, VOICE_SEGMENT)
+    )
+}
 
 pub struct ElevenLabsProvider {
     config: ElevenLabsConfig,
@@ -39,7 +61,13 @@ impl VoiceSynthesizer for ElevenLabsProvider {
             .cloned()
             .unwrap_or_else(|| self.config.voice_id.clone());
 
-        let url = format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice_id);
+        // Validate the *effective* id so the config fallback path is covered
+        // too, not just per-request overrides.
+        if !is_valid_voice_id(&voice_id) {
+            return Err(SynthesisValidationError::InvalidVoiceId.into());
+        }
+
+        let url = voice_endpoint(&voice_id);
 
         let response = self
             .client
@@ -190,4 +218,35 @@ pub fn decode_audio_bytes(bytes: &[u8], target_sample_rate: u32) -> Result<Vec<f
     }
 
     Ok(resampled)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::voice_endpoint;
+
+    #[test]
+    fn test_voice_endpoint_leaves_valid_ids_unchanged() {
+        assert_eq!(
+            voice_endpoint("pNInz6obpgDQGcFmaJgB"),
+            "https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB"
+        );
+        assert_eq!(
+            voice_endpoint("voice-1.2_abc"),
+            "https://api.elevenlabs.io/v1/text-to-speech/voice-1.2_abc"
+        );
+    }
+
+    #[test]
+    fn test_voice_endpoint_percent_encodes_url_significant_chars() {
+        // Path traversal attempts stay inside one segment.
+        assert_eq!(
+            voice_endpoint("../admin"),
+            "https://api.elevenlabs.io/v1/text-to-speech/..%2Fadmin"
+        );
+        // URL-significant characters are neutralized.
+        assert_eq!(
+            voice_endpoint("a@b:c?x=1#f"),
+            "https://api.elevenlabs.io/v1/text-to-speech/a%40b%3Ac%3Fx%3D1%23f"
+        );
+    }
 }

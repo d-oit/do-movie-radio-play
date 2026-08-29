@@ -2335,6 +2335,7 @@ dependencies = [
  "movie-radio-types",
  "once_cell",
  "ort",
+ "percent-encoding",
  "qwen_tts",
  "rand 0.10.2",
  "reqwest 0.13.4",

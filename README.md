@@ -1,14 +1,17 @@
 # do-movie-radio-play
 
-Extracts non-voice segments from movie audio to assist in radio play adaptation.
+Extracts non-voice timeline segments from movie audio to assist in radio play adaptation.
 
-The tool identifies audio intervals without speech, such as music, sound effects, or ambience. It uses energy and
-spectral feature analysis to classify audio frames and clusters them into segments.
+## What It Does
+
+The tool analyzes input audio files to detect regions without speech, such as music, sound effects, and ambience.
+It calculates RMS energy and spectral features per frame, applies Voice Activity Detection (VAD), and clusters audio
+frames into non-voice segments suitable for production workflows.
 
 ## Prerequisites
 
-- Rust 2021 toolchain (v1.75+)
-- FFmpeg (required for video containers or non-WAV audio)
+- Rust 2021 toolchain (v1.75 or higher)
+- FFmpeg (required when processing non-WAV media containers or encoded audio streams)
 
 ## Build
 
@@ -16,70 +19,94 @@ spectral feature analysis to classify audio frames and clusters them into segmen
 cargo build --workspace --release
 ```
 
-The binary is located at `target/release/timeline`.
+The compiled executable is placed at `target/release/timeline`.
 
 ## Commands
 
-- `extract <INPUT> --output <JSON>`: Run the extraction pipeline on a media file.
-- `tag <INPUT_MEDIA> --input <JSON> --output <JSON>`: Apply acoustic tags (music, ambience) to segments.
-- `prompt <INPUT_JSON> --output <JSON>`: Generate text prompts for identified segments.
-- `review <INPUT_MEDIA> --input <JSON> --output <HTML>`: Generate an interactive review player.
-- `calibrate <CORRECTIONS_DIR> --profile <NAME>`: Generate a calibration report from manual corrections.
-- `apply-calibration --report <JSON>`: Update the active profile with a calibration report.
-- `bench <INPUT_MEDIA> --output <JSON>`: Measure pipeline performance and stage durations.
-- `gen-fixtures`: Create synthetic audio test cases.
-- `validate <INPUT_MEDIA> --output <JSON>`: Compare extraction results against ground truth or subtitles.
-- `ai-voice-extract <INPUT_JSON> --output <JSON>`: Extract only speech segments for voice replacement workflows.
-- `verify-timeline <MEDIA> --timeline <JSON> --output <JSON>`: Validate segments against spectral feature bounds.
-- `update-thresholds`: Adjust adaptive thresholds using the SQL-based learning database.
-- `learning-stats`: Display statistics from the learning database.
-- `merge-timeline <INPUT> --output <JSON>`: Combine adjacent segments based on gap thresholds.
-- `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Convert timeline to external formats.
-- `radio-play <MOVIE>`: Perform visual gap analysis by correlating VAD segments with subtitles.
+- `extract <INPUT> --output <JSON>`: Run non-voice extraction pipeline on media file.
+- `tag <INPUT_MEDIA> --input <JSON> --output <JSON>`: Assign acoustic classification tags (music, ambience) to segments.
+- `prompt <INPUT_JSON> --output <JSON>`: Generate text prompts for identified non-voice segments.
+- `review <INPUT_MEDIA> --input <JSON> --output <HTML>`: Generate interactive HTML review player.
+- `calibrate <CORRECTIONS_DIR> --profile <NAME>`: Produce calibration report from corrected timeline files.
+- `apply-calibration --report <JSON>`: Apply calibration report parameters to active profile.
+- `bench <INPUT_MEDIA> --output <JSON>`: Benchmark pipeline processing speed and stage timing metrics.
+- `gen-fixtures`: Generate synthetic test WAV fixtures for pipeline validation.
+- `validate <INPUT_MEDIA> --output <JSON>`: Evaluate segment classification against ground truth or subtitles.
+- `ai-voice-extract <INPUT_JSON> --output <JSON>`: Extract speech segments for AI voice replacement workflows.
+- `verify-timeline <MEDIA> --timeline <JSON> --output <JSON>`: Validate segment spectral statistics against bounds.
+- `update-thresholds`: Recalculate adaptive VAD thresholds using stored learning database runs.
+- `learning-stats`: Display summary statistics from the local SQLite learning database.
+- `learning-experiments`: List calibration runs, applied profile versions, and experiment records.
+- `merge-timeline <INPUT> --output <JSON>`: Merge adjacent segments using gap duration thresholds.
+- `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Export timeline to external formats (JSON, EDL, VTT).
+- `radio-play <MOVIE>`: Analyze gap context by matching VAD segments against SRT subtitle entries.
+- `preview --input <WAV>`: Stream audio playback to system speakers for QA verification.
 
 ## Configuration
 
-Profiles are stored as JSON in `config/profiles/`. Options can be overridden via `TIMELINE_` environment variables.
+Configuration profiles are stored in `config/profiles/` (e.g., `modern-optimized.json`, `legacy-optimized.json`).
 
 ### AnalysisConfig Fields
 
-- `sample_rate_hz`: Processing sample rate (default: 16000).
-- `frame_ms`: Analysis window size (default: 20).
-- `energy_threshold`: Baseline RMS sensitivity (0.0 to 1.0).
-- `vad_engine`: Classification engine ("energy", "spectral", or "hybrid").
-- `min_speech_ms`: Minimum duration for a speech cluster.
-- `min_non_voice_ms`: Minimum duration for a non-voice segment.
-- `max_non_voice_ms`: Maximum duration for a non-voice segment.
-- `speech_hangover_ms`: Duration to extend speech segments after detection.
-- `merge_gap_ms`: Maximum gap to merge adjacent segments.
-- `parallel_features`: Enable multi-threaded feature extraction.
+- `sample_rate_hz`: Audio sample rate in Hz (default: 16000).
+- `frame_ms`: Analysis window duration in milliseconds (default: 20).
+- `speech_hangover_ms`: Post-speech hangover duration in milliseconds (default: 300).
+- `merge_gap_ms`: Gap threshold in milliseconds for merging adjacent segments (default: 250).
+- `min_speech_ms`: Minimum speech segment duration in milliseconds (default: 120).
+- `min_non_voice_ms`: Minimum non-voice segment duration in milliseconds (default: 10000).
+- `max_non_voice_ms`: Optional maximum non-voice segment duration in milliseconds (default: null).
+- `energy_threshold`: Baseline RMS threshold for speech classification (default: 0.015).
+- `vad_threshold_delta`: Delta added to baseline energy threshold (default: 0.0).
+- `prompt_min_duration_ms`: Minimum segment duration for prompt generation in milliseconds (default: 2500).
+- `prompt_min_confidence`: Minimum confidence threshold for prompt generation (default: 0.65).
+- `vad_engine`: Classification engine ("energy", "spectral", or "hybrid", default: "energy").
+- `parallel_features`: Enable multi-threaded feature extraction (default: true).
+- `merge_options`: Optional merge strategy configuration object (`min_gap_to_merge`, `merge_strategy`, etc.).
+- `spectral_flatness_max`: Upper bound threshold for spectral flatness (default: null).
+- `spectral_entropy_min`: Lower bound threshold for spectral entropy (default: null).
+- `spectral_centroid_min`: Lower bound threshold for spectral centroid in Hz (default: null).
+- `spectral_centroid_max`: Upper bound threshold for spectral centroid in Hz (default: null).
+- `chunk_duration_sec`: Duration in seconds for chunked parallel processing (default: null).
+- `profile_id`: Profile identifier string (default: null).
+- `version`: Integer profile version number (default: null).
+- `experiment_tags`: Array of string tags for tracking experiment parameters.
+
+### Segment JSON Schema
+
+- `start_ms`: Segment start timestamp in milliseconds.
+- `end_ms`: Segment end timestamp in milliseconds.
+- `kind`: Segment classification type ("Speech" or "NonVoice").
+- `confidence`: Classification confidence value between 0.0 and 1.0.
+- `tags`: Array of acoustic tags (e.g., ["music"], ["ambience"]).
+- `prompt`: String prompt text or null.
 
 ## Validation Workflow
 
-1. Run the validation suite: `python3 scripts/run_validation_manifest.py`.
-2. Generate the readiness report: `python3 scripts/build_radio_play_readiness_report.py`.
-3. Check codebase integrity: `bash scripts/quality_gate.sh`.
+Execute the verification steps to validate pipeline behavior:
+
+1. Run validation suite across dataset: `python3 scripts/run_validation_manifest.py`
+2. Generate readiness report: `python3 scripts/build_radio_play_readiness_report.py`
+3. Perform workspace quality check: `bash scripts/quality_gate.sh`
 
 ### Spectral VAD Performance Gate
 
-The quality gate (`scripts/quality_gate.sh`) automatically runs a performance benchmark using `perf-manifest.json` on every check. It enforces:
-- `vad_ms` < 30ms (VAD classification)
-- `spectral_vad_ms` < 30ms (Spectral VAD duration)
-- `frame_ms` < 150ms (framing and feature extraction)
-- `total_ms` < 500ms (total pipeline duration)
+The quality gate in `scripts/quality_gate.sh` checks spectral VAD performance on `testdata/perf-manifest.json`:
+- `vad_ms` & `spectral_vad_ms` < 30ms (classification duration)
+- `frame_ms` < 150ms (framing and feature extraction duration)
+- `total_ms` < 500ms (total execution duration)
 
-## Export Formats
+## Export
 
-- **JSON**: Internal format with timestamps, confidence, tags, and prompts.
-- **EDL**: CMX 3600 Edit Decision List for NLE import.
-- **VTT**: WebVTT subtitle format.
+- `json`: Internal timeline structure with timestamps, confidence scores, tags, and prompts.
+- `edl`: CMX 3600 Edit Decision List for NLE audio software integration.
+- `vtt`: WebVTT format for subtitle and caption displays.
 
 ## Known Limitations
 
-- 16-bit PCM WAV is the only natively supported format; others require FFmpeg.
-- Spectral analysis is CPU-bound.
-- HTML report generation uses incremental streaming to maintain constant memory footprint regardless of segment count.
+- Direct audio decoding without FFmpeg supports only 16-bit PCM WAV containers.
+- Spectral feature processing increases CPU usage relative to standard energy VAD.
+- HTML review player generation uses streaming output (`BufWriter`) to maintain constant memory overhead.
 
-## Contributing
+## Development Workflow
 
-Refer to [AGENTS.md](AGENTS.md) for development workflows and agent coordination policies.
+For details on contributor workflows, agent policies, and repository guidelines, see [AGENTS.md](AGENTS.md).

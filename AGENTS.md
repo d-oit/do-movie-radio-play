@@ -8,8 +8,11 @@ MAX_SOURCE_FILE_LOC=500
 MAX_LINES_AGENTS_MD=150
 ```
 
-## Versioning
-The `VERSION` file in the root is the single source of truth. Never edit version strings inline.
+## Secret Scanning Policy
+Gitleaks secret scanning is enforced via `.gitleaks.toml`. Never commit secrets or credentials.
+
+## Version Policy
+The `VERSION` file in the root is the single source of truth. Never edit version strings inline in source files.
 
 ## Repository Map
 | Directory | Purpose |
@@ -40,7 +43,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 ## Rules
 - **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.
 - **Lint**: Always run `cargo fmt --check && cargo clippy --workspace --all-targets --all-features -- -D warnings`.
-- **Atomic Commits**: Use `bash scripts/ai-commit.sh`.
+- **Atomic Commits**: Use `bash scripts/ai-commit.sh` or `bash scripts/quality_gate.sh && git add -A && git commit`.
 - **No unwrap() or expect()** in `crates/*/src/`. Use `Result` and `?`.
 - **MAX_SOURCE_FILE_LOC**: Limit Rust source files to 500 lines.
 - **Secret Scanning**: Gitleaks enforcement via `.gitleaks.toml`.
@@ -61,18 +64,11 @@ All human and agent-driven development must follow this standard "plan → execu
    - Use `🤖 Agent/Harness Change` template for updates to agent skills, plans, or harness settings (labels: `agent`, `harness`).
 2. **Execute**: Create/update the plan (e.g. `plans/GOAP_STATE.md`), then write code in minimal, atomic commits using `scripts/ai-commit.sh`.
 3. **Review**: Ensure general correctness and verify code by running `scripts/quality_gate.sh` and workspace tests before submission.
+
 ## Active Learning & Calibration Loop
 For any calibration/VAD verification task:
 - Always check priority review candidates first using the active learning filters.
 - Ensure profile changes are registered as experiments with unique `profile_id` and incremented `version` fields.
-
-## Recent Merges
-| PR | Change |
-| --- | --- |
-| #193 | Spectral feature extraction optimized (pre-allocated `mags`, branchless slice sums); helpers `fill_magnitudes` + `spectral_stats` |
-| #189 | `run_pipeline` refactored into `stages.rs` module; `timed_stage!` macro for timing |
-| #188 | `identify_gaps` modularized into signal-analysis helpers (unit-tested in `gaps.rs`) |
-| #198 | CHANGELOG entries; `dependencies`/`rust`/`ci` labels; gap-helper unit tests |
 
 ## Triage
 Maintain zero open issues/PRs. A weekly reminder workflow (`.github/workflows/triage-reminder.yml`) flags stale items — triage them promptly.
@@ -82,10 +78,10 @@ Maintain zero open issues/PRs. A weekly reminder workflow (`.github/workflows/tr
 | --------- | ------ | ----- |
 | Gitleaks Scan | Adopted | `.gitleaks.toml` present |
 | Named Constants | Adopted | `bash readonly` block above |
-| Single Source Version | Adopted | `VERSION` file is the source of truth |
-| `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines |
-| Skill Frontmatter | Adopted | Verified in all `.agents/skills/*.md` |
-| `ai-commit.sh` | Adopted | Available in `scripts/` |
-| `update-all-docs.sh` | Adopted | Available in `scripts/` |
+| Single Source Version | Adopted | `VERSION` file is the single source of truth |
+| `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines (currently <= 100) |
+| Skill Frontmatter | Adopted | Verified in all `.agents/skills/*/SKILL.md` |
+| `ai-commit.sh` | Adopted | Available in `scripts/ai-commit.sh` |
+| `update-all-docs.sh` | Adopted | Available in `scripts/update-all-docs.sh` |
 | Agent Config Dirs | Adopted | `.jules/`, `.opencode/`, `.qwen/` present |
-| `VERSION` policy | Gap | `agents-docs/VERSION.md` missing (no `agents-docs/` dir) |
+| `VERSION` policy | Gap | `agents-docs/VERSION.md` missing (root `VERSION` used instead) |

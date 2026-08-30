@@ -116,118 +116,19 @@ impl FeatureExtractor {
             };
         }
 
-        let mut sum_sq = 0.0;
-        let mut zero_crosses = 0u32;
-        // Optimization: Fuse RMS and ZCR calculation into a single pass to minimize memory accesses.
-        if !samples.is_empty() {
-            let mut prev_sign = samples[0] >= 0.0;
-            sum_sq += samples[0] * samples[0];
-            for &s in &samples[1..] {
-                sum_sq += s * s;
-                let sign = s >= 0.0;
-                if sign != prev_sign {
-                    zero_crosses += 1;
-                    prev_sign = sign;
-                }
-            }
-        }
-        let rms = (sum_sq / samples.len() as f32).sqrt();
-        let zcr = zero_crosses as f32 / samples.len() as f32;
-
-        let bin_width = sample_rate as f32 / self.fft_len as f32;
-        let low_bin = (300.0 / bin_width) as usize;
-        let high_bin = (2000.0 / bin_width) as usize;
-        let half_bins = self.fft_len / 2;
-        let inv_half_bins = 1.0 / half_bins as f32;
-
-        let mut flux_acc = 0.0;
-        let mut weighted_bin_sum = 0.0;
-        let mut mag_sum = 0.0;
-        let mut low = 0.0;
-        let mut high = 0.0;
-        let mut log_mag_sum = 0.0f32;
-        let mut arithmetic_mean = 0.0f32;
-        let mut valid_mag_count = 0usize;
-        let mut entropy_acc = 0.0f32;
-        let mut entropy_count = 0usize;
-        let mut has_prev = false;
+        let (rms, zcr) = compute_time_domain_features(samples);
+        let mut accum = SpectralAccumulator::new(sample_rate, self.fft_len);
 
         for chunk in samples
             .chunks(self.fft_len / 2)
             .take_while(|c| c.len() >= self.fft_len / 4)
         {
             let mags = self.analyzer.analyze(chunk);
-
-            let mut chunk_mag_sum = 0.0f32;
-            let mut chunk_sum_m_ln_m = 0.0f32;
-
-            // Optimization: Compute low and high subslice sums using vectorized iterators.
-            // Safe slicing guarantees no out-of-bounds index panics if the analyzed buffer is smaller.
-            let low_limit = low_bin.min(half_bins).min(mags.len());
-            low += mags[..low_limit].iter().sum::<f32>();
-            let high_start = high_bin.min(half_bins).min(mags.len());
-            let high_limit = half_bins.min(mags.len());
-            if high_start < high_limit {
-                high += mags[high_start..high_limit].iter().sum::<f32>();
-            }
-
-            for (i, &m) in mags.iter().enumerate().take(half_bins) {
-                chunk_mag_sum += m;
-                weighted_bin_sum += i as f32 * m;
-                mag_sum += m;
-
-                if m > 1e-10 {
-                    let ln_m = m.ln();
-                    log_mag_sum += ln_m;
-                    arithmetic_mean += m;
-                    valid_mag_count += 1;
-                    chunk_sum_m_ln_m += m * ln_m;
-                }
-
-                if has_prev {
-                    let diff = m - self.prev_mags[i];
-                    flux_acc += diff.max(0.0);
-                }
-            }
-
-            if chunk_mag_sum > 1e-10 {
-                let chunk_entropy = (chunk_mag_sum.ln() - chunk_sum_m_ln_m / chunk_mag_sum)
-                    * std::f32::consts::LOG2_E;
-                entropy_acc += chunk_entropy.max(0.0);
-                entropy_count += 1;
-            }
-
+            accum.accumulate_chunk(mags, &self.prev_mags);
             self.prev_mags.copy_from_slice(mags);
-            has_prev = true;
         }
 
-        let spectral_entropy = if entropy_count > 0 {
-            entropy_acc / entropy_count as f32
-        } else {
-            0.0
-        };
-
-        let spectral_flatness = if valid_mag_count > 0 && arithmetic_mean > 0.0 {
-            let am = arithmetic_mean / valid_mag_count as f32;
-            ((log_mag_sum * inv_half_bins) - am.ln()).max(-10.0).exp()
-        } else {
-            0.0
-        };
-
-        FeatureSet {
-            rms,
-            zcr,
-            spectral_flux: flux_acc / samples.len().max(1) as f32 * 1000.0,
-            spectral_flatness,
-            spectral_entropy,
-            centroid_hz: if mag_sum > 0.0 {
-                (weighted_bin_sum * bin_width) / mag_sum
-            } else {
-                0.0
-            },
-            low_band_ratio: if mag_sum > 0.0 { low / mag_sum } else { 0.0 },
-            high_band_ratio: if mag_sum > 0.0 { high / mag_sum } else { 0.0 },
-        }
+        accum.into_feature_set(rms, zcr, samples.len())
     }
 
     pub fn extract_frame(
@@ -296,6 +197,156 @@ pub fn compute_features_parallel(frames: &[&[f32]], sample_rate: u32) -> Vec<Fea
             compute_frame_features_impl(chunk, mags, prev_mags, sample_rate, fft_len)
         })
         .collect()
+}
+
+fn compute_time_domain_features(samples: &[f32]) -> (f32, f32) {
+    if samples.is_empty() {
+        return (0.0, 0.0);
+    }
+    let mut sum_sq = 0.0;
+    let mut zero_crosses = 0u32;
+    let mut prev_sign = samples[0] >= 0.0;
+    sum_sq += samples[0] * samples[0];
+    for &s in &samples[1..] {
+        sum_sq += s * s;
+        let sign = s >= 0.0;
+        if sign != prev_sign {
+            zero_crosses += 1;
+            prev_sign = sign;
+        }
+    }
+    let rms = (sum_sq / samples.len() as f32).sqrt();
+    let zcr = zero_crosses as f32 / samples.len() as f32;
+    (rms, zcr)
+}
+
+struct SpectralAccumulator {
+    bin_width: f32,
+    low_bin: usize,
+    high_bin: usize,
+    half_bins: usize,
+    inv_half_bins: f32,
+    flux_acc: f32,
+    weighted_bin_sum: f32,
+    mag_sum: f32,
+    low: f32,
+    high: f32,
+    log_mag_sum: f32,
+    arithmetic_mean: f32,
+    valid_mag_count: usize,
+    entropy_acc: f32,
+    entropy_count: usize,
+    has_prev: bool,
+}
+
+impl SpectralAccumulator {
+    fn new(sample_rate: u32, fft_len: usize) -> Self {
+        let bin_width = sample_rate as f32 / fft_len as f32;
+        let low_bin = (300.0 / bin_width) as usize;
+        let high_bin = (2000.0 / bin_width) as usize;
+        let half_bins = fft_len / 2;
+        let inv_half_bins = 1.0 / half_bins as f32;
+
+        Self {
+            bin_width,
+            low_bin,
+            high_bin,
+            half_bins,
+            inv_half_bins,
+            flux_acc: 0.0,
+            weighted_bin_sum: 0.0,
+            mag_sum: 0.0,
+            low: 0.0,
+            high: 0.0,
+            log_mag_sum: 0.0,
+            arithmetic_mean: 0.0,
+            valid_mag_count: 0,
+            entropy_acc: 0.0,
+            entropy_count: 0,
+            has_prev: false,
+        }
+    }
+
+    fn accumulate_chunk(&mut self, mags: &[f32], prev_mags: &[f32]) {
+        let mut chunk_mag_sum = 0.0f32;
+        let mut chunk_sum_m_ln_m = 0.0f32;
+
+        let low_limit = self.low_bin.min(self.half_bins).min(mags.len());
+        self.low += mags[..low_limit].iter().sum::<f32>();
+        let high_start = self.high_bin.min(self.half_bins).min(mags.len());
+        let high_limit = self.half_bins.min(mags.len());
+        if high_start < high_limit {
+            self.high += mags[high_start..high_limit].iter().sum::<f32>();
+        }
+
+        for (i, &m) in mags.iter().enumerate().take(self.half_bins) {
+            chunk_mag_sum += m;
+            self.weighted_bin_sum += i as f32 * m;
+            self.mag_sum += m;
+
+            if m > 1e-10 {
+                let ln_m = m.ln();
+                self.log_mag_sum += ln_m;
+                self.arithmetic_mean += m;
+                self.valid_mag_count += 1;
+                chunk_sum_m_ln_m += m * ln_m;
+            }
+
+            if self.has_prev {
+                let diff = m - prev_mags[i];
+                self.flux_acc += diff.max(0.0);
+            }
+        }
+
+        if chunk_mag_sum > 1e-10 {
+            let chunk_entropy =
+                (chunk_mag_sum.ln() - chunk_sum_m_ln_m / chunk_mag_sum) * std::f32::consts::LOG2_E;
+            self.entropy_acc += chunk_entropy.max(0.0);
+            self.entropy_count += 1;
+        }
+
+        self.has_prev = true;
+    }
+
+    fn into_feature_set(self, rms: f32, zcr: f32, sample_count: usize) -> FeatureSet {
+        let spectral_entropy = if self.entropy_count > 0 {
+            self.entropy_acc / self.entropy_count as f32
+        } else {
+            0.0
+        };
+
+        let spectral_flatness = if self.valid_mag_count > 0 && self.arithmetic_mean > 0.0 {
+            let am = self.arithmetic_mean / self.valid_mag_count as f32;
+            ((self.log_mag_sum * self.inv_half_bins) - am.ln())
+                .max(-10.0)
+                .exp()
+        } else {
+            0.0
+        };
+
+        FeatureSet {
+            rms,
+            zcr,
+            spectral_flux: self.flux_acc / sample_count.max(1) as f32 * 1000.0,
+            spectral_flatness,
+            spectral_entropy,
+            centroid_hz: if self.mag_sum > 0.0 {
+                (self.weighted_bin_sum * self.bin_width) / self.mag_sum
+            } else {
+                0.0
+            },
+            low_band_ratio: if self.mag_sum > 0.0 {
+                self.low / self.mag_sum
+            } else {
+                0.0
+            },
+            high_band_ratio: if self.mag_sum > 0.0 {
+                self.high / self.mag_sum
+            } else {
+                0.0
+            },
+        }
+    }
 }
 
 fn compute_frame_features_impl(

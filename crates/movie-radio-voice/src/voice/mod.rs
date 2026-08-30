@@ -5,6 +5,10 @@ use std::ops::RangeInclusive;
 
 /// Maximum accepted text length per synthesis request, in characters.
 pub const MAX_REQUEST_TEXT_CHARS: usize = 10_000;
+/// Maximum accepted voice ID length, in characters.
+pub const MAX_VOICE_ID_CHARS: usize = 128;
+/// Maximum accepted language tag length, in characters.
+pub const MAX_LANGUAGE_CHARS: usize = 32;
 /// Inclusive bounds for `sample_rate_hz`, in Hz.
 pub const SAMPLE_RATE_RANGE_HZ: RangeInclusive<u32> = 8_000..=48_000;
 /// Inclusive bounds for `speed`.
@@ -50,14 +54,48 @@ pub enum SynthesisValidationError {
     SpeedOutOfRange(f32),
     #[error("text length {0} chars exceeds maximum of {MAX_REQUEST_TEXT_CHARS}")]
     TextTooLong(usize),
+    #[error("voice_id is empty, contains invalid characters, or exceeds maximum length of {MAX_VOICE_ID_CHARS}")]
+    InvalidVoiceId,
+    #[error("language tag contains invalid characters or exceeds maximum length of {MAX_LANGUAGE_CHARS}")]
+    InvalidLanguage,
+}
+
+fn is_valid_voice_id_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')
+}
+
+/// Conservative charset/length check for provider voice identifiers.
+///
+/// This is *not* a per-provider format validation; it rejects inputs that are
+/// dangerous when interpolated into URLs or identifiers. Providers must still
+/// percent-encode path segments (see `elevenlabs::voice_endpoint`).
+pub(crate) fn is_valid_voice_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.chars().count() <= MAX_VOICE_ID_CHARS
+        && id.chars().all(is_valid_voice_id_char)
+}
+
+fn is_valid_language_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '-' | '_')
+}
+
+fn is_valid_language(lang: &str) -> bool {
+    !lang.is_empty()
+        && lang.chars().count() <= MAX_LANGUAGE_CHARS
+        && lang.chars().all(is_valid_language_char)
 }
 
 impl SynthesisRequest {
     /// Validates provider-facing parameters before any TTS dispatch.
     ///
     /// Rejects sample rates outside [`SAMPLE_RATE_RANGE_HZ`], non-finite or
-    /// out-of-range speeds ([`SPEED_RANGE`]), and texts longer than
-    /// [`MAX_REQUEST_TEXT_CHARS`] characters.
+    /// out-of-range speeds ([`SPEED_RANGE`]), texts longer than
+    /// [`MAX_REQUEST_TEXT_CHARS`] characters, invalid `voice_id` inputs,
+    /// and invalid `language` inputs.
+    ///
+    /// Note: `language` is a conservative charset check, not a BCP-47 tag
+    /// validation; providers resolve unknown tags against their own
+    /// capabilities.
     pub fn validate(&self) -> Result<(), SynthesisValidationError> {
         if !SAMPLE_RATE_RANGE_HZ.contains(&self.sample_rate_hz) {
             return Err(SynthesisValidationError::SampleRateOutOfRange(
@@ -70,6 +108,14 @@ impl SynthesisRequest {
         let len = self.text.chars().count();
         if len > MAX_REQUEST_TEXT_CHARS {
             return Err(SynthesisValidationError::TextTooLong(len));
+        }
+        if let Some(ref voice_id) = self.voice_id {
+            if !is_valid_voice_id(voice_id) {
+                return Err(SynthesisValidationError::InvalidVoiceId);
+            }
+        }
+        if !is_valid_language(&self.language) {
+            return Err(SynthesisValidationError::InvalidLanguage);
         }
         Ok(())
     }
@@ -299,6 +345,53 @@ mod tests {
             request(&over, 1.0, 192_000).validate(),
             Err(SynthesisValidationError::SampleRateOutOfRange(192_000))
         ));
+    }
+
+    #[test]
+    fn test_voice_id_validation() {
+        let mut req = SynthesisRequest::default();
+
+        for valid_id in ["pNInz6obpgDQGcFmaJgB", "onyx", "voice-123_abc.v1"] {
+            req.voice_id = Some(valid_id.to_string());
+            assert_eq!(req.validate(), Ok(()));
+        }
+
+        let long_id = "a".repeat(MAX_VOICE_ID_CHARS + 1);
+        for invalid_id in [
+            "",
+            &long_id,
+            "../admin",
+            "voice/id",
+            "voice\nid",
+            "voice?param=1",
+            "voice@host",
+            "voice:scheme",
+        ] {
+            req.voice_id = Some(invalid_id.to_string());
+            assert_eq!(
+                req.validate(),
+                Err(SynthesisValidationError::InvalidVoiceId)
+            );
+        }
+    }
+
+    #[test]
+    fn test_language_validation() {
+        let mut req = SynthesisRequest::default();
+
+        for valid_lang in ["de", "en", "en-US", "zh_CN"] {
+            req.language = valid_lang.to_string();
+            assert_eq!(req.validate(), Ok(()));
+        }
+
+        let long_lang = "a".repeat(MAX_LANGUAGE_CHARS + 1);
+        for invalid_lang in ["", &long_lang, "de;cat /etc/passwd", "de\r\n", "en.US"] {
+            req.language = invalid_lang.to_string();
+            assert_eq!(
+                req.validate(),
+                Err(SynthesisValidationError::InvalidLanguage)
+            );
+        }
     }
 
     struct FakeProvider {

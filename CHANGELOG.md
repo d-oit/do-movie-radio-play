@@ -2,6 +2,7 @@
 
 ## Unreleased
 - feat(voice): configurable OpenAI-compatible TTS endpoint — `base_url` + optional auth enables local German sidecars (audio.cpp/PocketTTS) with OpenAI as default (#212).
+- fix(voice): harden `SynthesisRequest` validation and percent-encode the ElevenLabs voice endpoint; validate effective voice_id including config fallback (#231).
 - fix(voice): validate `SynthesisRequest` parameters (sample-rate bounds, finite speed, text cap) before TTS dispatch; typed validation errors (#209).
 - perf(verification): pre-allocated magnitude buffers and branchless spectral summation, ~7.5% faster spectral feature extraction (#193).
 - refactor(pipeline): extracted `run_pipeline` processing stages into focused helpers with a shared `timed_stage!` macro (#189).

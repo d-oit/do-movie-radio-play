@@ -5,6 +5,7 @@ use std::time::Duration;
 use tokio::process::Command;
 use tokio::time::timeout;
 
+use super::http::ModelParams;
 use super::wav::decode_and_resample_wav;
 use super::AudioOutput;
 use crate::config::AudioCppConfig;
@@ -21,10 +22,7 @@ fn rand_id() -> u64 {
 pub(crate) async fn synthesize_local_cli(
     config: &AudioCppConfig,
     request: &SynthesisRequest,
-    family: &str,
-    model: &str,
-    backend: &str,
-    default_language: &str,
+    params: &ModelParams<'_>,
     timeout_duration: Duration,
 ) -> Result<AudioOutput> {
     let binary = &config.local.binary;
@@ -33,18 +31,18 @@ pub(crate) async fn synthesize_local_cli(
     let output_path = temp_dir.join(temp_filename);
 
     let language = if request.language.is_empty() {
-        default_language
+        params.default_language
     } else {
         &request.language
     };
 
     let mut cmd = Command::new(binary);
-    cmd.arg("--model").arg(model);
+    cmd.arg("--model").arg(params.model);
     cmd.arg("--input").arg(&request.text);
     cmd.arg("--output").arg(&output_path);
     cmd.arg("--language").arg(language);
-    cmd.arg("--backend").arg(backend);
-    cmd.arg("--family").arg(family);
+    cmd.arg("--backend").arg(params.backend);
+    cmd.arg("--family").arg(params.family);
 
     if let Some(ref v_id) = request.voice_id {
         cmd.arg("--voice").arg(v_id);

@@ -4,6 +4,7 @@ use reqwest::Client;
 use std::env;
 use std::time::Duration;
 
+use self::http::ModelParams;
 use super::{AudioOutput, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer};
 use crate::config::AudioCppConfig;
 
@@ -52,58 +53,55 @@ impl AudioCppProvider {
         Duration::from_secs(secs)
     }
 
-    async fn synthesize_local_server(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
+    fn model_params(&self) -> (String, String, String, String) {
+        (
+            self.family(),
+            self.model(),
+            self.backend(),
+            self.default_language(),
+        )
+    }
+
+    async fn synthesize_local_server(
+        &self,
+        request: &SynthesisRequest,
+        params: &ModelParams<'_>,
+    ) -> Result<AudioOutput> {
         let base_url = env::var("AUDIO_CPP_LOCAL_URL")
             .unwrap_or_else(|_| self.config.local.server_url.clone());
         if base_url.is_empty() {
             anyhow::bail!("Local audio.cpp server URL is not configured");
         }
-        http::synthesize_http_endpoint(
-            &self.client,
-            &self.config,
-            &base_url,
-            None,
-            request,
-            &self.family(),
-            &self.model(),
-            &self.backend(),
-            &self.default_language(),
-        )
-        .await
+        http::synthesize_http_endpoint(&self.client, &self.config, &base_url, None, request, params)
+            .await
     }
 
-    async fn synthesize_local(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
+    async fn synthesize_local(
+        &self,
+        request: &SynthesisRequest,
+        params: &ModelParams<'_>,
+    ) -> Result<AudioOutput> {
         if self.config.local.mode == "cli" {
-            cli::synthesize_local_cli(
-                &self.config,
-                request,
-                &self.family(),
-                &self.model(),
-                &self.backend(),
-                &self.default_language(),
-                self.timeout_duration(),
-            )
-            .await
+            cli::synthesize_local_cli(&self.config, request, params, self.timeout_duration()).await
         } else {
-            self.synthesize_local_server(request).await
+            self.synthesize_local_server(request, params).await
         }
     }
 
-    async fn synthesize_gpu_pools(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
-        http::synthesize_gpu_pools(
-            &self.client,
-            &self.config,
-            request,
-            &self.family(),
-            &self.model(),
-            &self.backend(),
-            &self.default_language(),
-        )
-        .await
+    async fn synthesize_gpu_pools(
+        &self,
+        request: &SynthesisRequest,
+        params: &ModelParams<'_>,
+    ) -> Result<AudioOutput> {
+        http::synthesize_gpu_pools(&self.client, &self.config, request, params).await
     }
 
-    async fn synthesize_auto(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
-        let local_err = match self.synthesize_local(request).await {
+    async fn synthesize_auto(
+        &self,
+        request: &SynthesisRequest,
+        params: &ModelParams<'_>,
+    ) -> Result<AudioOutput> {
+        let local_err = match self.synthesize_local(request, params).await {
             Ok(out) => return Ok(out),
             Err(err) => err,
         };
@@ -111,7 +109,7 @@ impl AudioCppProvider {
             "Local audio.cpp synthesis failed ({}), trying remote GPU pools...",
             local_err
         );
-        let remote_err = match self.synthesize_gpu_pools(request).await {
+        let remote_err = match self.synthesize_gpu_pools(request, params).await {
             Ok(out) => return Ok(out),
             Err(err) => err,
         };
@@ -130,11 +128,19 @@ impl VoiceSynthesizer for AudioCppProvider {
             anyhow::bail!("AudioCppProvider is disabled");
         }
 
+        let (family, model, backend, default_language) = self.model_params();
+        let params = ModelParams {
+            family: &family,
+            model: &model,
+            backend: &backend,
+            default_language: &default_language,
+        };
+
         let mode = self.mode();
         match mode.as_str() {
-            "local" => self.synthesize_local(request).await,
-            "remote" => self.synthesize_gpu_pools(request).await,
-            _ => self.synthesize_auto(request).await,
+            "local" => self.synthesize_local(request, &params).await,
+            "remote" => self.synthesize_gpu_pools(request, &params).await,
+            _ => self.synthesize_auto(request, &params).await,
         }
     }
 

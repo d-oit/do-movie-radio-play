@@ -10,6 +10,13 @@ use crate::voice::SynthesisRequest;
 
 static CUMULATIVE_DAILY_COST_MILLICENTS: AtomicU64 = AtomicU64::new(0);
 
+pub(crate) struct ModelParams<'a> {
+    pub family: &'a str,
+    pub model: &'a str,
+    pub backend: &'a str,
+    pub default_language: &'a str,
+}
+
 pub(crate) fn resolve_auth_token(auth_env: Option<&str>) -> Option<String> {
     if let Ok(token) = env::var("AUDIO_CPP_REMOTE_TOKEN") {
         if !token.is_empty() {
@@ -52,16 +59,13 @@ pub(crate) async fn synthesize_http_endpoint(
     base_url: &str,
     auth_header: Option<&str>,
     request: &SynthesisRequest,
-    family: &str,
-    model: &str,
-    backend: &str,
-    default_language: &str,
+    params: &ModelParams<'_>,
 ) -> Result<AudioOutput> {
     let clean_base = base_url.trim_end_matches('/');
     let speech_url = format!("{}/v1/audio/speech", clean_base);
 
     let language = if request.language.is_empty() {
-        default_language
+        params.default_language
     } else {
         &request.language
     };
@@ -73,12 +77,12 @@ pub(crate) async fn synthesize_http_endpoint(
     let voice_ref = config.voice_ref.as_deref().unwrap_or("");
 
     let payload = serde_json::json!({
-        "model": model,
+        "model": params.model,
         "input": request.text,
         "voice": voice,
         "language": language,
-        "backend": backend,
-        "family": family,
+        "backend": params.backend,
+        "family": params.family,
         "voice_ref": voice_ref,
         "response_format": "wav",
         "speed": request.speed,
@@ -131,10 +135,7 @@ pub(crate) async fn synthesize_remote_endpoint(
     auth_env: Option<&str>,
     cost_per_hour: f64,
     request: &SynthesisRequest,
-    family: &str,
-    model: &str,
-    backend: &str,
-    default_language: &str,
+    params: &ModelParams<'_>,
 ) -> Result<AudioOutput> {
     if !endpoint_url.starts_with("http://127.0.0.1")
         && !endpoint_url.starts_with("http://localhost")
@@ -177,10 +178,7 @@ pub(crate) async fn synthesize_remote_endpoint(
         endpoint_url,
         token.as_deref(),
         request,
-        family,
-        model,
-        backend,
-        default_language,
+        params,
     )
     .await?;
 
@@ -196,10 +194,7 @@ pub(crate) async fn synthesize_gpu_pools(
     client: &Client,
     config: &AudioCppConfig,
     request: &SynthesisRequest,
-    family: &str,
-    model: &str,
-    backend: &str,
-    default_language: &str,
+    params: &ModelParams<'_>,
 ) -> Result<AudioOutput> {
     let mut endpoints = config.gpu_pool.clone();
 
@@ -249,10 +244,7 @@ pub(crate) async fn synthesize_gpu_pools(
             ep.auth_env.as_deref(),
             ep.cost_per_hour,
             request,
-            family,
-            model,
-            backend,
-            default_language,
+            params,
         )
         .await
         {

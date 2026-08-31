@@ -274,6 +274,26 @@ impl AudioCppProvider {
         }
     }
 
+    async fn synthesize_auto(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
+        let local_err = match self.synthesize_local(request).await {
+            Ok(out) => return Ok(out),
+            Err(err) => err,
+        };
+        tracing::debug!(
+            "Local audio.cpp synthesis failed ({}), trying remote GPU pools...",
+            local_err
+        );
+        let remote_err = match self.synthesize_gpu_pools(request).await {
+            Ok(out) => return Ok(out),
+            Err(err) => err,
+        };
+        anyhow::bail!(
+            "audio.cpp synthesis failed. Local error: {}; Remote error: {}",
+            local_err,
+            remote_err
+        );
+    }
+
     async fn synthesize_gpu_pools(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
         let mut endpoints = self.config.gpu_pool.clone();
 
@@ -351,28 +371,7 @@ impl VoiceSynthesizer for AudioCppProvider {
         match mode.as_str() {
             "local" => self.synthesize_local(request).await,
             "remote" => self.synthesize_gpu_pools(request).await,
-            _ => {
-                // Try local first if enabled and configured
-                match self.synthesize_local(request).await {
-                    Ok(out) => Ok(out),
-                    Err(local_err) => {
-                        tracing::debug!(
-                            "Local audio.cpp synthesis failed ({}), trying remote GPU pools...",
-                            local_err
-                        );
-                        match self.synthesize_gpu_pools(request).await {
-                            Ok(out) => Ok(out),
-                            Err(remote_err) => {
-                                anyhow::bail!(
-                                    "audio.cpp synthesis failed. Local error: {}; Remote error: {}",
-                                    local_err,
-                                    remote_err
-                                );
-                            }
-                        }
-                    }
-                }
-            }
+            _ => self.synthesize_auto(request).await,
         }
     }
 
@@ -462,6 +461,21 @@ struct WavLayout {
     bits_per_sample: u16,
 }
 
+fn parse_fmt_chunk_info(bytes: &[u8], data_start: usize, size: usize) -> Option<(u32, u16, u16)> {
+    if size < 16 || data_start + 16 > bytes.len() {
+        return None;
+    }
+    let fmt = &bytes[data_start..data_start + 16];
+    let audio_format = u16::from_le_bytes([fmt[0], fmt[1]]);
+    if audio_format != 1 {
+        return None;
+    }
+    let channels = u16::from_le_bytes([fmt[2], fmt[3]]);
+    let sample_rate = u32::from_le_bytes([fmt[4], fmt[5], fmt[6], fmt[7]]);
+    let bits_per_sample = u16::from_le_bytes([fmt[14], fmt[15]]);
+    Some((sample_rate, channels, bits_per_sample))
+}
+
 fn parse_wav_layout(bytes: &[u8]) -> Result<WavLayout> {
     const HEADER_LEN: usize = 12;
     if bytes.len() < HEADER_LEN || &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
@@ -485,23 +499,10 @@ fn parse_wav_layout(bytes: &[u8]) -> Result<WavLayout> {
             _ => break,
         };
 
-        match id {
-            b"fmt " => {
-                if size >= 16 && data_start + 16 <= bytes.len() {
-                    let fmt = &bytes[data_start..data_start + 16];
-                    let audio_format = u16::from_le_bytes([fmt[0], fmt[1]]);
-                    let channels = u16::from_le_bytes([fmt[2], fmt[3]]);
-                    let sample_rate = u32::from_le_bytes([fmt[4], fmt[5], fmt[6], fmt[7]]);
-                    let bits_per_sample = u16::from_le_bytes([fmt[14], fmt[15]]);
-                    if audio_format == 1 {
-                        fmt_info = Some((sample_rate, channels, bits_per_sample));
-                    }
-                }
-            }
-            b"data" => {
-                data_range = Some(data_start..data_end);
-            }
-            _ => {}
+        if id == b"fmt " {
+            fmt_info = parse_fmt_chunk_info(bytes, data_start, size);
+        } else if id == b"data" {
+            data_range = Some(data_start..data_end);
         }
 
         offset = data_end + (size & 1);

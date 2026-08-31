@@ -67,11 +67,7 @@ impl AudioCppProvider {
     async fn synthesize_local_cli(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
         let binary = &self.config.local.binary;
         let temp_dir = env::temp_dir();
-        let temp_filename = format!(
-            "audiocpp_out_{}_{}.wav",
-            std::process::id(),
-            rand_id()
-        );
+        let temp_filename = format!("audiocpp_out_{}_{}.wav", std::process::id(), rand_id());
         let output_path = temp_dir.join(temp_filename);
 
         let family = self.family();
@@ -106,11 +102,17 @@ impl AudioCppProvider {
             Ok(Ok(res)) => res,
             Ok(Err(e)) => {
                 let _ = tokio::fs::remove_file(&output_path).await;
-                return Err(anyhow::anyhow!("Failed to execute local audiocpp_cli process: {}", e));
+                return Err(anyhow::anyhow!(
+                    "Failed to execute local audiocpp_cli process: {}",
+                    e
+                ));
             }
             Err(_) => {
                 let _ = tokio::fs::remove_file(&output_path).await;
-                anyhow::bail!("audiocpp_cli process execution timed out after {:?}", timeout_dur);
+                anyhow::bail!(
+                    "audiocpp_cli process execution timed out after {:?}",
+                    timeout_dur
+                );
             }
         };
 
@@ -150,9 +152,10 @@ impl AudioCppProvider {
             request.language.clone()
         };
 
-        let voice = request.voice_id.as_deref().unwrap_or_else(|| {
-            self.config.voice_id.as_deref().unwrap_or("")
-        });
+        let voice = request
+            .voice_id
+            .as_deref()
+            .unwrap_or_else(|| self.config.voice_id.as_deref().unwrap_or(""));
         let voice_ref = self.config.voice_ref.as_deref().unwrap_or("");
 
         let payload = serde_json::json!({
@@ -182,14 +185,21 @@ impl AudioCppProvider {
 
         let response = req_builder.send().await.map_err(|e| {
             let sanitized_err = sanitize_error_message(&e.to_string());
-            anyhow::anyhow!("Failed to connect to audio.cpp HTTP endpoint: {}", sanitized_err)
+            anyhow::anyhow!(
+                "Failed to connect to audio.cpp HTTP endpoint: {}",
+                sanitized_err
+            )
         })?;
 
         if !response.status().is_success() {
             let status = response.status();
             let err_body = response.text().await.unwrap_or_default();
             let sanitized = sanitize_error_message(&err_body);
-            anyhow::bail!("audio.cpp server returned HTTP status {}: {}", status, sanitized);
+            anyhow::bail!(
+                "audio.cpp server returned HTTP status {}: {}",
+                status,
+                sanitized
+            );
         }
 
         let bytes = response
@@ -310,7 +320,12 @@ impl AudioCppProvider {
 
         for ep in &endpoints {
             match self
-                .synthesize_remote_endpoint(&ep.url, ep.auth_env.as_deref(), ep.cost_per_hour, request)
+                .synthesize_remote_endpoint(
+                    &ep.url,
+                    ep.auth_env.as_deref(),
+                    ep.cost_per_hour,
+                    request,
+                )
                 .await
             {
                 Ok(output) => return Ok(output),
@@ -336,7 +351,7 @@ impl VoiceSynthesizer for AudioCppProvider {
         match mode.as_str() {
             "local" => self.synthesize_local(request).await,
             "remote" => self.synthesize_gpu_pools(request).await,
-            "auto" | _ => {
+            _ => {
                 // Try local first if enabled and configured
                 match self.synthesize_local(request).await {
                     Ok(out) => Ok(out),
@@ -413,7 +428,10 @@ fn resolve_auth_token(auth_env: Option<&str>) -> Option<String> {
 fn sanitize_error_message(msg: &str) -> String {
     // Redact bearer tokens or confidential strings if present
     let mut clean = msg.to_string();
-    if let Some(token) = env::var("AUDIO_CPP_REMOTE_TOKEN").ok().filter(|t| !t.is_empty()) {
+    if let Some(token) = env::var("AUDIO_CPP_REMOTE_TOKEN")
+        .ok()
+        .filter(|t| !t.is_empty())
+    {
         clean = clean.replace(&token, "[REDACTED]");
     }
     clean
@@ -525,7 +543,8 @@ fn decode_and_resample_wav(bytes: &[u8], target_sample_rate_hz: u32) -> Result<A
         let mut sum = 0.0f32;
         for c in 0..channels {
             let sample_offset = frame_offset + c * 2;
-            let sample_i16 = i16::from_le_bytes([raw_data[sample_offset], raw_data[sample_offset + 1]]);
+            let sample_i16 =
+                i16::from_le_bytes([raw_data[sample_offset], raw_data[sample_offset + 1]]);
             sum += sample_i16 as f32 / i16::MAX as f32;
         }
         mono_samples.push(sum / (channels as f32));
@@ -564,7 +583,7 @@ fn decode_and_resample_wav(bytes: &[u8], target_sample_rate_hz: u32) -> Result<A
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{AudioCppConfig, GpuPoolEndpoint};
+    use crate::config::{AudioCppConfig, GpuPolicyConfig, GpuPoolEndpoint};
     use crate::voice::SynthesisRequest;
 
     fn sample_wav_pcm16_mono(sample_rate: u32, samples: &[i16]) -> Vec<u8> {
@@ -631,8 +650,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_provider_disabled_error() {
-        let mut cfg = AudioCppConfig::default();
-        cfg.enabled = false;
+        let cfg = AudioCppConfig {
+            enabled: false,
+            ..AudioCppConfig::default()
+        };
         let provider = AudioCppProvider::new(cfg);
         let req = SynthesisRequest::default();
         let res = provider.synthesize(&req).await;
@@ -642,16 +663,21 @@ mod tests {
 
     #[tokio::test]
     async fn test_paid_gpu_policy_rejection_when_disallowed() {
-        let mut cfg = AudioCppConfig::default();
-        cfg.mode = "remote".to_string();
-        cfg.gpu_policy.allow_paid = false;
-        cfg.gpu_pool.push(GpuPoolEndpoint {
-            name: "paid-gpu".to_string(),
-            url: "https://paid-gpu.example.com".to_string(),
-            auth_env: None,
-            priority: 1,
-            cost_per_hour: 0.50,
-        });
+        let cfg = AudioCppConfig {
+            mode: "remote".to_string(),
+            gpu_policy: GpuPolicyConfig {
+                allow_paid: false,
+                ..GpuPolicyConfig::default()
+            },
+            gpu_pool: vec![GpuPoolEndpoint {
+                name: "paid-gpu".to_string(),
+                url: "https://paid-gpu.example.com".to_string(),
+                auth_env: None,
+                priority: 1,
+                cost_per_hour: 0.50,
+            }],
+            ..AudioCppConfig::default()
+        };
 
         let provider = AudioCppProvider::new(cfg);
         let req = SynthesisRequest {

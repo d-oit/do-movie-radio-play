@@ -139,6 +139,7 @@ fn run_full_pipeline(
                 max_monthly_cost: 25.0,
             }),
             openai: openai_config_from_env(),
+            audio_cpp: None,
         },
     };
 

@@ -60,6 +60,13 @@ Configuration profiles are stored in `config/profiles/` (e.g., `modern-optimized
 - `prompt_min_duration_ms`: Minimum segment duration for prompt generation in milliseconds (default: 2500).
 - `prompt_min_confidence`: Minimum confidence threshold for prompt generation (default: 0.65).
 - `vad_engine`: Classification engine ("energy", "spectral", or "hybrid", default: "energy").
+
+### Narrator Voice Configuration (audio.cpp & GPU Cloud)
+
+The application supports `audio.cpp` runtime inference in `auto`, `local`, or `remote` mode. Local execution supports
+`audiocpp_cli` or local HTTP server. Remote execution connects to single or multi-endpoint GPU pools (free/credit
+and paid) with budget safeguards (`allow_paid`, `max_cost_per_job`, `max_cost_per_day`).
+For details, see [audio.cpp upstream docs](https://github.com/0xShug0/audio.cpp).
 - `parallel_features`: Enable multi-threaded feature extraction (default: true).
 - `merge_options`: Optional merge strategy configuration object (`min_gap_to_merge`, `merge_strategy`, etc.).
 - `spectral_flatness_max`: Upper bound threshold for spectral flatness (default: null).

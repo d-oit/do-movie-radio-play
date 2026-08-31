@@ -8,7 +8,8 @@ pub mod segment;
 pub mod voice_types;
 
 pub use config::{
-    AnalysisConfig, ElevenLabsConfig, KokoroConfig, MergeOptions, MergeStrategy, OrpheusConfig,
+    AnalysisConfig, AudioCppConfig, AudioCppLocalConfig, AudioCppRemoteConfig, ElevenLabsConfig,
+    GpuPolicyConfig, GpuPoolEndpoint, KokoroConfig, MergeOptions, MergeStrategy, OrpheusConfig,
     PocketTtsConfig, Qwen3Config, VoiceProvidersConfig, VoiceSynthesisConfig,
 };
 pub use error::TimelineError;

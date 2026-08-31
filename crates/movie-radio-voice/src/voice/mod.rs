@@ -14,6 +14,7 @@ pub const SAMPLE_RATE_RANGE_HZ: RangeInclusive<u32> = 8_000..=48_000;
 /// Inclusive bounds for `speed`.
 pub const SPEED_RANGE: RangeInclusive<f32> = 0.25..=4.0;
 
+pub mod audio_cpp;
 pub mod elevenlabs;
 pub mod kokoro;
 pub mod modal;
@@ -214,6 +215,12 @@ impl SynthesisOrchestrator {
             providers.insert(
                 "openai".to_string(),
                 Box::new(openai::OpenAiTtsProvider::new(c)),
+            );
+        }
+        if let Some(c) = config.providers.audio_cpp {
+            providers.insert(
+                "audio_cpp".to_string(),
+                Box::new(audio_cpp::AudioCppProvider::new(c)),
             );
         }
 

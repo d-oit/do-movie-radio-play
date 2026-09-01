@@ -277,6 +277,7 @@ mod tests {
                 confidence: 1.0,
                 tags: vec!["<script>alert(2)</script>".to_string()],
                 prompt: Some("</SCRIPT><script>alert(3)</script>".to_string()),
+                sfx_trigger: None,
             }],
         };
 

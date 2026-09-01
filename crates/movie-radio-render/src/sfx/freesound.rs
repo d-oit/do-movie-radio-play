@@ -247,11 +247,13 @@ mod tests {
         assert!(backend.https_enforce("http://example.com/a").is_err());
     }
 
+    const ENV_FRESOUND_TEST_KEY: &str = "FREESOUND_API_KEY_TEST_REDACT";
+
     #[test]
     fn test_sanitize_redacts_token() {
-        env::set_var("FREESOUND_API_KEY_TEST_REDACT", "secret-token-xyz-123");
+        env::set_var(ENV_FRESOUND_TEST_KEY, "secret-token-xyz-123");
         let cfg = FreesoundConfig {
-            api_key_env: "FREESOUND_API_KEY_TEST_REDACT".to_string(),
+            api_key_env: ENV_FRESOUND_TEST_KEY.to_string(),
             ..FreesoundConfig::default()
         };
         let backend = FreesoundBackend::new(cfg).expect("backend");
@@ -259,7 +261,7 @@ mod tests {
         let clean = backend.sanitize(msg);
         assert!(!clean.contains("secret-token-xyz-123"));
         assert!(clean.contains("[REDACTED]"));
-        env::remove_var("FREESOUND_API_KEY_TEST_REDACT");
+        env::remove_var(ENV_FRESOUND_TEST_KEY);
     }
 
     #[test]

@@ -114,7 +114,7 @@ fn default_language() -> String {
 impl Default for SynthesisRequest {
     fn default() -> Self {
         Self {
-            text: String::new(),
+            text: String::default(),
             emotion: Emotion::Neutral,
             voice_id: None,
             language: default_language(),

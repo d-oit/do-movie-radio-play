@@ -38,7 +38,6 @@ impl SpectralAnalyzer {
     /// Optimized analysis that computes magnitudes into the internal buffer.
     pub fn analyze(&mut self, samples: &[f32]) -> &[f32] {
         let n = samples.len().min(self.fft_len);
-        // Optimization: Fuse copy and windowing into a single pass to reduce memory traffic.
         for ((b, &s), &h) in self.input_buf[..n].iter_mut().zip(samples).zip(&self.hann) {
             *b = s * h;
         }
@@ -53,7 +52,6 @@ impl SpectralAnalyzer {
             return &self.mag_buf;
         }
 
-        // Manual magnitude calculation to avoid Complex::norm() overhead if any
         for (c, m) in self.output_buf.iter().zip(self.mag_buf.iter_mut()) {
             *m = (c.re * c.re + c.im * c.im).sqrt();
         }
@@ -61,10 +59,8 @@ impl SpectralAnalyzer {
     }
 
     /// Optimized analysis that computes magnitudes directly into a provided destination buffer.
-    /// This eliminates one copy of the spectral data.
     pub fn analyze_into(&mut self, samples: &[f32], out_mag: &mut [f32]) {
         let n = samples.len().min(self.fft_len);
-        // Optimization: Fuse copy and windowing into a single pass to reduce memory traffic.
         for ((b, &s), &h) in self.input_buf[..n].iter_mut().zip(samples).zip(&self.hann) {
             *b = s * h;
         }
@@ -125,7 +121,8 @@ impl FeatureExtractor {
         {
             let mags = self.analyzer.analyze(chunk);
             accum.accumulate_chunk(mags, &self.prev_mags);
-            self.prev_mags.copy_from_slice(mags);
+            let copy_len = mags.len().min(self.prev_mags.len());
+            self.prev_mags[..copy_len].copy_from_slice(&mags[..copy_len]);
         }
 
         accum.into_feature_set(rms, zcr, samples.len())
@@ -189,8 +186,7 @@ pub fn compute_features_parallel(frames: &[&[f32]], sample_rate: u32) -> Vec<Fea
             let start = i * half_bins;
             let mags = &all_mags[start..start + half_bins];
             let prev_mags = if i > 0 {
-                let prev_start = (i - 1) * half_bins;
-                Some(&all_mags[prev_start..prev_start + half_bins])
+                Some(&all_mags[(i - 1) * half_bins..start])
             } else {
                 None
             };
@@ -203,21 +199,19 @@ fn compute_time_domain_features(samples: &[f32]) -> (f32, f32) {
     if samples.is_empty() {
         return (0.0, 0.0);
     }
-    let mut sum_sq = 0.0;
+    let mut sum_sq = samples[0] * samples[0];
     let mut zero_crosses = 0u32;
     let mut prev_sign = samples[0] >= 0.0;
-    sum_sq += samples[0] * samples[0];
     for &s in &samples[1..] {
         sum_sq += s * s;
         let sign = s >= 0.0;
-        if sign != prev_sign {
-            zero_crosses += 1;
-            prev_sign = sign;
-        }
+        zero_crosses += (sign != prev_sign) as u32;
+        prev_sign = sign;
     }
-    let rms = (sum_sq / samples.len() as f32).sqrt();
-    let zcr = zero_crosses as f32 / samples.len() as f32;
-    (rms, zcr)
+    (
+        (sum_sq / samples.len() as f32).sqrt(),
+        zero_crosses as f32 / samples.len() as f32,
+    )
 }
 
 struct SpectralAccumulator {
@@ -242,17 +236,13 @@ struct SpectralAccumulator {
 impl SpectralAccumulator {
     fn new(sample_rate: u32, fft_len: usize) -> Self {
         let bin_width = sample_rate as f32 / fft_len as f32;
-        let low_bin = (300.0 / bin_width) as usize;
-        let high_bin = (2000.0 / bin_width) as usize;
         let half_bins = fft_len / 2;
-        let inv_half_bins = 1.0 / half_bins as f32;
-
         Self {
             bin_width,
-            low_bin,
-            high_bin,
+            low_bin: (300.0 / bin_width) as usize,
+            high_bin: (2000.0 / bin_width) as usize,
             half_bins,
-            inv_half_bins,
+            inv_half_bins: 1.0 / half_bins as f32,
             flux_acc: 0.0,
             weighted_bin_sum: 0.0,
             mag_sum: 0.0,
@@ -356,21 +346,7 @@ fn compute_frame_features_impl(
     sample_rate: u32,
     fft_len: usize,
 ) -> FeatureSet {
-    let mut sum_sq = 0.0;
-    let mut zero_crosses = 0u32;
-    // Optimization: Fuse RMS and ZCR calculation into a single pass to minimize memory accesses.
-    if !samples.is_empty() {
-        let mut prev_sign = samples[0] >= 0.0;
-        sum_sq += samples[0] * samples[0];
-        for &s in &samples[1..] {
-            sum_sq += s * s;
-            let sign = s >= 0.0;
-            zero_crosses += (sign != prev_sign) as u32;
-            prev_sign = sign;
-        }
-    }
-    let rms = (sum_sq / samples.len().max(1) as f32).sqrt();
-    let zcr = zero_crosses as f32 / samples.len().max(1) as f32;
+    let (rms, zcr) = compute_time_domain_features(samples);
 
     let bin_width = sample_rate as f32 / fft_len as f32;
     let half_bins = fft_len / 2;
@@ -400,20 +376,38 @@ fn compute_frame_features_impl(
         0.0
     };
 
-    for (i, &m) in mags.iter().enumerate().take(half_bins) {
-        weighted_bin_sum += i as f32 * m;
-        mag_sum += m;
+    let mut i_f32 = 0.0f32;
+    if let Some(prev) = prev_mags {
+        let limit = half_bins.min(mags.len()).min(prev.len());
+        for (&m, &p) in mags[..limit].iter().zip(&prev[..limit]) {
+            weighted_bin_sum += i_f32 * m;
+            mag_sum += m;
 
-        if m > 1e-10 {
-            let ln_m = m.ln();
-            log_mag_sum += ln_m;
-            arithmetic_mean += m;
-            valid_mag_count += 1;
-            sum_m_ln_m += m * ln_m;
+            if m > 1e-10 {
+                let ln_m = m.ln();
+                log_mag_sum += ln_m;
+                arithmetic_mean += m;
+                valid_mag_count += 1;
+                sum_m_ln_m += m * ln_m;
+            }
+
+            flux_acc += (m - p).max(0.0);
+            i_f32 += 1.0;
         }
+    } else {
+        let limit = half_bins.min(mags.len());
+        for &m in &mags[..limit] {
+            weighted_bin_sum += i_f32 * m;
+            mag_sum += m;
 
-        if let Some(prev) = prev_mags {
-            flux_acc += (m - prev[i]).max(0.0);
+            if m > 1e-10 {
+                let ln_m = m.ln();
+                log_mag_sum += ln_m;
+                arithmetic_mean += m;
+                valid_mag_count += 1;
+                sum_m_ln_m += m * ln_m;
+            }
+            i_f32 += 1.0;
         }
     }
 

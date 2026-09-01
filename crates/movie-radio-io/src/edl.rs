@@ -13,8 +13,7 @@ pub fn export_edl(timeline: &TimelineOutput, verified: Option<&HashSet<(u64, u64
             continue;
         }
 
-        let is_verified =
-            verified.map_or(false, |v| v.contains(&(segment.start_ms, segment.end_ms)));
+        let is_verified = verified.is_some_and(|v| v.contains(&(segment.start_ms, segment.end_ms)));
 
         if !is_verified {
             continue;

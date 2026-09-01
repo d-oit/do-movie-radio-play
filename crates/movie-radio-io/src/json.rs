@@ -52,7 +52,7 @@ impl ExportData {
             .segments
             .iter()
             .map(|s| {
-                let is_verified = verified.map_or(false, |v| v.contains(&(s.start_ms, s.end_ms)));
+                let is_verified = verified.is_some_and(|v| v.contains(&(s.start_ms, s.end_ms)));
                 ExportSegment {
                     start_ms: s.start_ms,
                     end_ms: s.end_ms,

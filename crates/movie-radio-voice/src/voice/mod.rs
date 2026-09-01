@@ -14,6 +14,7 @@ pub const SAMPLE_RATE_RANGE_HZ: RangeInclusive<u32> = 8_000..=48_000;
 /// Inclusive bounds for `speed`.
 pub const SPEED_RANGE: RangeInclusive<f32> = 0.25..=4.0;
 
+pub mod audio_cpp;
 pub mod elevenlabs;
 pub mod kokoro;
 pub mod modal;
@@ -64,11 +65,6 @@ fn is_valid_voice_id_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')
 }
 
-/// Conservative charset/length check for provider voice identifiers.
-///
-/// This is *not* a per-provider format validation; it rejects inputs that are
-/// dangerous when interpolated into URLs or identifiers. Providers must still
-/// percent-encode path segments (see `elevenlabs::voice_endpoint`).
 pub(crate) fn is_valid_voice_id(id: &str) -> bool {
     !id.is_empty()
         && id.chars().count() <= MAX_VOICE_ID_CHARS
@@ -86,16 +82,6 @@ fn is_valid_language(lang: &str) -> bool {
 }
 
 impl SynthesisRequest {
-    /// Validates provider-facing parameters before any TTS dispatch.
-    ///
-    /// Rejects sample rates outside [`SAMPLE_RATE_RANGE_HZ`], non-finite or
-    /// out-of-range speeds ([`SPEED_RANGE`]), texts longer than
-    /// [`MAX_REQUEST_TEXT_CHARS`] characters, invalid `voice_id` inputs,
-    /// and invalid `language` inputs.
-    ///
-    /// Note: `language` is a conservative charset check, not a BCP-47 tag
-    /// validation; providers resolve unknown tags against their own
-    /// capabilities.
     pub fn validate(&self) -> Result<(), SynthesisValidationError> {
         if !SAMPLE_RATE_RANGE_HZ.contains(&self.sample_rate_hz) {
             return Err(SynthesisValidationError::SampleRateOutOfRange(
@@ -128,7 +114,7 @@ fn default_language() -> String {
 impl Default for SynthesisRequest {
     fn default() -> Self {
         Self {
-            text: String::new(),
+            text: String::default(),
             emotion: Emotion::Neutral,
             voice_id: None,
             language: default_language(),
@@ -214,6 +200,12 @@ impl SynthesisOrchestrator {
             providers.insert(
                 "openai".to_string(),
                 Box::new(openai::OpenAiTtsProvider::new(c)),
+            );
+        }
+        if let Some(c) = config.providers.audio_cpp {
+            providers.insert(
+                "audio_cpp".to_string(),
+                Box::new(audio_cpp::AudioCppProvider::new(c)),
             );
         }
 

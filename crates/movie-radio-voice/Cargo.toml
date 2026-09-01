@@ -17,6 +17,7 @@ tracing.workspace = true
 tokio.workspace = true
 ort.workspace = true
 reqwest.workspace = true
+tempfile.workspace = true
 symphonia.workspace = true
 llama-cpp-2 = "0.1"
 once_cell = "1"

@@ -15,6 +15,10 @@ use movie_radio_voice::config::{
 use movie_radio_voice::voice::SynthesisOrchestrator;
 use movie_radio_voice::voice::SynthesisRequest;
 
+const ENV_ELEVENLABS_API_KEY: &str = "ELEVENLABS_API_KEY";
+const ENV_OPENAI_API_KEY: &str = "OPENAI_API_KEY";
+const ENV_OPENAI_TTS_BASE_URL: &str = "OPENAI_TTS_BASE_URL";
+
 pub fn handle_radio_play(
     movie: PathBuf,
     timeline_path: Option<PathBuf>,
@@ -37,8 +41,10 @@ pub fn handle_radio_play(
             None
         };
 
-        let identifier = GapIdentifier::new();
-        let gap_analysis = identifier.identify_gaps(&timeline, srt_content.as_deref())?;
+        let identifier = GapIdentifier::default();
+        let srt_ref: Option<&str> = srt_content.as_deref();
+        // skipcq: RS-E1015 — DeepSource false positive: srt_ref is Option<&str>, not unit-type
+        let gap_analysis = identifier.identify_gaps(&timeline, srt_ref)?; // skipcq: RS-E1015
 
         if let Some(out) = output_path {
             write_json_pretty(&out, &gap_analysis)?;
@@ -81,8 +87,10 @@ fn run_full_pipeline(
         None
     };
 
-    let identifier = GapIdentifier::new();
-    let gap_analysis = identifier.identify_gaps(&timeline, srt_content.as_deref())?;
+    let identifier = GapIdentifier::default();
+    let srt_ref: Option<&str> = srt_content.as_deref();
+    // skipcq: RS-E1015 — DeepSource false positive: srt_ref is Option<&str>, not unit-type
+    let gap_analysis = identifier.identify_gaps(&timeline, srt_ref)?; // skipcq: RS-E1015
     info!(gaps = gap_analysis.gaps.len(), "Identified visual gaps");
 
     if gap_analysis.gaps.is_empty() {
@@ -125,10 +133,10 @@ fn run_full_pipeline(
             pockettts: None,
             qwen3: None,
             orpheus: None,
-            elevenlabs: std::env::var("ELEVENLABS_API_KEY")
+            elevenlabs: std::env::var(ENV_ELEVENLABS_API_KEY)
                 .ok()
                 .map(|_| ElevenLabsConfig {
-                    api_key_env: "ELEVENLABS_API_KEY".to_string(),
+                    api_key_env: ENV_ELEVENLABS_API_KEY.to_string(),
                     voice_id: "pNInz6obpgDQGcFmaJgB".to_string(),
                     model: "eleven_multilingual_v2".to_string(),
                     stability: 0.5,
@@ -139,6 +147,7 @@ fn run_full_pipeline(
                 max_monthly_cost: 25.0,
             }),
             openai: openai_config_from_env(),
+            audio_cpp: None,
         },
     };
 
@@ -253,9 +262,9 @@ fn encode_to_mp3(wav_path: &std::path::Path, mp3_path: &std::path::Path) -> Resu
 /// server (e.g. an audio.cpp sidecar) without authentication, defaulting to
 /// the German PocketTTS recipe (voice `alba`, WAV output).
 fn openai_config_from_env() -> Option<OpenAiConfig> {
-    if std::env::var("OPENAI_API_KEY").is_ok() {
+    if std::env::var(ENV_OPENAI_API_KEY).is_ok() {
         return Some(OpenAiConfig {
-            api_key_env: Some("OPENAI_API_KEY".to_string()),
+            api_key_env: Some(ENV_OPENAI_API_KEY.to_string()),
             base_url: movie_radio_voice::config::default_openai_base_url(),
             model: "tts-1-hd".to_string(),
             voice: "onyx".to_string(),
@@ -263,7 +272,7 @@ fn openai_config_from_env() -> Option<OpenAiConfig> {
         });
     }
 
-    std::env::var("OPENAI_TTS_BASE_URL").ok().map(|base_url| {
+    std::env::var(ENV_OPENAI_TTS_BASE_URL).ok().map(|base_url| {
         info!(
             base_url = %base_url,
             "Using OpenAI-compatible TTS sidecar (German PocketTTS defaults)"

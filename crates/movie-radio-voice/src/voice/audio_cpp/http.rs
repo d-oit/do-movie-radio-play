@@ -8,6 +8,9 @@ use super::AudioOutput;
 use crate::config::{AudioCppConfig, GpuPoolEndpoint};
 use crate::voice::SynthesisRequest;
 
+const ENV_AUDIO_CPP_REMOTE_TOKEN: &str = "AUDIO_CPP_REMOTE_TOKEN";
+const ENV_AUDIO_CPP_REMOTE_URL: &str = "AUDIO_CPP_REMOTE_URL";
+
 static CUMULATIVE_DAILY_COST_MILLICENTS: AtomicU64 = AtomicU64::new(0);
 
 pub(crate) struct ModelParams<'a> {
@@ -18,7 +21,7 @@ pub(crate) struct ModelParams<'a> {
 }
 
 pub(crate) fn resolve_auth_token(auth_env: Option<&str>) -> Option<String> {
-    if let Ok(token) = env::var("AUDIO_CPP_REMOTE_TOKEN") {
+    if let Ok(token) = env::var(ENV_AUDIO_CPP_REMOTE_TOKEN) {
         if !token.is_empty() {
             return Some(token);
         }
@@ -35,7 +38,7 @@ pub(crate) fn resolve_auth_token(auth_env: Option<&str>) -> Option<String> {
 
 pub(crate) fn sanitize_error_message(msg: &str) -> String {
     let mut clean = msg.to_string();
-    if let Some(token) = env::var("AUDIO_CPP_REMOTE_TOKEN")
+    if let Some(token) = env::var(ENV_AUDIO_CPP_REMOTE_TOKEN)
         .ok()
         .filter(|t| !t.is_empty())
     {
@@ -199,14 +202,14 @@ pub(crate) async fn synthesize_gpu_pools(
     let mut endpoints = config.gpu_pool.clone();
 
     let remote_url =
-        env::var("AUDIO_CPP_REMOTE_URL").unwrap_or_else(|_| config.remote.server_url.clone());
-    let remote_token_env = env::var("AUDIO_CPP_REMOTE_TOKEN")
+        env::var(ENV_AUDIO_CPP_REMOTE_URL).unwrap_or_else(|_| config.remote.server_url.clone());
+    let remote_token_env = env::var(ENV_AUDIO_CPP_REMOTE_TOKEN)
         .ok()
         .or_else(|| config.remote.auth_env.clone());
 
     if config.remote.enabled && !remote_url.is_empty() {
-        let auth_env_key = if env::var("AUDIO_CPP_REMOTE_TOKEN").is_ok() {
-            Some("AUDIO_CPP_REMOTE_TOKEN".to_string())
+        let auth_env_key = if env::var(ENV_AUDIO_CPP_REMOTE_TOKEN).is_ok() {
+            Some(ENV_AUDIO_CPP_REMOTE_TOKEN.to_string())
         } else {
             remote_token_env
         };
@@ -265,12 +268,12 @@ mod tests {
 
     #[test]
     fn test_secret_sanitization() {
-        env::set_var("AUDIO_CPP_REMOTE_TOKEN", "super-secret-token-123");
+        env::set_var(ENV_AUDIO_CPP_REMOTE_TOKEN, "super-secret-token-123");
         let err_msg = "Error connecting with Authorization Bearer super-secret-token-123 failed";
         let clean = sanitize_error_message(err_msg);
         assert!(!clean.contains("super-secret-token-123"));
         assert!(clean.contains("[REDACTED]"));
-        env::remove_var("AUDIO_CPP_REMOTE_TOKEN");
+        env::remove_var(ENV_AUDIO_CPP_REMOTE_TOKEN);
     }
 
     #[test]

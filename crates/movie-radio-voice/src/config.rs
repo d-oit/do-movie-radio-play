@@ -76,7 +76,7 @@ impl Default for AudioCppConfig {
             voice_id: None,
             voice_ref: None,
             timeout_secs: default_timeout_secs(),
-            gpu_pool: Vec::new(),
+            gpu_pool: Vec::default(),
             gpu_policy: GpuPolicyConfig::default(),
         }
     }
@@ -118,7 +118,7 @@ impl Default for AudioCppRemoteConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            server_url: String::new(),
+            server_url: String::default(),
             auth_env: None,
             timeout_secs: default_timeout_secs(),
         }

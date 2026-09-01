@@ -8,6 +8,14 @@ use self::http::ModelParams;
 use super::{AudioOutput, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer};
 use crate::config::AudioCppConfig;
 
+const ENV_AUDIO_CPP_TIMEOUT_SECS: &str = "AUDIO_CPP_TIMEOUT_SECS";
+const ENV_AUDIO_CPP_MODE: &str = "AUDIO_CPP_MODE";
+const ENV_AUDIO_CPP_FAMILY: &str = "AUDIO_CPP_FAMILY";
+const ENV_AUDIO_CPP_MODEL: &str = "AUDIO_CPP_MODEL";
+const ENV_AUDIO_CPP_BACKEND: &str = "AUDIO_CPP_BACKEND";
+const ENV_AUDIO_CPP_LANGUAGE: &str = "AUDIO_CPP_LANGUAGE";
+const ENV_AUDIO_CPP_LOCAL_URL: &str = "AUDIO_CPP_LOCAL_URL";
+
 pub(crate) mod cli;
 pub(crate) mod http;
 pub(crate) mod wav;
@@ -19,7 +27,7 @@ pub struct AudioCppProvider {
 
 impl AudioCppProvider {
     pub fn new(config: AudioCppConfig) -> Self {
-        let timeout_secs = env_u64("AUDIO_CPP_TIMEOUT_SECS").unwrap_or(config.timeout_secs);
+        let timeout_secs = env_u64(ENV_AUDIO_CPP_TIMEOUT_SECS).unwrap_or(config.timeout_secs);
         let client = Client::builder()
             .timeout(Duration::from_secs(timeout_secs))
             .build()
@@ -29,27 +37,27 @@ impl AudioCppProvider {
     }
 
     fn mode(&self) -> String {
-        env::var("AUDIO_CPP_MODE").unwrap_or_else(|_| self.config.mode.clone())
+        env::var(ENV_AUDIO_CPP_MODE).unwrap_or_else(|_| self.config.mode.clone())
     }
 
     fn family(&self) -> String {
-        env::var("AUDIO_CPP_FAMILY").unwrap_or_else(|_| self.config.family.clone())
+        env::var(ENV_AUDIO_CPP_FAMILY).unwrap_or_else(|_| self.config.family.clone())
     }
 
     fn model(&self) -> String {
-        env::var("AUDIO_CPP_MODEL").unwrap_or_else(|_| self.config.model.clone())
+        env::var(ENV_AUDIO_CPP_MODEL).unwrap_or_else(|_| self.config.model.clone())
     }
 
     fn backend(&self) -> String {
-        env::var("AUDIO_CPP_BACKEND").unwrap_or_else(|_| self.config.backend.clone())
+        env::var(ENV_AUDIO_CPP_BACKEND).unwrap_or_else(|_| self.config.backend.clone())
     }
 
     fn default_language(&self) -> String {
-        env::var("AUDIO_CPP_LANGUAGE").unwrap_or_else(|_| self.config.language.clone())
+        env::var(ENV_AUDIO_CPP_LANGUAGE).unwrap_or_else(|_| self.config.language.clone())
     }
 
     fn timeout_duration(&self) -> Duration {
-        let secs = env_u64("AUDIO_CPP_TIMEOUT_SECS").unwrap_or(self.config.timeout_secs);
+        let secs = env_u64(ENV_AUDIO_CPP_TIMEOUT_SECS).unwrap_or(self.config.timeout_secs);
         Duration::from_secs(secs)
     }
 
@@ -67,7 +75,7 @@ impl AudioCppProvider {
         request: &SynthesisRequest,
         params: &ModelParams<'_>,
     ) -> Result<AudioOutput> {
-        let base_url = env::var("AUDIO_CPP_LOCAL_URL")
+        let base_url = env::var(ENV_AUDIO_CPP_LOCAL_URL)
             .unwrap_or_else(|_| self.config.local.server_url.clone());
         if base_url.is_empty() {
             anyhow::bail!("Local audio.cpp server URL is not configured");

@@ -263,6 +263,7 @@ mod tests {
                 confidence: 1.0,
                 tags: vec![],
                 prompt: None,
+                sfx_trigger: None,
             },
             Segment {
                 start_ms: 1000,
@@ -271,6 +272,7 @@ mod tests {
                 confidence: 1.0,
                 tags: vec!["ambience".to_string()],
                 prompt: None,
+                sfx_trigger: None,
             },
             Segment {
                 start_ms: 5000,
@@ -279,6 +281,7 @@ mod tests {
                 confidence: 1.0,
                 tags: vec![],
                 prompt: None,
+                sfx_trigger: None,
             },
         ]);
 

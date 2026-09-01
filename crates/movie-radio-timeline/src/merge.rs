@@ -73,6 +73,7 @@ fn merge_all(segments: Vec<&Segment>) -> Vec<Segment> {
         confidence: avg_confidence,
         tags: all_tags,
         prompt: None,
+        sfx_trigger: None,
     }]
 }
 
@@ -97,6 +98,7 @@ fn merge_by_gap_threshold(segments: Vec<&Segment>, min_gap_ms: u64) -> Vec<Segme
                 confidence: current_confidence,
                 tags: std::mem::take(&mut current_tags),
                 prompt: None,
+                sfx_trigger: None,
             });
             current_start = segment.start_ms;
             current_confidence = segment.confidence;
@@ -113,6 +115,7 @@ fn merge_by_gap_threshold(segments: Vec<&Segment>, min_gap_ms: u64) -> Vec<Segme
         confidence: current_confidence,
         tags: current_tags,
         prompt: None,
+        sfx_trigger: None,
     });
 
     merged
@@ -139,6 +142,7 @@ fn merge_sparse_segments(segments: Vec<&Segment>, min_gap_ms: u64) -> Vec<Segmen
                 confidence: current_confidence,
                 tags: std::mem::take(&mut current_tags),
                 prompt: None,
+                sfx_trigger: None,
             });
             current_start = segment.start_ms;
             current_confidence = segment.confidence;
@@ -158,6 +162,7 @@ fn merge_sparse_segments(segments: Vec<&Segment>, min_gap_ms: u64) -> Vec<Segmen
         confidence: current_confidence,
         tags: current_tags,
         prompt: None,
+        sfx_trigger: None,
     });
 
     merged

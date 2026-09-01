@@ -68,6 +68,7 @@ mod tests {
                 confidence: 0.9,
                 tags: vec![],
                 prompt: None,
+                sfx_trigger: None,
             }],
         };
 

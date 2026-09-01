@@ -97,6 +97,7 @@ mod tests {
                 confidence: 0.9,
                 tags: vec!["ambience".to_string()],
                 prompt: None,
+                sfx_trigger: None,
             }],
         };
         let v = serde_json::to_string(&out).unwrap_or_default();

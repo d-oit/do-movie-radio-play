@@ -1,3 +1,4 @@
+use crate::sfx_types::SfxTrigger;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -15,6 +16,8 @@ pub struct Segment {
     pub confidence: f32,
     pub tags: Vec<String>,
     pub prompt: Option<String>,
+    #[serde(default)]
+    pub sfx_trigger: Option<SfxTrigger>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

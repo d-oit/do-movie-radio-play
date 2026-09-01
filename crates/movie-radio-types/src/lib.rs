@@ -5,6 +5,7 @@ pub mod fingerprint;
 pub mod frame;
 pub mod metrics;
 pub mod segment;
+pub mod sfx_types;
 pub mod voice_types;
 
 pub use config::{
@@ -19,6 +20,10 @@ pub use frame::Frame;
 pub use metrics::{BenchmarkResult, StageDurations};
 pub use segment::{
     AiVoiceOutput, GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap,
+};
+pub use sfx_types::{
+    AiGenerateConfig, FreesoundConfig, LocalSfxConfig, SfxCandidate, SfxLicense,
+    SfxProviderCapabilities, SfxQuery, SfxTrigger, SoundEffectsConfig,
 };
 pub use voice_types::{
     AudioOutput, Emotion, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer,

@@ -78,6 +78,10 @@ For details, see [audio.cpp upstream docs](https://github.com/0xShug0/audio.cpp)
 - `version`: Integer profile version number (default: null).
 - `experiment_tags`: Array of string tags for tracking experiment parameters.
 
+### Sound Effects Engine (Provider & Compute Agnostic)
+
+SFX engine supports local library (`SFX_LOCAL_ROOT`), Freesound API (`FREESOUND_API_KEY` with HTTPS + license filtering `cc0`/`cc-by`), and AI generation endpoints (`SFX_AI_ENDPOINT`, `SFX_AI_MODE=auto|local|remote`) with free/paid GPU pool routing (`prefer_free`, `allow_paid`, `max_cost_per_job/day`), timeout and prompt/audio size bounds, and fade/normalization mixing.
+
 ### Segment JSON Schema
 
 - `start_ms`: Segment start timestamp in milliseconds.
@@ -86,6 +90,7 @@ For details, see [audio.cpp upstream docs](https://github.com/0xShug0/audio.cpp)
 - `confidence`: Classification confidence value between 0.0 and 1.0.
 - `tags`: Array of acoustic tags (e.g., ["music"], ["ambience"]).
 - `prompt`: String prompt text or null.
+- `sfx_trigger`: Optional SFX trigger (`None`, `AutoSelect{tags,mood}`, `Specific{sfx_id}`, `AiGenerate{prompt,duration_secs}`).
 
 ## Validation Workflow
 

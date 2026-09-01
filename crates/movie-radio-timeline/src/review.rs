@@ -316,6 +316,7 @@ mod tests {
                 confidence: 1.0,
                 tags: vec!["rock & roll".to_string()],
                 prompt: None,
+                sfx_trigger: None,
             }],
         };
         let output_amp = dir.path().join("review_amp.html");
@@ -343,6 +344,7 @@ mod tests {
                 confidence: 1.0,
                 tags: vec!["line\u{2028}para\u{2029}back`tick".to_string()],
                 prompt: None,
+                sfx_trigger: None,
             }],
         };
         let output_new = dir.path().join("review_new.html");
@@ -387,6 +389,7 @@ mod tests {
                     confidence: 0.5,
                     tags: vec![],
                     prompt: None,
+                    sfx_trigger: None,
                 },
                 Segment {
                     start_ms: 2000,
@@ -395,6 +398,7 @@ mod tests {
                     confidence: 0.95,
                     tags: vec![],
                     prompt: None,
+                    sfx_trigger: None,
                 },
             ],
         };

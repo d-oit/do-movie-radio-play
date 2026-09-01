@@ -77,6 +77,8 @@ pub struct AnalysisConfig {
     pub version: Option<u32>,
     #[serde(default)]
     pub experiment_tags: Vec<String>,
+    #[serde(default)]
+    pub sound_effects: Option<crate::sfx_types::SoundEffectsConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -335,6 +337,7 @@ impl Default for AnalysisConfig {
             profile_id: None,
             version: None,
             experiment_tags: vec![],
+            sound_effects: None,
         }
     }
 }

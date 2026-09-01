@@ -184,6 +184,7 @@ fn segment(start_ms: u64, end_ms: u64, kind: SegmentKind) -> Segment {
         confidence: 1.0,
         tags: vec![],
         prompt: None,
+        sfx_trigger: None,
     }
 }
 

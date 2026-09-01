@@ -145,6 +145,7 @@ fn push_nv(
             confidence,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         });
     }
 }

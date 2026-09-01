@@ -3,6 +3,7 @@ use std::path::Path;
 
 use crate::pipeline::decode;
 use crate::pipeline::features::FeatureExtractor;
+use crate::pipeline::sfx_autofill::autofill_silent_scene_sfx;
 use movie_radio_learning::profiles::TagThresholds;
 use movie_radio_types::{SegmentKind, TimelineOutput};
 
@@ -56,6 +57,7 @@ pub fn add_tags(
         let f = extractor.extract(clip, sr);
         seg.tags = map_tags(f, rules);
     }
+    autofill_silent_scene_sfx(timeline);
     Ok(())
 }
 
@@ -130,6 +132,7 @@ mod tests {
                 confidence: 1.0,
                 tags: vec![],
                 prompt: None,
+                sfx_trigger: None,
             }],
         };
 

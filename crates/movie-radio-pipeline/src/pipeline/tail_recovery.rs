@@ -91,6 +91,7 @@ mod tests {
             confidence: 0.8,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         }];
         let likelihoods = vec![0.4; 6000];
         let out = extend_terminal_non_voice_segment(&segments, &likelihoods, 20, 120_000, 800);
@@ -107,6 +108,7 @@ mod tests {
             confidence: 0.8,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         }];
         let likelihoods = vec![0.95; 7000];
         let out = extend_terminal_non_voice_segment(&segments, &likelihoods, 20, 120_000, 800);
@@ -122,6 +124,7 @@ mod tests {
             confidence: 0.8,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         }];
         let likelihoods = vec![0.95; 7000];
         let out = extend_terminal_non_voice_segment(&segments, &likelihoods, 20, 120_000, 10_000);

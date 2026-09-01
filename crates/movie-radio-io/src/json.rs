@@ -52,9 +52,7 @@ impl ExportData {
             .segments
             .iter()
             .map(|s| {
-                let is_verified = verified
-                    .map(|v| v.contains(&(s.start_ms, s.end_ms)))
-                    .unwrap_or(false);
+                let is_verified = verified.is_some_and(|v| v.contains(&(s.start_ms, s.end_ms)));
                 ExportSegment {
                     start_ms: s.start_ms,
                     end_ms: s.end_ms,
@@ -97,14 +95,15 @@ mod tests {
                 confidence: 0.9,
                 tags: vec!["ambience".to_string()],
                 prompt: None,
+                sfx_trigger: None,
             }],
         };
         let v = serde_json::to_string(&out).unwrap_or_default();
         let parsed: TimelineOutput = serde_json::from_str(&v).unwrap_or_else(|_| TimelineOutput {
-            file: String::new(),
+            file: String::default(),
             analysis_sample_rate: 0,
             frame_ms: 0,
-            segments: vec![],
+            segments: Vec::default(),
         });
         assert_eq!(parsed.segments.len(), 1);
     }

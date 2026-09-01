@@ -53,6 +53,7 @@ mod tests {
                 confidence: 0.9,
                 tags: vec!["ambience".into()],
                 prompt: None,
+                sfx_trigger: None,
             }],
         };
         add_prompts(&mut t, &AnalysisConfig::default());

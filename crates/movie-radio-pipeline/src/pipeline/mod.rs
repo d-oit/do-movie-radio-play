@@ -8,6 +8,7 @@ pub mod nonvoice_expand;
 pub mod prompts;
 pub mod resample;
 pub mod segmenter;
+pub mod sfx_autofill;
 pub mod speech_evidence;
 pub mod tags;
 pub mod tail_recovery;
@@ -196,6 +197,7 @@ fn extract_timeline_chunked(
                 confidence: seg.confidence,
                 tags: seg.tags,
                 prompt: seg.prompt,
+                sfx_trigger: seg.sfx_trigger,
             };
             all_segments.push(adjusted);
         }

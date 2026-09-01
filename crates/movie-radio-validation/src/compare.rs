@@ -239,6 +239,7 @@ mod tests {
             confidence: 1.0,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         }
     }
 

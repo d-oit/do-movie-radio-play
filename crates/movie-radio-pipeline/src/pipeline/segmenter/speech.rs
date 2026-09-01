@@ -76,5 +76,6 @@ fn speech_seg(
         confidence,
         tags: vec![],
         prompt: None,
+        sfx_trigger: None,
     }
 }

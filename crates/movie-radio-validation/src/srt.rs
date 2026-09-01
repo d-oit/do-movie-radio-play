@@ -25,6 +25,7 @@ pub fn parse_srt_segments(input: &str) -> Result<Vec<Segment>> {
             confidence: 1.0,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         });
     }
     Ok(speech)

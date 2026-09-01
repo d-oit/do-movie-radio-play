@@ -10,6 +10,7 @@ fn fake_speech(start_ms: u64, end_ms: u64) -> Segment {
         confidence: 0.8,
         tags: vec![],
         prompt: None,
+        sfx_trigger: None,
     }
 }
 
@@ -44,6 +45,7 @@ fn bridges_non_voice_across_short_speech_gap() {
             confidence: 0.8,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         },
         Segment {
             start_ms: 2150,
@@ -52,6 +54,7 @@ fn bridges_non_voice_across_short_speech_gap() {
             confidence: 0.7,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         },
     ];
 
@@ -78,6 +81,7 @@ fn sparse_merge_policy_merges_close_non_voice_segments() {
             confidence: 0.8,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         },
         Segment {
             start_ms: 1200,
@@ -86,6 +90,7 @@ fn sparse_merge_policy_merges_close_non_voice_segments() {
             confidence: 0.6,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         },
     ];
 
@@ -112,6 +117,7 @@ fn all_merge_policy_respects_gap_threshold() {
             confidence: 0.8,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         },
         Segment {
             start_ms: 1700,
@@ -120,6 +126,7 @@ fn all_merge_policy_respects_gap_threshold() {
             confidence: 0.7,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         },
     ];
 
@@ -141,6 +148,7 @@ fn residual_gap_bridge_merges_tiny_final_gap() {
             confidence: 0.8,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         },
         Segment {
             start_ms: 3500,
@@ -149,6 +157,7 @@ fn residual_gap_bridge_merges_tiny_final_gap() {
             confidence: 0.7,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         },
     ];
 

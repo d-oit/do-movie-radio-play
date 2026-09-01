@@ -101,6 +101,7 @@ pub fn extract_audio_chunk(
         confidence: 1.0,
         tags: vec![],
         prompt: None,
+        sfx_trigger: None,
     };
     extract_segment_audio(media_path, &segment, output_path)
 }
@@ -118,6 +119,7 @@ mod tests {
             confidence: 1.0,
             tags: vec![],
             prompt: None,
+            sfx_trigger: None,
         };
 
         let temp_path = tempfile::NamedTempFile::new().unwrap().into_temp_path();

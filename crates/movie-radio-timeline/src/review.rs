@@ -44,6 +44,7 @@ pub fn write_review_html(
 }
 
 pub fn write_review_html_with_options(
+    // skipcq: RS-R1000
     input_media: &Path,
     timeline: &TimelineOutput,
     output: &Path,

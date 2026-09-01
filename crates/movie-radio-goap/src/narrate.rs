@@ -108,7 +108,7 @@ impl NarrationGenerator {
         }
 
         context.gap_duration_ms = gap.end_ms.saturating_sub(gap.start_ms);
-        context.gap_reason = gap.reason.clone();
+        context.gap_reason.clone_from(&gap.reason);
 
         context
     }
@@ -141,7 +141,7 @@ impl NarrationGenerator {
         let templates = self.select_templates(context);
 
         if templates.is_empty() {
-            return String::new();
+            return String::default();
         }
 
         let hash = self.context_hash(context);
@@ -191,7 +191,7 @@ impl NarrationGenerator {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = DefaultHasher::new();
+        let mut hasher = DefaultHasher::default();
         context.gap_duration_ms.hash(&mut hasher);
         context.gap_reason.hash(&mut hasher);
         for tag in &context.before_tags {

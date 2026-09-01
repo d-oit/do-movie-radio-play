@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
-use std::env;
 use std::process::Stdio;
 use std::time::Duration;
+use tempfile::Builder;
 use tokio::process::Command;
 use tokio::time::timeout;
 
@@ -11,14 +11,6 @@ use super::AudioOutput;
 use crate::config::AudioCppConfig;
 use crate::voice::SynthesisRequest;
 
-fn rand_id() -> u64 {
-    use std::time::SystemTime;
-    SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map(|d| d.as_nanos() as u64)
-        .unwrap_or(12345)
-}
-
 pub(crate) async fn synthesize_local_cli(
     config: &AudioCppConfig,
     request: &SynthesisRequest,
@@ -26,9 +18,12 @@ pub(crate) async fn synthesize_local_cli(
     timeout_duration: Duration,
 ) -> Result<AudioOutput> {
     let binary = &config.local.binary;
-    let temp_dir = env::temp_dir();
-    let temp_filename = format!("audiocpp_out_{}_{}.wav", std::process::id(), rand_id());
-    let output_path = temp_dir.join(temp_filename);
+    let temp_file = Builder::new()
+        .prefix("audiocpp_out_")
+        .suffix(".wav")
+        .tempfile()
+        .context("Failed to create secure temporary WAV file")?;
+    let output_path = temp_file.path().to_path_buf();
 
     let language = if request.language.is_empty() {
         params.default_language

@@ -42,7 +42,9 @@ pub fn handle_radio_play(
         };
 
         let identifier = GapIdentifier::default();
-        let gap_analysis = identifier.identify_gaps(&timeline, srt_content.as_deref())?;
+        let srt_ref: Option<&str> = srt_content.as_deref();
+        // skipcq: RS-E1015 — DeepSource false positive: srt_ref is Option<&str>, not unit-type
+        let gap_analysis = identifier.identify_gaps(&timeline, srt_ref)?; // skipcq: RS-E1015
 
         if let Some(out) = output_path {
             write_json_pretty(&out, &gap_analysis)?;
@@ -86,7 +88,9 @@ fn run_full_pipeline(
     };
 
     let identifier = GapIdentifier::default();
-    let gap_analysis = identifier.identify_gaps(&timeline, srt_content.as_deref())?;
+    let srt_ref: Option<&str> = srt_content.as_deref();
+    // skipcq: RS-E1015 — DeepSource false positive: srt_ref is Option<&str>, not unit-type
+    let gap_analysis = identifier.identify_gaps(&timeline, srt_ref)?; // skipcq: RS-E1015
     info!(gaps = gap_analysis.gaps.len(), "Identified visual gaps");
 
     if gap_analysis.gaps.is_empty() {

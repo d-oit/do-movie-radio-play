@@ -61,7 +61,7 @@ impl SfxProcessor {
         use symphonia::core::io::MediaSourceStream;
         use symphonia::core::meta::MetadataOptions;
 
-        let mss = MediaSourceStream::new(Box::new(Cursor::new(bytes.to_vec())), Default::default());
+        let mss = MediaSourceStream::new(Box::new(Cursor::new(bytes.to_vec())), Default::default()); // skipcq: RS-W1051
         let hint = Hint::new();
         let mut probed = symphonia::default::get_probe()
             .probe(

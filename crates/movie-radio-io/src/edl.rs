@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use movie_radio_types::{SegmentKind, TimelineOutput};
 
 pub fn export_edl(timeline: &TimelineOutput, verified: Option<&HashSet<(u64, u64)>>) -> String {
-    let mut output = String::new();
+    let mut output = String::default();
     output.push_str("TITLE: Non-Voice Timeline\n");
     output.push_str("FCM: NON-DROP FRAME\n\n");
 
@@ -14,7 +14,7 @@ pub fn export_edl(timeline: &TimelineOutput, verified: Option<&HashSet<(u64, u64
         }
 
         let is_verified = verified
-            .map(|v| v.contains(&(segment.start_ms, segment.end_ms)))
+            .map_or(false, |v| v.contains(&(segment.start_ms, segment.end_ms)))
             .unwrap_or(false);
 
         if !is_verified {

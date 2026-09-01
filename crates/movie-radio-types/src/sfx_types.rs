@@ -140,7 +140,7 @@ pub struct LocalSfxConfig {
 impl Default for LocalSfxConfig {
     fn default() -> Self {
         Self {
-            root: String::new(),
+            root: String::default(),
             recursive: true,
             max_file_bytes: default_max_file_bytes(),
         }
@@ -205,7 +205,7 @@ impl Default for AiGenerateConfig {
             enabled: false,
             provider: default_ai_provider(),
             mode: default_ai_mode(),
-            model: String::new(),
+            model: String::default(),
             timeout_secs: default_timeout_secs(),
             endpoint_url: default_ai_endpoint(),
             auth_env: None,
@@ -246,7 +246,7 @@ fn default_ai_mode() -> String {
 }
 
 fn default_ai_endpoint() -> String {
-    String::new()
+    String::default()
 }
 
 fn default_allowed_licenses() -> Vec<String> {

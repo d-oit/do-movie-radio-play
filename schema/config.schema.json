@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppConfig",
+  "type": "object",
+  "properties": {
+    "providers": {
+      "type": "object",
+      "properties": {
+        "tts": { "type": "string" },
+        "transcription": { "type": "string" },
+        "sfx": { "type": "string" }
+      }
+    },
+    "voice": {
+      "type": "object",
+      "properties": {
+        "audio_cpp": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "mode": { "type": "string", "enum": ["auto", "local", "remote"] },
+            "family": { "type": "string" },
+            "model": { "type": "string" },
+            "backend": { "type": "string", "enum": ["best", "cpu", "cuda", "vulkan", "metal", "hip"] },
+            "language": { "type": "string" },
+            "timeout_secs": { "type": "integer", "minimum": 1, "maximum": 3600 },
+            "local": {
+              "type": "object",
+              "properties": {
+                "mode": { "type": "string", "enum": ["server", "cli"] },
+                "binary": { "type": "string" },
+                "server_url": { "type": "string", "format": "uri" }
+              }
+            },
+            "remote": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "server_url": { "type": "string", "format": "uri" },
+                "auth_env": { "type": "string" },
+                "timeout_secs": { "type": "integer", "minimum": 1 }
+              }
+            },
+            "gpu_pool": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "url"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "url": { "type": "string", "format": "uri" },
+                  "priority": { "type": "integer" },
+                  "cost_per_hour": { "type": "number", "minimum": 0 }
+                }
+              }
+            },
+            "gpu_policy": {
+              "type": "object",
+              "properties": {
+                "prefer_free": { "type": "boolean" },
+                "allow_paid": { "type": "boolean" },
+                "max_cost_per_job": { "type": "number", "minimum": 0 },
+                "max_cost_per_day": { "type": "number", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "voice_clone": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "runtime": { "type": "string", "enum": ["audio_cpp"] },
+        "family": { "type": "string" },
+        "model": { "type": "string" },
+        "language": { "type": "string" },
+        "min_sample_seconds": { "type": "number", "minimum": 1 },
+        "max_samples_per_character": { "type": "integer", "minimum": 1 },
+        "normalize_samples": { "type": "boolean" },
+        "routing": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string", "enum": ["auto", "local", "remote"] },
+            "prefer_free": { "type": "boolean" },
+            "allow_paid": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "narrator": {
+      "type": "object",
+      "properties": {
+        "backend": { "type": "string", "enum": ["openai", "ollama_local", "anthropic", "mistral_local"] },
+        "language": { "type": "string" },
+        "style": { "type": "string" },
+        "max_tokens": { "type": "integer", "minimum": 1 },
+        "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+        "prompt_template": { "type": "string" }
+      }
+    }
+  }
+}

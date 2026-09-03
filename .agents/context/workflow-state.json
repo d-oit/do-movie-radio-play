@@ -1,8 +1,11 @@
 {
-  "workflow_id": "00000000-0000-0000-0000-000000000000",
-  "current_phase": "idle",
-  "active_agent": "none",
-  "status": "idle",
+  "workflow_id": "goap-unified-2026-09-01",
+  "current_phase": "decomposition",
+  "active_agent": "task-decomposer",
+  "status": "active",
   "plan_ref": "plans/GOAP_STATE.md",
-  "history": []
+  "history": [
+    {"phase": "triz", "agent": "triz-analyst", "status": "complete", "timestamp": "2026-09-01T00:00:00Z"},
+    {"phase": "adr", "agent": "adr-architect", "status": "in_progress", "timestamp": "2026-09-01T00:00:00Z"}
+  ]
 }

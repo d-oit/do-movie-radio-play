@@ -1,0 +1,114 @@
+# Default configuration — layered as CLI > env (MRPLAY_*) > config/local.toml > config/default.toml
+# See plans/adr/0124-unified-config.md and schema/config.schema.json
+
+[providers]
+tts = "audio_cpp"
+
+[voice.audio_cpp]
+enabled = true
+mode = "auto"
+family = "qwen3_tts"
+model = "models/Qwen3-TTS-12Hz-1.7B-Base"
+backend = "best"
+language = "de"
+timeout_secs = 300
+
+[voice.audio_cpp.local]
+mode = "server"
+binary = "audiocpp_cli"
+server_url = "http://127.0.0.1:8080"
+
+[voice.audio_cpp.remote]
+enabled = true
+server_url = ""
+auth_env = "AUDIO_CPP_REMOTE_TOKEN"
+timeout_secs = 300
+
+[voice.gpu_policy]
+prefer_free = true
+allow_paid = false
+max_cost_per_job = 0.5
+max_cost_per_day = 5.0
+
+[[voice.gpu_pool]]
+name = "free-credit"
+url = "https://gpu-free.example.com"
+priority = 10
+cost_per_hour = 0.0
+
+[voice_clone]
+enabled = true
+runtime = "audio_cpp"
+family = "qwen3_tts"
+model = "models/Qwen3-TTS-12Hz-1.7B-Base"
+language = "de"
+min_sample_seconds = 6.0
+max_samples_per_character = 20
+normalize_samples = true
+
+[voice_clone.routing]
+mode = "auto"
+prefer_free = true
+allow_paid = false
+
+[sound_effects]
+enabled = true
+
+[sound_effects.local]
+root = "./assets/sfx"
+recursive = true
+max_file_bytes = 50000000
+
+[sound_effects.freesound]
+enabled = false
+
+[sound_effects.ai_generate]
+enabled = false
+provider = "configured_endpoint"
+mode = "auto"
+endpoint_url = ""
+max_prompt_len = 1000
+max_audio_bytes = 20000000
+
+[narrator]
+backend = "openai"
+language = "en-US"
+style = "radio_drama"
+max_tokens = 200
+temperature = 0.7
+prompt_template = "templates/narrator_prompt.md"
+
+[narrator.openai]
+api_key_env = "OPENAI_API_KEY"
+model = "gpt-4o"
+base_url = "https://api.openai.com/v1"
+
+[narrator.ollama_local]
+base_url = "http://localhost:11434"
+model = "llama3.1:8b"
+num_ctx = 2048
+
+[narrator.anthropic]
+api_key_env = "ANTHROPIC_API_KEY"
+model = "claude-3-5-haiku-20241022"
+
+[pipeline]
+parallel = true
+
+[output]
+dir = "output"
+format = "wav"
+
+# Analysis defaults (legacy AnalysisConfig flattened)
+sample_rate_hz = 16000
+frame_ms = 20
+speech_hangover_ms = 300
+merge_gap_ms = 250
+min_speech_ms = 120
+min_non_voice_ms = 10000
+energy_threshold = 0.015
+vad_threshold_delta = 0.0
+prompt_min_duration_ms = 2500
+prompt_min_confidence = 0.65
+vad_engine = "energy"
+parallel_features = true

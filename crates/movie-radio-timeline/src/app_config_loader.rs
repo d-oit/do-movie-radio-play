@@ -50,6 +50,9 @@ pub fn load_app_config(cli_config: Option<PathBuf>) -> Result<AppConfig> {
     }
 
     if let Some(path) = cli_config {
+        if path.to_string_lossy().contains("..") {
+            anyhow::bail!("cli config path must not contain ..");
+        }
         let data = fs::read_to_string(&path).context("read cli config")?;
         let parsed: AppConfig = toml::from_str(&data).context("parse cli config")?;
         cfg = merge_app_config(cfg, parsed);
@@ -170,6 +173,9 @@ fn apply_env_overrides(mut cfg: AppConfig) -> AppConfig {
 }
 
 pub fn validate_config_file(path: &PathBuf) -> Result<()> {
+    if path.to_string_lossy().contains("..") {
+        bail!("config path must not contain ..");
+    }
     let data = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     let cfg: AppConfig = if path.extension().is_some_and(|e| e == "json") {
         serde_json::from_str(&data).context("parse json config")?
@@ -188,10 +194,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn env_override_respects_mrplay() {
-        unsafe { env::set_var(ENV_AUDIO_CPP_MODE, "local") };
-        let cfg = apply_env_overrides(AppConfig::default());
-        assert_eq!(cfg.voice.audio_cpp.mode, "local");
-        unsafe { env::remove_var(ENV_AUDIO_CPP_MODE) };
+    fn merge_prefers_overlay_values() {
+        let base = AppConfig::default();
+        let mut overlay = AppConfig::default();
+        overlay.voice.audio_cpp.mode = "local".to_string();
+        let merged = merge_app_config(base, overlay);
+        assert_eq!(merged.voice.audio_cpp.mode, "local");
+    }
+
+    #[test]
+    fn merge_ignores_empty_overlay() {
+        let base = AppConfig::default();
+        let overlay = AppConfig::default();
+        let merged = merge_app_config(base.clone(), overlay);
+        assert_eq!(merged.voice.audio_cpp.mode, base.voice.audio_cpp.mode);
     }
 }

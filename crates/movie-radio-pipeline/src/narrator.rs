@@ -196,6 +196,9 @@ pub fn handle_narrate(
     cfg: &NarratorConfig,
 ) -> Result<()> {
     let tpl_path = template.unwrap_or_else(|| PathBuf::from(&cfg.prompt_template));
+    if tpl_path.to_string_lossy().contains("..") {
+        anyhow::bail!("template path must not contain ..");
+    }
     let tpl_text = std::fs::read_to_string(&tpl_path)
         .unwrap_or_else(|_| "Write narration for {{movie_title}} in {{language}}".to_string());
     let data = RenderData {

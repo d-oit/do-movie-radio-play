@@ -42,14 +42,34 @@ const STAGES: &[&str] = &[
     "Export",
 ];
 
+fn reject_traversal(path: &Path, field: &str) -> Result<()> {
+    let s = path.to_string_lossy();
+    if s.contains("..") {
+        anyhow::bail!("{field} must not contain ..");
+    }
+    Ok(())
+}
+
+fn resolve_checkpoint_dir(cfg: &AppConfig) -> Result<PathBuf> {
+    let dir = cfg
+        .pipeline
+        .checkpoint_dir
+        .clone()
+        .unwrap_or_else(|| "checkpoints".to_string());
+    let path = PathBuf::from(&dir);
+    reject_traversal(&path, "checkpoint_dir")?;
+    Ok(path)
+}
+
 pub fn handle_produce(
     input: PathBuf,
     resume: Option<PathBuf>,
     dry_run: bool,
     cfg: &AppConfig,
 ) -> Result<()> {
-    if input.to_string_lossy().contains("..") {
-        anyhow::bail!("input path must not contain ..");
+    reject_traversal(&input, "input")?;
+    if let Some(ref r) = resume {
+        reject_traversal(r, "resume")?;
     }
     if dry_run {
         println!(
@@ -75,11 +95,7 @@ pub fn handle_produce(
         }
         return Ok(());
     }
-    let checkpoint_dir = cfg
-        .pipeline
-        .checkpoint_dir
-        .clone()
-        .unwrap_or_else(|| "checkpoints".to_string());
+    let checkpoint_dir = resolve_checkpoint_dir(cfg)?;
     std::fs::create_dir_all(&checkpoint_dir)?;
     let stages: Vec<Stage> = STAGES
         .iter()
@@ -89,6 +105,9 @@ pub fn handle_produce(
         })
         .collect();
     for stage in stages {
+        if !STAGES.contains(&stage.name) {
+            anyhow::bail!("unknown stage");
+        }
         let cp = Checkpoint {
             version: env!("CARGO_PKG_VERSION").to_string(),
             input_hash: format!("{:x}", md5_hash(&input)),
@@ -100,7 +119,7 @@ pub fn handle_produce(
             timestamp: chrono_now(),
             artifacts: vec![],
         };
-        let path = Path::new(&checkpoint_dir).join(format!("{}.json", stage.name));
+        let path = checkpoint_dir.join(format!("{}.json", stage.name));
         let data = serde_json::to_string_pretty(&cp)?;
         std::fs::write(&path, data)?;
         println!("checkpoint {} -> {}", stage.name, path.display());
@@ -113,7 +132,6 @@ pub fn handle_produce(
 }
 
 fn md5_hash(p: &Path) -> u64 {
-    // Deterministic simple hash for checkpoint identity (not cryptographic)
     let s = p.to_string_lossy().to_string();
     md5_hash_str(&s)
 }
@@ -125,7 +143,6 @@ fn md5_hash_str(s: &str) -> u64 {
     h
 }
 fn chrono_now() -> String {
-    // Without chrono crate, use simple timestamp
     format!("{:?}", std::time::SystemTime::now())
 }
 
@@ -136,5 +153,11 @@ mod tests {
     fn dry_run_deterministic() {
         let cfg = AppConfig::default();
         assert!(handle_produce(PathBuf::from("movie.mkv"), None, true, &cfg).is_ok());
+    }
+
+    #[test]
+    fn traversal_rejected() {
+        let cfg = AppConfig::default();
+        assert!(handle_produce(PathBuf::from("../evil.mkv"), None, true, &cfg).is_err());
     }
 }

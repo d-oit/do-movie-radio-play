@@ -21,6 +21,10 @@ rubato.workspace = true
 symphonia.workspace = true
 rodio.workspace = true
 tempfile.workspace = true
+tera.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
 
 [features]
 default = []

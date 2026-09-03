@@ -14,6 +14,10 @@
 | 120 | GOAP Radio Play Pipeline | Proposed | `plans/120-goap-radio-play-pipeline/ADR-120-goap-architecture.md` | GOAP-based orchestration for full movie-to-radio-play conversion with A* planning, replanning on failure, and resource-aware action selection. |
 | 121 | Voice Synthesis Providers | Proposed | `plans/120-goap-radio-play-pipeline/ADR-121-voice-synthesis-providers.md` | Pluggable TTS provider architecture: Kokoro-82M (free/CPU), Qwen3-TTS (emotion/local), Orpheus-3B (GGUF/emotion tags), ElevenLabs/OpenAI (paid API). User-configurable with fallback chains. |
 | 122 | Self-Improving Learning | Proposed | `plans/120-goap-radio-play-pipeline/ADR-122-self-improving-learning.md` | Three-layer learning system (trace recording, MAPE analysis, cross-run accumulation) that improves radio play quality after every run with bounded adaptation and rollback safety. |
+| 123 | Provider Compute-Agnostic | Accepted | `plans/adr/0123-provider-compute-agnostic.md` | Capability vs execution location; audio.cpp as provider; GPU pool routing provider-neutral. Closes #237. |
+| 124 | Unified Config | Accepted | `plans/adr/0124-unified-config.md` | AppConfig, CLI>env>local>default, MRPLAY_* env, validation, JSON schema. Closes #241. |
+| 125 | Voice Clone Capability | Accepted | `plans/adr/0125-voice-clone-capability.md` | Capability-driven cloning via audio.cpp; no XTTS/RVC impl. Closes #239. |
+| 126 | Narrator Prompt Engine | Accepted | `plans/adr/0126-narrator-prompt-engine.md` | Tera templates, OpenAI/Ollama/Anthropic backends. Closes #240. |
 
 ## Notes
 

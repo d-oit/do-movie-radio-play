@@ -1,3 +1,4 @@
+mod app_config_loader;
 mod cli;
 mod config;
 mod handlers;
@@ -5,6 +6,7 @@ mod merge;
 mod review;
 mod review_template;
 mod util;
+mod voice_clone_handler;
 
 use anyhow::Result;
 use clap::Parser;
@@ -164,6 +166,44 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             skip,
             duration,
         } => handlers::preview::handle_preview(input, skip, duration),
+        Commands::Config { command } => match command {
+            crate::cli::ConfigCommands::Validate { config } => {
+                let path = config.unwrap_or(std::path::PathBuf::from("config/default.toml"));
+                crate::app_config_loader::validate_config_file(&path)?;
+                println!("config valid: {}", path.display());
+                Ok(())
+            }
+        },
+        Commands::Voice { command } => match command {
+            crate::cli::VoiceCommands::Samples {
+                character,
+                input,
+                output,
+            } => crate::voice_clone_handler::handle_voice_samples(character, input, output),
+            crate::cli::VoiceCommands::List => crate::voice_clone_handler::handle_voice_list(),
+            crate::cli::VoiceCommands::Test { character, text } => {
+                crate::voice_clone_handler::handle_voice_test(character, text)
+            }
+        },
+        Commands::Narrate {
+            scene,
+            dry_run,
+            config,
+            template,
+        } => {
+            let cfg = crate::app_config_loader::load_app_config(config)?;
+            // Delegate to pipeline narrator handler
+            movie_radio_pipeline::narrator::handle_narrate(scene, dry_run, template, &cfg.narrator)
+        }
+        Commands::Produce {
+            input,
+            config,
+            resume,
+            dry_run,
+        } => {
+            let cfg = crate::app_config_loader::load_app_config(config)?;
+            movie_radio_pipeline::orchestrator::handle_produce(input, resume, dry_run, &cfg)
+        }
         rest => dispatch_verification_and_output(rest),
     }
 }

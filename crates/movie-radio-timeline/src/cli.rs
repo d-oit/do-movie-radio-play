@@ -237,4 +237,59 @@ pub enum Commands {
         #[arg(long)]
         duration: Option<f32>,
     },
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommands,
+    },
+    Voice {
+        #[command(subcommand)]
+        command: VoiceCommands,
+    },
+    Narrate {
+        #[arg(long)]
+        scene: Option<u32>,
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long)]
+        config: Option<PathBuf>,
+        #[arg(long)]
+        template: Option<PathBuf>,
+    },
+    Produce {
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        config: Option<PathBuf>,
+        #[arg(long)]
+        resume: Option<PathBuf>,
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ConfigCommands {
+    Validate {
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum VoiceCommands {
+    Samples {
+        #[arg(long)]
+        character: String,
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+    List,
+    Test {
+        #[arg(long)]
+        character: String,
+        #[arg(long)]
+        text: String,
+    },
 }

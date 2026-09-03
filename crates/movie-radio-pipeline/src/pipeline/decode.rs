@@ -442,6 +442,31 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_audio_fallback_disabled_propagates_symphonia_error() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mp4_path = temp_dir.path().join("test.mp4");
+        std::fs::write(&mp4_path, b"dummy content").unwrap();
+
+        let res = decode_audio_with_fallback(&mp4_path, 16000, false);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_decode_audio_fallback_disabled_rejects_unsupported_ext() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let xyz_path = temp_dir.path().join("test.xyz");
+        std::fs::write(&xyz_path, b"dummy content").unwrap();
+
+        let err = decode_audio_with_fallback(&xyz_path, 16000, false)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("fallback is disabled"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
     fn test_decode_audio_dispatch_ffmpeg() {
         let temp_dir = tempfile::tempdir().unwrap();
         let mp4_path = temp_dir.path().join("test.mp4");

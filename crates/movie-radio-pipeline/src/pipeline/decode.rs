@@ -10,6 +10,14 @@ use tracing::info;
 use movie_radio_types::TimelineError;
 
 pub fn decode_audio(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u32)> {
+    decode_audio_with_fallback(path, target_sample_rate, true)
+}
+
+fn decode_audio_with_fallback(
+    path: &Path,
+    target_sample_rate: u32,
+    allow_ffmpeg_fallback: bool,
+) -> Result<(Vec<f32>, u32)> {
     if !path.exists() {
         return Err(TimelineError::MissingInput(path.display().to_string()).into());
     }
@@ -25,12 +33,20 @@ pub fn decode_audio(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u
             match decode_via_symphonia(path, ext, target_sample_rate) {
                 Ok((samples, sr)) => return Ok((samples, sr)),
                 Err(err) => {
+                    if !allow_ffmpeg_fallback {
+                        return Err(err);
+                    }
                     info!(input = %path.display(), error = %err, "symphonia decode failed, falling back to ffmpeg");
                 }
             }
         }
     }
 
+    if !allow_ffmpeg_fallback {
+        bail!(TimelineError::Decode(
+            "symphonia decode failed and ffmpeg fallback is disabled".to_string()
+        ));
+    }
     decode_via_ffmpeg(path, target_sample_rate)
 }
 
@@ -415,9 +431,10 @@ mod tests {
         writer.write_sample(0i32).unwrap();
         writer.finalize().unwrap();
 
-        // Full dispatch path (incl. WAV header diagnostics) must succeed
-        // without ffmpeg: same-rate resample is identity.
-        let (samples, sr) = decode_audio(&wav_path, 16000).unwrap();
+        // Full dispatch path (incl. WAV header diagnostics) with the ffmpeg
+        // fallback disabled: success proves symphonia decoded the 24-bit
+        // file on its own. Same-rate resample is identity.
+        let (samples, sr) = decode_audio_with_fallback(&wav_path, 16000, false).unwrap();
         assert_eq!(sr, 16000);
         assert_eq!(samples.len(), 2);
         assert!((samples[0] - 1.0).abs() < 1e-6, "got {}", samples[0]);

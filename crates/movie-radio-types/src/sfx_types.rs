@@ -277,6 +277,88 @@ mod tests {
     }
 
     #[test]
+    fn sfx_license_is_allowed_comprehensive() {
+        let allowed = vec![
+            "cc0".to_string(),
+            "cc-by".to_string(),
+            "custom-license".to_string(),
+        ];
+
+        // Empty allowed list permits all licenses
+        assert!(SfxLicense::Cc0.is_allowed(&[]));
+        assert!(SfxLicense::CcBy.is_allowed(&[]));
+        assert!(SfxLicense::CcByNc.is_allowed(&[]));
+        assert!(SfxLicense::CcBySa.is_allowed(&[]));
+        assert!(SfxLicense::CcByNcSa.is_allowed(&[]));
+        assert!(SfxLicense::SamplingPlus.is_allowed(&[]));
+        assert!(SfxLicense::Unknown("anything".to_string()).is_allowed(&[]));
+
+        // Specified allowed list matches
+        assert!(SfxLicense::Cc0.is_allowed(&allowed));
+        assert!(SfxLicense::CcBy.is_allowed(&allowed));
+        assert!(SfxLicense::Unknown("custom-license".to_string()).is_allowed(&allowed));
+
+        // Case insensitivity in allowed slice
+        let uppercase_allowed = vec!["CC0".to_string(), "CC-BY".to_string()];
+        assert!(SfxLicense::Cc0.is_allowed(&uppercase_allowed));
+        assert!(SfxLicense::CcBy.is_allowed(&uppercase_allowed));
+
+        // Disallowed variants
+        assert!(!SfxLicense::CcByNc.is_allowed(&allowed));
+        assert!(!SfxLicense::CcBySa.is_allowed(&allowed));
+        assert!(!SfxLicense::CcByNcSa.is_allowed(&allowed));
+        assert!(!SfxLicense::SamplingPlus.is_allowed(&allowed));
+        assert!(!SfxLicense::Unknown("unapproved".to_string()).is_allowed(&allowed));
+
+        // Testing remaining specific keys in allowed list
+        let full_allowed = vec![
+            "cc0".to_string(),
+            "cc-by".to_string(),
+            "cc-by-nc".to_string(),
+            "cc-by-sa".to_string(),
+            "cc-by-nc-sa".to_string(),
+            "sampling+".to_string(),
+        ];
+        assert!(SfxLicense::CcByNc.is_allowed(&full_allowed));
+        assert!(SfxLicense::CcBySa.is_allowed(&full_allowed));
+        assert!(SfxLicense::CcByNcSa.is_allowed(&full_allowed));
+        assert!(SfxLicense::SamplingPlus.is_allowed(&full_allowed));
+    }
+
+    #[test]
+    fn sfx_license_from_str_variants() {
+        assert_eq!(SfxLicense::from_str("cc0"), SfxLicense::Cc0);
+        assert_eq!(
+            SfxLicense::from_str("https://creativecommons.org/publicdomain/zero/1.0/"),
+            SfxLicense::Cc0
+        );
+
+        assert_eq!(SfxLicense::from_str("cc-by"), SfxLicense::CcBy);
+        assert_eq!(SfxLicense::from_str("CC BY"), SfxLicense::CcBy);
+        assert_eq!(SfxLicense::from_str("attribution"), SfxLicense::CcBy);
+        assert_eq!(
+            SfxLicense::from_str("https://creativecommons.org/licenses/by/4.0/"),
+            SfxLicense::CcBy
+        );
+
+        assert_eq!(SfxLicense::from_str("cc-by-nc"), SfxLicense::CcByNc);
+        assert_eq!(SfxLicense::from_str("cc by-nc"), SfxLicense::CcByNc);
+
+        assert_eq!(SfxLicense::from_str("cc-by-sa"), SfxLicense::CcBySa);
+        assert_eq!(SfxLicense::from_str("cc by-sa"), SfxLicense::CcBySa);
+
+        assert_eq!(SfxLicense::from_str("cc-by-nc-sa"), SfxLicense::CcByNcSa);
+        assert_eq!(SfxLicense::from_str("cc by-nc-sa"), SfxLicense::CcByNcSa);
+
+        assert_eq!(SfxLicense::from_str("sampling+"), SfxLicense::SamplingPlus);
+
+        assert_eq!(
+            SfxLicense::from_str("Custom-License-123"),
+            SfxLicense::Unknown("custom-license-123".to_string())
+        );
+    }
+
+    #[test]
     fn sound_effects_config_default() {
         let cfg = SoundEffectsConfig::default();
         assert!(cfg.enabled);

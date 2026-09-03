@@ -19,6 +19,9 @@ pub fn decode_audio(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u
 
     if let Some(ext_str) = ext_lower.as_deref() {
         if matches!(ext_str, "mp3" | "wav" | "flac" | "ogg") {
+            if ext_str == "wav" {
+                log_wav_spec(path);
+            }
             match decode_via_symphonia(path, ext, target_sample_rate) {
                 Ok((samples, sr)) => return Ok((samples, sr)),
                 Err(err) => {
@@ -29,6 +32,22 @@ pub fn decode_audio(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u
     }
 
     decode_via_ffmpeg(path, target_sample_rate)
+}
+
+/// Log WAV header details (bits/sample, PCM vs float) to aid decode diagnostics.
+/// Best-effort only: failures are silently ignored so logging never breaks decoding.
+fn log_wav_spec(path: &Path) {
+    if let Ok(reader) = hound::WavReader::open(path) {
+        let spec = reader.spec();
+        info!(
+            input = %path.display(),
+            channels = spec.channels,
+            sample_rate = spec.sample_rate,
+            bits_per_sample = spec.bits_per_sample,
+            sample_format = ?spec.sample_format,
+            "wav header spec",
+        );
+    }
 }
 
 pub fn decode_audio_chunked(
@@ -300,6 +319,82 @@ mod tests {
         assert_eq!(samples.len(), 16000);
         for &s in &samples {
             assert!(s.abs() < 1e-4);
+        }
+    }
+
+    #[test]
+    fn test_decode_via_symphonia_wav_24bit() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("test24.wav");
+
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 24,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        // Full-scale positive/negative 24-bit values plus silence.
+        let full_scale = (1i32 << 23) - 1;
+        writer.write_sample(full_scale).unwrap();
+        writer.write_sample(-full_scale).unwrap();
+        writer.write_sample(0i32).unwrap();
+        writer.finalize().unwrap();
+
+        let (samples, _) = decode_via_symphonia(&wav_path, Some("wav"), 16000).unwrap();
+        assert_eq!(samples.len(), 3);
+        assert!((samples[0] - 1.0).abs() < 1e-6, "got {}", samples[0]);
+        assert!((samples[1] + 1.0).abs() < 1e-6, "got {}", samples[1]);
+        assert_eq!(samples[2], 0.0);
+    }
+
+    #[test]
+    fn test_decode_via_symphonia_wav_32bit_float() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("test32f.wav");
+
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        writer.write_sample(1.0f32).unwrap();
+        writer.write_sample(-1.0f32).unwrap();
+        writer.write_sample(0.25f32).unwrap();
+        writer.finalize().unwrap();
+
+        let (samples, _) = decode_via_symphonia(&wav_path, Some("wav"), 16000).unwrap();
+        assert_eq!(samples.len(), 3);
+        assert!((samples[0] - 1.0).abs() < 1e-6, "got {}", samples[0]);
+        assert!((samples[1] + 1.0).abs() < 1e-6, "got {}", samples[1]);
+        assert!((samples[2] - 0.25).abs() < 1e-6, "got {}", samples[2]);
+    }
+
+    #[test]
+    fn test_decode_via_symphonia_stereo_24bit_mono_mix() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("stereo24.wav");
+
+        let spec = WavSpec {
+            channels: 2,
+            sample_rate: 16000,
+            bits_per_sample: 24,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        let full_scale = (1i32 << 23) - 1;
+        for _ in 0..100 {
+            writer.write_sample(full_scale).unwrap();
+            writer.write_sample(-full_scale).unwrap();
+        }
+        writer.finalize().unwrap();
+
+        let (samples, _) = decode_via_symphonia(&wav_path, Some("wav"), 16000).unwrap();
+        assert_eq!(samples.len(), 100);
+        for &s in &samples {
+            assert!(s.abs() < 1e-4, "got {s}");
         }
     }
 

@@ -115,7 +115,7 @@ The quality gate in `scripts/quality_gate.sh` checks spectral VAD performance on
 
 ## Known Limitations
 
-- Direct audio decoding without FFmpeg supports only 16-bit PCM WAV containers.
+- Direct audio decoding without FFmpeg supports 16-bit PCM, 24-bit PCM, and 32-bit float WAV containers (MP3/FLAC/OGG via symphonia; other containers fall back to FFmpeg).
 - Spectral feature processing increases CPU usage relative to standard energy VAD.
 - HTML review player generation uses streaming output (`BufWriter`) to maintain constant memory overhead.
 

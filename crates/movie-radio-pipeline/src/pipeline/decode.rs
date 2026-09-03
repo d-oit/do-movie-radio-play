@@ -399,6 +399,32 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_audio_dispatch_wav_24bit_no_ffmpeg() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("dispatch24.wav");
+
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 24,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        let full_scale = (1i32 << 23) - 1;
+        writer.write_sample(full_scale).unwrap();
+        writer.write_sample(0i32).unwrap();
+        writer.finalize().unwrap();
+
+        // Full dispatch path (incl. WAV header diagnostics) must succeed
+        // without ffmpeg: same-rate resample is identity.
+        let (samples, sr) = decode_audio(&wav_path, 16000).unwrap();
+        assert_eq!(sr, 16000);
+        assert_eq!(samples.len(), 2);
+        assert!((samples[0] - 1.0).abs() < 1e-6, "got {}", samples[0]);
+        assert_eq!(samples[1], 0.0);
+    }
+
+    #[test]
     fn test_decode_audio_dispatch_ffmpeg() {
         let temp_dir = tempfile::tempdir().unwrap();
         let mp4_path = temp_dir.path().join("test.mp4");

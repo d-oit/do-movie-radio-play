@@ -23,18 +23,18 @@ pub fn build_frames(
     let mut out = Vec::with_capacity(samples.len() / frame_len + 1);
     let fft_len = frame_len.next_power_of_two().max(256);
     let mut extractor = crate::pipeline::features::FeatureExtractor::new(fft_len);
-    let mut prev_mags: Option<Vec<f32>> = None;
+    let mut prev_mags = vec![0.0f32; fft_len / 2];
+    let mut has_prev = false;
 
     for chunk in samples.chunks(frame_len) {
         if chunk.is_empty() {
             continue;
         }
-        let (features, mags) = extractor.extract_frame(chunk, sample_rate, prev_mags.as_deref());
-        if let Some(ref mut prev) = prev_mags {
-            prev.copy_from_slice(mags);
-        } else {
-            prev_mags = Some(mags.to_vec());
-        }
+        let prev = if has_prev { Some(&prev_mags[..]) } else { None };
+        let (features, mags) = extractor.extract_frame(chunk, sample_rate, prev);
+        let copy_len = mags.len().min(prev_mags.len());
+        prev_mags[..copy_len].copy_from_slice(&mags[..copy_len]);
+        has_prev = true;
 
         out.push(feature_set_to_frame(features));
     }

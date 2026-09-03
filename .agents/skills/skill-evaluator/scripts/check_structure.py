@@ -92,7 +92,7 @@ def main() -> int:
         if path.is_dir()
     ]
 
-    print(f"# Skill Structure Report\n")
+    print("# Skill Structure Report\n")
     print(f"Checked {len(results)} skills in `{skills_dir}`\n")
 
     for result in results:

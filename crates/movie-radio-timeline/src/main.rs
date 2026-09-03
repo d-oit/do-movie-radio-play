@@ -168,7 +168,8 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
         } => handlers::preview::handle_preview(input, skip, duration),
         Commands::Config { command } => match command {
             crate::cli::ConfigCommands::Validate { config } => {
-                let path = config.unwrap_or(std::path::PathBuf::from("config/default.toml"));
+                let path =
+                    config.unwrap_or_else(|| std::path::PathBuf::from("config/default.toml"));
                 crate::app_config_loader::validate_config_file(&path)?;
                 println!("config valid: {}", path.display());
                 Ok(())

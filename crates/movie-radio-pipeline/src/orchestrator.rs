@@ -75,12 +75,11 @@ pub fn handle_produce(
         }
         return Ok(());
     }
-    // Checkpointing placeholder: write durable checkpoint after each stage
     let checkpoint_dir = cfg
         .pipeline
         .checkpoint_dir
         .clone()
-        .unwrap_or("checkpoints".to_string());
+        .unwrap_or_else(|| "checkpoints".to_string());
     std::fs::create_dir_all(&checkpoint_dir)?;
     let stages: Vec<Stage> = STAGES
         .iter()

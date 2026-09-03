@@ -13,7 +13,7 @@ pub fn handle_voice_samples(
     if input.to_string_lossy().contains("..") {
         anyhow::bail!("input path must not contain ..");
     }
-    let out = output.unwrap_or(PathBuf::from(format!("voice_samples/{character}.json")));
+    let out = output.unwrap_or_else(|| PathBuf::from(format!("voice_samples/{character}.json")));
     println!(
         "voice samples for {character} from {} -> {} (dry-run, deterministic)",
         input.display(),

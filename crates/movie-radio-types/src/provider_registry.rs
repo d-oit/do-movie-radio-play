@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn rejects_location_encoded_provider() {
-        let mut reg = ProviderRegistry::new();
+        let mut reg = ProviderRegistry::default();
         let entry = ProviderEntry {
             capability: "tts".to_string(),
             provider_id: "xtts_local".to_string(),
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn prefers_free_endpoint() {
-        let mut reg = ProviderRegistry::new();
+        let mut reg = ProviderRegistry::default();
         assert!(reg.register_endpoint(free_endpoint()).is_ok());
         assert!(reg
             .register_endpoint(ComputeEndpoint {
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn paid_requires_opt_in() {
-        let mut reg = ProviderRegistry::new();
+        let mut reg = ProviderRegistry::default();
         assert!(reg
             .register_endpoint(ComputeEndpoint {
                 id: "paid".to_string(),

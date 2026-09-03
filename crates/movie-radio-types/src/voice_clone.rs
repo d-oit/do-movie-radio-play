@@ -57,7 +57,7 @@ mod tests {
         let vr = VoiceReference {
             id: "protagonist_v1".to_string(),
             character_name: "protagonist".to_string(),
-            sample_paths: vec![PathBuf::from("/tmp/sample.wav")],
+            sample_paths: vec![PathBuf::from("testdata/sample.wav")],
             metadata: HashMap::new(),
             created_at: None,
             runtime: "audio_cpp".to_string(),
@@ -73,7 +73,7 @@ mod tests {
         let vr = VoiceReference {
             id: "".to_string(),
             character_name: "x".to_string(),
-            sample_paths: vec![PathBuf::from("/tmp/a.wav")],
+            sample_paths: vec![PathBuf::from("testdata/a.wav")],
             metadata: HashMap::new(),
             created_at: None,
             runtime: "audio_cpp".to_string(),

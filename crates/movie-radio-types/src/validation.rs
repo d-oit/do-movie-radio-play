@@ -1,4 +1,6 @@
 use crate::app_config::AppConfig;
+use crate::app_config::{NarratorConfig, VoiceCloneConfig};
+use crate::config::{AudioCppConfig, GpuPolicyConfig, GpuPoolEndpoint};
 
 const VALID_AUDIO_CPP_MODES: [&str; 3] = ["auto", "local", "remote"];
 const VALID_LOCAL_MODES: [&str; 2] = ["server", "cli"];
@@ -6,8 +8,15 @@ const VALID_BACKENDS: [&str; 6] = ["best", "cpu", "cuda", "vulkan", "metal", "hi
 const VALID_NARRATOR_BACKENDS: [&str; 4] = ["openai", "ollama_local", "anthropic", "mistral_local"];
 
 pub fn validate_app_config(cfg: &AppConfig) -> Result<(), String> {
-    // voice.audio_cpp
-    let ac = &cfg.voice.audio_cpp;
+    validate_audio_cpp(&cfg.voice.audio_cpp)?;
+    validate_gpu_policy(&cfg.voice.gpu_policy)?;
+    validate_gpu_pool(&cfg.voice.gpu_pool)?;
+    validate_voice_clone(&cfg.voice_clone)?;
+    validate_narrator(&cfg.narrator)?;
+    Ok(())
+}
+
+fn validate_audio_cpp(ac: &AudioCppConfig) -> Result<(), String> {
     if !VALID_AUDIO_CPP_MODES.contains(&ac.mode.as_str()) {
         return Err(format!("invalid voice.audio_cpp.mode: {}", ac.mode));
     }
@@ -29,6 +38,11 @@ pub fn validate_app_config(cfg: &AppConfig) -> Result<(), String> {
     if !ac.local.server_url.is_empty() {
         validate_url(&ac.local.server_url, "voice.audio_cpp.local.server_url")?;
     }
+    validate_remote(ac)?;
+    Ok(())
+}
+
+fn validate_remote(ac: &AudioCppConfig) -> Result<(), String> {
     if !ac.remote.server_url.is_empty() {
         validate_url(&ac.remote.server_url, "voice.audio_cpp.remote.server_url")?;
         if ac.remote.server_url.starts_with("http://") {
@@ -38,19 +52,21 @@ pub fn validate_app_config(cfg: &AppConfig) -> Result<(), String> {
     if ac.remote.auth_env.is_some() && ac.remote.server_url.is_empty() {
         return Err("auth_env requires server_url".to_string());
     }
-    // gpu policy
-    if cfg.voice.gpu_policy.max_cost_per_job < 0.0
-        || !cfg.voice.gpu_policy.max_cost_per_job.is_finite()
-    {
+    Ok(())
+}
+
+fn validate_gpu_policy(policy: &GpuPolicyConfig) -> Result<(), String> {
+    if policy.max_cost_per_job < 0.0 || !policy.max_cost_per_job.is_finite() {
         return Err("max_cost_per_job must be finite >=0".to_string());
     }
-    if cfg.voice.gpu_policy.max_cost_per_day < 0.0
-        || !cfg.voice.gpu_policy.max_cost_per_day.is_finite()
-    {
+    if policy.max_cost_per_day < 0.0 || !policy.max_cost_per_day.is_finite() {
         return Err("max_cost_per_day must be finite >=0".to_string());
     }
-    // gpu pool
-    for ep in &cfg.voice.gpu_pool {
+    Ok(())
+}
+
+fn validate_gpu_pool(pool: &[GpuPoolEndpoint]) -> Result<(), String> {
+    for ep in pool {
         if ep.name.trim().is_empty() {
             return Err("gpu_pool name must not be empty".to_string());
         }
@@ -59,34 +75,34 @@ pub fn validate_app_config(cfg: &AppConfig) -> Result<(), String> {
             return Err("gpu_pool cost_per_hour must be finite >=0".to_string());
         }
     }
-    if !VALID_AUDIO_CPP_MODES.contains(&cfg.voice_clone.routing.mode.as_str()) {
+    Ok(())
+}
+
+fn validate_voice_clone(vc: &VoiceCloneConfig) -> Result<(), String> {
+    if !VALID_AUDIO_CPP_MODES.contains(&vc.routing.mode.as_str()) {
         return Err(format!(
             "invalid voice_clone.routing.mode: {}",
-            cfg.voice_clone.routing.mode
+            vc.routing.mode
         ));
     }
-    if cfg.voice_clone.min_sample_seconds < 1.0 {
+    if vc.min_sample_seconds < 1.0 {
         return Err("voice_clone.min_sample_seconds must be >=1".to_string());
     }
-    // narrator
-    if !VALID_NARRATOR_BACKENDS.contains(&cfg.narrator.backend.as_str()) {
-        return Err(format!(
-            "invalid narrator.backend: {}",
-            cfg.narrator.backend
-        ));
+    Ok(())
+}
+
+fn validate_narrator(n: &NarratorConfig) -> Result<(), String> {
+    if !VALID_NARRATOR_BACKENDS.contains(&n.backend.as_str()) {
+        return Err(format!("invalid narrator.backend: {}", n.backend));
     }
-    if cfg.narrator.max_tokens == 0 {
+    if n.max_tokens == 0 {
         return Err("narrator.max_tokens must be >0".to_string());
     }
-    if !(0.0..=2.0).contains(&cfg.narrator.temperature) {
+    if !(0.0..=2.0).contains(&n.temperature) {
         return Err("narrator.temperature must be in [0,2]".to_string());
     }
-    if cfg.narrator.prompt_template.trim().is_empty() {
+    if n.prompt_template.trim().is_empty() {
         return Err("narrator.prompt_template must not be empty".to_string());
-    }
-    // Check conflicting local/remote
-    if ac.mode == "local" && !ac.remote.server_url.is_empty() && cfg.voice.gpu_policy.allow_paid {
-        // allowed but warn — no error
     }
     Ok(())
 }

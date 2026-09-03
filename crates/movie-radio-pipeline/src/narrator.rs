@@ -44,7 +44,7 @@ pub fn render_prompt(template_text: &str, data: &RenderData) -> Result<RenderedP
     let text = strip_frontmatter(&rendered);
     Ok(RenderedPrompt {
         text,
-        variables: Default::default(),
+        variables: std::collections::HashMap::new(),
     })
 }
 
@@ -195,7 +195,7 @@ pub fn handle_narrate(
     template: Option<PathBuf>,
     cfg: &NarratorConfig,
 ) -> Result<()> {
-    let tpl_path = template.unwrap_or(PathBuf::from(&cfg.prompt_template));
+    let tpl_path = template.unwrap_or_else(|| PathBuf::from(&cfg.prompt_template));
     let tpl_text = std::fs::read_to_string(&tpl_path)
         .unwrap_or_else(|_| "Write narration for {{movie_title}} in {{language}}".to_string());
     let data = RenderData {

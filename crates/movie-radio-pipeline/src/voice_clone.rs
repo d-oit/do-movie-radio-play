@@ -9,12 +9,11 @@ pub fn extract_candidates(
     if character.trim().is_empty() {
         anyhow::bail!("character must not be empty");
     }
-    // Deterministic placeholder: in real implementation use VAD/diarization/SNR filtering
     let candidate = VoiceReference {
         id: format!("{character}_candidate_1"),
         character_name: character.to_string(),
         sample_paths: vec![input.to_path_buf()],
-        metadata: Default::default(),
+        metadata: std::collections::HashMap::default(),
         created_at: None,
         runtime: cfg.voice_clone.runtime.clone(),
         family: cfg.voice_clone.family.clone(),
@@ -48,7 +47,7 @@ mod tests {
     #[test]
     fn extract_valid() -> anyhow::Result<()> {
         let cfg = AppConfig::default();
-        let cands = extract_candidates(&PathBuf::from("/tmp/movie.mkv"), &cfg, "alice")?;
+        let cands = extract_candidates(&PathBuf::from("testdata/movie.mkv"), &cfg, "alice")?;
         assert_eq!(cands.len(), 1);
         Ok(())
     }
@@ -56,6 +55,6 @@ mod tests {
     fn unsupported_family_rejected() {
         let mut cfg = AppConfig::default();
         cfg.voice_clone.family = "unknown_family".to_string();
-        assert!(extract_candidates(&PathBuf::from("/tmp/a.mkv"), &cfg, "bob").is_err());
+        assert!(extract_candidates(&PathBuf::from("testdata/a.mkv"), &cfg, "bob").is_err());
     }
 }

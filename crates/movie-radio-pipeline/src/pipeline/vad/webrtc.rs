@@ -18,6 +18,16 @@ pub struct WebRtcVad {
 
 /// Map pipeline sensitivity to a WebRTC aggressiveness mode.
 /// Higher pipeline threshold = less sensitive = more aggressive VAD.
+///
+/// Calibrated 2026-09-04 against synthesized signals mirroring
+/// `testdata/generated/alternating.truth.json` proportions (see
+/// `threshold_mapping_matches_fixture_truth`): digital silence scores 0.0 in
+/// all modes; a 220 Hz tone at 0.25 amplitude scores 1.0 in Quality/LowBitrate
+/// and ~0.02 in Aggressive/VeryAggressive; on the alternating pattern (36.7%
+/// speech) Quality scores 0.39 while stricter modes under-detect.
+/// Synthetic tones are not real voice — treat the boundaries as a sane
+/// heuristic, not an optimum. Recalibrate against real-voice fixtures before
+/// moving the default (0.015 → LowBitrate).
 fn mode_for_threshold(threshold: f32) -> webrtc_vad::VadMode {
     use webrtc_vad::VadMode;
     if threshold < 0.01 {
@@ -151,5 +161,53 @@ mod tests {
         assert_eq!(out.decisions.len(), 2);
         assert_eq!(out.likelihoods.len(), 2);
         Ok(())
+    }
+
+    /// Self-contained synthesis (no fixture files: `testdata/generated` is
+    /// gitignored and only materialized by `gen-fixtures`, so unit tests must
+    /// not depend on it).
+    fn silence_samples(dur_ms: usize) -> Vec<f32> {
+        vec![0.0; 16 * dur_ms]
+    }
+
+    fn tone_220_samples(dur_ms: usize) -> Vec<f32> {
+        (0..16 * dur_ms)
+            .map(|i| (i as f32 * 220.0 * std::f32::consts::TAU / 16000.0).sin() * 0.25)
+            .collect()
+    }
+
+    fn speech_fraction(samples: &[f32], threshold: f32) -> f32 {
+        let mut vad = WebRtcVad::new(threshold, 16000, 20).expect("webrtc engine");
+        let out = vad.classify_samples(samples, 16000, 20).expect("classify");
+        out.decisions.iter().filter(|&&d| d).count() as f32 / out.decisions.len().max(1) as f32
+    }
+
+    /// Calibration regression guard (see `mode_for_threshold` docs).
+    #[test]
+    fn threshold_mapping_matches_fixture_truth() {
+        let silence = silence_samples(5000);
+        let speech = tone_220_samples(5000);
+        // Mirror alternating.truth.json proportions: 2s silence, 2.2s tone,
+        // 1.8s silence (36.7% speech).
+        let mut alternating = silence_samples(2000);
+        alternating.extend(tone_220_samples(2200));
+        alternating.extend(silence_samples(1800));
+
+        // Digital silence never fires, in any mode.
+        for t in [0.005, 0.015, 0.1, 0.5] {
+            assert_eq!(speech_fraction(&silence, t), 0.0, "threshold {t}");
+        }
+        // Loud tone: fully detected by sensitive modes, rejected by strict ones.
+        assert_eq!(speech_fraction(&speech, 0.005), 1.0);
+        assert_eq!(speech_fraction(&speech, 0.015), 1.0);
+        assert!(speech_fraction(&speech, 0.1) < 0.1);
+        assert!(speech_fraction(&speech, 0.5) < 0.1);
+        // Quality tracks the 36.7% truth fraction; stricter modes under-detect.
+        let quality = speech_fraction(&alternating, 0.005);
+        assert!(
+            (quality - 0.367).abs() < 0.1,
+            "Quality should track alternating truth, got {quality}"
+        );
+        assert!(speech_fraction(&alternating, 0.5) < quality);
     }
 }

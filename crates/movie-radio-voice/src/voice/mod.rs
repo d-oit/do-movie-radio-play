@@ -82,6 +82,9 @@ fn is_valid_language(lang: &str) -> bool {
 }
 
 impl SynthesisRequest {
+    /// Caller-side validation. Optional but recommended: only the voice ID
+    /// is defensively re-validated by providers at dispatch; speed, sample
+    /// rate, text length, and language rely on this call.
     pub fn validate(&self) -> Result<(), SynthesisValidationError> {
         if !SAMPLE_RATE_RANGE_HZ.contains(&self.sample_rate_hz) {
             return Err(SynthesisValidationError::SampleRateOutOfRange(

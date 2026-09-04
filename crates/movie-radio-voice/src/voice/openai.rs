@@ -4,7 +4,10 @@ use reqwest::Client;
 use std::env;
 use std::time::Duration;
 
-use super::{AudioOutput, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer};
+use super::{
+    is_valid_voice_id, AudioOutput, ProviderCapabilities, SynthesisRequest,
+    SynthesisValidationError, VoiceSynthesizer,
+};
 use crate::config::OpenAiConfig;
 
 /// Attempts per synthesis for transient transport failures (connect/timeout).
@@ -48,6 +51,10 @@ impl OpenAiTtsProvider {
         } else {
             self.config.voice.clone()
         };
+
+        if !is_valid_voice_id(&voice) {
+            return Err(SynthesisValidationError::InvalidVoiceId.into());
+        }
 
         let mut req = self.client.post(self.endpoint()).json(&serde_json::json!({
             "model": self.config.model,
@@ -194,6 +201,58 @@ mod tests {
             voice: "onyx".to_string(),
             response_format: "mp3".to_string(),
         }
+    }
+
+    #[test]
+    fn test_build_request_rejects_invalid_voice_id() {
+        let invalid_cfg = OpenAiConfig {
+            api_key_env: None,
+            base_url: "https://api.openai.com/v1".to_string(),
+            model: "tts-1".to_string(),
+            voice: "../invalid_voice".to_string(),
+            response_format: "mp3".to_string(),
+        };
+        let provider = OpenAiTtsProvider::new(invalid_cfg);
+        let req = SynthesisRequest::default();
+        let res = provider.build_request(&req);
+        assert!(res.is_err());
+        assert_eq!(
+            res.err()
+                .unwrap()
+                .downcast::<SynthesisValidationError>()
+                .unwrap(),
+            SynthesisValidationError::InvalidVoiceId
+        );
+
+        let valid_cfg = config(None, None);
+        let provider = OpenAiTtsProvider::new(valid_cfg);
+        let req_override = SynthesisRequest {
+            voice_id: Some("voice/path/traversal".to_string()),
+            ..SynthesisRequest::default()
+        };
+        let res_override = provider.build_request(&req_override);
+        assert!(res_override.is_err());
+        assert_eq!(
+            res_override
+                .err()
+                .unwrap()
+                .downcast::<SynthesisValidationError>()
+                .unwrap(),
+            SynthesisValidationError::InvalidVoiceId
+        );
+    }
+
+    #[test]
+    fn test_build_request_accepts_valid_voice_id() {
+        let provider = OpenAiTtsProvider::new(config(None, None));
+        let req = SynthesisRequest::default();
+        assert!(provider.build_request(&req).is_ok());
+
+        let req_override = SynthesisRequest {
+            voice_id: Some("alloy".to_string()),
+            ..SynthesisRequest::default()
+        };
+        assert!(provider.build_request(&req_override).is_ok());
     }
 
     #[test]

@@ -46,8 +46,10 @@ impl OpenAiTtsProvider {
     }
 
     /// Layering contract: [`SynthesisRequest::validate`] is caller-optional, so
-    /// providers defensively re-validate the *effective* value here rather
-    /// than trusting the caller. Keep both gates in sync (`is_valid_voice_id`).
+    /// the effective voice ID (request override or config default) is
+    /// re-validated here rather than trusted. Other fields (speed, sample
+    /// rate, text length, language) rely on `validate()` — keep the voice-ID
+    /// gates in sync via `is_valid_voice_id`.
     fn build_request(&self, request: &SynthesisRequest) -> Result<reqwest::RequestBuilder> {
         let voice = if let Some(ref voice_id) = request.voice_id {
             voice_id.clone()

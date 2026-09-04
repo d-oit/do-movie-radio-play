@@ -19,11 +19,12 @@ pub struct WebRtcVad {
 /// Map pipeline sensitivity to a WebRTC aggressiveness mode.
 /// Higher pipeline threshold = less sensitive = more aggressive VAD.
 ///
-/// Calibrated 2026-09-04 against `testdata/generated` fixtures (see
+/// Calibrated 2026-09-04 against synthesized signals mirroring
+/// `testdata/generated/alternating.truth.json` proportions (see
 /// `threshold_mapping_matches_fixture_truth`): digital silence scores 0.0 in
 /// all modes; a 220 Hz tone at 0.25 amplitude scores 1.0 in Quality/LowBitrate
-/// and ~0.02 in Aggressive/VeryAggressive; on `alternating.wav` (36.7% speech
-/// by truth file) Quality scores 0.39 while stricter modes under-detect.
+/// and ~0.02 in Aggressive/VeryAggressive; on the alternating pattern (36.7%
+/// speech) Quality scores 0.39 while stricter modes under-detect.
 /// Synthetic tones are not real voice — treat the boundaries as a sane
 /// heuristic, not an optimum. Recalibrate against real-voice fixtures before
 /// moving the default (0.015 → LowBitrate).
@@ -162,12 +163,16 @@ mod tests {
         Ok(())
     }
 
-    fn fixture_samples(name: &str) -> Vec<f32> {
-        let path = format!("../../testdata/generated/{name}.wav");
-        let mut reader = hound::WavReader::open(&path).expect("fixture wav");
-        reader
-            .samples::<i16>()
-            .map(|s| s.expect("fixture sample") as f32 / f32::from(i16::MAX))
+    /// Self-contained synthesis (no fixture files: `testdata/generated` is
+    /// gitignored and only materialized by `gen-fixtures`, so unit tests must
+    /// not depend on it).
+    fn silence_samples(dur_ms: usize) -> Vec<f32> {
+        vec![0.0; 16 * dur_ms]
+    }
+
+    fn tone_220_samples(dur_ms: usize) -> Vec<f32> {
+        (0..16 * dur_ms)
+            .map(|i| (i as f32 * 220.0 * std::f32::consts::TAU / 16000.0).sin() * 0.25)
             .collect()
     }
 
@@ -180,9 +185,13 @@ mod tests {
     /// Calibration regression guard (see `mode_for_threshold` docs).
     #[test]
     fn threshold_mapping_matches_fixture_truth() {
-        let silence = fixture_samples("silence_only");
-        let speech = fixture_samples("speech_only");
-        let alternating = fixture_samples("alternating");
+        let silence = silence_samples(5000);
+        let speech = tone_220_samples(5000);
+        // Mirror alternating.truth.json proportions: 2s silence, 2.2s tone,
+        // 1.8s silence (36.7% speech).
+        let mut alternating = silence_samples(2000);
+        alternating.extend(tone_220_samples(2200));
+        alternating.extend(silence_samples(1800));
 
         // Digital silence never fires, in any mode.
         for t in [0.005, 0.015, 0.1, 0.5] {
@@ -193,8 +202,7 @@ mod tests {
         assert_eq!(speech_fraction(&speech, 0.015), 1.0);
         assert!(speech_fraction(&speech, 0.1) < 0.1);
         assert!(speech_fraction(&speech, 0.5) < 0.1);
-        // Alternating truth is 36.7% speech; Quality (0.39) tracks it,
-        // stricter modes under-detect synthetic tones.
+        // Quality tracks the 36.7% truth fraction; stricter modes under-detect.
         let quality = speech_fraction(&alternating, 0.005);
         assert!(
             (quality - 0.367).abs() < 0.1,

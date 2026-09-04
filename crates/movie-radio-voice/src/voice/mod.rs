@@ -82,6 +82,9 @@ fn is_valid_language(lang: &str) -> bool {
 }
 
 impl SynthesisRequest {
+    /// Caller-side validation. Optional: providers re-validate effective
+    /// values defensively at dispatch (see `build_request` layering notes),
+    /// so a missed call here degrades to a provider error, not UB.
     pub fn validate(&self) -> Result<(), SynthesisValidationError> {
         if !SAMPLE_RATE_RANGE_HZ.contains(&self.sample_rate_hz) {
             return Err(SynthesisValidationError::SampleRateOutOfRange(

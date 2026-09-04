@@ -59,7 +59,7 @@ Configuration profiles are stored in `config/profiles/` (e.g., `modern-optimized
 - `vad_threshold_delta`: Delta added to baseline energy threshold (default: 0.0).
 - `prompt_min_duration_ms`: Minimum segment duration for prompt generation in milliseconds (default: 2500).
 - `prompt_min_confidence`: Minimum confidence threshold for prompt generation (default: 0.65).
-- `vad_engine`: Classification engine ("energy", "spectral", or "hybrid", default: "energy").
+- `vad_engine`: Classification engine ("energy", "spectral", "hybrid", "webrtc", or "silero", default: "energy"). `webrtc` needs `timeline --features webrtc-vad`; `silero` is reserved and reports its status via ADR-127.
 
 ### Narrator Voice Configuration (audio.cpp & GPU Cloud)
 

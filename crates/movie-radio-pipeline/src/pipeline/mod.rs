@@ -219,8 +219,16 @@ fn extract_timeline_chunked(
             prev_frames = frames[frames.len() - warmup_frames..].to_vec();
             prev_likelihoods =
                 chunk_likelihoods[chunk_likelihoods.len() - warmup_frames..].to_vec();
-            let warmup_samples = warmup_frames * frame_len(cfg.sample_rate_hz, frame_ms);
-            prev_samples = tail_samples(chunk_samples, warmup_samples);
+            // Exact sample coverage of the retained frames: full frames except
+            // possibly the chunk tail, so sample-based engines stay aligned
+            // with frame-based decisions.
+            let flen = frame_len(cfg.sample_rate_hz, frame_ms);
+            let tail = chunk_samples.len() % flen;
+            let mut sample_count = warmup_frames * flen;
+            if tail != 0 {
+                sample_count -= flen - tail;
+            }
+            prev_samples = tail_samples(chunk_samples, sample_count);
         } else {
             prev_frames = frames;
             prev_likelihoods = chunk_likelihoods.to_vec();

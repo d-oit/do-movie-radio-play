@@ -35,7 +35,8 @@ state. Researched 2026-09-04 against official docs:
 2. `WebRtcVad` behind `webrtc-vad` feature; aggressiveness mapped from the
    configured threshold; unsupported rate/frame combos rejected with a typed error.
 3. `SileroVad` **DEFERRED**: `silero-vad-rust` 6.2.2 does not compile against
-   the workspace-unified `ort` rc.13 (it targets the rc.10-era API:
+   `ort` rc.13 as resolved in `Cargo.lock` (the manifest declares
+   `ort ^2.0.0-rc.9`, which admits rc.13; the crate targets the rc.10-era API:
    `execution_providers::CPUExecutionProvider`, non-generic `ort::Error`,
    old `Tensor::from_array` bounds — all changed/removed in rc.13; verified
    2026-09-04 via `cargo check -p movie-radio-pipeline --features silero-vad`).

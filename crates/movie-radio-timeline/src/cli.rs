@@ -25,7 +25,7 @@ pub enum Commands {
         min_silence_ms: Option<u32>,
         #[arg(long)]
         max_non_voice_ms: Option<u32>,
-        #[arg(long, default_value = "energy", value_parser = ["energy", "spectral", "hybrid"])]
+        #[arg(long, default_value = "energy", value_parser = ["energy", "spectral", "hybrid", "webrtc", "silero"])]
         vad_engine: String,
         #[arg(long)]
         calibration_profile: Option<PathBuf>,
@@ -92,7 +92,7 @@ pub enum Commands {
         min_silence_ms: Option<u32>,
         #[arg(long)]
         max_non_voice_ms: Option<u32>,
-        #[arg(long, default_value = "energy", value_parser = ["energy", "spectral", "hybrid"])]
+        #[arg(long, default_value = "energy", value_parser = ["energy", "spectral", "hybrid", "webrtc", "silero"])]
         vad_engine: String,
         #[arg(long)]
         calibration_profile: Option<PathBuf>,
@@ -118,7 +118,7 @@ pub enum Commands {
         min_silence_ms: Option<u32>,
         #[arg(long)]
         max_non_voice_ms: Option<u32>,
-        #[arg(long, default_value = "energy", value_parser = ["energy", "spectral", "hybrid"])]
+        #[arg(long, default_value = "energy", value_parser = ["energy", "spectral", "hybrid", "webrtc", "silero"])]
         vad_engine: String,
         #[arg(long)]
         calibration_profile: Option<PathBuf>,

@@ -25,10 +25,12 @@ tera.workspace = true
 reqwest.workspace = true
 tokio.workspace = true
 async-trait.workspace = true
+webrtc-vad = { workspace = true, optional = true }
 
 [features]
 default = []
 high-quality-resample = []
+webrtc-vad = ["dep:webrtc-vad"]
 
 [dev-dependencies]
 rand.workspace = true

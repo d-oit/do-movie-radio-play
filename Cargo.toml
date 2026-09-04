@@ -30,6 +30,7 @@ toml = "0.8"
 dotenvy = "0.15"
 tera = "1.19"
 url = "2"
+webrtc-vad = "0.4"
 libsql = { version = "0.9", default-features = false, features = ["core"] }
 symphonia = { version = "0.6", features = ["mp3", "wav", "flac", "ogg", "pcm"] }
 rodio = { version = "0.22", default-features = false, features = [

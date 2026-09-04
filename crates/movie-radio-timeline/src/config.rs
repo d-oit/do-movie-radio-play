@@ -3,7 +3,7 @@ use std::{env, fs, path::PathBuf};
 
 pub use movie_radio_types::{AnalysisConfig, MergeOptions};
 
-const VALID_VAD_ENGINES: [&str; 3] = ["energy", "spectral", "hybrid"];
+const VALID_VAD_ENGINES: [&str; 5] = ["energy", "spectral", "hybrid", "webrtc", "silero"];
 
 #[allow(clippy::too_many_arguments)]
 pub fn build_analysis_config(
@@ -226,6 +226,17 @@ mod tests {
             ..AnalysisConfig::default()
         };
         assert!(validate(&cfg).is_err());
+    }
+
+    #[test]
+    fn new_vad_engine_names_are_accepted() {
+        for engine in ["webrtc", "silero"] {
+            let cfg = AnalysisConfig {
+                vad_engine: engine.to_string(),
+                ..AnalysisConfig::default()
+            };
+            assert!(validate(&cfg).is_ok(), "{engine} should validate");
+        }
     }
 
     #[test]

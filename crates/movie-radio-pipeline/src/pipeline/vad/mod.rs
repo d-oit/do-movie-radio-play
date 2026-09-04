@@ -2,6 +2,8 @@ mod energy;
 mod engine;
 mod hybrid;
 mod spectral;
+#[cfg(feature = "webrtc-vad")]
+mod webrtc;
 
 use anyhow::{bail, Result};
 
@@ -11,6 +13,8 @@ pub use energy::EnergyVad;
 pub use engine::VadEngine;
 pub use hybrid::HybridVad;
 pub use spectral::SpectralVad;
+#[cfg(feature = "webrtc-vad")]
+pub use webrtc::WebRtcVad;
 
 const MIN_ADAPTIVE_THRESHOLD: f32 = 0.0001;
 const MAX_ADAPTIVE_THRESHOLD: f32 = 0.05;
@@ -31,6 +35,8 @@ pub fn create_engine(
     entropy_min: Option<f32>,
     centroid_min: Option<f32>,
     centroid_max: Option<f32>,
+    _sample_rate_hz: u32,
+    _frame_ms: u32,
 ) -> Result<Box<dyn VadEngine>> {
     match name {
         "energy" => Ok(Box::new(EnergyVad::new(threshold))),
@@ -52,7 +58,43 @@ pub fn create_engine(
             };
             Ok(Box::new(engine))
         }
+        "webrtc" => {
+            #[cfg(feature = "webrtc-vad")]
+            {
+                Ok(Box::new(webrtc::WebRtcVad::new(
+                    threshold,
+                    _sample_rate_hz,
+                    _frame_ms,
+                )?))
+            }
+            #[cfg(not(feature = "webrtc-vad"))]
+            {
+                bail!("VAD engine 'webrtc' needs `--features webrtc-vad` (rebuild with the feature enabled)");
+            }
+        }
+        // Silero is accepted as a name but deferred: silero-vad-rust 6.2.2
+        // targets a pre-rc.13 ort API while the workspace unified on rc.13,
+        // and there is no weight-vendoring convention yet (see ADR-127).
+        "silero" => {
+            bail!("VAD engine 'silero' is not yet implemented (blocked on ort unification, see ADR-127)");
+        }
         _ => bail!("unknown VAD engine '{name}'"),
+    }
+}
+
+/// Classify with automatic routing: sample-based engines run on raw samples,
+/// frame-based engines on pre-computed frames.
+pub fn classify_with_engine(
+    engine: &mut Box<dyn VadEngine>,
+    frames: &[Frame],
+    samples: &[f32],
+    sample_rate_hz: u32,
+    frame_ms: u32,
+) -> Result<engine::VadResult> {
+    if engine.uses_raw_samples() {
+        engine.classify_samples(samples, sample_rate_hz, frame_ms)
+    } else {
+        Ok(engine.classify(frames))
     }
 }
 
@@ -153,7 +195,39 @@ mod tests {
 
     #[test]
     fn create_engine_supports_hybrid() {
-        let engine = create_engine("hybrid", 0.015, None, None, None, None).unwrap();
+        let engine = create_engine("hybrid", 0.015, None, None, None, None, 16000, 20).unwrap();
         assert_eq!(engine.name(), "hybrid");
+    }
+
+    #[test]
+    fn unknown_engine_is_rejected() {
+        assert!(create_engine("bogus", 0.015, None, None, None, None, 16000, 20).is_err());
+    }
+
+    fn engine_error(name: &str, threshold: f32) -> String {
+        match create_engine(name, threshold, None, None, None, None, 16000, 20) {
+            Ok(_) => String::from("expected error, got engine"),
+            Err(e) => e.to_string(),
+        }
+    }
+
+    #[test]
+    #[cfg(not(feature = "webrtc-vad"))]
+    fn webrtc_without_feature_errors_helpfully() {
+        let err = engine_error("webrtc", 0.015);
+        assert!(err.contains("--features webrtc-vad"), "got: {err}");
+    }
+
+    #[test]
+    fn silero_reports_deferred_status() {
+        let err = engine_error("silero", 0.5);
+        assert!(err.contains("not yet implemented"), "got: {err}");
+    }
+
+    #[test]
+    fn frame_engines_reject_sample_classification() {
+        let mut engine = create_engine("energy", 0.015, None, None, None, None, 16000, 20).unwrap();
+        assert!(!engine.uses_raw_samples());
+        assert!(engine.classify_samples(&[0.0; 320], 16000, 20).is_err());
     }
 }

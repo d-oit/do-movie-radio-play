@@ -27,9 +27,6 @@ fn decode_audio_with_fallback(
 
     if let Some(ext_str) = ext_lower.as_deref() {
         if matches!(ext_str, "mp3" | "wav" | "flac" | "ogg") {
-            if ext_str == "wav" {
-                log_wav_spec(path);
-            }
             match decode_via_symphonia(path, ext, target_sample_rate) {
                 Ok((samples, sr)) => return Ok((samples, sr)),
                 Err(err) => {
@@ -48,22 +45,6 @@ fn decode_audio_with_fallback(
         ));
     }
     decode_via_ffmpeg(path, target_sample_rate)
-}
-
-/// Log WAV header details (bits/sample, PCM vs float) to aid decode diagnostics.
-/// Best-effort only: failures are silently ignored so logging never breaks decoding.
-fn log_wav_spec(path: &Path) {
-    if let Ok(reader) = hound::WavReader::open(path) {
-        let spec = reader.spec();
-        info!(
-            input = %path.display(),
-            channels = spec.channels,
-            sample_rate = spec.sample_rate,
-            bits_per_sample = spec.bits_per_sample,
-            sample_format = ?spec.sample_format,
-            "wav header spec",
-        );
-    }
 }
 
 pub fn decode_audio_chunked(

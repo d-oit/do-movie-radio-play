@@ -425,11 +425,16 @@ mod tests {
     #[test]
     fn test_decode_audio_fallback_disabled_propagates_symphonia_error() {
         let temp_dir = tempfile::tempdir().unwrap();
-        let mp4_path = temp_dir.path().join("test.mp4");
-        std::fs::write(&mp4_path, b"dummy content").unwrap();
+        let wav_path = temp_dir.path().join("corrupt.wav");
+        std::fs::write(&wav_path, b"not a wav file").unwrap();
 
-        let res = decode_audio_with_fallback(&mp4_path, 16000, false);
-        assert!(res.is_err());
+        let err = decode_audio_with_fallback(&wav_path, 16000, false)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            !err.contains("fallback is disabled"),
+            "expected the symphonia error, got: {err}"
+        );
     }
 
     #[test]

@@ -3,13 +3,21 @@ use std::{path::Path, process::Command};
 use symphonia::core::codecs::audio::AudioDecoderOptions;
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, TrackType};
-use symphonia::core::io::MediaSourceStream;
+use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
 use symphonia::core::meta::MetadataOptions;
 use tracing::info;
 
 use movie_radio_types::TimelineError;
 
 pub fn decode_audio(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u32)> {
+    decode_audio_with_fallback(path, target_sample_rate, true)
+}
+
+fn decode_audio_with_fallback(
+    path: &Path,
+    target_sample_rate: u32,
+    allow_ffmpeg_fallback: bool,
+) -> Result<(Vec<f32>, u32)> {
     if !path.exists() {
         return Err(TimelineError::MissingInput(path.display().to_string()).into());
     }
@@ -22,12 +30,20 @@ pub fn decode_audio(path: &Path, target_sample_rate: u32) -> Result<(Vec<f32>, u
             match decode_via_symphonia(path, ext, target_sample_rate) {
                 Ok((samples, sr)) => return Ok((samples, sr)),
                 Err(err) => {
+                    if !allow_ffmpeg_fallback {
+                        return Err(err);
+                    }
                     info!(input = %path.display(), error = %err, "symphonia decode failed, falling back to ffmpeg");
                 }
             }
         }
     }
 
+    if !allow_ffmpeg_fallback {
+        bail!(TimelineError::Decode(
+            "symphonia decode failed and ffmpeg fallback is disabled".to_string()
+        ));
+    }
     decode_via_ffmpeg(path, target_sample_rate)
 }
 
@@ -116,7 +132,7 @@ fn decode_via_symphonia(
     target_sample_rate: u32,
 ) -> Result<(Vec<f32>, u32)> {
     let file = std::fs::File::open(path)?;
-    let mss = MediaSourceStream::new(Box::new(file), Default::default());
+    let mss = MediaSourceStream::new(Box::new(file), MediaSourceStreamOptions::default());
     let mut hint = Hint::new();
     if let Some(ext) = extension {
         hint.with_extension(ext);
@@ -301,6 +317,139 @@ mod tests {
         for &s in &samples {
             assert!(s.abs() < 1e-4);
         }
+    }
+
+    #[test]
+    fn test_decode_via_symphonia_wav_24bit() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("test24.wav");
+
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 24,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        // Full-scale positive/negative 24-bit values plus silence.
+        let full_scale = (1i32 << 23) - 1;
+        writer.write_sample(full_scale).unwrap();
+        writer.write_sample(-full_scale).unwrap();
+        writer.write_sample(0i32).unwrap();
+        writer.finalize().unwrap();
+
+        let (samples, _) = decode_via_symphonia(&wav_path, Some("wav"), 16000).unwrap();
+        assert_eq!(samples.len(), 3);
+        assert!((samples[0] - 1.0).abs() < 1e-6, "got {}", samples[0]);
+        assert!((samples[1] + 1.0).abs() < 1e-6, "got {}", samples[1]);
+        assert_eq!(samples[2], 0.0);
+    }
+
+    #[test]
+    fn test_decode_via_symphonia_wav_32bit_float() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("test32f.wav");
+
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        writer.write_sample(1.0f32).unwrap();
+        writer.write_sample(-1.0f32).unwrap();
+        writer.write_sample(0.25f32).unwrap();
+        writer.finalize().unwrap();
+
+        let (samples, _) = decode_via_symphonia(&wav_path, Some("wav"), 16000).unwrap();
+        assert_eq!(samples.len(), 3);
+        assert!((samples[0] - 1.0).abs() < 1e-6, "got {}", samples[0]);
+        assert!((samples[1] + 1.0).abs() < 1e-6, "got {}", samples[1]);
+        assert!((samples[2] - 0.25).abs() < 1e-6, "got {}", samples[2]);
+    }
+
+    #[test]
+    fn test_decode_via_symphonia_stereo_24bit_mono_mix() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("stereo24.wav");
+
+        let spec = WavSpec {
+            channels: 2,
+            sample_rate: 16000,
+            bits_per_sample: 24,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        let full_scale = (1i32 << 23) - 1;
+        for _ in 0..100 {
+            writer.write_sample(full_scale).unwrap();
+            writer.write_sample(-full_scale).unwrap();
+        }
+        writer.finalize().unwrap();
+
+        let (samples, _) = decode_via_symphonia(&wav_path, Some("wav"), 16000).unwrap();
+        assert_eq!(samples.len(), 100);
+        for &s in &samples {
+            assert!(s.abs() < 1e-4, "got {s}");
+        }
+    }
+
+    #[test]
+    fn test_decode_audio_dispatch_wav_24bit_no_ffmpeg() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("dispatch24.wav");
+
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 24,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        let full_scale = (1i32 << 23) - 1;
+        writer.write_sample(full_scale).unwrap();
+        writer.write_sample(0i32).unwrap();
+        writer.finalize().unwrap();
+
+        // Full dispatch path (incl. WAV header diagnostics) with the ffmpeg
+        // fallback disabled: success proves symphonia decoded the 24-bit
+        // file on its own. Same-rate resample is identity.
+        let (samples, sr) = decode_audio_with_fallback(&wav_path, 16000, false).unwrap();
+        assert_eq!(sr, 16000);
+        assert_eq!(samples.len(), 2);
+        assert!((samples[0] - 1.0).abs() < 1e-6, "got {}", samples[0]);
+        assert_eq!(samples[1], 0.0);
+    }
+
+    #[test]
+    fn test_decode_audio_fallback_disabled_propagates_symphonia_error() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let wav_path = temp_dir.path().join("corrupt.wav");
+        std::fs::write(&wav_path, b"not a wav file").unwrap();
+
+        let err = decode_audio_with_fallback(&wav_path, 16000, false)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            !err.contains("fallback is disabled"),
+            "expected the symphonia error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn test_decode_audio_fallback_disabled_rejects_unsupported_ext() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let xyz_path = temp_dir.path().join("test.xyz");
+        std::fs::write(&xyz_path, b"dummy content").unwrap();
+
+        let err = decode_audio_with_fallback(&xyz_path, 16000, false)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("fallback is disabled"),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]

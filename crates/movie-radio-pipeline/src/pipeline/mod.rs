@@ -138,7 +138,7 @@ fn extract_timeline_chunked(
         let mut combined_samples = prev_samples.clone();
         combined_samples.extend_from_slice(chunk_samples);
         let vad_output = classify_with_engine(
-            &mut vad_engine,
+            vad_engine.as_mut(),
             &combined_frames,
             &combined_samples,
             cfg.sample_rate_hz,
@@ -224,7 +224,7 @@ fn extract_timeline_chunked(
         } else {
             prev_frames = frames;
             prev_likelihoods = chunk_likelihoods.to_vec();
-            prev_samples = chunk_samples.clone();
+            prev_samples.clone_from(chunk_samples);
         }
 
         chunk_offset_ms += chunk_ms;
@@ -353,7 +353,7 @@ fn vad_stage(mono: &[f32], frames: &[Frame], cfg: &AnalysisConfig, eff_thresh: f
     let mut engine: Box<dyn VadEngine> = create_engine(&cfg.vad_engine, thresh, flat, ent, cent_min, cent_max, cfg.sample_rate_hz, cfg.frame_ms)?;
     let name = engine.name();
     let output = timed_stage!(stage_ms, vad_ms, {
-        classify_with_engine(&mut engine, frames, mono, cfg.sample_rate_hz, cfg.frame_ms)?
+        classify_with_engine(engine.as_mut(), frames, mono, cfg.sample_rate_hz, cfg.frame_ms)?
     });
     info!(stage = "vad", ms = stage_ms.vad_ms, engine = name, "stage complete");
     Ok((output.decisions, output.likelihoods))

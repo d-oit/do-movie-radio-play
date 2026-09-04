@@ -85,7 +85,7 @@ pub fn create_engine(
 /// Classify with automatic routing: sample-based engines run on raw samples,
 /// frame-based engines on pre-computed frames.
 pub fn classify_with_engine(
-    engine: &mut Box<dyn VadEngine>,
+    engine: &mut dyn VadEngine,
     frames: &[Frame],
     samples: &[f32],
     sample_rate_hz: u32,

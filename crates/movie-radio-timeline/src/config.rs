@@ -3,7 +3,7 @@ use std::{env, fs, path::PathBuf};
 
 pub use movie_radio_types::{AnalysisConfig, MergeOptions};
 
-const VALID_VAD_ENGINES: [&str; 3] = ["energy", "spectral", "hybrid"];
+const VALID_VAD_ENGINES: [&str; 5] = ["energy", "spectral", "hybrid", "webrtc", "silero"];
 
 #[allow(clippy::too_many_arguments)]
 pub fn build_analysis_config(
@@ -50,9 +50,16 @@ pub fn build_analysis_config(
     Ok(cfg)
 }
 
+const ENV_SAMPLE_RATE: &str = "TIMELINE_SAMPLE_RATE";
+const ENV_FRAME_MS: &str = "TIMELINE_FRAME_MS";
+const ENV_MIN_SPEECH_MS: &str = "TIMELINE_MIN_SPEECH_MS";
+const ENV_MIN_SILENCE_MS: &str = "TIMELINE_MIN_SILENCE_MS";
+const ENV_ENERGY_THRESHOLD: &str = "TIMELINE_ENERGY_THRESHOLD";
+const ENV_PARALLEL_FEATURES: &str = "TIMELINE_PARALLEL_FEATURES";
+
 fn apply_env_overrides(mut cfg: AnalysisConfig) -> Result<AnalysisConfig> {
-    if let Ok(v) = env::var("TIMELINE_SAMPLE_RATE") {
-        cfg.sample_rate_hz = parse_env_value("TIMELINE_SAMPLE_RATE", &v)?;
+    if let Ok(v) = env::var(ENV_SAMPLE_RATE) {
+        cfg.sample_rate_hz = parse_env_value(ENV_SAMPLE_RATE, &v)?;
         if !(8_000..=48_000).contains(&cfg.sample_rate_hz) {
             bail!(
                 "invalid TIMELINE_SAMPLE_RATE={}: must be within 8_000..=48_000 Hz",
@@ -60,20 +67,20 @@ fn apply_env_overrides(mut cfg: AnalysisConfig) -> Result<AnalysisConfig> {
             );
         }
     }
-    if let Ok(v) = env::var("TIMELINE_FRAME_MS") {
-        cfg.frame_ms = parse_env_value("TIMELINE_FRAME_MS", &v)?;
+    if let Ok(v) = env::var(ENV_FRAME_MS) {
+        cfg.frame_ms = parse_env_value(ENV_FRAME_MS, &v)?;
     }
-    if let Ok(v) = env::var("TIMELINE_MIN_SPEECH_MS") {
-        cfg.min_speech_ms = parse_env_value("TIMELINE_MIN_SPEECH_MS", &v)?;
+    if let Ok(v) = env::var(ENV_MIN_SPEECH_MS) {
+        cfg.min_speech_ms = parse_env_value(ENV_MIN_SPEECH_MS, &v)?;
     }
-    if let Ok(v) = env::var("TIMELINE_MIN_SILENCE_MS") {
-        cfg.min_non_voice_ms = parse_env_value("TIMELINE_MIN_SILENCE_MS", &v)?;
+    if let Ok(v) = env::var(ENV_MIN_SILENCE_MS) {
+        cfg.min_non_voice_ms = parse_env_value(ENV_MIN_SILENCE_MS, &v)?;
     }
-    if let Ok(v) = env::var("TIMELINE_ENERGY_THRESHOLD") {
-        cfg.energy_threshold = parse_env_value("TIMELINE_ENERGY_THRESHOLD", &v)?;
+    if let Ok(v) = env::var(ENV_ENERGY_THRESHOLD) {
+        cfg.energy_threshold = parse_env_value(ENV_ENERGY_THRESHOLD, &v)?;
     }
-    if let Ok(v) = env::var("TIMELINE_PARALLEL_FEATURES") {
-        cfg.parallel_features = parse_env_value("TIMELINE_PARALLEL_FEATURES", &v)?;
+    if let Ok(v) = env::var(ENV_PARALLEL_FEATURES) {
+        cfg.parallel_features = parse_env_value(ENV_PARALLEL_FEATURES, &v)?;
     }
     Ok(cfg)
 }
@@ -226,6 +233,17 @@ mod tests {
             ..AnalysisConfig::default()
         };
         assert!(validate(&cfg).is_err());
+    }
+
+    #[test]
+    fn new_vad_engine_names_are_accepted() {
+        for engine in ["webrtc", "silero"] {
+            let cfg = AnalysisConfig {
+                vad_engine: engine.to_string(),
+                ..AnalysisConfig::default()
+            };
+            assert!(validate(&cfg).is_ok(), "{engine} should validate");
+        }
     }
 
     #[test]

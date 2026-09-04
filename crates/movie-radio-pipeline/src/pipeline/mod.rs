@@ -20,7 +20,9 @@ use std::{path::Path, time::Instant};
 use anyhow::Result;
 use tracing::info;
 
-use crate::pipeline::vad::{adapt_spectral_thresholds, create_engine, VadEngine};
+use crate::pipeline::vad::{
+    adapt_spectral_thresholds, classify_with_engine, create_engine, VadEngine,
+};
 use filters::{
     ambiguous_expand_max_ms, residual_bridge_gap_ms, should_apply_speech_evidence_filter,
     should_apply_verification_filter,
@@ -109,6 +111,7 @@ fn extract_timeline_chunked(
     let mut chunk_offset_ms: u64 = 0;
     let mut prev_frames: Vec<movie_radio_types::Frame> = Vec::new();
     let mut prev_likelihoods: Vec<f32> = Vec::new();
+    let mut prev_samples: Vec<f32> = Vec::new();
 
     for (chunk_idx, chunk_samples) in chunks.iter().enumerate() {
         let chunk_len = chunk_samples.len();
@@ -121,16 +124,26 @@ fn extract_timeline_chunked(
 
         let mut combined_likelihoods = prev_likelihoods.clone();
 
-        let vad_engine = create_engine(
+        let mut vad_engine = create_engine(
             &cfg.vad_engine,
             vad_threshold,
             vad_flatness_max,
             vad_entropy_min,
             vad_centroid_min,
             vad_centroid_max,
+            cfg.sample_rate_hz,
+            frame_ms,
         )?;
 
-        let vad_output = vad_engine.classify(&combined_frames);
+        let mut combined_samples = prev_samples.clone();
+        combined_samples.extend_from_slice(chunk_samples);
+        let vad_output = classify_with_engine(
+            vad_engine.as_mut(),
+            &combined_frames,
+            &combined_samples,
+            cfg.sample_rate_hz,
+            frame_ms,
+        )?;
         let speech = vad_output.decisions;
         combined_likelihoods.extend_from_slice(&vad_output.likelihoods);
 
@@ -206,9 +219,20 @@ fn extract_timeline_chunked(
             prev_frames = frames[frames.len() - warmup_frames..].to_vec();
             prev_likelihoods =
                 chunk_likelihoods[chunk_likelihoods.len() - warmup_frames..].to_vec();
+            // Exact sample coverage of the retained frames: full frames except
+            // possibly the chunk tail, so sample-based engines stay aligned
+            // with frame-based decisions.
+            let flen = frame_len(cfg.sample_rate_hz, frame_ms);
+            let tail = chunk_samples.len() % flen;
+            let mut sample_count = warmup_frames * flen;
+            if tail != 0 {
+                sample_count -= flen - tail;
+            }
+            prev_samples = tail_samples(chunk_samples, sample_count);
         } else {
             prev_frames = frames;
             prev_likelihoods = chunk_likelihoods.to_vec();
+            prev_samples.clone_from(chunk_samples);
         }
 
         chunk_offset_ms += chunk_ms;
@@ -256,7 +280,8 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
     let frames = framing_stage(&mono, cfg, &mut stage_ms);
     let frame_count = frames.len();
 
-    let (speech, frame_likelihoods) = vad_stage(&frames, cfg, effective_threshold, &mut stage_ms)?;
+    let (speech, frame_likelihoods) =
+        vad_stage(&mono, &frames, cfg, effective_threshold, &mut stage_ms)?;
     let smoothed = smoothing_stage(&speech, &frames, &frame_likelihoods, cfg, &mut stage_ms);
     let speech_segments = speech_segments_stage(&smoothed, &frame_likelihoods, cfg, &mut stage_ms);
     let filtered_speech = merging_stage(&speech_segments, &frames, cfg, &mut stage_ms);
@@ -309,8 +334,20 @@ fn framing_stage(mono: &[f32], cfg: &AnalysisConfig, stage_ms: &mut StageDuratio
     frames
 }
 
+fn frame_len(sample_rate_hz: u32, frame_ms: u32) -> usize {
+    ((sample_rate_hz as usize * frame_ms as usize) / 1000).max(1)
+}
+
+fn tail_samples(samples: &[f32], n: usize) -> Vec<f32> {
+    if n >= samples.len() {
+        samples.to_vec()
+    } else {
+        samples[samples.len() - n..].to_vec()
+    }
+}
+
 #[rustfmt::skip]
-fn vad_stage(frames: &[Frame], cfg: &AnalysisConfig, eff_thresh: f32, stage_ms: &mut StageDurations) -> Result<(Vec<bool>, Vec<f32>)> {
+fn vad_stage(mono: &[f32], frames: &[Frame], cfg: &AnalysisConfig, eff_thresh: f32, stage_ms: &mut StageDurations) -> Result<(Vec<bool>, Vec<f32>)> {
     let (thresh, flat, ent, cent_min, cent_max) = if cfg.vad_engine == "spectral" {
         let ad = adapt_spectral_thresholds(
             frames, eff_thresh, cfg.spectral_flatness_max,
@@ -321,10 +358,10 @@ fn vad_stage(frames: &[Frame], cfg: &AnalysisConfig, eff_thresh: f32, stage_ms: 
     } else {
         (eff_thresh, cfg.spectral_flatness_max, cfg.spectral_entropy_min, cfg.spectral_centroid_min, cfg.spectral_centroid_max)
     };
-    let engine: Box<dyn VadEngine> = create_engine(&cfg.vad_engine, thresh, flat, ent, cent_min, cent_max)?;
+    let mut engine: Box<dyn VadEngine> = create_engine(&cfg.vad_engine, thresh, flat, ent, cent_min, cent_max, cfg.sample_rate_hz, cfg.frame_ms)?;
     let name = engine.name();
     let output = timed_stage!(stage_ms, vad_ms, {
-        engine.classify(frames)
+        classify_with_engine(engine.as_mut(), frames, mono, cfg.sample_rate_hz, cfg.frame_ms)?
     });
     info!(stage = "vad", ms = stage_ms.vad_ms, engine = name, "stage complete");
     Ok((output.decisions, output.likelihoods))

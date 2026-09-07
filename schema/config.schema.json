@@ -91,7 +91,7 @@
     "narrator": {
       "type": "object",
       "properties": {
-        "backend": { "type": "string", "enum": ["openai", "ollama_local", "anthropic", "mistral_local"] },
+        "backend": { "type": "string", "enum": ["openai", "ollama_local", "anthropic"] },
         "language": { "type": "string" },
         "style": { "type": "string" },
         "max_tokens": { "type": "integer", "minimum": 1 },

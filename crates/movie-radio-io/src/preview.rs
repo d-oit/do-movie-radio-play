@@ -1,19 +1,15 @@
 use anyhow::{Context, Result};
 use rodio::source::Source;
 #[cfg(feature = "playback")]
-use rodio::{buffer::SamplesBuffer, Decoder, DeviceSinkBuilder, MixerDeviceSink, Player};
+use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player};
+#[cfg(feature = "playback")]
+use std::io::{Read, Seek};
 use std::num::NonZero;
+#[cfg(feature = "playback")]
+use std::path::Path;
 use std::time::Duration;
 
-/// Playback window expressed in per-channel sample frames.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Window {
-    /// First per-channel frame to play.
-    pub start_frame: u64,
-    /// Number of per-channel frames to play; `None` plays to the end.
-    pub frame_len: Option<u64>,
-}
-
+#[cfg(any(feature = "playback", test))]
 fn frames_for(duration: Duration, sample_rate_hz: u32) -> u64 {
     if sample_rate_hz == 0 {
         return 0;
@@ -21,19 +17,80 @@ fn frames_for(duration: Duration, sample_rate_hz: u32) -> u64 {
     (duration.as_secs_f64() * f64::from(sample_rate_hz)).min(u64::MAX as f64) as u64
 }
 
-/// Compute a clamped playback window over `total_frames` per-channel frames.
-pub fn window_bounds(
-    total_frames: u64,
-    sample_rate_hz: u32,
-    skip: Duration,
-    limit: Option<Duration>,
-) -> Window {
-    let start_frame = frames_for(skip, sample_rate_hz).min(total_frames);
-    let remaining = total_frames - start_frame;
-    let frame_len = limit.map(|limit| frames_for(limit, sample_rate_hz).min(remaining));
-    Window {
-        start_frame,
-        frame_len,
+/// Streams a `Decoder` but yields only the `[skip, skip+limit)` playback
+/// window, so memory stays proportional to the window, not the file.
+#[cfg(feature = "playback")]
+struct WindowedDecoder<R: Read + Seek> {
+    inner: Decoder<R>,
+    skip_samples: usize,
+    remaining: Option<usize>,
+    channels: NonZero<u16>,
+    sample_rate: NonZero<u32>,
+}
+
+#[cfg(feature = "playback")]
+impl<R: Read + Seek> WindowedDecoder<R> {
+    fn new(inner: Decoder<R>, skip_frames: u64, limit_frames: Option<u64>) -> Self {
+        let channels = inner.channels();
+        let sample_rate = inner.sample_rate();
+        let ch = u64::from(channels.get());
+        let skip_samples = skip_frames.saturating_mul(ch).min(usize::MAX as u64) as usize;
+        let remaining = limit_frames.map(|f| f.saturating_mul(ch).min(usize::MAX as u64) as usize);
+        Self {
+            inner,
+            skip_samples,
+            remaining,
+            channels,
+            sample_rate,
+        }
+    }
+}
+
+#[cfg(feature = "playback")]
+impl<R: Read + Seek> Iterator for WindowedDecoder<R> {
+    type Item = f32;
+
+    fn next(&mut self) -> Option<f32> {
+        loop {
+            let sample = self.inner.next()?;
+            if self.skip_samples > 0 {
+                self.skip_samples -= 1;
+                continue;
+            }
+            match self.remaining.as_mut() {
+                Some(0) => return None,
+                Some(left) => {
+                    *left -= 1;
+                    return Some(sample);
+                }
+                None => return Some(sample),
+            }
+        }
+    }
+}
+
+#[cfg(feature = "playback")]
+impl<R: Read + Seek> Source for WindowedDecoder<R> {
+    fn current_span_len(&self) -> Option<usize> {
+        // Only knowable once the finite window is fully consumed; the window
+        // ends when the iterator is exhausted.
+        if self.skip_samples == 0 && self.remaining == Some(0) {
+            Some(0)
+        } else {
+            None
+        }
+    }
+
+    fn channels(&self) -> NonZero<u16> {
+        self.channels
+    }
+
+    fn sample_rate(&self) -> NonZero<u32> {
+        self.sample_rate
+    }
+
+    fn total_duration(&self) -> Option<Duration> {
+        None
     }
 }
 
@@ -52,41 +109,35 @@ impl PreviewOutput {
     }
 
     pub fn play_wav(&self, wav_bytes: &[u8]) -> Result<()> {
-        self.play_wav_window(wav_bytes, Duration::ZERO, None)
+        let cursor = std::io::Cursor::new(wav_bytes.to_vec());
+        let decoder = Decoder::new(cursor)?;
+        self.play_decoder_window(decoder, Duration::ZERO, None)
     }
 
-    /// Play a WAV window: skip the first `skip` seconds and play at most
-    /// `limit` seconds (the whole remainder when `limit` is `None`).
-    pub fn play_wav_window(
+    /// Play a WAV window from `path`: skip the first `skip` seconds and play
+    /// at most `limit` seconds (the remainder when `limit` is `None`).
+    pub fn play_wav_file(
         &self,
-        wav_bytes: &[u8],
+        path: &Path,
         skip: Duration,
         limit: Option<Duration>,
     ) -> Result<()> {
-        let cursor = std::io::Cursor::new(wav_bytes.to_vec());
-        let decoder = Decoder::new(cursor)?;
-        let channels = decoder.channels();
-        let sample_rate = decoder.sample_rate();
-        let ch = usize::from(channels.get());
-        if ch == 0 {
-            anyhow::bail!("WAV reports zero channels");
-        }
-        // rodio decodes to f32 interleaved samples; trim any partial frame.
-        let mut samples: Vec<f32> = decoder.collect();
-        samples.truncate((samples.len() / ch) * ch);
-        let total_frames = samples.len() / ch;
-        let window = window_bounds(total_frames as u64, sample_rate.get(), skip, limit);
-        let start = window.start_frame as usize * ch;
-        let end = window
-            .frame_len
-            .map(|len| start + len as usize * ch)
-            .unwrap_or(samples.len())
-            .min(samples.len());
-        let clipped = samples[start..end].to_vec();
-        if clipped.is_empty() {
-            anyhow::bail!("no audio left in the requested window (skip exceeds file duration?)");
-        }
-        let source = SamplesBuffer::new(channels, sample_rate, clipped);
+        let file = std::fs::File::open(path)
+            .with_context(|| format!("failed to open: {}", path.display()))?;
+        let decoder = Decoder::new(file)?;
+        self.play_decoder_window(decoder, skip, limit)
+    }
+
+    fn play_decoder_window<R: Read + Seek>(
+        &self,
+        decoder: Decoder<R>,
+        skip: Duration,
+        limit: Option<Duration>,
+    ) -> Result<()> {
+        let sample_rate = decoder.sample_rate().get();
+        let skip_frames = frames_for(skip, sample_rate);
+        let limit_frames = limit.map(|d| frames_for(d, sample_rate));
+        let source = WindowedDecoder::new(decoder, skip_frames, limit_frames);
         let player = Player::connect_new(self.sink.mixer());
         player.append(source);
         player.sleep_until_end();
@@ -175,7 +226,6 @@ impl Source for PcmSource {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "playback")]
     use super::*;
 
     #[cfg(feature = "playback")]
@@ -183,7 +233,6 @@ mod tests {
 
     #[test]
     #[cfg(feature = "playback")]
-    #[allow(unused_imports)]
     fn test_preview_output_init() {
         if std::env::var(CI_ENV).is_ok() {
             eprintln!("skipping audio test in CI");
@@ -197,47 +246,19 @@ mod tests {
     }
 
     #[test]
-    fn window_bounds_skip_converts_to_frames() {
-        let w = super::window_bounds(32_000, 16_000, std::time::Duration::from_secs(1), None);
-        assert_eq!(w.start_frame, 16_000);
-        assert_eq!(w.frame_len, None);
+    fn frames_for_skip_converts_to_frames() {
+        assert_eq!(frames_for(Duration::from_secs(1), 16_000), 16_000);
+        assert_eq!(frames_for(Duration::from_millis(500), 48_000), 24_000);
     }
 
     #[test]
-    fn window_bounds_limit_clamped_to_remaining() {
-        // Total 32k frames; skip 1 s (16k); limit 10 s clamps to remaining 16k.
-        let w = super::window_bounds(
-            32_000,
-            16_000,
-            std::time::Duration::from_secs(1),
-            Some(std::time::Duration::from_secs(10)),
-        );
-        assert_eq!(w.start_frame, 16_000);
-        assert_eq!(w.frame_len, Some(16_000));
+    fn frames_for_clamps_to_u64() {
+        // Huge durations must not overflow; the result saturates.
+        assert_eq!(frames_for(Duration::MAX, 48_000), u64::MAX);
     }
 
     #[test]
-    fn window_bounds_skip_beyond_end_yields_empty() {
-        // Skipping past the end clamps start to total; the window is empty.
-        let w = super::window_bounds(
-            8_000,
-            16_000,
-            std::time::Duration::from_secs(60),
-            Some(std::time::Duration::from_secs(1)),
-        );
-        assert_eq!(w.start_frame, 8_000);
-        assert_eq!(w.frame_len, Some(0));
-    }
-
-    #[test]
-    fn window_bounds_zero_skip_zero_limit() {
-        let w = super::window_bounds(
-            0,
-            16_000,
-            std::time::Duration::ZERO,
-            Some(std::time::Duration::ZERO),
-        );
-        assert_eq!(w.start_frame, 0);
-        assert_eq!(w.frame_len, Some(0));
+    fn frames_for_zero_rate_yields_zero() {
+        assert_eq!(frames_for(Duration::from_secs(5), 0), 0);
     }
 }

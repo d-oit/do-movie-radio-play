@@ -225,9 +225,11 @@ pub fn handle_narrate(
     // `api_key_env` variables and are never logged.
     let backend: Box<dyn NarratorAiBackend> = match cfg.backend.as_str() {
         "openai" => Box::new(OpenAiNarrator::new(cfg)),
-        "ollama" | "ollama_local" => Box::new(OllamaLocalNarrator::new(cfg)),
+        "ollama_local" => Box::new(OllamaLocalNarrator::new(cfg)),
         "anthropic" => Box::new(AnthropicNarrator::new(cfg)),
-        other => bail!("unknown narrator backend '{other}' (expected openai | ollama | anthropic)"),
+        other => {
+            bail!("unknown narrator backend '{other}' (expected openai | ollama_local | anthropic)")
+        }
     };
     let params = NarratorParams {
         language: cfg.language.clone(),

@@ -271,17 +271,7 @@ mod tests {
         // Golden capture under tera 2.3.0 (PR #260). Byte-exact assertion keeps
         // the shipped templates/narrator_prompt.md rendering deterministic.
         let tpl = include_str!("../../../templates/narrator_prompt.md");
-        let data = RenderData {
-            movie_title: "Die Brücke am Fluss".to_string(),
-            prev_scene: "The ferryman refuses to cross at nightfall".to_string(),
-            scene_type: "dialogue".to_string(),
-            duration_secs: 30,
-            visual_description: "A rainy riverside at dusk".to_string(),
-            characters: "Anna, the ferrywoman".to_string(),
-            mood: "melancholic".to_string(),
-            language: "de".to_string(),
-            max_words: 45,
-        };
+        let data = test_render_data("de", 45);
         let rendered = render_prompt(tpl, &data).unwrap();
         let expected = r#"You are a professional radio drama narrator. Given the following scene context,
 write a brief, vivid narration that helps radio listeners follow the story.
@@ -305,17 +295,21 @@ Use present tense."#;
     fn render_undefined_variable_is_error() {
         // tera 2.x hard-errors on undefined variables (1.x silently rendered
         // empty). Pin the strict semantics for user-supplied templates.
-        let data = RenderData {
-            movie_title: "T".to_string(),
-            prev_scene: String::new(),
-            scene_type: String::new(),
-            duration_secs: 1,
-            visual_description: String::new(),
-            characters: String::new(),
-            mood: String::new(),
-            language: "en".to_string(),
-            max_words: 5,
-        };
+        let data = test_render_data("en", 5);
         assert!(render_prompt("{{ movie_undefined }}", &data).is_err());
+    }
+
+    fn test_render_data(language: &str, max_words: u32) -> RenderData {
+        RenderData {
+            movie_title: "Die Brücke am Fluss".to_string(),
+            prev_scene: "The ferryman refuses to cross at nightfall".to_string(),
+            scene_type: "dialogue".to_string(),
+            duration_secs: 30,
+            visual_description: "A rainy riverside at dusk".to_string(),
+            characters: "Anna, the ferrywoman".to_string(),
+            mood: "melancholic".to_string(),
+            language: language.to_string(),
+            max_words,
+        }
     }
 }

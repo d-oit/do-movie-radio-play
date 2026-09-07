@@ -1,32 +1,13 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use movie_radio_types::AppConfig;
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Checkpoint {
-    pub version: String,
-    pub input_hash: String,
-    pub config_hash: String,
-    pub stage: String,
-    pub timestamp: String,
-    pub artifacts: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum StageStatus {
-    Pending,
-    Done,
-    Failed,
-    Skipped,
-}
-
-#[derive(Debug, Clone)]
-pub struct Stage {
-    pub name: &'static str,
-    pub status: StageStatus,
-}
-
+/// Planned `produce` stages, in execution order.
+///
+/// Stage executors are not implemented yet: the original v1 scaffold wrote an
+/// empty checkpoint JSON per stage and reported "produce complete" without
+/// running anything. Until executors land (see plans/140-codebase-gap-analysis.md
+/// A4), the real run fails loudly and only `--dry-run` is available.
 const STAGES: &[&str] = &[
     "ExtractAudio",
     "SceneDetect",
@@ -50,17 +31,7 @@ fn reject_traversal(path: &Path, field: &str) -> Result<()> {
     Ok(())
 }
 
-fn resolve_checkpoint_dir(cfg: &AppConfig) -> Result<PathBuf> {
-    let dir = cfg
-        .pipeline
-        .checkpoint_dir
-        .clone()
-        .unwrap_or_else(|| "checkpoints".to_string());
-    let path = PathBuf::from(&dir);
-    reject_traversal(&path, "checkpoint_dir")?;
-    Ok(path)
-}
-
+/// `produce` entry point (orchestrator v1 — planning surface only).
 pub fn handle_produce(
     input: PathBuf,
     resume: Option<PathBuf>,
@@ -95,60 +66,15 @@ pub fn handle_produce(
         }
         return Ok(());
     }
-    let checkpoint_dir = resolve_checkpoint_dir(cfg)?;
-    std::fs::create_dir_all(&checkpoint_dir)?;
-    let stages: Vec<Stage> = STAGES
-        .iter()
-        .map(|n| Stage {
-            name: n,
-            status: StageStatus::Pending,
-        })
-        .collect();
-    for stage in stages {
-        if !STAGES.contains(&stage.name) {
-            anyhow::bail!("unknown stage");
-        }
-        let cp = Checkpoint {
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            input_hash: format!("{:x}", md5_hash(&input)),
-            config_hash: format!(
-                "{:x}",
-                md5_hash_str(&serde_json::to_string(cfg).unwrap_or_default())
-            ),
-            stage: stage.name.to_string(),
-            timestamp: chrono_now(),
-            artifacts: vec![],
-        };
-        let path = checkpoint_dir.join(format!("{}.json", stage.name));
-        let data = serde_json::to_string_pretty(&cp)?;
-        std::fs::write(&path, data)?;
-        println!("checkpoint {} -> {}", stage.name, path.display());
-    }
-    println!(
-        "produce complete for {} (orchestrator v1, checkpointed)",
-        input.display()
+    bail!(
+        "produce stage executors are not implemented yet: orchestrator v1 is          planning-only. Run with --dry-run to preview the stage plan          (see plans/140-codebase-gap-analysis.md A4)"
     );
-    Ok(())
-}
-
-fn md5_hash(p: &Path) -> u64 {
-    let s = p.to_string_lossy().to_string();
-    md5_hash_str(&s)
-}
-fn md5_hash_str(s: &str) -> u64 {
-    let mut h: u64 = 0;
-    for b in s.bytes() {
-        h = h.wrapping_mul(31).wrapping_add(b as u64);
-    }
-    h
-}
-fn chrono_now() -> String {
-    format!("{:?}", std::time::SystemTime::now())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn dry_run_deterministic() {
         let cfg = AppConfig::default();
@@ -159,5 +85,15 @@ mod tests {
     fn traversal_rejected() {
         let cfg = AppConfig::default();
         assert!(handle_produce(PathBuf::from("../evil.mkv"), None, true, &cfg).is_err());
+    }
+
+    #[test]
+    fn real_run_bails_until_executors_exist() {
+        let cfg = AppConfig::default();
+        let err = handle_produce(PathBuf::from("movie.mkv"), None, false, &cfg).unwrap_err();
+        assert!(
+            err.to_string().contains("not implemented yet"),
+            "got: {err}"
+        );
     }
 }

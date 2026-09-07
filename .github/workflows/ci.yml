@@ -246,14 +246,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Check VERSION matches Cargo.toml
-        run: |
-          VERSION=$(cat VERSION)
-          CARGO_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
-          if [[ "$VERSION" != "$CARGO_VERSION" ]]; then
-            echo "VERSION file ($VERSION) does not match Cargo.toml ($CARGO_VERSION)"
-            exit 1
-          fi
-          echo "VERSION consistency check passed: $VERSION"
+        run: bash scripts/check_version.sh
 
   # ───────────────────────────────────────────────────
   ci-success:

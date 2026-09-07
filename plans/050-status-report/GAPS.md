@@ -2,7 +2,7 @@
 
 Gaps between the current specification and the implemented runtime behavior.
 
-**Updated:** 2026-08-25
+**Updated:** 2026-09-07
 
 ## Voice Synthesis: Provider Status & Quality Caveats
 
@@ -11,7 +11,7 @@ Gaps between the current specification and the implemented runtime behavior.
 
 **Spec:** All configured TTS providers should produce actual audio output.
 
-**Actual:** Refreshed after workspace-wide analysis (`plans/130-improvement-analysis-2026-08-25.md`). All HTTP providers (Modal, ElevenLabs, OpenAI) produce real audio. Local inference landed for Qwen3 (candle), Kokoro (ONNX Runtime), and Orpheus (llama.cpp token loop), with quality caveats below. PocketTts remains a silence stub and is recommended for removal.
+**Actual:** Refreshed after workspace-wide analysis (`plans/130-improvement-analysis-2026-08-25.md`). All HTTP providers (Modal, ElevenLabs, OpenAI) produce real audio. Local inference landed for Qwen3 (candle), Kokoro (ONNX Runtime), and Orpheus (llama.cpp token loop), with quality caveats below. PocketTts (silence stub, falsely advertised cloning/streaming caps) was removed in 2026-09 (see `plans/140-codebase-gap-analysis.md`).
 
 **Provider Status:**
 
@@ -23,9 +23,9 @@ Gaps between the current specification and the implemented runtime behavior.
 | Kokoro | Complete (ONNX download) | Partial — real ONNX inference, but tokenization maps raw codepoints instead of eSD phoneme vocabulary | Phoneme tokenizer; acoustic output unverified |
 | Orpheus | Complete (llama.cpp inference) | Partial — real token generation; SNAC→PCM decoding falls back to synthetic tones | SNAC vocoder decode |
 | Qwen3 | Complete (candle inference) | Yes (CUDA→CPU fallback) | None |
-| PocketTts | Config-only | No (silence stub, falsely advertises cloning/streaming caps) | Recommended for removal |
+| PocketTts | Removed | — | Silence stub deleted 2026-09 |
 
-**Fix:** Complete Kokoro phoneme tokenization and Orpheus SNAC decode for offline capability; remove PocketTts. Consider feature-gating local-inference dependencies (`local-tts` umbrella) so default builds skip the llama.cpp/candle/ort compile cost.
+**Fix:** Complete Kokoro phoneme tokenization and Orpheus SNAC decode for offline capability. Consider feature-gating local-inference dependencies (`local-tts` umbrella) so default builds skip the llama.cpp/candle/ort compile cost.
 
 ## GOAP Orchestrator Executes Real Pipeline Stages
 
@@ -55,9 +55,9 @@ Gaps between the current specification and the implemented runtime behavior.
 
 **Spec:** Non-energy engines should either exist as real implementations or remain clearly unavailable.
 
-**Actual:** The shipped CLI exposes `energy`, `spectral`, and `hybrid` engines. WebRTC and Silero implementations do not exist.
+**Actual:** The shipped CLI exposes `energy`, `spectral`, and `hybrid` engines. WebRTC is implemented behind the `webrtc-vad` feature (PR #253, ADR-127). Silero keeps a reserved name and fails at engine creation pointing to ADR-127 until the ort API is unified.
 
-**Fix:** Implement those engines behind explicit feature flags and reintroduce them to the CLI only when the implementations exist.
+**Fix:** Implement Silero behind a `silero-vad` feature once the ort unification lands, or keep it deferred per `plans/100-radio-play-95/MILESTONE-C-DECISION.md`.
 
 ## Benchmark Gap: HybridVad Not Benchmarked
 

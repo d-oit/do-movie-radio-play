@@ -20,7 +20,6 @@ pub mod kokoro;
 pub mod modal;
 pub mod openai;
 pub mod orpheus;
-pub mod pockettts;
 pub mod qwen3;
 
 #[async_trait]
@@ -170,12 +169,6 @@ impl SynthesisOrchestrator {
             providers.insert(
                 "kokoro".to_string(),
                 Box::new(kokoro::KokoroProvider::new(c)),
-            );
-        }
-        if let Some(c) = config.providers.pockettts {
-            providers.insert(
-                "pockettts".to_string(),
-                Box::new(pockettts::PocketTtsProvider::new(c)),
             );
         }
         if let Some(c) = config.providers.qwen3 {

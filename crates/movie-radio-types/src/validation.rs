@@ -5,7 +5,7 @@ use crate::config::{AudioCppConfig, GpuPolicyConfig, GpuPoolEndpoint};
 const VALID_AUDIO_CPP_MODES: [&str; 3] = ["auto", "local", "remote"];
 const VALID_LOCAL_MODES: [&str; 2] = ["server", "cli"];
 const VALID_BACKENDS: [&str; 6] = ["best", "cpu", "cuda", "vulkan", "metal", "hip"];
-const VALID_NARRATOR_BACKENDS: [&str; 4] = ["openai", "ollama_local", "anthropic", "mistral_local"];
+const VALID_NARRATOR_BACKENDS: [&str; 3] = ["openai", "ollama_local", "anthropic"];
 
 pub fn validate_app_config(cfg: &AppConfig) -> Result<(), String> {
     validate_audio_cpp(&cfg.voice.audio_cpp)?;

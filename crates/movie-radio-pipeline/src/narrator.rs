@@ -213,7 +213,7 @@ pub fn handle_narrate(
         max_words: 50,
     };
     let rendered = render_prompt(&tpl_text, &data)?;
-    if dry_run || scene.is_some() {
+    if dry_run {
         println!(
             "--- rendered prompt (language={}, style={}, backend={}) ---",
             cfg.language, cfg.style, cfg.backend
@@ -221,20 +221,33 @@ pub fn handle_narrate(
         println!("{}", rendered.text);
         return Ok(());
     }
-    // Real generation would dispatch to backend based on cfg.backend
-    let style = parse_narrator_style(&cfg.style);
+    // Dispatch to the configured LLM backend (ADR-126). Secrets stay in
+    // `api_key_env` variables and are never logged.
+    let backend: Box<dyn NarratorAiBackend> = match cfg.backend.as_str() {
+        "openai" => Box::new(OpenAiNarrator::new(cfg)),
+        "ollama_local" => Box::new(OllamaLocalNarrator::new(cfg)),
+        "anthropic" => Box::new(AnthropicNarrator::new(cfg)),
+        other => {
+            bail!("unknown narrator backend '{other}' (expected openai | ollama_local | anthropic)")
+        }
+    };
     let params = NarratorParams {
         language: cfg.language.clone(),
-        style,
+        style: parse_narrator_style(&cfg.style),
         max_tokens: cfg.max_tokens,
         temperature: cfg.temperature,
         ..Default::default()
     };
-    println!(
-        "narrate dry-run language={} params={:?}",
-        params.language, params.style
-    );
-    println!("{}", rendered.text);
+    if let Some(scene) = scene {
+        tracing::info!(scene, "Generating narration");
+    } else {
+        tracing::info!("Generating narration");
+    }
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let text = runtime.block_on(backend.generate_narration(&rendered, &params))?;
+    println!("{}", text.trim());
     Ok(())
 }
 
@@ -311,5 +324,19 @@ Use present tense."#;
             language: language.to_string(),
             max_words,
         }
+    }
+
+    #[test]
+    fn handle_narrate_rejects_unknown_backend() {
+        // Non-dry-run must dispatch to a real backend and fail loudly for
+        // unknown names instead of silently printing the prompt.
+        use movie_radio_types::AppConfig;
+        let mut cfg = AppConfig::default().narrator;
+        cfg.backend = "bogus".to_string();
+        let err = handle_narrate(None, false, None, &cfg).unwrap_err();
+        assert!(
+            err.to_string().contains("unknown narrator backend"),
+            "got: {err}"
+        );
     }
 }

@@ -23,7 +23,7 @@ pub use compute::{ComputeEndpoint, ExecutionLocation};
 pub use config::{
     AnalysisConfig, AudioCppConfig, AudioCppLocalConfig, AudioCppRemoteConfig, ElevenLabsConfig,
     GpuPolicyConfig, GpuPoolEndpoint, KokoroConfig, MergeOptions, MergeStrategy, OrpheusConfig,
-    PocketTtsConfig, Qwen3Config, VoiceProvidersConfig, VoiceSynthesisConfig,
+    Qwen3Config, VoiceProvidersConfig, VoiceSynthesisConfig,
 };
 pub use error::TimelineError;
 pub use features::FeatureSet;

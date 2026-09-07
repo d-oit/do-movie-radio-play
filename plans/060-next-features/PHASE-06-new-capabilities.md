@@ -2,7 +2,7 @@
 
 New features to extend the pipeline beyond its current scope.
 
-**Updated:** 2026-08-25
+**Updated:** 2026-09-07
 
 ## 6.0 Production Evaluation Correctness First
 
@@ -112,4 +112,4 @@ Complete the voice synthesis providers for production use.
 - ✅ Implement Qwen3 model inference (candle-based, CUDA→CPU fallback)
 - ✅ Add OpenAI TTS REST client (registered in `SynthesisOrchestrator` fallback chain)
 - Ensure voice consistency across provider switching
-- Remove PocketTts stub (returns silence, falsely advertises capabilities — see plans/130-improvement-analysis-2026-08-25.md §B2)
+- ✅ Remove PocketTts stub (returns silence, falsely advertises capabilities — deleted 2026-09, see plans/140-codebase-gap-analysis.md §A5)

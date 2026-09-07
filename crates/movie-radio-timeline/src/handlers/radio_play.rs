@@ -130,7 +130,6 @@ fn run_full_pipeline(
         max_cost_per_run_usd: 25.0,
         providers: VoiceProvidersConfig {
             kokoro: None,
-            pockettts: None,
             qwen3: None,
             orpheus: None,
             elevenlabs: std::env::var(ENV_ELEVENLABS_API_KEY)

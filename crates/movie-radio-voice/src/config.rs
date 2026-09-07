@@ -17,8 +17,6 @@ pub struct VoiceProvidersConfig {
     #[serde(default)]
     pub kokoro: Option<KokoroConfig>,
     #[serde(default)]
-    pub pockettts: Option<PocketTtsConfig>,
-    #[serde(default)]
     pub qwen3: Option<Qwen3Config>,
     #[serde(default)]
     pub orpheus: Option<OrpheusConfig>,
@@ -212,12 +210,6 @@ pub struct ModalConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KokoroConfig {
-    pub model_path: PathBuf,
-    pub device: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PocketTtsConfig {
     pub model_path: PathBuf,
     pub device: String,
 }

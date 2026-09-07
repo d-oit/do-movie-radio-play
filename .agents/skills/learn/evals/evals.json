@@ -14,13 +14,13 @@
     },
     {
       "id": 2,
-      "prompt": "How do I add a new entry to the `lessons.jsonl` file properly?",
-      "expected_output": "The agent explains the dual-write pattern: verbose logs in `agents-docs/LESSONS.md` and distilled notes in the relevant `AGENTS.md`.",
+      "prompt": "How do I add a new entry to the learnings file properly?",
+      "expected_output": "The agent explains the dual-write pattern: verbose logs in `analysis/learnings/` and distilled notes in the relevant `AGENTS.md`.",
       "files": [],
       "assertions": [
-        "The agent mentions both LESSONS.md and AGENTS.md",
-        "The agent describes the auto-indexing into lessons.jsonl",
-        "The agent warns against manual edits to lessons.jsonl if applicable"
+        "The agent mentions both analysis/learnings/ and AGENTS.md",
+        "The agent describes distilling notes into AGENTS.md",
+        "The agent warns against manual edits to generated indexes if applicable"
       ]
     }
   ]

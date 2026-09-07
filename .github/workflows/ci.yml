@@ -257,6 +257,14 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg libasound2-dev
       - run: bash scripts/fetch_test_assets.sh
       - run: bash scripts/benchmark.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/ci.json
+      - name: Check benchmark regression
+        continue-on-error: true
+        run: |
+          python3 scripts/check_benchmark_regression.py \
+            --baseline analysis/benchmarks/latest.json \
+            --candidate analysis/benchmarks/ci.json || {
+              echo "::warning title=Benchmark Regression::Benchmark performance regressed compared to stored baseline."
+            }
       - run: cargo bench -p benchmarks --bench pipeline_bench -- --noplot
       - uses: actions/upload-artifact@v7
         with:

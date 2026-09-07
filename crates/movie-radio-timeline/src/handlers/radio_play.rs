@@ -2,13 +2,15 @@ use anyhow::{bail, Result};
 use std::path::PathBuf;
 use tracing::info;
 
-use movie_radio_goap::assemble::RadioPlayAssembler;
+use movie_radio_goap::assemble::{RadioPlayAssembler, SfxSegment};
 use movie_radio_goap::gaps::GapIdentifier;
 use movie_radio_goap::narrate::NarrationGenerator;
 use movie_radio_io::json::{read_timeline, write_json_pretty};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_pipeline::pipeline::extract_timeline;
-use movie_radio_types::AnalysisConfig;
+use movie_radio_pipeline::pipeline::sfx_autofill::autofill_silent_scene_sfx;
+use movie_radio_render::sfx::SfxManager;
+use movie_radio_types::{AnalysisConfig, SfxTrigger, SoundEffectsConfig};
 use movie_radio_voice::config::{
     ElevenLabsConfig, ModalConfig, OpenAiConfig, VoiceProvidersConfig, VoiceSynthesisConfig,
 };
@@ -73,13 +75,15 @@ fn run_full_pipeline(
 
     let cfg = AnalysisConfig::default();
 
-    let timeline = if let Some(p) = timeline_path {
+    let mut timeline = if let Some(p) = timeline_path {
         info!(timeline = %p.display(), "Using provided timeline");
         read_timeline(&p)?
     } else {
         info!("Extracting timeline from movie");
         extract_timeline(&movie, &cfg)?
     };
+
+    autofill_silent_scene_sfx(&mut timeline);
 
     let srt_content = if let Some(p) = subtitles_path {
         Some(std::fs::read_to_string(p)?)
@@ -197,8 +201,33 @@ fn run_full_pipeline(
     );
     let (original, _) = decode_audio(&movie, sample_rate)?;
 
+    let sfx_config = SoundEffectsConfig::default();
+    let mut sfx_segments = Vec::new();
+    if let Ok(sfx_mgr) = SfxManager::from_config(&sfx_config) {
+        for seg in &timeline.segments {
+            if let Some(ref trigger) = seg.sfx_trigger {
+                if *trigger != SfxTrigger::None {
+                    let duration_secs = (seg.end_ms.saturating_sub(seg.start_ms)) as f32 / 1000.0;
+                    if let Ok(Some(samples)) = runtime.block_on(sfx_mgr.render_trigger(
+                        trigger,
+                        sample_rate,
+                        Some(duration_secs),
+                    )) {
+                        let start_sample =
+                            (seg.start_ms as f64 * sample_rate as f64 / 1000.0) as usize;
+                        sfx_segments.push(SfxSegment {
+                            start_sample,
+                            samples,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
     let assembler = RadioPlayAssembler::new(sample_rate, 50, 0.3);
-    let radio_play = assembler.assemble(&original, &narration_segments)?;
+    let radio_play =
+        assembler.assemble_with_sfx(&original, &narration_segments, &sfx_segments)?;
 
     let wav_path = output_path.with_extension("tmp.wav");
     write_wav(&wav_path, &radio_play, sample_rate)?;

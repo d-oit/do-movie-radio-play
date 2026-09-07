@@ -14,6 +14,7 @@ movie-radio-learning.workspace = true
 movie-radio-validation.workspace = true
 movie-radio-verification.workspace = true
 tempfile.workspace = true
+movie-radio-render.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 hound.workspace = true

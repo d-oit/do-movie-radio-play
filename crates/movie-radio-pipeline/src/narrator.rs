@@ -324,6 +324,9 @@ Use present tense."#;
             language: language.to_string(),
             max_words,
         }
+    }
+
+    #[test]
     fn handle_narrate_rejects_unknown_backend() {
         // Non-dry-run must dispatch to a real backend and fail loudly for
         // unknown names instead of silently printing the prompt.

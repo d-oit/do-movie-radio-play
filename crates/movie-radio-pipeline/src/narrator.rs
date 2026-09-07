@@ -265,4 +265,51 @@ mod tests {
         let s = "---\nstyle: radio_drama\n---\nHello world";
         assert_eq!(strip_frontmatter(s), "Hello world");
     }
+
+    #[test]
+    fn render_shipped_narrator_template_golden() {
+        // Golden capture under tera 2.3.0 (PR #260). Byte-exact assertion keeps
+        // the shipped templates/narrator_prompt.md rendering deterministic.
+        let tpl = include_str!("../../../templates/narrator_prompt.md");
+        let data = test_render_data("de", 45);
+        let rendered = render_prompt(tpl, &data).unwrap();
+        let expected = r#"You are a professional radio drama narrator. Given the following scene context,
+write a brief, vivid narration that helps radio listeners follow the story.
+
+**Movie title:** Die Brücke am Fluss
+**Previous scene summary:** The ferryman refuses to cross at nightfall
+**Current scene type:** dialogue
+**Scene duration:** 30 seconds
+**Visual description (from AI):** A rainy riverside at dusk
+**Characters present:** Anna, the ferrywoman
+**Mood:** melancholic
+
+Write ONLY the narration text in de.
+Keep it under 45 words.
+Do NOT use visual-only descriptions ("we see", "the camera").
+Use present tense."#;
+        assert_eq!(rendered.text, expected);
+    }
+
+    #[test]
+    fn render_undefined_variable_is_error() {
+        // tera 2.x hard-errors on undefined variables (1.x silently rendered
+        // empty). Pin the strict semantics for user-supplied templates.
+        let data = test_render_data("en", 5);
+        assert!(render_prompt("{{ movie_undefined }}", &data).is_err());
+    }
+
+    fn test_render_data(language: &str, max_words: u32) -> RenderData {
+        RenderData {
+            movie_title: "Die Brücke am Fluss".to_string(),
+            prev_scene: "The ferryman refuses to cross at nightfall".to_string(),
+            scene_type: "dialogue".to_string(),
+            duration_secs: 30,
+            visual_description: "A rainy riverside at dusk".to_string(),
+            characters: "Anna, the ferrywoman".to_string(),
+            mood: "melancholic".to_string(),
+            language: language.to_string(),
+            max_words,
+        }
+    }
 }

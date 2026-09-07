@@ -209,4 +209,26 @@ mod tests {
         let merged = merge_app_config(base.clone(), overlay);
         assert_eq!(merged.voice.audio_cpp.mode, base.voice.audio_cpp.mode);
     }
+
+    #[test]
+    fn parses_shipped_default_fixture() {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../config/default.toml");
+        let data = fs::read_to_string(&path).unwrap();
+        let parsed: AppConfig = toml::from_str(&data).unwrap();
+        assert_eq!(parsed.providers.tts, "audio_cpp");
+        assert_eq!(parsed.voice.audio_cpp.language, "de");
+        assert_eq!(parsed.voice.audio_cpp.timeout_secs, 300);
+        assert_eq!(parsed.voice.gpu_policy.max_cost_per_job, 0.5);
+        assert_eq!(parsed.voice.gpu_policy.max_cost_per_day, 5.0);
+        assert_eq!(parsed.voice.gpu_pool.len(), 1);
+        assert_eq!(parsed.voice.gpu_pool[0].name, "free-credit");
+        assert_eq!(parsed.narrator.backend, "openai");
+        assert_eq!(parsed.narrator.max_tokens, 200);
+    }
+
+    #[test]
+    fn rejects_malformed_toml_input() {
+        let bad = "[voice.audio_cpp]\nlanguage = \"unterminated\n";
+        assert!(toml::from_str::<AppConfig>(bad).is_err());
+    }
 }

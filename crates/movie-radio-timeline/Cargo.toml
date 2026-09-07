@@ -2,6 +2,7 @@
 name = "movie-radio-timeline"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 description = "CLI binary for movie radio play timeline extraction"
 

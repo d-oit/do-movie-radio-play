@@ -28,7 +28,7 @@ realfft = "3"
 tempfile = "3"
 toml = "0.8"
 dotenvy = "0.15"
-tera = "1.19"
+tera = "2.3"
 url = "2"
 webrtc-vad = "0.4"
 libsql = { version = "0.9", default-features = false, features = ["core"] }

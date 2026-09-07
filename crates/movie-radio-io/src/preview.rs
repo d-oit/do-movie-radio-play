@@ -20,7 +20,7 @@ fn frames_for(duration: Duration, sample_rate_hz: u32) -> u64 {
 /// Streams a `Decoder` but yields only the `[skip, skip+limit)` playback
 /// window, so memory stays proportional to the window, not the file.
 #[cfg(feature = "playback")]
-struct WindowedDecoder<R: Read + Seek> {
+struct WindowedDecoder<R: Read + Seek + Send + Sync + 'static> {
     inner: Decoder<R>,
     skip_samples: usize,
     remaining: Option<usize>,
@@ -29,7 +29,7 @@ struct WindowedDecoder<R: Read + Seek> {
 }
 
 #[cfg(feature = "playback")]
-impl<R: Read + Seek> WindowedDecoder<R> {
+impl<R: Read + Seek + Send + Sync + 'static> WindowedDecoder<R> {
     fn new(inner: Decoder<R>, skip_frames: u64, limit_frames: Option<u64>) -> Self {
         let channels = inner.channels();
         let sample_rate = inner.sample_rate();
@@ -47,7 +47,7 @@ impl<R: Read + Seek> WindowedDecoder<R> {
 }
 
 #[cfg(feature = "playback")]
-impl<R: Read + Seek> Iterator for WindowedDecoder<R> {
+impl<R: Read + Seek + Send + Sync + 'static> Iterator for WindowedDecoder<R> {
     type Item = f32;
 
     fn next(&mut self) -> Option<f32> {
@@ -70,7 +70,7 @@ impl<R: Read + Seek> Iterator for WindowedDecoder<R> {
 }
 
 #[cfg(feature = "playback")]
-impl<R: Read + Seek> Source for WindowedDecoder<R> {
+impl<R: Read + Seek + Send + Sync + 'static> Source for WindowedDecoder<R> {
     fn current_span_len(&self) -> Option<usize> {
         // Only knowable once the finite window is fully consumed; the window
         // ends when the iterator is exhausted.
@@ -128,7 +128,7 @@ impl PreviewOutput {
         self.play_decoder_window(decoder, skip, limit)
     }
 
-    fn play_decoder_window<R: Read + Seek>(
+    fn play_decoder_window<R: Read + Seek + Send + Sync + 'static>(
         &self,
         decoder: Decoder<R>,
         skip: Duration,

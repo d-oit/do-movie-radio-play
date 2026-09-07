@@ -48,6 +48,13 @@ pub struct PipelineContext {
     pub narration_audio: Vec<Option<movie_radio_voice::AudioOutput>>,
     pub original_audio: Option<Vec<f32>>,
     pub sample_rate: u32,
+    pub verification_report: Option<movie_radio_verification::VerificationReport>,
+    pub verification_report_path: Option<PathBuf>,
+    pub learning_db_path: Option<PathBuf>,
+    pub learning_state_path: Option<PathBuf>,
+    pub calibration_report_path: Option<PathBuf>,
+    pub updated_profile_path: Option<PathBuf>,
+    pub replan_requested: bool,
 }
 
 impl PipelineContext {
@@ -64,6 +71,13 @@ impl PipelineContext {
             scripts: None,
             narration_audio: Vec::new(),
             original_audio: None,
+            verification_report: None,
+            verification_report_path: None,
+            learning_db_path: None,
+            learning_state_path: None,
+            calibration_report_path: None,
+            updated_profile_path: None,
+            replan_requested: false,
         }
     }
 }

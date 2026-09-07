@@ -8,6 +8,9 @@ use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_pipeline::pipeline::extract_timeline;
 
+pub mod learn;
+pub mod quality;
+
 #[derive(Debug, Default)]
 pub struct DecodeMovie;
 
@@ -350,9 +353,8 @@ impl Action for VerifyQuality {
         2.0
     }
 
-    async fn execute(&self, _ctx: &mut PipelineContext) -> Result<()> {
-        info!("Quality verification (placeholder)");
-        Ok(())
+    async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
+        quality::execute_verify_quality(ctx).await
     }
 }
 
@@ -380,9 +382,8 @@ impl Action for ApplyLearnings {
         0.5
     }
 
-    async fn execute(&self, _ctx: &mut PipelineContext) -> Result<()> {
-        info!("Applying learnings (placeholder)");
-        Ok(())
+    async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
+        learn::execute_apply_learnings(ctx).await
     }
 }
 
@@ -448,10 +449,8 @@ mod tests {
         let segments = build_narration_segments(&scripts, &narration, &assembler);
 
         assert_eq!(segments.len(), 2);
-        // First surviving segment belongs to script 0, not shifted by the skip.
         assert_eq!(segments[0].start_sample, 16_000);
         assert_eq!(segments[0].samples.len(), 800);
-        // Second surviving segment must pair with script 2 (3_000 ms -> 48_000).
         assert_eq!(segments[1].start_sample, 48_000);
         assert_eq!(segments[1].samples.len(), 1_600);
     }

@@ -44,8 +44,9 @@ impl Orchestrator {
                 action.execute(ctx).await?;
                 self.current_state = action.apply(&self.current_state);
 
-                if self.should_replan() {
-                    warn!("External trigger detected, replanning...");
+                if self.should_replan(ctx) {
+                    warn!("Replan requested by pipeline context, replanning...");
+                    ctx.replan_requested = false;
                     break;
                 }
             }
@@ -55,13 +56,14 @@ impl Orchestrator {
         Ok(())
     }
 
-    fn should_replan(&self) -> bool {
-        false
+    fn should_replan(&self, ctx: &PipelineContext) -> bool {
+        ctx.replan_requested
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::actions::get_all_actions;
     use crate::planner::Planner;
     use crate::WorldState;
@@ -80,5 +82,23 @@ mod tests {
         let plan = plan.unwrap();
         assert!(plan.contains(&"decode_movie".to_string()));
         assert!(plan.contains(&"assemble_radio_play".to_string()));
+    }
+
+    #[test]
+    fn test_orchestrator_should_replan() {
+        use std::path::PathBuf;
+
+        let start = WorldState::default();
+        let goal = WorldState {
+            quality_verified: true,
+            ..WorldState::default()
+        };
+        let orch = Orchestrator::new(start, goal, vec![]);
+        let mut ctx = PipelineContext::new(PathBuf::from("in.mp4"), PathBuf::from("out.wav"));
+
+        assert!(!orch.should_replan(&ctx));
+
+        ctx.replan_requested = true;
+        assert!(orch.should_replan(&ctx));
     }
 }

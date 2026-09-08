@@ -180,6 +180,24 @@ jobs:
         run: cargo test --workspace --doc
 
   # ───────────────────────────────────────────────────
+  test-resample-sinc:
+    name: Test High Quality Resample (sinc)
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - name: Run sinc resampler tests
+        run: cargo test -p movie-radio-pipeline --features high-quality-resample
+
+  # ───────────────────────────────────────────────────
   security:
     name: Security Audit
     needs: [changes]
@@ -251,7 +269,7 @@ jobs:
   # ───────────────────────────────────────────────────
   ci-success:
     name: CI Success
-    needs: [validate-agents, lint, shellcheck, gitleaks, fmt, clippy, test, security, deny, benchmark, version-check]
+    needs: [validate-agents, lint, shellcheck, gitleaks, fmt, clippy, test, test-resample-sinc, security, deny, benchmark, version-check]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -265,6 +283,7 @@ jobs:
             "${{ needs.fmt.result }}"
             "${{ needs.clippy.result }}"
             "${{ needs.test.result }}"
+            "${{ needs.test-resample-sinc.result }}"
             "${{ needs.security.result }}"
             "${{ needs.deny.result }}"
             "${{ needs.benchmark.result }}"

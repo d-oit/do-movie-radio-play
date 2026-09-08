@@ -204,9 +204,9 @@ fn compute_time_domain_features(samples: &[f32]) -> (f32, f32) {
     let sum_sq: f32 = samples.iter().map(|&s| s * s).sum();
 
     // Optimization: Calculate zero-crossings via branchless window comparison across adjacent samples.
-    let zero_crosses = samples
-        .windows(2)
-        .fold(0u32, |acc, w| acc + (((w[0] >= 0.0) != (w[1] >= 0.0)) as u32));
+    let zero_crosses = samples.windows(2).fold(0u32, |acc, w| {
+        acc + (((w[0] >= 0.0) != (w[1] >= 0.0)) as u32)
+    });
 
     (
         (sum_sq / samples.len() as f32).sqrt(),

@@ -122,9 +122,9 @@ fn compute_rms_and_zcr(samples: &[f32]) -> (f32, f32) {
     let sum_squares: f32 = samples.iter().map(|&s| s * s).sum();
 
     // Optimization: Compute zero crossings via branchless window comparison across adjacent samples.
-    let crossings = samples
-        .windows(2)
-        .fold(0usize, |acc, w| acc + (((w[0] >= 0.0) != (w[1] >= 0.0)) as usize));
+    let crossings = samples.windows(2).fold(0usize, |acc, w| {
+        acc + (((w[0] >= 0.0) != (w[1] >= 0.0)) as usize)
+    });
 
     let rms = (sum_squares / samples.len() as f32).sqrt();
     let zcr = if samples.len() > 1 {

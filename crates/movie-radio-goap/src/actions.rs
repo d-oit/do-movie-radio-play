@@ -14,6 +14,29 @@ use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_pipeline::pipeline::extract_timeline;
 use movie_radio_verification::verify_timeline;
 
+/// Six optional spectral thresholds passed to `verify_timeline`.
+type ThresholdOptions = (
+    Option<f32>,
+    Option<f32>,
+    Option<f32>,
+    Option<f32>,
+    Option<f32>,
+    Option<f32>,
+);
+
+fn threshold_tuple(
+    t: &movie_radio_learning::adaptive_thresholds::AdaptiveThresholds,
+) -> ThresholdOptions {
+    (
+        Some(t.entropy_min),
+        Some(t.entropy_max),
+        Some(t.flatness_max),
+        Some(t.energy_min),
+        Some(t.centroid_min),
+        Some(t.centroid_max),
+    )
+}
+
 #[derive(Debug, Default)]
 pub struct DecodeMovie;
 
@@ -372,16 +395,12 @@ impl Action for VerifyQuality {
                 Some(path) if path.exists() => {
                     let state = load_learning_state(path)?;
                     let t = &state.current_thresholds;
-                    (
-                        Some(t.entropy_min),
-                        Some(t.entropy_max),
-                        Some(t.flatness_max),
-                        Some(t.energy_min),
-                        Some(t.centroid_min),
-                        Some(t.centroid_max),
-                    )
+                    threshold_tuple(t)
                 }
-                _ => (None, None, None, None, None, None),
+                _ => match &ctx.learning {
+                    Some(t) => threshold_tuple(t),
+                    None => (None, None, None, None, None, None),
+                },
             };
 
         // The report JSON is an intermediate artifact: verify into a temp
@@ -484,14 +503,9 @@ impl Action for ApplyLearnings {
             adjust_thresholds_for_fp_rate(&mut state);
         }
 
-        if let Some(path) = &ctx.learning_state_path {
-            save_learning_state(&state, path)?;
-        } else {
-            tracing::info!(
-                "no learning_state_path configured: adjusted thresholds kept in memory only"
-            );
-        }
-
+        // Persist the database record first: it is the fallible step. The
+        // state file is written only after it succeeds so a failed action
+        // retry cannot re-record the same verification results.
         if let Some(db_path) = &ctx.learning_db_path {
             let db = LearningDb::new(db_path)
                 .await
@@ -505,6 +519,14 @@ impl Action for ApplyLearnings {
             )
             .await
             .context("failed to record thresholds in learning database")?;
+        }
+
+        if let Some(path) = &ctx.learning_state_path {
+            save_learning_state(&state, path)?;
+        } else {
+            tracing::info!(
+                "no learning_state_path configured: adjusted thresholds kept in memory only"
+            );
         }
 
         let state_path = ctx

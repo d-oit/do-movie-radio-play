@@ -65,7 +65,8 @@ impl Orchestrator {
                 Ok(PlanOutcome::Failed(err)) => {
                     last_error = Some(err);
                 }
-                Ok(PlanOutcome::NoProgress) | Err(_) => {}
+                Ok(PlanOutcome::NoProgress) => {}
+                Err(err) => return Err(err),
             }
             info!(attempts, limit = MAX_REPLANS, "Replanning");
         }
@@ -126,10 +127,11 @@ impl Orchestrator {
         if let Some(report) = &ctx.verification {
             if crate::verification_looks_suspicious(report) {
                 let s = &report.summary;
+                let non_voice_total = s.verified_count + s.suspicious_count + s.rejected_count;
                 bail!(
-                    "quality gate not met: {}/{} non-voice segments verified                      ({} suspicious, {} rejected); run apply_learnings and re-run",
+                    "quality gate not met: {}/{} non-voice segments verified ({} suspicious, {} rejected); run apply_learnings and re-run",
                     s.verified_count,
-                    s.total_segments,
+                    non_voice_total,
                     s.suspicious_count,
                     s.rejected_count
                 );

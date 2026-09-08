@@ -23,6 +23,16 @@
       "output_report": "testdata/validation/elephants_dream_2006_de_radio_validation.json"
     },
     {
+      "id": "sintel_trailer_2010_radio",
+      "tier": "A",
+      "input_media": "testdata/raw/sintel_trailer_2010.mp4",
+      "truth_type": "truth_json",
+      "truth_path": "testdata/validation/sintel_trailer_2010_nonvoice.json",
+      "profile": "modern-optimized",
+      "config_path": "config/profiles/modern-optimized.json",
+      "output_report": "testdata/validation/sintel_trailer_2010_radio_validation.json"
+    },
+    {
       "id": "elephants_dream_2006_es_radio",
       "tier": "B",
       "input_media": "testdata/raw/elephants_dream_2006.mp4",
@@ -43,6 +53,26 @@
       "profile": "legacy-optimized",
       "config_path": "config/profiles/legacy-optimized.json",
       "output_report": "testdata/validation/the_hole_1962_radio_validation.json"
+    },
+    {
+      "id": "elephantsdream_teaser_radio",
+      "tier": "C",
+      "input_media": "testdata/raw/elephantsdream_teaser.mp4",
+      "truth_type": "truth_json",
+      "truth_path": "analysis/validation/elephantsdream_teaser_spectral.json",
+      "profile": "modern-optimized",
+      "config_path": "config/profiles/modern-optimized.json",
+      "output_report": "testdata/validation/elephantsdream_teaser_radio_validation.json"
+    },
+    {
+      "id": "caminandes_gran_dillama_radio",
+      "tier": "C",
+      "input_media": "testdata/raw/caminandes_gran_dillama.mp4",
+      "truth_type": "truth_json",
+      "truth_path": "analysis/validation/caminandes_gran_dillama_spectral.json",
+      "profile": "modern-optimized",
+      "config_path": "config/profiles/modern-optimized.json",
+      "output_report": "testdata/validation/caminandes_gran_dillama_radio_validation.json"
     }
   ]
 }

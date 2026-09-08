@@ -92,7 +92,90 @@ pub struct VoiceSynthesisConfig {
     pub providers: VoiceProvidersConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl VoiceSynthesisConfig {
+    /// Builds a consolidated `VoiceSynthesisConfig` from `AnalysisConfig`.
+    ///
+    /// If `cfg.voice_synthesis` is provided, its settings are used as base.
+    /// Missing provider configurations are automatically populated from the
+    /// environment when available (`ELEVENLABS_API_KEY`, `MODAL_TTS_ENDPOINT`,
+    /// `OPENAI_API_KEY` / `OPENAI_TTS_BASE_URL`, `AudioCppConfig`).
+    /// The language defaults to `"de"` if empty.
+    pub fn from_analysis_config(cfg: &AnalysisConfig) -> Self {
+        let mut voice_cfg = cfg.voice_synthesis.clone().unwrap_or_else(|| Self {
+            provider: "modal".to_string(),
+            fallback_chain: vec![
+                "audio_cpp".to_string(),
+                "modal".to_string(),
+                "elevenlabs".to_string(),
+                "openai".to_string(),
+            ],
+            emotion_mapping: true,
+            language: "de".to_string(),
+            voice_id: None,
+            max_cost_per_run_usd: 25.0,
+            providers: VoiceProvidersConfig::default(),
+        });
+
+        if voice_cfg.language.trim().is_empty() {
+            voice_cfg.language = "de".to_string();
+        }
+
+        if voice_cfg.providers.elevenlabs.is_none()
+            && std::env::var("ELEVENLABS_API_KEY").is_ok()
+        {
+            voice_cfg.providers.elevenlabs = Some(ElevenLabsConfig {
+                api_key_env: "ELEVENLABS_API_KEY".to_string(),
+                voice_id: "pNInz6obpgDQGcFmaJgB".to_string(),
+                model: "eleven_multilingual_v2".to_string(),
+                stability: 0.5,
+                similarity_boost: 0.75,
+            });
+        }
+
+        if voice_cfg.providers.modal.is_none()
+            && (std::env::var("MODAL_TTS_ENDPOINT").is_ok() || cfg.voice_synthesis.is_none())
+        {
+            voice_cfg.providers.modal = Some(ModalConfig {
+                endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
+                max_monthly_cost: 25.0,
+            });
+        }
+
+        if voice_cfg.providers.openai.is_none() {
+            if std::env::var("OPENAI_API_KEY").is_ok() {
+                voice_cfg.providers.openai = Some(OpenAiConfig {
+                    api_key_env: Some("OPENAI_API_KEY".to_string()),
+                    base_url: default_openai_base_url(),
+                    model: "tts-1-hd".to_string(),
+                    voice: "onyx".to_string(),
+                    response_format: "mp3".to_string(),
+                });
+            } else if let Ok(base_url) = std::env::var("OPENAI_TTS_BASE_URL") {
+                voice_cfg.providers.openai = Some(OpenAiConfig {
+                    api_key_env: None,
+                    base_url,
+                    model: "pocket-tts".to_string(),
+                    voice: "alba".to_string(),
+                    response_format: "wav".to_string(),
+                });
+            }
+        }
+
+        if voice_cfg.providers.audio_cpp.is_none() {
+            voice_cfg.providers.audio_cpp = Some(AudioCppConfig::default());
+        }
+
+        voice_cfg
+    }
+}
+
+impl Default for VoiceSynthesisConfig {
+    fn default() -> Self {
+        Self::from_analysis_config(&AnalysisConfig::default())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct VoiceProvidersConfig {
     #[serde(default)]
     pub kokoro: Option<KokoroConfig>,
@@ -103,7 +186,37 @@ pub struct VoiceProvidersConfig {
     #[serde(default)]
     pub elevenlabs: Option<ElevenLabsConfig>,
     #[serde(default)]
+    pub modal: Option<ModalConfig>,
+    #[serde(default)]
+    pub openai: Option<OpenAiConfig>,
+    #[serde(default)]
     pub audio_cpp: Option<AudioCppConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModalConfig {
+    pub endpoint_url_env: String,
+    pub max_monthly_cost: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenAiConfig {
+    /// Environment variable holding the bearer token. `None` disables the
+    /// Authorization header entirely — for OpenAI-compatible local servers
+    /// such as an audio.cpp sidecar.
+    #[serde(default)]
+    pub api_key_env: Option<String>,
+    /// API root. Defaults to the public OpenAI API; point it at a local
+    /// OpenAI-compatible TTS server (e.g. audio.cpp) to switch engines.
+    #[serde(default = "default_openai_base_url")]
+    pub base_url: String,
+    pub model: String,
+    pub voice: String,
+    pub response_format: String,
+}
+
+pub fn default_openai_base_url() -> String {
+    "https://api.openai.com/v1".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -336,4 +449,44 @@ impl Default for AnalysisConfig {
 
 fn default_true() -> bool {
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_voice_synthesis_config_defaults() {
+        let analysis_cfg = AnalysisConfig::default();
+        let voice_cfg = VoiceSynthesisConfig::from_analysis_config(&analysis_cfg);
+
+        assert_eq!(voice_cfg.language, "de");
+        assert_eq!(voice_cfg.voice_id, None);
+        assert_eq!(
+            voice_cfg.fallback_chain,
+            vec!["audio_cpp", "modal", "elevenlabs", "openai"]
+        );
+        assert!(voice_cfg.providers.audio_cpp.is_some());
+    }
+
+    #[test]
+    fn test_voice_synthesis_config_custom_override() {
+        let mut analysis_cfg = AnalysisConfig::default();
+        analysis_cfg.voice_synthesis = Some(VoiceSynthesisConfig {
+            provider: "elevenlabs".to_string(),
+            fallback_chain: vec!["elevenlabs".to_string()],
+            emotion_mapping: false,
+            language: "en".to_string(),
+            voice_id: Some("custom_voice_123".to_string()),
+            max_cost_per_run_usd: 10.0,
+            providers: VoiceProvidersConfig::default(),
+        });
+
+        let voice_cfg = VoiceSynthesisConfig::from_analysis_config(&analysis_cfg);
+
+        assert_eq!(voice_cfg.provider, "elevenlabs");
+        assert_eq!(voice_cfg.language, "en");
+        assert_eq!(voice_cfg.voice_id.as_deref(), Some("custom_voice_123"));
+        assert_eq!(voice_cfg.fallback_chain, vec!["elevenlabs"]);
+    }
 }

@@ -29,6 +29,7 @@ impl Orchestrator {
 
         loop {
             if self.current_state.meets(&self.goal_state) {
+                self.check_quality_gate(ctx)?;
                 info!("Goal reached!");
                 return Ok(());
             }
@@ -48,8 +49,6 @@ impl Orchestrator {
             info!(replan_count, plan = ?plan, "Executing plan");
 
             let mut action_failed = false;
-            let mut replan_requested = false;
-
             for action_name in &plan {
                 let action = self
                     .actions
@@ -62,7 +61,6 @@ impl Orchestrator {
                         action = action_name,
                         "Action no longer valid, replanning..."
                     );
-                    replan_requested = true;
                     break;
                 }
 
@@ -70,11 +68,6 @@ impl Orchestrator {
                 match action.execute(ctx).await {
                     Ok(()) => {
                         self.current_state = action.apply(&self.current_state);
-                        if self.should_replan(ctx) {
-                            warn!("Low quality signal after action, replanning...");
-                            replan_requested = true;
-                            break;
-                        }
                     }
                     Err(err) => {
                         warn!(action = action_name, error = %err, "Action failed, replanning...");
@@ -86,16 +79,17 @@ impl Orchestrator {
             }
 
             if self.current_state.meets(&self.goal_state) {
+                self.check_quality_gate(ctx)?;
                 info!("Goal reached!");
                 return Ok(());
             }
 
-            if action_failed || replan_requested || self.should_replan(ctx) {
+            if action_failed {
                 replan_count += 1;
                 info!(
                     replan_count,
                     limit = MAX_REPLANS,
-                    "Replanning with remaining actions"
+                    "Replanning after action failure"
                 );
             } else {
                 // A plan executed without failure but did not reach the goal;
@@ -110,13 +104,28 @@ impl Orchestrator {
         }
     }
 
-    /// Replan when verification of the current run flags most non-voice
-    /// segments as suspicious/rejected (likely extraction false positives).
-    fn should_replan(&self, ctx: &PipelineContext) -> bool {
-        ctx.verification
-            .as_ref()
-            .map(crate::verification_looks_suspicious)
-            .unwrap_or(false)
+    /// Final quality gate: when the goal asks for verified quality but the
+    /// verification report flags a suspicious/rejected majority, the run
+    /// fails loudly instead of claiming success. `apply_learnings` (when in
+    /// the plan) already records the FP evidence before this check, so the
+    /// corrected thresholds apply from the next run onward.
+    fn check_quality_gate(&self, ctx: &PipelineContext) -> Result<()> {
+        if !self.goal_state.quality_verified {
+            return Ok(());
+        }
+        if let Some(report) = &ctx.verification {
+            if crate::verification_looks_suspicious(report) {
+                let s = &report.summary;
+                bail!(
+                    "quality gate not met: {}/{} non-voice segments verified                      ({} suspicious, {} rejected); run apply_learnings and re-run",
+                    s.verified_count,
+                    s.total_segments,
+                    s.suspicious_count,
+                    s.rejected_count
+                );
+            }
+        }
+        Ok(())
     }
 }
 
@@ -250,38 +259,72 @@ mod tests {
         assert!(err.to_string().contains("replan limit"), "{err}");
     }
 
-    #[test]
-    fn should_replan_reflects_verification_quality_signal() {
-        let orch = Orchestrator::new(
+    #[derive(Debug, Default)]
+    struct GateAction {
+        suspicious: bool,
+    }
+
+    #[async_trait::async_trait]
+    impl Action for GateAction {
+        fn name(&self) -> &str {
+            "gate_action"
+        }
+        fn preconditions(&self) -> WorldState {
+            WorldState::default()
+        }
+        fn effects(&self) -> WorldState {
+            WorldState {
+                movie_decoded: true,
+                quality_verified: true,
+                ..WorldState::default()
+            }
+        }
+        fn cost(&self, _state: &WorldState) -> f32 {
+            1.0
+        }
+        async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
+            let mut report = suspicious_report();
+            if !self.suspicious {
+                report.summary.suspicious_count = 1;
+                report.summary.verified_count = 5;
+                report.summary.total_segments = 6;
+                report.summary.false_positive_rate = 1.0 / 6.0;
+            }
+            ctx.verification = Some(report);
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn run_fails_when_quality_gate_not_met() {
+        let mut orch = Orchestrator::new(
             WorldState::default(),
             WorldState {
                 movie_decoded: true,
+                quality_verified: true,
                 ..WorldState::default()
             },
-            vec![Box::new(DecodeOk)],
+            vec![Box::new(GateAction { suspicious: true })],
         );
-
         let mut ctx = PipelineContext::new("movie.mkv".into(), "out.wav".into());
-        assert!(
-            !orch.should_replan(&ctx),
-            "no report must not trigger replan"
-        );
+        let err = orch.run(&mut ctx).await.unwrap_err();
+        assert!(err.to_string().contains("quality gate not met"), "{err}");
+    }
 
-        ctx.verification = Some(suspicious_report());
-        assert!(
-            orch.should_replan(&ctx),
-            "suspicious majority must trigger replan"
+    #[tokio::test]
+    async fn run_succeeds_when_quality_gate_met() {
+        let mut orch = Orchestrator::new(
+            WorldState::default(),
+            WorldState {
+                movie_decoded: true,
+                quality_verified: true,
+                ..WorldState::default()
+            },
+            vec![Box::new(GateAction { suspicious: false })],
         );
-
-        let mut healthy = suspicious_report();
-        healthy.summary.suspicious_count = 1;
-        healthy.summary.rejected_count = 0;
-        healthy.summary.verified_count = 5;
-        healthy.summary.total_segments = 6;
-        ctx.verification = Some(healthy);
-        assert!(
-            !orch.should_replan(&ctx),
-            "healthy majority must not trigger replan"
-        );
+        let mut ctx = PipelineContext::new("movie.mkv".into(), "out.wav".into());
+        orch.run(&mut ctx)
+            .await
+            .expect("clean report must pass the gate");
     }
 }

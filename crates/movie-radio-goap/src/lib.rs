@@ -154,7 +154,9 @@ pub mod planner;
 #[cfg(test)]
 pub(crate) mod test_support {
     use movie_radio_types::TimelineOutput;
-    use movie_radio_verification::verification::{SegmentVerification, VerificationSummary};
+    use movie_radio_verification::verification::{
+        SegmentVerification, SpectralFeatures, VerificationSummary,
+    };
     use movie_radio_verification::{AppliedThresholds, VerificationReport, VerificationStatus};
 
     pub(crate) fn empty_timeline() -> TimelineOutput {
@@ -172,7 +174,7 @@ pub(crate) mod test_support {
             end_ms: (i as u64 + 1) * 1000,
             original_confidence: 0.9,
             verification_status: VerificationStatus::Suspicious,
-            spectral_features: Default::default(),
+            spectral_features: SpectralFeatures::default(),
             is_verified: false,
             is_suspicious: true,
             reason: Some("synthetic".to_string()),

@@ -11,15 +11,9 @@ use movie_radio_pipeline::pipeline::extract_timeline;
 use movie_radio_pipeline::pipeline::sfx_autofill::autofill_silent_scene_sfx;
 use movie_radio_render::sfx::SfxManager;
 use movie_radio_types::{AnalysisConfig, SfxTrigger, SoundEffectsConfig, TimelineOutput};
-use movie_radio_voice::config::{
-    ElevenLabsConfig, ModalConfig, OpenAiConfig, VoiceProvidersConfig, VoiceSynthesisConfig,
-};
+use movie_radio_voice::config::VoiceSynthesisConfig;
 use movie_radio_voice::voice::SynthesisOrchestrator;
 use movie_radio_voice::voice::SynthesisRequest;
-
-const ENV_ELEVENLABS_API_KEY: &str = "ELEVENLABS_API_KEY";
-const ENV_OPENAI_API_KEY: &str = "OPENAI_API_KEY";
-const ENV_OPENAI_TTS_BASE_URL: &str = "OPENAI_TTS_BASE_URL";
 
 pub fn handle_radio_play(
     movie: PathBuf,
@@ -100,8 +94,22 @@ fn run_full_pipeline(
     let narration_segments = if scripts.is_empty() {
         Vec::new()
     } else {
-        let orchestrator = SynthesisOrchestrator::new(build_default_voice_config());
-        synthesize_narrations(&scripts, &orchestrator, &runtime, sample_rate)
+        let voice_config = VoiceSynthesisConfig::from_analysis_config(&cfg);
+        let language = if voice_config.language.is_empty() {
+            "de"
+        } else {
+            &voice_config.language
+        };
+        let voice_id = voice_config.voice_id.as_deref();
+        let orchestrator = SynthesisOrchestrator::new(voice_config);
+        synthesize_narrations(
+            &scripts,
+            &orchestrator,
+            language,
+            voice_id,
+            &runtime,
+            sample_rate,
+        )
     };
 
     let sfx_segments = render_sfx_segments(&timeline, &runtime, sample_rate);
@@ -152,44 +160,11 @@ fn write_and_encode_output(
     Ok(())
 }
 
-fn build_default_voice_config() -> VoiceSynthesisConfig {
-    VoiceSynthesisConfig {
-        provider: "modal".to_string(),
-        fallback_chain: vec![
-            "modal".to_string(),
-            "elevenlabs".to_string(),
-            "openai".to_string(),
-        ],
-        emotion_mapping: true,
-        language: "de".to_string(),
-        voice_id: None,
-        max_cost_per_run_usd: 25.0,
-        providers: VoiceProvidersConfig {
-            kokoro: None,
-            qwen3: None,
-            orpheus: None,
-            elevenlabs: std::env::var(ENV_ELEVENLABS_API_KEY)
-                .ok()
-                .map(|_| ElevenLabsConfig {
-                    api_key_env: ENV_ELEVENLABS_API_KEY.to_string(),
-                    voice_id: "pNInz6obpgDQGcFmaJgB".to_string(),
-                    model: "eleven_multilingual_v2".to_string(),
-                    stability: 0.5,
-                    similarity_boost: 0.75,
-                }),
-            modal: Some(ModalConfig {
-                endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
-                max_monthly_cost: 25.0,
-            }),
-            openai: openai_config_from_env(),
-            audio_cpp: None,
-        },
-    }
-}
-
 fn synthesize_narrations(
     scripts: &[NarrationScript],
     orchestrator: &SynthesisOrchestrator,
+    language: &str,
+    voice_id: Option<&str>,
     runtime: &tokio::runtime::Runtime,
     sample_rate: u32,
 ) -> Vec<NarrationSegment> {
@@ -208,8 +183,8 @@ fn synthesize_narrations(
         let request = SynthesisRequest {
             text: script.text.clone(),
             emotion: script.emotion.clone(),
-            voice_id: None,
-            language: "de".to_string(),
+            voice_id: voice_id.map(str::to_string),
+            language: language.to_string(),
             speed: 1.0,
             sample_rate_hz: sample_rate,
         };
@@ -312,34 +287,3 @@ fn encode_to_mp3(wav_path: &std::path::Path, mp3_path: &std::path::Path) -> Resu
     Ok(())
 }
 
-/// Builds the OpenAI-compatible TTS config from the environment.
-///
-/// Default remains the public OpenAI API when `OPENAI_API_KEY` is set.
-/// Alternatively, `OPENAI_TTS_BASE_URL` selects an OpenAI-compatible local
-/// server (e.g. an audio.cpp sidecar) without authentication, defaulting to
-/// the German PocketTTS recipe (voice `alba`, WAV output).
-fn openai_config_from_env() -> Option<OpenAiConfig> {
-    if std::env::var(ENV_OPENAI_API_KEY).is_ok() {
-        return Some(OpenAiConfig {
-            api_key_env: Some(ENV_OPENAI_API_KEY.to_string()),
-            base_url: movie_radio_voice::config::default_openai_base_url(),
-            model: "tts-1-hd".to_string(),
-            voice: "onyx".to_string(),
-            response_format: "mp3".to_string(),
-        });
-    }
-
-    std::env::var(ENV_OPENAI_TTS_BASE_URL).ok().map(|base_url| {
-        info!(
-            base_url = %base_url,
-            "Using OpenAI-compatible TTS sidecar (German PocketTTS defaults)"
-        );
-        OpenAiConfig {
-            api_key_env: None,
-            base_url,
-            model: "pocket-tts".to_string(),
-            voice: "alba".to_string(),
-            response_format: "wav".to_string(),
-        }
-    })
-}

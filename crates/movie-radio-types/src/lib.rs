@@ -21,9 +21,10 @@ pub use app_config::{
 };
 pub use compute::{ComputeEndpoint, ExecutionLocation};
 pub use config::{
-    AnalysisConfig, AudioCppConfig, AudioCppLocalConfig, AudioCppRemoteConfig, ElevenLabsConfig,
-    GpuPolicyConfig, GpuPoolEndpoint, KokoroConfig, MergeOptions, MergeStrategy, OrpheusConfig,
-    Qwen3Config, VoiceProvidersConfig, VoiceSynthesisConfig,
+    default_openai_base_url, AnalysisConfig, AudioCppConfig, AudioCppLocalConfig,
+    AudioCppRemoteConfig, ElevenLabsConfig, GpuPolicyConfig, GpuPoolEndpoint, KokoroConfig,
+    MergeOptions, MergeStrategy, ModalConfig, OpenAiConfig, OrpheusConfig, Qwen3Config,
+    VoiceProvidersConfig, VoiceSynthesisConfig,
 };
 pub use error::TimelineError;
 pub use features::FeatureSet;

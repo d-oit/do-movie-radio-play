@@ -29,19 +29,13 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | `crates/movie-radio-timeline/` | Binary crate (CLI, handlers, config) |
 | `scripts/` | Quality gate, benchmarks, validation, optimization |
 | `plans/` | ADRs, roadmaps, and status reports |
-| `reports/` | Validation reports and metrics output |
-| `testdata/` | Raw audio test assets and generated fixtures |
-| `benches/` | Render and spectral VAD benchmarks |
-| `.github/` | CI workflows and issue templates |
-| `.agents/` | Agent configuration, orchestration docs, and skill playbooks |
+| `.agents/skills/` | Reusable skill playbooks |
 
 ## Quick Reference
 | Task | Command |
 | ------ | --------- |
 | Build | `cargo build --workspace` |
 | Test | `cargo test --workspace` |
-| Format Check | `cargo fmt --check` |
-| Lint | `cargo clippy --workspace --all-targets --all-features -- -D warnings` |
 | Quality Gate | `bash scripts/quality_gate.sh` |
 | Docs Update | `bash scripts/update-all-docs.sh` |
 | Commit | `bash scripts/ai-commit.sh` |
@@ -50,13 +44,11 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.
 - **Lint**: Always run `cargo fmt --check && cargo clippy --workspace --all-targets --all-features -- -D warnings`.
 - **Atomic Commits**: Use `bash scripts/ai-commit.sh` or `bash scripts/quality_gate.sh && git add -A && git commit`.
-- **No unwrap() or expect()** in library code (`crates/*/src/`). Use `Result` and `?`.
-- **16-bit PCM WAV Output**: Direct audio writer/renderers must output 16-bit PCM WAV.
-- **FFmpeg Dependency**: `ffmpeg` must be available on `PATH` for processing non-WAV media.
-- **Deterministic Output**: All pipeline stages must produce deterministic output for identical inputs.
+- **No unwrap() or expect()** in `crates/*/src/`. Use `Result` and `?`.
 - **MAX_SOURCE_FILE_LOC**: Limit Rust source files to 500 lines.
 - **Secret Scanning**: Gitleaks enforcement via `.gitleaks.toml`.
 - **Root Cleanliness**: Never commit test fixtures or runtime-output files to the repository root.
+- **Deterministic output**: All pipeline stages must produce deterministic output for identical inputs.
 - **Pre-existing issues**: Address pre-existing warnings or document in `plans/FOLLOWUPS.md`.
 
 ## Agent Coordination References
@@ -87,7 +79,7 @@ Maintain zero open issues/PRs. A weekly reminder workflow (`.github/workflows/tr
 | Gitleaks Scan | Adopted | `.gitleaks.toml` present |
 | Named Constants | Adopted | `bash readonly` block above |
 | Single Source Version | Adopted | `VERSION` file is the single source of truth |
-| `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines (currently <= 110) |
+| `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines (currently <= 100) |
 | Skill Frontmatter | Adopted | Verified in all `.agents/skills/*/SKILL.md` |
 | `ai-commit.sh` | Adopted | Available in `scripts/ai-commit.sh` |
 | `update-all-docs.sh` | Adopted | Available in `scripts/update-all-docs.sh` |

@@ -8,6 +8,24 @@ use tracing::{info, warn};
 /// on plans that can never succeed (ADR-120).
 const MAX_REPLANS: usize = 3;
 
+/// Result of one full plan execution.
+enum PlanOutcome {
+    GoalMet,
+    Failed(anyhow::Error),
+    NoProgress,
+}
+
+fn limit_error(last_error: Option<anyhow::Error>) -> anyhow::Error {
+    match last_error {
+        Some(err) => anyhow::anyhow!(
+            "replan limit reached ({MAX_REPLANS} attempts); last action error: {err:#}"
+        ),
+        None => anyhow::anyhow!(
+            "replan limit reached ({MAX_REPLANS} attempts) without reaching the goal"
+        ),
+    }
+}
+
 pub struct Orchestrator {
     current_state: WorldState,
     goal_state: WorldState,
@@ -25,7 +43,7 @@ impl Orchestrator {
 
     pub async fn run(&mut self, ctx: &mut PipelineContext) -> Result<()> {
         let mut last_error: Option<anyhow::Error> = None;
-        let mut replan_count = 0usize;
+        let mut attempts = 0usize;
 
         loop {
             if self.current_state.meets(&self.goal_state) {
@@ -33,75 +51,67 @@ impl Orchestrator {
                 info!("Goal reached!");
                 return Ok(());
             }
-            if replan_count >= MAX_REPLANS {
-                match last_error {
-                    Some(err) => bail!(
-                        "replan limit reached ({MAX_REPLANS} attempts); last action error: {err:#}"
-                    ),
-                    None => bail!(
-                        "replan limit reached ({MAX_REPLANS} attempts) without reaching the goal"
-                    ),
-                }
+            if attempts >= MAX_REPLANS {
+                return Err(limit_error(last_error));
             }
+            attempts += 1;
 
-            let plan = Planner::plan(&self.current_state, &self.goal_state, &self.actions)
-                .ok_or_else(|| anyhow!("No valid plan found to reach goal"))?;
-            info!(replan_count, plan = ?plan, "Executing plan");
-
-            let mut action_failed = false;
-            for action_name in &plan {
-                let action = self
-                    .actions
-                    .iter()
-                    .find(|a| a.name() == *action_name)
-                    .ok_or_else(|| anyhow!("Action {} not found in registry", action_name))?;
-
-                if !action.is_valid(&self.current_state) {
-                    warn!(
-                        action = action_name,
-                        "Action no longer valid, replanning..."
-                    );
-                    break;
+            match self.execute_plan(ctx).await {
+                Ok(PlanOutcome::GoalMet) => {
+                    self.check_quality_gate(ctx)?;
+                    info!("Goal reached!");
+                    return Ok(());
                 }
-
-                info!(action = action_name, "Executing action");
-                match action.execute(ctx).await {
-                    Ok(()) => {
-                        self.current_state = action.apply(&self.current_state);
-                    }
-                    Err(err) => {
-                        warn!(action = action_name, error = %err, "Action failed, replanning...");
-                        last_error = Some(err);
-                        action_failed = true;
-                        break;
-                    }
+                Ok(PlanOutcome::Failed(err)) => {
+                    last_error = Some(err);
                 }
+                Ok(PlanOutcome::NoProgress) | Err(_) => {}
             }
+            info!(attempts, limit = MAX_REPLANS, "Replanning");
+        }
+    }
 
-            if self.current_state.meets(&self.goal_state) {
-                self.check_quality_gate(ctx)?;
-                info!("Goal reached!");
-                return Ok(());
-            }
+    /// Execute one full plan against the current world state. Planner or
+    /// registry errors are returned as `Err` (not retryable); action
+    /// failures come back as `Failed` so the caller can retry with a bound.
+    async fn execute_plan(
+        &mut self,
+        ctx: &mut PipelineContext,
+    ) -> Result<PlanOutcome, anyhow::Error> {
+        let plan = Planner::plan(&self.current_state, &self.goal_state, &self.actions)
+            .ok_or_else(|| anyhow!("No valid plan found to reach goal"))?;
+        info!(plan = ?plan, "Executing plan");
 
-            if action_failed {
-                replan_count += 1;
-                info!(
-                    replan_count,
-                    limit = MAX_REPLANS,
-                    "Replanning after action failure"
+        for action_name in &plan {
+            let action = self
+                .actions
+                .iter()
+                .find(|a| a.name() == *action_name)
+                .ok_or_else(|| anyhow!("Action {} not found in registry", action_name))?;
+
+            if !action.is_valid(&self.current_state) {
+                warn!(
+                    action = action_name,
+                    "Action no longer valid, replanning..."
                 );
-            } else {
-                // A plan executed without failure but did not reach the goal;
-                // retry is bounded by the replan limit.
-                replan_count += 1;
-                info!(
-                    replan_count,
-                    limit = MAX_REPLANS,
-                    "No forward progress, replanning"
-                );
+                return Ok(PlanOutcome::NoProgress);
+            }
+
+            info!(action = action_name, "Executing action");
+            match action.execute(ctx).await {
+                Ok(()) => {
+                    self.current_state = action.apply(&self.current_state);
+                    if self.current_state.meets(&self.goal_state) {
+                        return Ok(PlanOutcome::GoalMet);
+                    }
+                }
+                Err(err) => {
+                    warn!(action = action_name, error = %err, "Action failed, replanning...");
+                    return Ok(PlanOutcome::Failed(err));
+                }
             }
         }
+        Ok(PlanOutcome::NoProgress)
     }
 
     /// Final quality gate: when the goal asks for verified quality but the

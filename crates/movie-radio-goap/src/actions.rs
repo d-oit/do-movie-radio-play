@@ -407,10 +407,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_synthesize_narrator_bails_when_all_fail() {
-        std::env::remove_var("MODAL_TTS_ENDPOINT");
+        const MODAL_TTS_ENDPOINT_ENV: &str = "MODAL_TTS_ENDPOINT";
+        std::env::remove_var(MODAL_TTS_ENDPOINT_ENV);
         let mut ctx = crate::PipelineContext::new(
             std::path::PathBuf::from("movie.mp4"),
-            std::path::PathBuf::from("/tmp/opencode/out.wav"),
+            std::path::PathBuf::from("out.wav"),
         );
         ctx.scripts = Some(vec![script(500), script(6_000)]);
 

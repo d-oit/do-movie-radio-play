@@ -365,6 +365,25 @@ impl Action for VerifyQuality {
             );
         }
 
+        // Reuse persisted adaptive thresholds so the learning loop closes:
+        // a previous apply_learnings run adjusts what this run verifies with.
+        let (entropy_min, entropy_max, flatness_max, energy_min, centroid_min, centroid_max) =
+            match &ctx.learning_state_path {
+                Some(path) if path.exists() => {
+                    let state = load_learning_state(path)?;
+                    let t = &state.current_thresholds;
+                    (
+                        Some(t.entropy_min),
+                        Some(t.entropy_max),
+                        Some(t.flatness_max),
+                        Some(t.energy_min),
+                        Some(t.centroid_min),
+                        Some(t.centroid_max),
+                    )
+                }
+                _ => (None, None, None, None, None, None),
+            };
+
         // The report JSON is an intermediate artifact: verify into a temp
         // file and keep the typed report in the context for downstream
         // actions (apply_learnings) and replanning decisions.
@@ -374,12 +393,12 @@ impl Action for VerifyQuality {
             &ctx.movie_path,
             timeline,
             report_path.path(),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
+            entropy_min,
+            entropy_max,
+            flatness_max,
+            energy_min,
+            centroid_min,
+            centroid_max,
             false,
             10,
             None,
@@ -598,6 +617,7 @@ mod wiring_tests {
     use super::*;
     use crate::actions::{ApplyLearnings, VerifyQuality};
     use movie_radio_types::TimelineOutput;
+    use movie_radio_verification::verification::SpectralFeatures;
     use movie_radio_verification::{AppliedThresholds, VerificationReport, VerificationStatus};
     use std::path::PathBuf;
 
@@ -618,7 +638,7 @@ mod wiring_tests {
                     end_ms: (i as u64 + 1) * 1000,
                     original_confidence: 0.9,
                     verification_status: VerificationStatus::Suspicious,
-                    spectral_features: Default::default(),
+                    spectral_features: SpectralFeatures::default(),
                     is_verified: false,
                     is_suspicious: true,
                     reason: Some("synthetic".to_string()),

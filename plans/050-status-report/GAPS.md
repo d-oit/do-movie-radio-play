@@ -42,9 +42,11 @@ Gaps between the current specification and the implemented runtime behavior.
 
 **Spec intent:** Every fixture used for production evaluation should have explicit, testable output coverage.
 
-**Actual:** Full raw fixture parity achieved across manifest tiers A/B/C.
+**Actual:** Manifest tiers A/B/C are enforced, but not every raw media file is part of the active evaluation manifest yet.
 
-**Status:** Resolved — both `manifest.json` and `radio-play-manifest.json` explicitly include truth sources and output report paths for all raw media fixtures (`elephants_dream_2006.mp4`, `sintel_trailer_2010.mp4`, `elephantsdream_teaser.mp4`, `caminandes_gran_dillama.mp4`, `the_hole_1962.mp4`).
+**Status:** Mostly resolved — both `manifest.json` and `radio-play-manifest.json` cover production-critical fixtures.
+
+**Fix:** Expand the manifest intentionally (with truth source + output path per fixture) and keep scheduled sweep runtime within CI limits.
 
 ## Future Capability Gap: True Alternative VAD Engines
 

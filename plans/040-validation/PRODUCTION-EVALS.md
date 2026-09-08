@@ -18,7 +18,8 @@ Two manifests define the validation coverage policy:
 - `testdata/validation/manifest.json` — main production eval manifest
 - `testdata/validation/radio-play-manifest.json` — radio-play specific manifest
 
-All raw media fixtures (`elephants_dream_2006.mp4`, `sintel_trailer_2010.mp4`, `elephantsdream_teaser.mp4`, `caminandes_gran_dillama.mp4`, and `the_hole_1962.mp4`) are explicitly configured with truth sources and output report paths across Tier A, B, and C entries in both manifests. Coverage is enforced via `scripts/check_validation_coverage.py`.
+All production-critical fixtures (Elephant's Dream, The Hole) are present in both
+manifests. Coverage is enforced via `scripts/check_validation_coverage.py`.
 
 ## Required Output Coverage
 

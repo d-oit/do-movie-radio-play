@@ -3,9 +3,9 @@ use crate::{Action, PipelineContext, WorldState};
 use anyhow::{anyhow, bail, Result};
 use tracing::{info, warn};
 
-/// Maximum replan attempts (action failure or low-quality signal) before the
-/// orchestrator gives up. Bound keeps replanning from looping forever on
-/// plans that can never succeed (ADR-120).
+/// Maximum plan-execution attempts (including the initial one) before the
+/// orchestrator gives up. The bound keeps replanning from looping forever
+/// on plans that can never succeed (ADR-120).
 const MAX_REPLANS: usize = 3;
 
 pub struct Orchestrator {
@@ -32,7 +32,7 @@ impl Orchestrator {
                 info!("Goal reached!");
                 return Ok(());
             }
-            if replan_count > MAX_REPLANS {
+            if replan_count >= MAX_REPLANS {
                 match last_error {
                     Some(err) => bail!(
                         "replan limit reached ({MAX_REPLANS} attempts); last action error: {err:#}"

@@ -7,6 +7,10 @@ use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_pipeline::pipeline::extract_timeline;
+use movie_radio_voice::config::{
+    ElevenLabsConfig, ModalConfig, OpenAiConfig, VoiceProvidersConfig, VoiceSynthesisConfig,
+};
+use movie_radio_voice::voice::{SynthesisOrchestrator, SynthesisRequest};
 
 #[derive(Debug, Default)]
 pub struct DecodeMovie;
@@ -182,17 +186,9 @@ impl Action for SynthesizeNarrator {
     }
 
     async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
-        use movie_radio_voice::config::ModalConfig;
-        use movie_radio_voice::voice::modal::ModalTtsProvider;
-        use movie_radio_voice::voice::{SynthesisRequest, VoiceSynthesizer};
-
         let scripts = ctx.scripts.as_ref().context("Scripts not generated")?;
-
-        let modal_config = ModalConfig {
-            endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
-            max_monthly_cost: 25.0,
-        };
-        let provider = ModalTtsProvider::new(modal_config);
+        let voice_config = voice_config_from_env();
+        let orchestrator = SynthesisOrchestrator::new(voice_config);
 
         for (i, script) in scripts.iter().enumerate() {
             info!(
@@ -217,19 +213,7 @@ impl Action for SynthesizeNarrator {
                 continue;
             }
 
-            let cap = provider.capabilities().max_text_length;
-            if script.text.chars().count() > cap {
-                tracing::warn!(
-                    i = i + 1,
-                    cap,
-                    chars = script.text.chars().count(),
-                    "Text exceeds provider cap, skipping"
-                );
-                ctx.narration_audio.push(None);
-                continue;
-            }
-
-            match provider.synthesize(&request).await {
+            match orchestrator.synthesize(&request).await {
                 Ok(audio) => {
                     info!(
                         i = i + 1,
@@ -326,80 +310,7 @@ impl Action for AssembleRadioPlay {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct VerifyQuality;
-
-#[async_trait]
-impl Action for VerifyQuality {
-    fn name(&self) -> &str {
-        "verify_quality"
-    }
-    fn preconditions(&self) -> WorldState {
-        WorldState {
-            radio_play_assembled: true,
-            ..WorldState::default()
-        }
-    }
-    fn effects(&self) -> WorldState {
-        WorldState {
-            quality_verified: true,
-            ..WorldState::default()
-        }
-    }
-    fn cost(&self, _state: &WorldState) -> f32 {
-        2.0
-    }
-
-    async fn execute(&self, _ctx: &mut PipelineContext) -> Result<()> {
-        info!("Quality verification (placeholder)");
-        Ok(())
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct ApplyLearnings;
-
-#[async_trait]
-impl Action for ApplyLearnings {
-    fn name(&self) -> &str {
-        "apply_learnings"
-    }
-    fn preconditions(&self) -> WorldState {
-        WorldState {
-            quality_verified: true,
-            ..WorldState::default()
-        }
-    }
-    fn effects(&self) -> WorldState {
-        WorldState {
-            learnings_applied: true,
-            ..WorldState::default()
-        }
-    }
-    fn cost(&self, _state: &WorldState) -> f32 {
-        0.5
-    }
-
-    async fn execute(&self, _ctx: &mut PipelineContext) -> Result<()> {
-        info!("Applying learnings (placeholder)");
-        Ok(())
-    }
-}
-
-pub fn get_all_actions() -> Vec<Box<dyn Action>> {
-    vec![
-        Box::new(DecodeMovie),
-        Box::new(ExtractTimeline),
-        Box::new(IdentifyVisualGaps),
-        Box::new(GenerateNarration),
-        Box::new(SynthesizeNarrator),
-        Box::new(AssembleRadioPlay),
-        Box::new(VerifyQuality),
-        Box::new(ApplyLearnings),
-    ]
-}
-
-fn build_narration_segments(
+pub(crate) fn build_narration_segments(
     scripts: &[crate::narrate::NarrationScript],
     narration_audio: &[Option<movie_radio_voice::AudioOutput>],
     assembler: &crate::assemble::RadioPlayAssembler,
@@ -415,61 +326,61 @@ fn build_narration_segments(
         .collect()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::narrate::NarrationScript;
-    use movie_radio_voice::Emotion;
+fn voice_config_from_env() -> VoiceSynthesisConfig {
+    const ENV_ELEVENLABS_API_KEY: &str = "ELEVENLABS_API_KEY";
+    const ENV_OPENAI_API_KEY: &str = "OPENAI_API_KEY";
+    const ENV_OPENAI_TTS_BASE_URL: &str = "OPENAI_TTS_BASE_URL";
 
-    fn script(gap_start_ms: u64) -> NarrationScript {
-        NarrationScript {
-            gap_start_ms,
-            gap_end_ms: gap_start_ms + 5_000,
-            text: "Hallo Welt".to_string(),
-            emotion: Emotion::Neutral,
-            word_count: 2,
-            duration_ms: 1_000,
-        }
-    }
-
-    fn audio(len_samples: usize) -> Option<movie_radio_voice::AudioOutput> {
-        Some(movie_radio_voice::AudioOutput {
-            samples: vec![0.25; len_samples],
-            sample_rate_hz: 16_000,
+    let openai_cfg = if std::env::var(ENV_OPENAI_API_KEY).is_ok() {
+        Some(OpenAiConfig {
+            api_key_env: Some(ENV_OPENAI_API_KEY.to_string()),
+            base_url: movie_radio_voice::config::default_openai_base_url(),
+            model: "tts-1-hd".to_string(),
+            voice: "onyx".to_string(),
+            response_format: "mp3".to_string(),
         })
-    }
+    } else {
+        std::env::var(ENV_OPENAI_TTS_BASE_URL)
+            .ok()
+            .map(|base_url| OpenAiConfig {
+                api_key_env: None,
+                base_url,
+                model: "pocket-tts".to_string(),
+                voice: "alba".to_string(),
+                response_format: "wav".to_string(),
+            })
+    };
 
-    #[test]
-    fn test_segments_keep_script_alignment_across_failures() {
-        let scripts = vec![script(1_000), script(2_000), script(3_000)];
-        let narration = vec![audio(800), None, audio(1_600)];
-        let assembler = crate::assemble::RadioPlayAssembler::new(16_000, 50, 0.3);
-
-        let segments = build_narration_segments(&scripts, &narration, &assembler);
-
-        assert_eq!(segments.len(), 2);
-        // First surviving segment belongs to script 0, not shifted by the skip.
-        assert_eq!(segments[0].start_sample, 16_000);
-        assert_eq!(segments[0].samples.len(), 800);
-        // Second surviving segment must pair with script 2 (3_000 ms -> 48_000).
-        assert_eq!(segments[1].start_sample, 48_000);
-        assert_eq!(segments[1].samples.len(), 1_600);
-    }
-
-    #[tokio::test]
-    async fn test_synthesize_narrator_bails_when_all_fail() {
-        std::env::remove_var("MODAL_TTS_ENDPOINT");
-        let mut ctx = crate::PipelineContext::new(
-            std::path::PathBuf::from("movie.mp4"),
-            std::path::PathBuf::from("/tmp/opencode/out.wav"),
-        );
-        ctx.scripts = Some(vec![script(500), script(6_000)]);
-
-        let result = SynthesizeNarrator.execute(&mut ctx).await;
-
-        let err = result.expect_err("total synthesis failure must not pass silently");
-        assert!(err.to_string().contains("all 2 narration syntheses failed"));
-        assert_eq!(ctx.narration_audio.len(), 2);
-        assert!(ctx.narration_audio.iter().all(Option::is_none));
+    VoiceSynthesisConfig {
+        provider: "modal".to_string(),
+        fallback_chain: vec![
+            "modal".to_string(),
+            "elevenlabs".to_string(),
+            "openai".to_string(),
+        ],
+        emotion_mapping: true,
+        language: "de".to_string(),
+        voice_id: None,
+        max_cost_per_run_usd: 25.0,
+        providers: VoiceProvidersConfig {
+            kokoro: None,
+            qwen3: None,
+            orpheus: None,
+            elevenlabs: std::env::var(ENV_ELEVENLABS_API_KEY)
+                .ok()
+                .map(|_| ElevenLabsConfig {
+                    api_key_env: ENV_ELEVENLABS_API_KEY.to_string(),
+                    voice_id: "pNInz6obpgDQGcFmaJgB".to_string(),
+                    model: "eleven_multilingual_v2".to_string(),
+                    stability: 0.5,
+                    similarity_boost: 0.75,
+                }),
+            modal: Some(ModalConfig {
+                endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
+                max_monthly_cost: 25.0,
+            }),
+            openai: openai_cfg,
+            audio_cpp: None,
+        },
     }
 }

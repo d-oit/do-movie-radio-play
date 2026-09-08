@@ -2,22 +2,11 @@ use anyhow::{bail, Result};
 use std::path::PathBuf;
 use tracing::info;
 
-use movie_radio_goap::assemble::RadioPlayAssembler;
+use movie_radio_goap::actions::get_all_actions;
 use movie_radio_goap::gaps::GapIdentifier;
-use movie_radio_goap::narrate::NarrationGenerator;
+use movie_radio_goap::orchestrator::Orchestrator;
+use movie_radio_goap::{PipelineContext, WorldState};
 use movie_radio_io::json::{read_timeline, write_json_pretty};
-use movie_radio_pipeline::pipeline::decode::decode_audio;
-use movie_radio_pipeline::pipeline::extract_timeline;
-use movie_radio_types::AnalysisConfig;
-use movie_radio_voice::config::{
-    ElevenLabsConfig, ModalConfig, OpenAiConfig, VoiceProvidersConfig, VoiceSynthesisConfig,
-};
-use movie_radio_voice::voice::SynthesisOrchestrator;
-use movie_radio_voice::voice::SynthesisRequest;
-
-const ENV_ELEVENLABS_API_KEY: &str = "ELEVENLABS_API_KEY";
-const ENV_OPENAI_API_KEY: &str = "OPENAI_API_KEY";
-const ENV_OPENAI_TTS_BASE_URL: &str = "OPENAI_TTS_BASE_URL";
 
 pub fn handle_radio_play(
     movie: PathBuf,
@@ -53,7 +42,7 @@ pub fn handle_radio_play(
             println!("{}", serde_json::to_string_pretty(&gap_analysis)?);
         }
     } else {
-        info!(movie = %movie.display(), "Running full radio-play pipeline");
+        info!(movie = %movie.display(), "Running GOAP radio-play pipeline");
         run_full_pipeline(movie, timeline_path, subtitles_path, output_path)?;
     }
     Ok(())
@@ -65,172 +54,67 @@ fn run_full_pipeline(
     subtitles_path: Option<PathBuf>,
     output_path: Option<PathBuf>,
 ) -> Result<()> {
-    let output_path = output_path.unwrap_or_else(|| {
+    let final_output_path = output_path.unwrap_or_else(|| {
         let mut out = movie.clone();
         out.set_extension("radio-play.mp3");
         out
     });
 
-    let cfg = AnalysisConfig::default();
+    let is_mp3_output = final_output_path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("mp3"));
 
-    let timeline = if let Some(p) = timeline_path {
+    let assemble_wav_path = if is_mp3_output {
+        final_output_path.with_extension("tmp.wav")
+    } else {
+        final_output_path.clone()
+    };
+
+    let mut ctx = PipelineContext::new(movie, assemble_wav_path.clone());
+    ctx.subtitles_path = subtitles_path;
+
+    if let Some(p) = timeline_path {
         info!(timeline = %p.display(), "Using provided timeline");
-        read_timeline(&p)?
-    } else {
-        info!("Extracting timeline from movie");
-        extract_timeline(&movie, &cfg)?
-    };
-
-    let srt_content = if let Some(p) = subtitles_path {
-        Some(std::fs::read_to_string(p)?)
-    } else {
-        None
-    };
-
-    let identifier = GapIdentifier::default();
-    let srt_ref: Option<&str> = srt_content.as_deref();
-    // skipcq: RS-E1015 — DeepSource false positive: srt_ref is Option<&str>, not unit-type
-    let gap_analysis = identifier.identify_gaps(&timeline, srt_ref)?; // skipcq: RS-E1015
-    info!(gaps = gap_analysis.gaps.len(), "Identified visual gaps");
-
-    if gap_analysis.gaps.is_empty() {
-        info!("No gaps found — copying original audio as radio play");
-        let (samples, sample_rate) = decode_audio(&movie, cfg.sample_rate_hz)?;
-        let wav_path = output_path.with_extension("tmp.wav");
-        write_wav(&wav_path, &samples, sample_rate)?;
-        encode_to_mp3(&wav_path, &output_path)?;
-        let _ = std::fs::remove_file(&wav_path);
-        return Ok(());
+        ctx.timeline = Some(read_timeline(&p)?);
     }
 
-    let generator = NarrationGenerator::default();
-    let scripts = generator.generate(&timeline, &gap_analysis.gaps)?;
-    info!(scripts = scripts.len(), "Generated narration scripts");
-
-    if scripts.is_empty() {
-        info!("No narration scripts — copying original audio as radio play");
-        let (samples, sample_rate) = decode_audio(&movie, cfg.sample_rate_hz)?;
-        let wav_path = output_path.with_extension("tmp.wav");
-        write_wav(&wav_path, &samples, sample_rate)?;
-        encode_to_mp3(&wav_path, &output_path)?;
-        let _ = std::fs::remove_file(&wav_path);
-        return Ok(());
-    }
-
-    let voice_config = VoiceSynthesisConfig {
-        provider: "modal".to_string(),
-        fallback_chain: vec![
-            "modal".to_string(),
-            "elevenlabs".to_string(),
-            "openai".to_string(),
-        ],
-        emotion_mapping: true,
-        language: "de".to_string(),
-        voice_id: None,
-        max_cost_per_run_usd: 25.0,
-        providers: VoiceProvidersConfig {
-            kokoro: None,
-            qwen3: None,
-            orpheus: None,
-            elevenlabs: std::env::var(ENV_ELEVENLABS_API_KEY)
-                .ok()
-                .map(|_| ElevenLabsConfig {
-                    api_key_env: ENV_ELEVENLABS_API_KEY.to_string(),
-                    voice_id: "pNInz6obpgDQGcFmaJgB".to_string(),
-                    model: "eleven_multilingual_v2".to_string(),
-                    stability: 0.5,
-                    similarity_boost: 0.75,
-                }),
-            modal: Some(ModalConfig {
-                endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
-                max_monthly_cost: 25.0,
-            }),
-            openai: openai_config_from_env(),
-            audio_cpp: None,
-        },
+    let start_state = WorldState {
+        audio_timeline_extracted: ctx.timeline.is_some(),
+        ..WorldState::default()
     };
 
-    let orchestrator = SynthesisOrchestrator::new(voice_config);
+    let goal_state = WorldState {
+        radio_play_assembled: true,
+        quality_verified: true,
+        learnings_applied: true,
+        ..WorldState::default()
+    };
 
-    let sample_rate = cfg.sample_rate_hz;
-    let runtime = tokio::runtime::Runtime::new()?;
-    let mut narration_segments = Vec::new();
+    let actions = get_all_actions();
+    let mut orchestrator = Orchestrator::new(start_state, goal_state, actions);
 
-    for (i, script) in scripts.iter().enumerate() {
-        info!(
-            i = i + 1,
-            total = scripts.len(),
-            text = %script.text,
-            gap_ms = script.gap_start_ms,
-            "Synthesizing narration"
-        );
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(orchestrator.run(&mut ctx))?;
 
-        let request = SynthesisRequest {
-            text: script.text.clone(),
-            emotion: script.emotion.clone(),
-            voice_id: None,
-            language: "de".to_string(),
-            speed: 1.0,
-            sample_rate_hz: sample_rate,
-        };
-
-        match runtime.block_on(orchestrator.synthesize(&request)) {
-            Ok(audio) => {
-                let segment = RadioPlayAssembler::new(sample_rate, 50, 0.3)
-                    .narration_to_segment(script, &audio.samples);
-                narration_segments.push(segment);
-                info!(
-                    i = i + 1,
-                    samples = audio.samples.len(),
-                    "Narration synthesized"
-                );
-            }
-            Err(e) => {
-                tracing::warn!(i = i + 1, error = %e, "TTS failed for this gap, skipping");
-            }
+    if is_mp3_output {
+        if assemble_wav_path.exists() {
+            encode_to_mp3(&assemble_wav_path, &final_output_path)?;
+            let _ = std::fs::remove_file(&assemble_wav_path);
+        } else {
+            bail!(
+                "WAV assembly output not found at {}",
+                assemble_wav_path.display()
+            );
         }
     }
 
     info!(
-        segments = narration_segments.len(),
-        "Loading original audio for assembly"
-    );
-    let (original, _) = decode_audio(&movie, sample_rate)?;
-
-    let assembler = RadioPlayAssembler::new(sample_rate, 50, 0.3);
-    let radio_play = assembler.assemble(&original, &narration_segments)?;
-
-    let wav_path = output_path.with_extension("tmp.wav");
-    write_wav(&wav_path, &radio_play, sample_rate)?;
-    encode_to_mp3(&wav_path, &output_path)?;
-    let _ = std::fs::remove_file(&wav_path);
-
-    info!(
-        output = %output_path.display(),
-        duration_s = radio_play.len() as f64 / sample_rate as f64,
-        "Radio play saved"
+        output = %final_output_path.display(),
+        quality_score = ctx.quality_score,
+        "GOAP radio-play orchestration completed successfully"
     );
 
-    Ok(())
-}
-
-fn write_wav(path: &std::path::Path, samples: &[f32], sample_rate: u32) -> Result<()> {
-    use hound::{WavSpec, WavWriter};
-
-    let spec = WavSpec {
-        channels: 1,
-        sample_rate,
-        bits_per_sample: 16,
-        sample_format: hound::SampleFormat::Int,
-    };
-
-    let mut writer = WavWriter::create(path, spec)?;
-    for &s in samples {
-        let clamped = s.clamp(-1.0, 1.0);
-        let sample = (clamped * i16::MAX as f32) as i16;
-        writer.write_sample(sample)?;
-    }
-    writer.finalize()?;
     Ok(())
 }
 
@@ -252,36 +136,4 @@ fn encode_to_mp3(wav_path: &std::path::Path, mp3_path: &std::path::Path) -> Resu
         bail!("ffmpeg MP3 encoding failed");
     }
     Ok(())
-}
-
-/// Builds the OpenAI-compatible TTS config from the environment.
-///
-/// Default remains the public OpenAI API when `OPENAI_API_KEY` is set.
-/// Alternatively, `OPENAI_TTS_BASE_URL` selects an OpenAI-compatible local
-/// server (e.g. an audio.cpp sidecar) without authentication, defaulting to
-/// the German PocketTTS recipe (voice `alba`, WAV output).
-fn openai_config_from_env() -> Option<OpenAiConfig> {
-    if std::env::var(ENV_OPENAI_API_KEY).is_ok() {
-        return Some(OpenAiConfig {
-            api_key_env: Some(ENV_OPENAI_API_KEY.to_string()),
-            base_url: movie_radio_voice::config::default_openai_base_url(),
-            model: "tts-1-hd".to_string(),
-            voice: "onyx".to_string(),
-            response_format: "mp3".to_string(),
-        });
-    }
-
-    std::env::var(ENV_OPENAI_TTS_BASE_URL).ok().map(|base_url| {
-        info!(
-            base_url = %base_url,
-            "Using OpenAI-compatible TTS sidecar (German PocketTTS defaults)"
-        );
-        OpenAiConfig {
-            api_key_env: None,
-            base_url,
-            model: "pocket-tts".to_string(),
-            voice: "alba".to_string(),
-            response_format: "wav".to_string(),
-        }
-    })
 }

@@ -10,6 +10,7 @@ movie-radio-types.workspace = true
 movie-radio-pipeline.workspace = true
 movie-radio-voice.workspace = true
 movie-radio-learning.workspace = true
+movie-radio-verification.workspace = true
 movie-radio-validation.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true

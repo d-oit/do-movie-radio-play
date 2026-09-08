@@ -145,53 +145,73 @@ mod tests {
     use crate::test_support::{healthy_report, suspicious_report};
     use crate::{Action, PipelineContext, WorldState};
 
-    #[derive(Debug, Default)]
-    struct FailingAction;
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum Behavior {
+        Ok,
+        Fail,
+        Suspicious,
+        Healthy,
+    }
 
-    #[async_trait::async_trait]
-    impl Action for FailingAction {
-        fn name(&self) -> &str {
-            "failing_action"
-        }
-        fn preconditions(&self) -> WorldState {
-            WorldState::default()
-        }
-        fn effects(&self) -> WorldState {
-            WorldState {
-                movie_decoded: true,
-                ..WorldState::default()
+    #[derive(Debug)]
+    struct TestAction {
+        name: &'static str,
+        behavior: Behavior,
+        effects: WorldState,
+    }
+
+    impl TestAction {
+        fn new(name: &'static str, behavior: Behavior, effects: WorldState) -> Self {
+            Self {
+                name,
+                behavior,
+                effects,
             }
-        }
-        fn cost(&self, _state: &WorldState) -> f32 {
-            1.0
-        }
-        async fn execute(&self, _ctx: &mut PipelineContext) -> Result<()> {
-            anyhow::bail!("injected failure")
         }
     }
 
-    #[derive(Debug, Default)]
-    struct DecodeOk;
-
     #[async_trait::async_trait]
-    impl Action for DecodeOk {
+    impl Action for TestAction {
         fn name(&self) -> &str {
-            "decode_ok"
+            self.name
         }
         fn preconditions(&self) -> WorldState {
             WorldState::default()
         }
         fn effects(&self) -> WorldState {
-            WorldState {
-                movie_decoded: true,
-                ..WorldState::default()
-            }
+            self.effects
         }
         fn cost(&self, _state: &WorldState) -> f32 {
             1.0
         }
-        async fn execute(&self, _ctx: &mut PipelineContext) -> Result<()> {
-            Ok(())
+        async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
+            match self.behavior {
+                Behavior::Ok => Ok(()),
+                Behavior::Fail => anyhow::bail!("injected failure"),
+                Behavior::Suspicious => {
+                    ctx.verification = Some(suspicious_report(2));
+                    Ok(())
+                }
+                Behavior::Healthy => {
+                    ctx.verification = Some(healthy_report());
+                    Ok(())
+                }
+            }
+        }
+    }
+
+    fn decoded_goal() -> WorldState {
+        WorldState {
+            movie_decoded: true,
+            ..WorldState::default()
+        }
+    }
+
+    fn verified_goal() -> WorldState {
+        WorldState {
+            movie_decoded: true,
+            quality_verified: true,
+            ..WorldState::default()
         }
     }
 
@@ -214,11 +234,12 @@ mod tests {
     async fn run_reaches_goal_with_healthy_actions() {
         let mut orch = Orchestrator::new(
             WorldState::default(),
-            WorldState {
-                movie_decoded: true,
-                ..WorldState::default()
-            },
-            vec![Box::new(DecodeOk)],
+            decoded_goal(),
+            vec![Box::new(TestAction::new(
+                "decode_ok",
+                Behavior::Ok,
+                decoded_goal(),
+            ))],
         );
         let mut ctx = PipelineContext::new("movie.mkv".into(), "out.wav".into());
         orch.run(&mut ctx).await.expect("goal reachable");
@@ -228,61 +249,28 @@ mod tests {
     async fn run_bails_after_replan_limit_on_action_failure() {
         let mut orch = Orchestrator::new(
             WorldState::default(),
-            WorldState {
-                movie_decoded: true,
-                ..WorldState::default()
-            },
-            vec![Box::new(FailingAction)],
+            decoded_goal(),
+            vec![Box::new(TestAction::new(
+                "failing",
+                Behavior::Fail,
+                decoded_goal(),
+            ))],
         );
         let mut ctx = PipelineContext::new("movie.mkv".into(), "out.wav".into());
         let err = orch.run(&mut ctx).await.unwrap_err();
         assert!(err.to_string().contains("replan limit"), "{err}");
     }
 
-    #[derive(Debug, Default)]
-    struct GateAction {
-        suspicious: bool,
-    }
-
-    #[async_trait::async_trait]
-    impl Action for GateAction {
-        fn name(&self) -> &str {
-            "gate_action"
-        }
-        fn preconditions(&self) -> WorldState {
-            WorldState::default()
-        }
-        fn effects(&self) -> WorldState {
-            WorldState {
-                movie_decoded: true,
-                quality_verified: true,
-                ..WorldState::default()
-            }
-        }
-        fn cost(&self, _state: &WorldState) -> f32 {
-            1.0
-        }
-        async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
-            let report = if self.suspicious {
-                suspicious_report(2)
-            } else {
-                healthy_report()
-            };
-            ctx.verification = Some(report);
-            Ok(())
-        }
-    }
-
     #[tokio::test]
     async fn run_fails_when_quality_gate_not_met() {
         let mut orch = Orchestrator::new(
             WorldState::default(),
-            WorldState {
-                movie_decoded: true,
-                quality_verified: true,
-                ..WorldState::default()
-            },
-            vec![Box::new(GateAction { suspicious: true })],
+            verified_goal(),
+            vec![Box::new(TestAction::new(
+                "suspicious",
+                Behavior::Suspicious,
+                verified_goal(),
+            ))],
         );
         let mut ctx = PipelineContext::new("movie.mkv".into(), "out.wav".into());
         let err = orch.run(&mut ctx).await.unwrap_err();
@@ -293,12 +281,12 @@ mod tests {
     async fn run_succeeds_when_quality_gate_met() {
         let mut orch = Orchestrator::new(
             WorldState::default(),
-            WorldState {
-                movie_decoded: true,
-                quality_verified: true,
-                ..WorldState::default()
-            },
-            vec![Box::new(GateAction { suspicious: false })],
+            verified_goal(),
+            vec![Box::new(TestAction::new(
+                "healthy",
+                Behavior::Healthy,
+                verified_goal(),
+            ))],
         );
         let mut ctx = PipelineContext::new("movie.mkv".into(), "out.wav".into());
         orch.run(&mut ctx)

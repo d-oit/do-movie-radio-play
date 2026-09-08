@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use movie_radio_types::{AnalysisConfig, GapAnalysisOutput, TimelineOutput};
+use movie_radio_verification::VerificationReport;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -48,6 +49,16 @@ pub struct PipelineContext {
     pub narration_audio: Vec<Option<movie_radio_voice::AudioOutput>>,
     pub original_audio: Option<Vec<f32>>,
     pub sample_rate: u32,
+    /// Adaptive thresholds after the `apply_learnings` action, when run.
+    pub learning: Option<movie_radio_learning::adaptive_thresholds::AdaptiveThresholds>,
+    /// Verification report produced by the `verify_quality` action.
+    pub verification: Option<VerificationReport>,
+    /// Optional path for the adaptive-threshold learning state
+    /// (`learning_state_path`); when `None`, `apply_learnings` keeps the
+    /// state in memory only.
+    pub learning_state_path: Option<PathBuf>,
+    /// Optional libsql database path for threshold history persistence.
+    pub learning_db_path: Option<PathBuf>,
 }
 
 impl PipelineContext {
@@ -64,8 +75,20 @@ impl PipelineContext {
             scripts: None,
             narration_audio: Vec::new(),
             original_audio: None,
+            verification: None,
+            learning: None,
+            learning_state_path: None,
+            learning_db_path: None,
         }
     }
+}
+
+/// Replanning/learning signal: verification flagged most non-voice segments
+/// as suspicious or rejected (i.e., the extraction thresholds produced
+/// likely false positives).
+pub fn verification_looks_suspicious(report: &VerificationReport) -> bool {
+    let s = &report.summary;
+    s.total_segments > 0 && s.suspicious_count + s.rejected_count > s.verified_count
 }
 
 #[async_trait]

@@ -199,15 +199,15 @@ fn compute_time_domain_features(samples: &[f32]) -> (f32, f32) {
     if samples.is_empty() {
         return (0.0, 0.0);
     }
-    let mut sum_sq = samples[0] * samples[0];
-    let mut zero_crosses = 0u32;
-    let mut prev_sign = samples[0] >= 0.0;
-    for &s in &samples[1..] {
-        sum_sq += s * s;
-        let sign = s >= 0.0;
-        zero_crosses += (sign != prev_sign) as u32;
-        prev_sign = sign;
-    }
+
+    // Optimization: Calculate sum of squares via SIMD auto-vectorizable iterator map/sum.
+    let sum_sq: f32 = samples.iter().map(|&s| s * s).sum();
+
+    // Optimization: Calculate zero-crossings via branchless window comparison across adjacent samples.
+    let zero_crosses = samples
+        .windows(2)
+        .fold(0u32, |acc, w| acc + (((w[0] >= 0.0) != (w[1] >= 0.0)) as u32));
+
     (
         (sum_sq / samples.len() as f32).sqrt(),
         zero_crosses as f32 / samples.len() as f32,

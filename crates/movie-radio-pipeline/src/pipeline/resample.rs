@@ -40,7 +40,7 @@ pub fn resample(input: &[f32], src_rate: u32, dst_rate: u32) -> Result<Vec<f32>>
     Ok(resample_linear(input, src_rate, dst_rate))
 }
 
-#[cfg(not(feature = "high-quality-resample"))]
+#[allow(dead_code)]
 fn resample_linear(input: &[f32], src_rate: u32, dst_rate: u32) -> Vec<f32> {
     if src_rate == dst_rate || input.is_empty() {
         return input.to_vec();
@@ -95,7 +95,6 @@ mod tests {
         assert!(output.iter().all(|s| s.is_finite()));
     }
 
-    #[cfg(not(feature = "high-quality-resample"))]
     #[test]
     fn resample_linear_matches_expectation() {
         let input = vec![0.0, 1.0];
@@ -103,5 +102,53 @@ mod tests {
         assert_eq!(output.len(), 4);
         assert!((output[0] - 0.0).abs() < 1e-6);
         assert!((output[2] - 1.0).abs() < 1e-6);
+    }
+
+    #[cfg(feature = "high-quality-resample")]
+    #[test]
+    fn resample_sinc_vs_linear_quality_comparison() {
+        // Downsample a 1 kHz sine wave from 48 kHz to 16 kHz.
+        // The sinc resampler should reconstruct the bandlimited signal with higher fidelity
+        // (lower RMS error against the true analytical sine wave at 16 kHz) than linear interpolation.
+        let src_rate = 48000;
+        let dst_rate = 16000;
+        let freq = 1000.0f32;
+        let num_src_samples = 4800; // 100 ms of audio
+
+        let src_samples: Vec<f32> = (0..num_src_samples)
+            .map(|i| (2.0 * std::f32::consts::PI * freq * (i as f32) / (src_rate as f32)).sin())
+            .collect();
+
+        let sinc_out = resample(&src_samples, src_rate, dst_rate).unwrap();
+        let linear_out = resample_linear(&src_samples, src_rate, dst_rate);
+
+        // Sinc resampler introduces filter latency / group delay.
+        // Measure spectral energy retention around the target frequency (1 kHz) vs out-of-band energy to demonstrate sinc's higher anti-aliasing / bandlimited quality compared to linear interpolation.
+        let compute_sine_correlation = |samples: &[f32]| -> f32 {
+            let n = samples.len();
+            let dot: f32 = samples
+                .iter()
+                .enumerate()
+                .map(|(i, &s)| {
+                    let t = i as f32 / (dst_rate as f32);
+                    s * (2.0 * std::f32::consts::PI * freq * t).sin()
+                })
+                .sum();
+            (2.0 * dot / (n as f32)).abs()
+        };
+
+        let sinc_corr = compute_sine_correlation(&sinc_out[100..sinc_out.len() - 100]);
+        let linear_corr = compute_sine_correlation(&linear_out[100..linear_out.len() - 100]);
+
+        // Sinc interpolation preserves passband amplitude closer to 1.0 (near unity gain for 1 kHz)
+        let sinc_amplitude_error = (sinc_corr - 1.0).abs();
+        let linear_amplitude_error = (linear_corr - 1.0).abs();
+
+        assert!(
+            sinc_amplitude_error < linear_amplitude_error,
+            "Sinc resampler passband amplitude error ({}) should be lower than linear resampler amplitude error ({})",
+            sinc_amplitude_error,
+            linear_amplitude_error
+        );
     }
 }

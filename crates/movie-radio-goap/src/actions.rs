@@ -216,6 +216,10 @@ impl Action for SynthesizeNarrator {
         use movie_radio_voice::voice::{SynthesisRequest, VoiceSynthesizer};
 
         let scripts = ctx.scripts.as_ref().context("Scripts not generated")?;
+        // Keep the pre-action length so a failed attempt can roll its partial
+        // `None`/audio entries back: the orchestrator retries failed actions and
+        // AssembleRadioPlay zips scripts against this vector from its start.
+        let narration_baseline = ctx.narration_audio.len();
 
         let modal_config = ModalConfig {
             endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
@@ -275,6 +279,7 @@ impl Action for SynthesizeNarrator {
         }
 
         if !scripts.is_empty() && ctx.narration_audio.iter().all(Option::is_none) {
+            ctx.narration_audio.truncate(narration_baseline);
             anyhow::bail!(
                 "all {} narration syntheses failed; check TTS provider configuration \
                  (e.g. OPENAI_API_KEY / OPENAI_TTS_BASE_URL / MODAL_TTS_ENDPOINT)",
@@ -441,7 +446,40 @@ impl Action for VerifyQuality {
                 "Most non-voice segments were not verified; thresholds likely need                  recalibration (apply_learnings)"
             );
         }
+        self.check_assembled_output(ctx)?;
         ctx.verification = Some(report);
+        Ok(())
+    }
+}
+
+impl VerifyQuality {
+    /// Verify the assembled radio play file itself: it must exist, decode
+    /// cleanly, and (when the original audio is in context) stay within the
+    /// roadmap's 10% duration tolerance of the original.
+    fn check_assembled_output(&self, ctx: &PipelineContext) -> Result<()> {
+        if !ctx.output_path.exists() {
+            anyhow::bail!("assembled output missing: {}", ctx.output_path.display());
+        }
+        let (output, output_rate) =
+            decode_audio(&ctx.output_path, ctx.sample_rate).with_context(|| {
+                format!(
+                    "assembled output failed to decode: {}",
+                    ctx.output_path.display()
+                )
+            })?;
+        if output.is_empty() {
+            anyhow::bail!("assembled output decodes to zero samples");
+        }
+        if let Some(original) = &ctx.original_audio {
+            let original_duration = original.len() as f64 / f64::from(ctx.sample_rate);
+            let output_duration = output.len() as f64 / f64::from(output_rate);
+            if !durations_within_tolerance(original_duration, output_duration, 0.10) {
+                anyhow::bail!(
+                    "assembled output duration {output_duration:.2}s deviates from original {original_duration:.2}s by more than 10%"
+                );
+            }
+        }
+        tracing::info!("Assembled output verified (decode + duration)");
         Ok(())
     }
 }
@@ -479,7 +517,7 @@ impl Action for ApplyLearnings {
         // Feed every non-voice segment verdict into the adaptive-threshold
         // learning state. A segment verification flagged as suspicious or
         // rejected means the extractor cut a likely speech segment as
-        // non-voice — a false positive from the learning loop's viewpoint.
+        // non-voice - a false positive from the learning loop's viewpoint.
         let mut state = match &ctx.learning_state_path {
             Some(path) if path.exists() => load_learning_state(path)?,
             _ => create_learning_state(20),
@@ -503,30 +541,41 @@ impl Action for ApplyLearnings {
             adjust_thresholds_for_fp_rate(&mut state);
         }
 
-        // Persist the database record first: it is the fallible step. The
-        // state file is written only after it succeeds so a failed action
-        // retry cannot re-record the same verification results.
-        if let Some(db_path) = &ctx.learning_db_path {
-            let db = LearningDb::new(db_path)
-                .await
-                .context("failed to open learning database")?;
-            let t = &state.current_thresholds;
-            db.record_threshold(
-                f64::from(t.flatness_max),
-                f64::from(t.entropy_min),
-                f64::from(t.centroid_min),
-                f64::from(t.centroid_max),
-            )
-            .await
-            .context("failed to record thresholds in learning database")?;
-        }
-
+        // Persist the state file first: it is the durable record. The
+        // threshold-history database write is best-effort telemetry, so a
+        // failure there cannot fail the action (which would otherwise retry
+        // and re-record the same rows or duplicate state history).
         if let Some(path) = &ctx.learning_state_path {
             save_learning_state(&state, path)?;
         } else {
             tracing::info!(
                 "no learning_state_path configured: adjusted thresholds kept in memory only"
             );
+        }
+
+        if let Some(db_path) = &ctx.learning_db_path {
+            let t = &state.current_thresholds;
+            match LearningDb::new(db_path).await {
+                Ok(db) => {
+                    if let Err(err) = db
+                        .record_threshold(
+                            f64::from(t.flatness_max),
+                            f64::from(t.entropy_min),
+                            f64::from(t.centroid_min),
+                            f64::from(t.centroid_max),
+                        )
+                        .await
+                    {
+                        tracing::warn!(
+                            error = %err,
+                            "failed to record thresholds in learning database"
+                        );
+                    }
+                }
+                Err(err) => {
+                    tracing::warn!(error = %err, "failed to open learning database");
+                }
+            }
         }
 
         let state_path = ctx
@@ -629,9 +678,22 @@ mod tests {
 
         let err = result.expect_err("total synthesis failure must not pass silently");
         assert!(err.to_string().contains("all 2 narration syntheses failed"));
-        assert_eq!(ctx.narration_audio.len(), 2);
-        assert!(ctx.narration_audio.iter().all(Option::is_none));
+        // The failed attempt rolls its partial entries back so a retry cannot
+        // leave stale Nones that would misalign assemble's zip.
+        assert!(
+            ctx.narration_audio.is_empty(),
+            "failed synthesis must roll back its partial entries"
+        );
     }
+}
+
+/// True when `output` stays within `tolerance` (fraction) of `original`.
+fn durations_within_tolerance(original: f64, output: f64, tolerance: f64) -> bool {
+    if original <= 0.0 {
+        return output > 0.0;
+    }
+    let ratio = output / original;
+    (1.0 - tolerance..=1.0 + tolerance).contains(&ratio)
 }
 
 #[cfg(test)]

@@ -150,3 +150,89 @@ pub mod gaps;
 pub mod narrate;
 pub mod orchestrator;
 pub mod planner;
+
+#[cfg(test)]
+pub(crate) mod test_support {
+    use movie_radio_types::TimelineOutput;
+    use movie_radio_verification::verification::{SegmentVerification, VerificationSummary};
+    use movie_radio_verification::{AppliedThresholds, VerificationReport, VerificationStatus};
+
+    pub(crate) fn empty_timeline() -> TimelineOutput {
+        TimelineOutput {
+            file: "movie.mkv".to_string(),
+            analysis_sample_rate: 16_000,
+            frame_ms: 20,
+            segments: Vec::new(),
+        }
+    }
+
+    pub(crate) fn segment_result(i: usize) -> SegmentVerification {
+        SegmentVerification {
+            start_ms: i as u64 * 1000,
+            end_ms: (i as u64 + 1) * 1000,
+            original_confidence: 0.9,
+            verification_status: VerificationStatus::Suspicious,
+            spectral_features: Default::default(),
+            is_verified: false,
+            is_suspicious: true,
+            reason: Some("synthetic".to_string()),
+        }
+    }
+
+    pub(crate) fn suspicious_report(segments: usize) -> VerificationReport {
+        let results = (0..segments).map(segment_result).collect::<Vec<_>>();
+        VerificationReport {
+            verified_timeline: empty_timeline(),
+            segment_results: results.clone(),
+            segment_fingerprints: results.iter().map(|_| Vec::new()).collect(),
+            summary: VerificationSummary {
+                total_segments: segments,
+                verified_count: 0,
+                suspicious_count: segments,
+                rejected_count: 0,
+                false_positive_rate: 1.0,
+                average_confidence: 0.9,
+                thresholds_applied: default_thresholds(),
+            },
+        }
+    }
+
+    pub(crate) fn healthy_report() -> VerificationReport {
+        let results = (0..6)
+            .map(|i| {
+                let mut result = segment_result(i);
+                if i < 5 {
+                    result.is_verified = true;
+                    result.is_suspicious = false;
+                    result.verification_status = VerificationStatus::Verified;
+                }
+                result
+            })
+            .collect::<Vec<_>>();
+        VerificationReport {
+            verified_timeline: empty_timeline(),
+            segment_results: results.clone(),
+            segment_fingerprints: vec![Vec::new(); 6],
+            summary: VerificationSummary {
+                total_segments: 6,
+                verified_count: 5,
+                suspicious_count: 1,
+                rejected_count: 0,
+                false_positive_rate: 1.0 / 6.0,
+                average_confidence: 0.9,
+                thresholds_applied: default_thresholds(),
+            },
+        }
+    }
+
+    fn default_thresholds() -> AppliedThresholds {
+        AppliedThresholds {
+            entropy_min: 3.5,
+            entropy_max: 7.0,
+            flatness_max: 0.45,
+            energy_min: 0.001,
+            centroid_min: 100.0,
+            centroid_max: 6000.0,
+        }
+    }
+}

@@ -616,57 +616,8 @@ mod tests {
 mod wiring_tests {
     use super::*;
     use crate::actions::{ApplyLearnings, VerifyQuality};
-    use movie_radio_types::TimelineOutput;
-    use movie_radio_verification::verification::SpectralFeatures;
-    use movie_radio_verification::{AppliedThresholds, VerificationReport, VerificationStatus};
+    use crate::test_support::{empty_timeline, suspicious_report};
     use std::path::PathBuf;
-
-    fn empty_timeline() -> TimelineOutput {
-        TimelineOutput {
-            file: "movie.mkv".to_string(),
-            analysis_sample_rate: 16_000,
-            frame_ms: 20,
-            segments: Vec::new(),
-        }
-    }
-
-    fn suspicious_report(segments: usize) -> VerificationReport {
-        let results = (0..segments)
-            .map(
-                |i| movie_radio_verification::verification::SegmentVerification {
-                    start_ms: i as u64 * 1000,
-                    end_ms: (i as u64 + 1) * 1000,
-                    original_confidence: 0.9,
-                    verification_status: VerificationStatus::Suspicious,
-                    spectral_features: SpectralFeatures::default(),
-                    is_verified: false,
-                    is_suspicious: true,
-                    reason: Some("synthetic".to_string()),
-                },
-            )
-            .collect::<Vec<_>>();
-        VerificationReport {
-            verified_timeline: empty_timeline(),
-            segment_results: results.clone(),
-            segment_fingerprints: results.iter().map(|_| Vec::new()).collect(),
-            summary: movie_radio_verification::verification::VerificationSummary {
-                total_segments: segments,
-                verified_count: 0,
-                suspicious_count: segments,
-                rejected_count: 0,
-                false_positive_rate: 1.0,
-                average_confidence: 0.9,
-                thresholds_applied: AppliedThresholds {
-                    entropy_min: 3.5,
-                    entropy_max: 7.0,
-                    flatness_max: 0.45,
-                    energy_min: 0.001,
-                    centroid_min: 100.0,
-                    centroid_max: 6000.0,
-                },
-            },
-        }
-    }
 
     #[tokio::test]
     async fn verify_quality_requires_timeline() {

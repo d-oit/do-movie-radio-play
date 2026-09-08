@@ -5,8 +5,14 @@ use tracing::info;
 use crate::gaps::GapIdentifier;
 use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
+use movie_radio_learning::adaptive_thresholds::{
+    adjust_thresholds_for_fp_rate, create_learning_state, load_learning_state,
+    record_verification_result, save_learning_state,
+};
+use movie_radio_learning::database::LearningDb;
 use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_pipeline::pipeline::extract_timeline;
+use movie_radio_verification::verify_timeline;
 
 #[derive(Debug, Default)]
 pub struct DecodeMovie;
@@ -350,8 +356,54 @@ impl Action for VerifyQuality {
         2.0
     }
 
-    async fn execute(&self, _ctx: &mut PipelineContext) -> Result<()> {
-        info!("Quality verification (placeholder)");
+    async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
+        let timeline = ctx.timeline.as_ref().context("Timeline not extracted")?;
+        if !ctx.movie_path.exists() {
+            anyhow::bail!(
+                "cannot verify quality: media file not found: {}",
+                ctx.movie_path.display()
+            );
+        }
+
+        // The report JSON is an intermediate artifact: verify into a temp
+        // file and keep the typed report in the context for downstream
+        // actions (apply_learnings) and replanning decisions.
+        let report_path = tempfile::NamedTempFile::new()
+            .context("failed to create temporary verification report path")?;
+        let report = verify_timeline(
+            &ctx.movie_path,
+            timeline,
+            report_path.path(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+            10,
+            None,
+        )
+        .context("quality verification failed")?;
+
+        let summary = &report.summary;
+        info!(
+            total = summary.total_segments,
+            verified = summary.verified_count,
+            suspicious = summary.suspicious_count,
+            rejected = summary.rejected_count,
+            avg_confidence = format!("{:.3}", summary.average_confidence),
+            "Quality verification complete"
+        );
+        if crate::verification_looks_suspicious(&report) {
+            tracing::warn!(
+                suspicious = summary.suspicious_count,
+                rejected = summary.rejected_count,
+                verified = summary.verified_count,
+                "Most non-voice segments were not verified; thresholds likely need                  recalibration (apply_learnings)"
+            );
+        }
+        ctx.verification = Some(report);
         Ok(())
     }
 }
@@ -380,8 +432,75 @@ impl Action for ApplyLearnings {
         0.5
     }
 
-    async fn execute(&self, _ctx: &mut PipelineContext) -> Result<()> {
-        info!("Applying learnings (placeholder)");
+    async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
+        let report = ctx
+            .verification
+            .as_ref()
+            .context("no verification report available: run verify_quality first")?;
+
+        // Feed every non-voice segment verdict into the adaptive-threshold
+        // learning state. A segment verification flagged as suspicious or
+        // rejected means the extractor cut a likely speech segment as
+        // non-voice — a false positive from the learning loop's viewpoint.
+        let mut state = match &ctx.learning_state_path {
+            Some(path) if path.exists() => load_learning_state(path)?,
+            _ => create_learning_state(20),
+        };
+        for (i, result) in report.segment_results.iter().enumerate() {
+            let feats = &result.spectral_features;
+            record_verification_result(
+                &mut state,
+                i,
+                !result.is_verified,
+                feats.spectral_entropy,
+                feats.spectral_flatness,
+                feats.rms,
+                feats.centroid_hz,
+            );
+        }
+
+        // Bounded per-run adjustment: the learning-rate-limited updates in
+        // movie-radio-learning keep each parameter move small and clamped.
+        if state.total_verifications >= 5 {
+            adjust_thresholds_for_fp_rate(&mut state);
+        }
+
+        if let Some(path) = &ctx.learning_state_path {
+            save_learning_state(&state, path)?;
+        } else {
+            tracing::info!(
+                "no learning_state_path configured: adjusted thresholds kept in memory only"
+            );
+        }
+
+        if let Some(db_path) = &ctx.learning_db_path {
+            let db = LearningDb::new(db_path)
+                .await
+                .context("failed to open learning database")?;
+            let t = &state.current_thresholds;
+            db.record_threshold(
+                f64::from(t.flatness_max),
+                f64::from(t.entropy_min),
+                f64::from(t.centroid_min),
+                f64::from(t.centroid_max),
+            )
+            .await
+            .context("failed to record thresholds in learning database")?;
+        }
+
+        let state_path = ctx
+            .learning_state_path
+            .as_ref()
+            .map_or_else(|| "<memory>".to_string(), |p| p.display().to_string());
+        info!(
+            verifications = state.total_verifications,
+            fp_rate = format!("{:.2}%", state.recent_fp_rate * 100.0),
+            flatness_max = state.current_thresholds.flatness_max,
+            entropy_min = state.current_thresholds.entropy_min,
+            state_path = state_path,
+            "Applying learnings complete"
+        );
+        ctx.learning = Some(state.current_thresholds.clone());
         Ok(())
     }
 }
@@ -471,5 +590,112 @@ mod tests {
         assert!(err.to_string().contains("all 2 narration syntheses failed"));
         assert_eq!(ctx.narration_audio.len(), 2);
         assert!(ctx.narration_audio.iter().all(Option::is_none));
+    }
+}
+
+#[cfg(test)]
+mod wiring_tests {
+    use super::*;
+    use crate::actions::{ApplyLearnings, VerifyQuality};
+    use movie_radio_types::TimelineOutput;
+    use movie_radio_verification::{AppliedThresholds, VerificationReport, VerificationStatus};
+    use std::path::PathBuf;
+
+    fn empty_timeline() -> TimelineOutput {
+        TimelineOutput {
+            file: "movie.mkv".to_string(),
+            analysis_sample_rate: 16_000,
+            frame_ms: 20,
+            segments: Vec::new(),
+        }
+    }
+
+    fn suspicious_report(segments: usize) -> VerificationReport {
+        let results = (0..segments)
+            .map(
+                |i| movie_radio_verification::verification::SegmentVerification {
+                    start_ms: i as u64 * 1000,
+                    end_ms: (i as u64 + 1) * 1000,
+                    original_confidence: 0.9,
+                    verification_status: VerificationStatus::Suspicious,
+                    spectral_features: Default::default(),
+                    is_verified: false,
+                    is_suspicious: true,
+                    reason: Some("synthetic".to_string()),
+                },
+            )
+            .collect::<Vec<_>>();
+        VerificationReport {
+            verified_timeline: empty_timeline(),
+            segment_results: results.clone(),
+            segment_fingerprints: results.iter().map(|_| Vec::new()).collect(),
+            summary: movie_radio_verification::verification::VerificationSummary {
+                total_segments: segments,
+                verified_count: 0,
+                suspicious_count: segments,
+                rejected_count: 0,
+                false_positive_rate: 1.0,
+                average_confidence: 0.9,
+                thresholds_applied: AppliedThresholds {
+                    entropy_min: 3.5,
+                    entropy_max: 7.0,
+                    flatness_max: 0.45,
+                    energy_min: 0.001,
+                    centroid_min: 100.0,
+                    centroid_max: 6000.0,
+                },
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn verify_quality_requires_timeline() {
+        let mut ctx = PipelineContext::new(PathBuf::from("movie.mkv"), PathBuf::from("out.wav"));
+        let err = VerifyQuality.execute(&mut ctx).await.unwrap_err();
+        assert!(err.to_string().contains("Timeline not extracted"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn verify_quality_bails_when_media_missing() {
+        let mut ctx = PipelineContext::new(
+            PathBuf::from("/nonexistent/movie.mkv"),
+            PathBuf::from("out.wav"),
+        );
+        ctx.timeline = Some(empty_timeline());
+        let err = VerifyQuality.execute(&mut ctx).await.unwrap_err();
+        assert!(err.to_string().contains("cannot verify quality"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn apply_learnings_requires_verification_first() {
+        let mut ctx = PipelineContext::new(PathBuf::from("movie.mkv"), PathBuf::from("out.wav"));
+        let err = ApplyLearnings.execute(&mut ctx).await.unwrap_err();
+        assert!(err.to_string().contains("no verification report"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn apply_learnings_records_and_persists_state() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state_path = dir.path().join("learning-state.json");
+        let db_path = dir.path().join("learn.db");
+        let mut ctx = PipelineContext::new(PathBuf::from("movie.mkv"), PathBuf::from("out.wav"));
+        ctx.verification = Some(suspicious_report(3));
+        ctx.learning_state_path = Some(state_path.clone());
+        ctx.learning_db_path = Some(db_path.clone());
+
+        ApplyLearnings
+            .execute(&mut ctx)
+            .await
+            .expect("apply learnings");
+
+        assert!(ctx.learning.is_some(), "thresholds must be exposed on ctx");
+        let state = movie_radio_learning::adaptive_thresholds::load_learning_state(&state_path)
+            .expect("learning state persisted");
+        assert_eq!(state.total_verifications, 3);
+        assert!(state.total_false_positives > 0);
+        assert!(
+            db_path.exists(),
+            "learning db must be created when configured"
+        );
     }
 }

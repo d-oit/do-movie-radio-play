@@ -132,9 +132,8 @@ impl Orchestrator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::{healthy_report, suspicious_report};
     use crate::{Action, PipelineContext, WorldState};
-    use movie_radio_types::TimelineOutput;
-    use movie_radio_verification::{AppliedThresholds, VerificationReport};
 
     #[derive(Debug, Default)]
     struct FailingAction;
@@ -183,35 +182,6 @@ mod tests {
         }
         async fn execute(&self, _ctx: &mut PipelineContext) -> Result<()> {
             Ok(())
-        }
-    }
-
-    fn suspicious_report() -> VerificationReport {
-        VerificationReport {
-            verified_timeline: TimelineOutput {
-                file: "movie.mkv".to_string(),
-                analysis_sample_rate: 16_000,
-                frame_ms: 20,
-                segments: Vec::new(),
-            },
-            segment_results: Vec::new(),
-            segment_fingerprints: Vec::new(),
-            summary: movie_radio_verification::verification::VerificationSummary {
-                total_segments: 2,
-                verified_count: 0,
-                suspicious_count: 2,
-                rejected_count: 0,
-                false_positive_rate: 1.0,
-                average_confidence: 0.9,
-                thresholds_applied: AppliedThresholds {
-                    entropy_min: 3.5,
-                    entropy_max: 7.0,
-                    flatness_max: 0.45,
-                    energy_min: 0.001,
-                    centroid_min: 100.0,
-                    centroid_max: 6000.0,
-                },
-            },
         }
     }
 
@@ -283,13 +253,11 @@ mod tests {
             1.0
         }
         async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
-            let mut report = suspicious_report();
-            if !self.suspicious {
-                report.summary.suspicious_count = 1;
-                report.summary.verified_count = 5;
-                report.summary.total_segments = 6;
-                report.summary.false_positive_rate = 1.0 / 6.0;
-            }
+            let report = if self.suspicious {
+                suspicious_report(2)
+            } else {
+                healthy_report()
+            };
             ctx.verification = Some(report);
             Ok(())
         }

@@ -112,23 +112,19 @@ pub fn analyze_audio_features(samples: &[f32]) -> anyhow::Result<SpectralFeature
     })
 }
 
-/// Single-pass computation of RMS and ZCR to minimize buffer iteration overhead.
+/// Single-pass computation of RMS and ZCR optimized for SIMD auto-vectorization.
 fn compute_rms_and_zcr(samples: &[f32]) -> (f32, f32) {
     if samples.is_empty() {
         return (0.0, 0.0);
     }
-    let mut sum_squares = samples[0] * samples[0];
-    let mut crossings = 0usize;
-    let mut prev_sign = samples[0] >= 0.0;
 
-    for &s in &samples[1..] {
-        sum_squares += s * s;
-        let sign = s >= 0.0;
-        if sign != prev_sign {
-            crossings += 1;
-            prev_sign = sign;
-        }
-    }
+    // Optimization: Compute sum of squares via SIMD auto-vectorizable map/sum.
+    let sum_squares: f32 = samples.iter().map(|&s| s * s).sum();
+
+    // Optimization: Compute zero crossings via branchless window comparison across adjacent samples.
+    let crossings = samples.windows(2).fold(0usize, |acc, w| {
+        acc + (((w[0] >= 0.0) != (w[1] >= 0.0)) as usize)
+    });
 
     let rms = (sum_squares / samples.len() as f32).sqrt();
     let zcr = if samples.len() > 1 {

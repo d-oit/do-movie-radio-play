@@ -9,7 +9,7 @@ use super::http::ModelParams;
 use super::wav::decode_and_resample_wav;
 use super::AudioOutput;
 use crate::config::AudioCppConfig;
-use crate::voice::SynthesisRequest;
+use crate::voice::{is_valid_voice_id, SynthesisRequest, SynthesisValidationError};
 
 pub(crate) async fn synthesize_local_cli(
     config: &AudioCppConfig,
@@ -39,8 +39,15 @@ pub(crate) async fn synthesize_local_cli(
     cmd.arg("--backend").arg(params.backend);
     cmd.arg("--family").arg(params.family);
 
-    if let Some(ref v_id) = request.voice_id {
-        cmd.arg("--voice").arg(v_id);
+    let effective_voice = request
+        .voice_id
+        .as_deref()
+        .unwrap_or_else(|| config.voice_id.as_deref().unwrap_or(""));
+    if !effective_voice.is_empty() {
+        if !is_valid_voice_id(effective_voice) {
+            return Err(SynthesisValidationError::InvalidVoiceId.into());
+        }
+        cmd.arg("--voice").arg(effective_voice);
     }
     if let Some(ref v_ref) = config.voice_ref {
         cmd.arg("--voice-ref").arg(v_ref);
@@ -83,4 +90,33 @@ pub(crate) async fn synthesize_local_cli(
     let _ = tokio::fs::remove_file(&output_path).await;
 
     decode_and_resample_wav(&wav_bytes, request.sample_rate_hz)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_cli_rejects_invalid_voice_id() {
+        let config = AudioCppConfig::default();
+        let request = SynthesisRequest {
+            voice_id: Some("../admin/path".to_string()),
+            ..SynthesisRequest::default()
+        };
+        let params = ModelParams {
+            family: "bark",
+            model: "bark-small",
+            backend: "cpu",
+            default_language: "de",
+        };
+
+        let res = synthesize_local_cli(&config, &request, &params, Duration::from_secs(5)).await;
+
+        assert!(res.is_err());
+        let err = res.err().unwrap();
+        assert_eq!(
+            err.downcast::<SynthesisValidationError>().unwrap(),
+            SynthesisValidationError::InvalidVoiceId
+        );
+    }
 }

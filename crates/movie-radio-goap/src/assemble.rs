@@ -87,7 +87,7 @@ impl RadioPlayAssembler {
             reverb: None,
             agc_attack: 0.01,
             agc_release: 0.1,
-            agc_max_gain: 20.0,
+            agc_max_gain: 1.0,
         };
 
         let track_sfx = TrackInput {

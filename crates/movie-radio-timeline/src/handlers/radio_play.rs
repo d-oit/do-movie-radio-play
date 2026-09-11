@@ -256,14 +256,16 @@ fn render_sfx_segments(
         }
         let duration_secs =
             ((seg.end_ms.saturating_sub(seg.start_ms)) as f32 / 1000.0).clamp(0.0, 300.0);
-        if let Ok(Some(samples)) =
-            runtime.block_on(sfx_mgr.render_trigger(trigger, sample_rate, Some(duration_secs)))
-        {
-            let start_sample = (seg.start_ms as f64 * sample_rate as f64 / 1000.0) as usize;
-            sfx_segments.push(SfxSegment {
-                start_sample,
-                samples,
-            });
+        match runtime.block_on(sfx_mgr.render_trigger(trigger, sample_rate, Some(duration_secs))) {
+            Ok(Some(samples)) => {
+                let start_sample = (seg.start_ms as f64 * sample_rate as f64 / 1000.0) as usize;
+                sfx_segments.push(SfxSegment {
+                    start_sample,
+                    samples,
+                });
+            }
+            Ok(None) => {}
+            Err(e) => tracing::warn!(error = %e, "Failed to render SFX for trigger, skipping"),
         }
     }
 

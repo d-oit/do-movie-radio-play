@@ -300,7 +300,7 @@ impl Action for AssembleRadioPlay {
         use crate::assemble::{RadioPlayAssembler, SfxSegment};
         use movie_radio_pipeline::pipeline::sfx_autofill::autofill_silent_scene_sfx;
         use movie_radio_render::sfx::SfxManager;
-        use movie_radio_types::{SfxTrigger, SoundEffectsConfig};
+        use movie_radio_types::SfxTrigger;
 
         let original = ctx
             .original_audio
@@ -315,7 +315,8 @@ impl Action for AssembleRadioPlay {
         let mut sfx_segments = Vec::new();
         if let Some(ref mut timeline) = ctx.timeline {
             autofill_silent_scene_sfx(timeline);
-            if let Ok(sfx_mgr) = SfxManager::from_config(&SoundEffectsConfig::default()) {
+            let sfx_cfg = ctx.config.sound_effects.clone().unwrap_or_default();
+            if let Ok(sfx_mgr) = SfxManager::from_config(&sfx_cfg) {
                 for seg in &timeline.segments {
                     if let Some(ref trigger) = seg.sfx_trigger {
                         if *trigger != SfxTrigger::None {
@@ -325,8 +326,9 @@ impl Action for AssembleRadioPlay {
                                 .render_trigger(trigger, ctx.sample_rate, Some(duration_secs))
                                 .await
                             {
-                                let start_sample =
-                                    (seg.start_ms as f64 * ctx.sample_rate as f64 / 1000.0) as usize;
+                                let start_sample = (seg.start_ms as f64 * ctx.sample_rate as f64
+                                    / 1000.0)
+                                    as usize;
                                 sfx_segments.push(SfxSegment {
                                     start_sample,
                                     samples,

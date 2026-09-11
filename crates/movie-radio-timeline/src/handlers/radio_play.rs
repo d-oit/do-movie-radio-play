@@ -226,8 +226,7 @@ fn run_full_pipeline(
     }
 
     let assembler = RadioPlayAssembler::new(sample_rate, 50, 0.3);
-    let radio_play =
-        assembler.assemble_with_sfx(&original, &narration_segments, &sfx_segments)?;
+    let radio_play = assembler.assemble_with_sfx(&original, &narration_segments, &sfx_segments)?;
 
     let wav_path = output_path.with_extension("tmp.wav");
     write_wav(&wav_path, &radio_play, sample_rate)?;

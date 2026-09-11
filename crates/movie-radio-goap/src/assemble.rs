@@ -69,9 +69,10 @@ impl RadioPlayAssembler {
         let mut sfx_track = vec![0.0f32; total_len];
         for seg in sfx_segments {
             for (i, &s) in seg.samples.iter().enumerate() {
-                let pos = seg.start_sample + i;
-                if pos < total_len {
-                    sfx_track[pos] += s;
+                if let Some(pos) = seg.start_sample.checked_add(i) {
+                    if pos < total_len {
+                        sfx_track[pos] += s;
+                    }
                 }
             }
         }
@@ -103,8 +104,10 @@ impl RadioPlayAssembler {
         let stereo = mixer.render_mix(vec![track_main, track_sfx])?;
 
         let mono: Vec<f32> = stereo
-            .chunks_exact(2)
-            .map(|chunk| (chunk[0] + chunk[1]) * 0.5)
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|[l, r]| (l + r) * 0.5)
             .collect();
 
         Ok(mono)

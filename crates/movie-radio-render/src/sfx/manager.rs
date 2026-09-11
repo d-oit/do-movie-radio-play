@@ -154,7 +154,8 @@ impl SfxManager {
 
         match self.fetch_best(&query).await {
             Ok((_cand, bytes)) => {
-                let samples = Self::decode_and_mix_params(&bytes, sample_rate, duration_secs)?;
+                let samples =
+                    Self::decode_and_mix_params(&bytes, sample_rate, query.duration_secs)?;
                 Ok(Some(samples))
             }
             Err(e) => {

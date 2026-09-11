@@ -81,6 +81,9 @@ pub(crate) async fn synthesize_http_endpoint(
         return Err(SynthesisValidationError::InvalidVoiceId.into());
     }
     let voice_ref = config.voice_ref.as_deref().unwrap_or("");
+    if !voice_ref.is_empty() && !is_valid_voice_id(voice_ref) {
+        return Err(SynthesisValidationError::InvalidVoiceId.into());
+    }
 
     let payload = serde_json::json!({
         "model": params.model,
@@ -318,6 +321,25 @@ mod tests {
         let err = res.err().unwrap();
         assert_eq!(
             err.downcast::<SynthesisValidationError>().unwrap(),
+            SynthesisValidationError::InvalidVoiceId
+        );
+
+        let config_ref = AudioCppConfig {
+            voice_ref: Some("../invalid_voice_ref".to_string()),
+            ..AudioCppConfig::default()
+        };
+        let res_ref = synthesize_http_endpoint(
+            &client,
+            &config_ref,
+            "http://127.0.0.1:8080",
+            None,
+            &request,
+            &params,
+        )
+        .await;
+        assert!(res_ref.is_err());
+        assert_eq!(
+            res_ref.err().unwrap().downcast::<SynthesisValidationError>().unwrap(),
             SynthesisValidationError::InvalidVoiceId
         );
     }

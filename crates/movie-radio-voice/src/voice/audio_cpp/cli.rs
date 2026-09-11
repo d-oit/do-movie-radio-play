@@ -50,6 +50,9 @@ pub(crate) async fn synthesize_local_cli(
         cmd.arg("--voice").arg(effective_voice);
     }
     if let Some(ref v_ref) = config.voice_ref {
+        if !v_ref.is_empty() && !is_valid_voice_id(v_ref) {
+            return Err(SynthesisValidationError::InvalidVoiceId.into());
+        }
         cmd.arg("--voice-ref").arg(v_ref);
     }
 
@@ -116,6 +119,18 @@ mod tests {
         let err = res.err().unwrap();
         assert_eq!(
             err.downcast::<SynthesisValidationError>().unwrap(),
+            SynthesisValidationError::InvalidVoiceId
+        );
+
+        let config_ref = AudioCppConfig {
+            voice_ref: Some("../invalid_voice_ref".to_string()),
+            ..AudioCppConfig::default()
+        };
+        let req_valid = SynthesisRequest::default();
+        let res_ref = synthesize_local_cli(&config_ref, &req_valid, &params, Duration::from_secs(5)).await;
+        assert!(res_ref.is_err());
+        assert_eq!(
+            res_ref.err().unwrap().downcast::<SynthesisValidationError>().unwrap(),
             SynthesisValidationError::InvalidVoiceId
         );
     }

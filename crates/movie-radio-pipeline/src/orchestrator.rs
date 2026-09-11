@@ -167,23 +167,61 @@ fn execute_stage(
     let analysis_cfg = AnalysisConfig::default();
     info!(stage, "Executing stage");
     let artifact = match stage {
-        "ExtractAudio" => Some(stage_extract_audio(input, out_dir, analysis_cfg.sample_rate_hz)?),
-        "SceneDetect" => Some(write_stage_json(out_dir.join("scenes.json"), &serde_json::json!({ "scenes": [] }))?),
+        "ExtractAudio" => Some(stage_extract_audio(
+            input,
+            out_dir,
+            analysis_cfg.sample_rate_hz,
+        )?),
+        "SceneDetect" => Some(write_stage_json(
+            out_dir.join("scenes.json"),
+            &serde_json::json!({ "scenes": [] }),
+        )?),
         "VoiceActivityDetect" => {
             let vad_path = out_dir.join("timeline.json");
             let timeline = extract_timeline(input, &analysis_cfg)?;
             fs::write(&vad_path, serde_json::to_string_pretty(&timeline)?)?;
             Some(vad_path)
         }
-        "Transcribe" => Some(write_stage_json(out_dir.join("transcription.json"), &serde_json::json!({ "transcripts": [] }))?),
-        "CharacterAssign" => Some(write_stage_json(out_dir.join("characters.json"), &serde_json::json!({ "characters": [] }))?),
-        "VoiceSynthesize" => Some(write_stage_json(out_dir.join("voices.json"), &serde_json::json!({ "synthesized": [] }))?),
-        "NarratorGenerate" => Some(write_stage_json(out_dir.join("narration_scripts.json"), &serde_json::json!({ "scripts": [] }))?),
-        "NarratorSynthesize" => Some(write_stage_json(out_dir.join("narrator_audio.json"), &serde_json::json!({ "audio_segments": [] }))?),
-        "SfxSelect" => Some(write_stage_json(out_dir.join("sfx_selections.json"), &serde_json::json!({ "sfx": [] }))?),
-        "SfxFetch" => Some(write_stage_json(out_dir.join("sfx_fetched.json"), &serde_json::json!({ "files": [] }))?),
-        "AudioMix" => Some(stage_audio_mix(input, checkpoint, out_dir, analysis_cfg.sample_rate_hz)?),
-        "Export" => Some(stage_export(input, checkpoint, out_dir, analysis_cfg.sample_rate_hz)?),
+        "Transcribe" => Some(write_stage_json(
+            out_dir.join("transcription.json"),
+            &serde_json::json!({ "transcripts": [] }),
+        )?),
+        "CharacterAssign" => Some(write_stage_json(
+            out_dir.join("characters.json"),
+            &serde_json::json!({ "characters": [] }),
+        )?),
+        "VoiceSynthesize" => Some(write_stage_json(
+            out_dir.join("voices.json"),
+            &serde_json::json!({ "synthesized": [] }),
+        )?),
+        "NarratorGenerate" => Some(write_stage_json(
+            out_dir.join("narration_scripts.json"),
+            &serde_json::json!({ "scripts": [] }),
+        )?),
+        "NarratorSynthesize" => Some(write_stage_json(
+            out_dir.join("narrator_audio.json"),
+            &serde_json::json!({ "audio_segments": [] }),
+        )?),
+        "SfxSelect" => Some(write_stage_json(
+            out_dir.join("sfx_selections.json"),
+            &serde_json::json!({ "sfx": [] }),
+        )?),
+        "SfxFetch" => Some(write_stage_json(
+            out_dir.join("sfx_fetched.json"),
+            &serde_json::json!({ "files": [] }),
+        )?),
+        "AudioMix" => Some(stage_audio_mix(
+            input,
+            checkpoint,
+            out_dir,
+            analysis_cfg.sample_rate_hz,
+        )?),
+        "Export" => Some(stage_export(
+            input,
+            checkpoint,
+            out_dir,
+            analysis_cfg.sample_rate_hz,
+        )?),
         _ => bail!("Unknown stage: {stage}"),
     };
 

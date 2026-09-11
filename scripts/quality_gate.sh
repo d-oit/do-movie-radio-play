@@ -84,7 +84,7 @@ printf "\n"
 # 3. MSRV AUDIT
 # ============================================================
 info "Auditing MSRV compliance..."
-if [[ -f "./scripts/audit-msrv.sh" ]]; then
+if [ -f "./scripts/audit-msrv.sh" ]; then
   if ! OUTPUT=$(./scripts/audit-msrv.sh 2>&1); then
     fail "MSRV audit failed"
     printf "%s\n" "$OUTPUT" >&2
@@ -271,10 +271,12 @@ parse_to_ms() {
   local unit2
   unit2=$(echo "$line" | sed -E 's/.*\[[^ ]+ [^ ]+ ([0-9.]+) ([^ ]+) .*/\2/')
 
-  if [[ ! "$num2" =~ ^[0-9.]+$ ]]; then
-    echo ""
-    return
-  fi
+  case "$num2" in
+    *[!0-9.]*|"")
+      echo ""
+      return
+      ;;
+  esac
 
   case "$unit2" in
     ms)

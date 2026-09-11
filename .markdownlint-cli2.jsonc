@@ -10,5 +10,5 @@
     "MD032": false,
     "MD058": false
   },
-  "ignores": ["target/**", "node_modules/**", ".agents/**", ".mimocode/**", "plans/**", "analysis/**"]
+  "ignores": ["target/**", "node_modules/**", ".agents/**", ".claude/**", ".qwen/**", ".mimocode/**", "plans/**", "analysis/**"]
 }

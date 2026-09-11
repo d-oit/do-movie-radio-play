@@ -142,7 +142,5 @@ Command succeeds only when:
 
 ## See Also
 
-- `.opencode/commands/commit.md` - Basic commit guidelines
-- `.github/PULL_REQUEST_TEMPLATE.md` - PR template
+- `AGENTS.md` - Agent rules and workflows
 - `references/IMPLEMENTATION.md` - Technical details
-# Test change

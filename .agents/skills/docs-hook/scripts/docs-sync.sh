@@ -1,17 +1,17 @@
 #!/bin/bash
-# Docs Sync Script - Minimal token synchronization for agents-docs
-# Usage: ./scripts/docs-sync.sh <from-ref> <to-ref>
-# Example: ./scripts/docs-sync.sh HEAD~1 HEAD
+# Docs Sync Script - Minimal token synchronization for documentation
+# Usage: ./.agents/skills/docs-hook/scripts/docs-sync.sh <from-ref> <to-ref>
+# Example: ./.agents/skills/docs-hook/scripts/docs-sync.sh HEAD~1 HEAD
 
 set -euo pipefail
 
 # Get repository root for portable paths
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 
 # Configuration
-DOCS_DIR="${DOCS_DIR:-$REPO_ROOT/agents-docs}"
+DOCS_DIR="${DOCS_DIR:-$REPO_ROOT/analysis/docs}"
 SKILLS_DIR="${SKILLS_DIR:-$REPO_ROOT/.agents/skills}"
-AGENTS_DIR="${AGENTS_DIR:-$REPO_ROOT/agents-docs}"
+AGENTS_DIR="${AGENTS_DIR:-$REPO_ROOT/analysis/docs}"
 
 # Colors for output (disable if not terminal)
 if [ -t 1 ]; then
@@ -72,6 +72,20 @@ echo "$CHANGED_FILES" | while read -r file; do
         continue
     fi
     
+    # Skip files already in docs target directory
+    if [[ "$file" == "$REPO_ROOT/analysis/docs"* ]] || [[ "$file" == analysis/docs/* ]]; then
+        log_info "Already in docs dir, skipping: $file"
+        ((SKIPPED++)) || true
+        continue
+    fi
+
+    if [[ "$file" == README.md ]]; then
+        # Project README - keep at root
+        log_info "Skipping README.md (stays at root)"
+        ((SKIPPED++)) || true
+        continue
+    fi
+
     # Determine target directory based on file type
     target_dir=""
     
@@ -85,19 +99,6 @@ echo "$CHANGED_FILES" | while read -r file; do
         # Generic skill file
         target_dir="${AGENTS_DIR}/skills"
         log_info "Syncing generic skill doc: $(basename "$file")"
-        
-    if [[ "$file" == "$REPO_ROOT/agents-docs"* ]] || [[ "$file" == agents-docs/* ]]; then
-        # Already in docs, skip
-        log_info "Already in docs dir, skipping: $file"
-        ((SKIPPED++)) || true
-        continue
-    fi
-        
-    elif [[ "$file" == README.md ]]; then
-        # Project README - keep at root
-        log_info "Skipping README.md (stays at root)"
-        ((SKIPPED++)) || true
-        continue
         
     else
         # Other documentation
@@ -121,6 +122,7 @@ if echo "$CHANGED_FILES" | grep -q '.agents/skills/'; then
     
     # Generate simple index
     INDEX_FILE="${AGENTS_DIR}/SKILL_INDEX.md"
+    mkdir -p "${AGENTS_DIR}"
     {
         echo "# Skill Index"
         echo ""
@@ -148,7 +150,7 @@ log_info "========================================"
 
 # Git status if in a repo
 if git rev-parse --git-dir > /dev/null 2>&1; then
-    if [ -n "$(git status --porcelain "$AGENTS_DIR" 2>/dev/null)" ]; then
+    if [ -d "$AGENTS_DIR" ] && [ -n "$(git status --porcelain "$AGENTS_DIR" 2>/dev/null)" ]; then
         log_info "Uncommitted changes in ${AGENTS_DIR}:"
         git status --short "$AGENTS_DIR"
     fi

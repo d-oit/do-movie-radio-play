@@ -11,7 +11,7 @@ Ultra-lightweight documentation sync via git hooks.
 
 - You need docs updates to happen automatically on commit/merge.
 - You want low-overhead markdown synchronization with minimal token usage.
-- You are keeping `agents-docs/` aligned with recently changed docs files.
+- You are keeping `analysis/docs/` aligned with recently changed docs files.
 
 ## Trigger
 
@@ -23,7 +23,7 @@ Ultra-lightweight documentation sync via git hooks.
 
 ```bash
 # After any commit that modifies .md files:
-./scripts/docs-sync.sh HEAD~1 HEAD
+./.agents/skills/docs-hook/scripts/docs-sync.sh HEAD~1 HEAD
 ```
 
 Or add to `.git/hooks/post-commit`:
@@ -40,4 +40,4 @@ Or add to `.git/hooks/post-commit`:
 
 ## Working Script
 
-See `scripts/docs-sync.sh` - the actual executable.
+See `scripts/docs-sync.sh` (or `.agents/skills/docs-hook/scripts/docs-sync.sh`) - the actual executable.

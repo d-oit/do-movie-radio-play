@@ -197,13 +197,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg libasound2-dev
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@cb407c4fe87966b0b9d1f7350974e80c133dd4bb # cargo-llvm-cov
       - run: bash scripts/fetch_test_assets.sh
       - run: cargo run --quiet -p movie-radio-timeline -- gen-fixtures --output-dir testdata/generated
       - name: Generate code coverage report
         run: cargo llvm-cov --workspace --all-targets --lcov --output-path lcov.info
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info

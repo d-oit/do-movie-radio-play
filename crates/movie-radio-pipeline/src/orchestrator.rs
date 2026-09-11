@@ -271,8 +271,7 @@ pub fn handle_produce(
 
     let out_dir = if let Some(ref r) = resume {
         r.parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|| PathBuf::from("."))
+            .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
     } else {
         input
             .parent()
@@ -337,7 +336,7 @@ mod tests {
 
     #[test]
     fn real_run_executes_all_stages_and_creates_artifacts() {
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().expect("create tempdir");
         let wav_path = temp_dir.path().join("input.wav");
         let spec = WavSpec {
             channels: 1,
@@ -345,11 +344,11 @@ mod tests {
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,
         };
-        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        let mut writer = WavWriter::create(&wav_path, spec).expect("create wav writer");
         for _ in 0..16000 {
-            writer.write_sample(0i16).unwrap();
+            writer.write_sample(0i16).expect("write sample");
         }
-        writer.finalize().unwrap();
+        writer.finalize().expect("finalize wav");
 
         let cfg = AppConfig::default();
         assert!(handle_produce(wav_path.clone(), None, false, &cfg).is_ok());
@@ -358,7 +357,7 @@ mod tests {
         let ckpt_path = produce_dir.join("checkpoint.json");
         assert!(ckpt_path.exists());
 
-        let ckpt = ProduceCheckpoint::load(&ckpt_path).unwrap();
+        let ckpt = ProduceCheckpoint::load(&ckpt_path).expect("load checkpoint");
         for stage in STAGES {
             assert!(
                 ckpt.is_stage_completed(stage),
@@ -369,7 +368,7 @@ mod tests {
 
     #[test]
     fn resume_skips_completed_stages() {
-        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir = tempfile::tempdir().expect("create tempdir");
         let wav_path = temp_dir.path().join("input.wav");
         let spec = WavSpec {
             channels: 1,
@@ -377,14 +376,14 @@ mod tests {
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,
         };
-        let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+        let mut writer = WavWriter::create(&wav_path, spec).expect("create wav writer");
         for _ in 0..16000 {
-            writer.write_sample(0i16).unwrap();
+            writer.write_sample(0i16).expect("write sample");
         }
-        writer.finalize().unwrap();
+        writer.finalize().expect("finalize wav");
 
         let produce_dir = temp_dir.path().join("produce_input");
-        fs::create_dir_all(&produce_dir).unwrap();
+        fs::create_dir_all(&produce_dir).expect("create produce dir");
         let ckpt_path = produce_dir.join("checkpoint.json");
 
         let mut ckpt = ProduceCheckpoint {
@@ -392,13 +391,13 @@ mod tests {
             ..Default::default()
         };
         ckpt.mark_completed("ExtractAudio", Some(produce_dir.join("extracted.wav")));
-        ckpt.save(&ckpt_path).unwrap();
+        ckpt.save(&ckpt_path).expect("save checkpoint");
 
         let cfg = AppConfig::default();
         let res = handle_produce(wav_path.clone(), Some(ckpt_path.clone()), false, &cfg);
         assert!(res.is_ok(), "expected Ok, got: {:?}", res);
 
-        let loaded_ckpt = ProduceCheckpoint::load(&ckpt_path).unwrap();
+        let loaded_ckpt = ProduceCheckpoint::load(&ckpt_path).expect("load checkpoint");
         for stage in STAGES {
             assert!(loaded_ckpt.is_stage_completed(stage));
         }

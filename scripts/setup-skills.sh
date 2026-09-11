@@ -23,9 +23,11 @@ for d in "$SKILLS_DIR"/*; do
   name="$(basename "$d")"
 
   # Skip hidden or backup directories
-  if [[ "$name" == _* || "$name" == .* ]]; then
-    continue
-  fi
+  case "$name" in
+    _*|.*)
+      continue
+      ;;
+  esac
 
   skill_file="$d/SKILL.md"
 

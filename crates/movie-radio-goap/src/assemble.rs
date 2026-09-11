@@ -33,7 +33,24 @@ impl RadioPlayAssembler {
     }
 
     pub fn assemble(&self, original: &[f32], narrations: &[NarrationSegment]) -> Result<Vec<f32>> {
-        self.assemble_with_sfx(original, narrations, &[])
+        if narrations.is_empty() {
+            return Ok(original.to_vec());
+        }
+
+        self.validate_no_overlaps(narrations)?;
+        let mut output = original.to_vec();
+        let total_len = output.len();
+        for narration in narrations {
+            let start = narration.start_sample.min(total_len);
+            let end = narration.end_sample.min(total_len);
+            let narr_len = end.saturating_sub(start);
+            if narr_len == 0 {
+                continue;
+            }
+            let narr_samples = &narration.samples[..narr_len.min(narration.samples.len())];
+            self.apply_crossfade_duck(&mut output, start, end, narr_samples);
+        }
+        Ok(output)
     }
 
     pub fn assemble_with_sfx(
@@ -42,28 +59,20 @@ impl RadioPlayAssembler {
         narrations: &[NarrationSegment],
         sfx_segments: &[SfxSegment],
     ) -> Result<Vec<f32>> {
-        let narr_ducked = if narrations.is_empty() {
-            original.to_vec()
-        } else {
-            self.validate_no_overlaps(narrations)?;
-            let mut output = original.to_vec();
-            let total_len = output.len();
-            for narration in narrations {
-                let start = narration.start_sample.min(total_len);
-                let end = narration.end_sample.min(total_len);
-                let narr_len = end.saturating_sub(start);
-                if narr_len == 0 {
-                    continue;
-                }
-                let narr_samples = &narration.samples[..narr_len.min(narration.samples.len())];
-                self.apply_crossfade_duck(&mut output, start, end, narr_samples);
-            }
-            output
-        };
-
+        let narr_ducked = self.assemble(original, narrations)?;
         if sfx_segments.is_empty() {
             return Ok(narr_ducked);
         }
+        self.mix_sfx_track(narr_ducked, sfx_segments)
+    }
+
+    fn mix_sfx_track(
+        &self,
+        narr_ducked: Vec<f32>,
+        sfx_segments: &[SfxSegment],
+    ) -> Result<Vec<f32>> {
+        use movie_radio_render::mixer::{Mixer, TrackInput};
+        use movie_radio_render::spatial::StereoPosition;
 
         let total_len = narr_ducked.len();
         let mut sfx_track = vec![0.0f32; total_len];
@@ -76,9 +85,6 @@ impl RadioPlayAssembler {
                 }
             }
         }
-
-        use movie_radio_render::mixer::{Mixer, TrackInput};
-        use movie_radio_render::spatial::StereoPosition;
 
         let track_main = TrackInput {
             samples: narr_ducked,

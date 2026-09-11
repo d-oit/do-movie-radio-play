@@ -90,20 +90,21 @@ impl SfxManager {
 
     pub fn from_config(config: &SoundEffectsConfig) -> Result<Self> {
         let mut backends: Vec<Box<dyn SoundEffectBackend>> = Vec::new();
+        if !config.enabled {
+            return Ok(Self { backends });
+        }
 
-        if config.enabled {
-            if let Ok(local) = LocalSfxBackend::new(config.local.clone()) {
-                backends.push(Box::new(local));
+        if let Ok(local) = LocalSfxBackend::new(config.local.clone()) {
+            backends.push(Box::new(local));
+        }
+        if config.freesound.enabled {
+            if let Ok(freesound) = FreesoundBackend::new(config.freesound.clone()) {
+                backends.push(Box::new(freesound));
             }
-            if config.freesound.enabled {
-                if let Ok(freesound) = FreesoundBackend::new(config.freesound.clone()) {
-                    backends.push(Box::new(freesound));
-                }
-            }
-            if config.ai_generate.enabled {
-                if let Ok(ai) = AiGenerateSfxBackend::new(config.ai_generate.clone()) {
-                    backends.push(Box::new(ai));
-                }
+        }
+        if config.ai_generate.enabled {
+            if let Ok(ai) = AiGenerateSfxBackend::new(config.ai_generate.clone()) {
+                backends.push(Box::new(ai));
             }
         }
 
@@ -116,36 +117,8 @@ impl SfxManager {
         sample_rate: u32,
         duration_secs: Option<f32>,
     ) -> Result<Option<Vec<f32>>> {
-        let query = match trigger {
-            SfxTrigger::None => return Ok(None),
-            SfxTrigger::AutoSelect { tags, mood } => SfxQuery {
-                tags: tags.clone(),
-                mood: mood.clone(),
-                duration_secs,
-                prompt: None,
-            },
-            SfxTrigger::Specific { sfx_id } => SfxQuery {
-                tags: vec![sfx_id.clone()],
-                mood: None,
-                duration_secs,
-                prompt: Some(sfx_id.clone()),
-            },
-            SfxTrigger::AiGenerate {
-                prompt,
-                duration_secs: dur,
-            } => {
-                let d = if *dur > 0.0 {
-                    Some(*dur)
-                } else {
-                    duration_secs
-                };
-                SfxQuery {
-                    tags: Vec::new(),
-                    mood: None,
-                    duration_secs: d,
-                    prompt: Some(prompt.clone()),
-                }
-            }
+        let Some(query) = trigger_to_query(trigger, duration_secs) else {
+            return Ok(None);
         };
 
         if self.backends.is_empty() {
@@ -162,6 +135,40 @@ impl SfxManager {
                 tracing::warn!("Failed to fetch SFX for trigger {:?}: {e}", trigger);
                 Ok(None)
             }
+        }
+    }
+}
+
+fn trigger_to_query(trigger: &SfxTrigger, duration_secs: Option<f32>) -> Option<SfxQuery> {
+    match trigger {
+        SfxTrigger::None => None,
+        SfxTrigger::AutoSelect { tags, mood } => Some(SfxQuery {
+            tags: tags.clone(),
+            mood: mood.clone(),
+            duration_secs,
+            prompt: None,
+        }),
+        SfxTrigger::Specific { sfx_id } => Some(SfxQuery {
+            tags: vec![sfx_id.clone()],
+            mood: None,
+            duration_secs,
+            prompt: Some(sfx_id.clone()),
+        }),
+        SfxTrigger::AiGenerate {
+            prompt,
+            duration_secs: dur,
+        } => {
+            let d = if *dur > 0.0 {
+                Some(*dur)
+            } else {
+                duration_secs
+            };
+            Some(SfxQuery {
+                tags: Vec::new(),
+                mood: None,
+                duration_secs: d,
+                prompt: Some(prompt.clone()),
+            })
         }
     }
 }

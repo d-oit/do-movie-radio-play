@@ -113,7 +113,7 @@ impl RadioPlayAssembler {
             .as_chunks::<2>()
             .0
             .iter()
-            .map(|[l, r]| (l + r) * 0.5)
+            .map(|[l, r]| (l + r) * 0.5 * std::f32::consts::SQRT_2)
             .collect();
 
         Ok(mono)

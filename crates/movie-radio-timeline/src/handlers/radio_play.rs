@@ -84,29 +84,31 @@ fn run_full_pipeline(
     let gap_analysis = identifier.identify_gaps(&timeline, srt_ref)?; // skipcq: RS-E1015
     info!(gaps = gap_analysis.gaps.len(), "Identified visual gaps");
 
-    if gap_analysis.gaps.is_empty() {
-        info!("No gaps found — copying original audio as radio play");
-        return save_original_as_radio_play(&movie, cfg.sample_rate_hz, &output_path);
-    }
+    let scripts = if gap_analysis.gaps.is_empty() {
+        info!("No gaps found — skipping narration generation");
+        Vec::new()
+    } else {
+        let generator = NarrationGenerator::default();
+        let s = generator.generate(&timeline, &gap_analysis.gaps)?;
+        info!(scripts = s.len(), "Generated narration scripts");
+        s
+    };
 
-    let generator = NarrationGenerator::default();
-    let scripts = generator.generate(&timeline, &gap_analysis.gaps)?;
-    info!(scripts = scripts.len(), "Generated narration scripts");
-
-    if scripts.is_empty() {
-        info!("No narration scripts — copying original audio as radio play");
-        return save_original_as_radio_play(&movie, cfg.sample_rate_hz, &output_path);
-    }
-
-    let orchestrator = SynthesisOrchestrator::new(build_default_voice_config());
     let sample_rate = cfg.sample_rate_hz;
     let runtime = tokio::runtime::Runtime::new()?;
 
-    let narration_segments = synthesize_narrations(&scripts, &orchestrator, &runtime, sample_rate);
+    let narration_segments = if scripts.is_empty() {
+        Vec::new()
+    } else {
+        let orchestrator = SynthesisOrchestrator::new(build_default_voice_config());
+        synthesize_narrations(&scripts, &orchestrator, &runtime, sample_rate)
+    };
+
     let sfx_segments = render_sfx_segments(&timeline, &runtime, sample_rate);
 
     info!(
         segments = narration_segments.len(),
+        sfx_count = sfx_segments.len(),
         "Loading original audio for assembly"
     );
     let (original, _) = decode_audio(&movie, sample_rate)?;
@@ -136,15 +138,6 @@ fn resolve_timeline(
         info!("Extracting timeline from movie");
         extract_timeline(movie, cfg)
     }
-}
-
-fn save_original_as_radio_play(
-    movie: &std::path::Path,
-    sample_rate: u32,
-    output_path: &std::path::Path,
-) -> Result<()> {
-    let (samples, _) = decode_audio(movie, sample_rate)?;
-    write_and_encode_output(&samples, sample_rate, output_path)
 }
 
 fn write_and_encode_output(
@@ -245,7 +238,10 @@ fn render_sfx_segments(
     runtime: &tokio::runtime::Runtime,
     sample_rate: u32,
 ) -> Vec<SfxSegment> {
-    let sfx_config = SoundEffectsConfig::default();
+    let sfx_config = SoundEffectsConfig {
+        enabled: true,
+        ..Default::default()
+    };
     let mut sfx_segments = Vec::new();
     let Ok(sfx_mgr) = SfxManager::from_config(&sfx_config) else {
         return sfx_segments;
@@ -258,7 +254,8 @@ fn render_sfx_segments(
         if *trigger == SfxTrigger::None {
             continue;
         }
-        let duration_secs = (seg.end_ms.saturating_sub(seg.start_ms)) as f32 / 1000.0;
+        let duration_secs =
+            ((seg.end_ms.saturating_sub(seg.start_ms)) as f32 / 1000.0).clamp(0.0, 300.0);
         if let Ok(Some(samples)) =
             runtime.block_on(sfx_mgr.render_trigger(trigger, sample_rate, Some(duration_secs)))
         {

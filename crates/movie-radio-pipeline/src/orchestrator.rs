@@ -156,6 +156,59 @@ fn stage_export(
     Ok(path)
 }
 
+fn stage_vad(input: &Path, out_dir: &Path, analysis_cfg: &AnalysisConfig) -> Result<PathBuf> {
+    let vad_path = out_dir.join("timeline.json");
+    let timeline = extract_timeline(input, analysis_cfg)?;
+    fs::write(&vad_path, serde_json::to_string_pretty(&timeline)?)?;
+    Ok(vad_path)
+}
+
+fn dispatch_json_stage(stage: &str, out_dir: &Path) -> Result<Option<PathBuf>> {
+    let (file, key) = match stage {
+        "SceneDetect" => ("scenes.json", "scenes"),
+        "Transcribe" => ("transcription.json", "transcripts"),
+        "CharacterAssign" => ("characters.json", "characters"),
+        "VoiceSynthesize" => ("voices.json", "synthesized"),
+        "NarratorGenerate" => ("narration_scripts.json", "scripts"),
+        "NarratorSynthesize" => ("narrator_audio.json", "audio_segments"),
+        "SfxSelect" => ("sfx_selections.json", "sfx"),
+        "SfxFetch" => ("sfx_fetched.json", "files"),
+        _ => bail!("Unknown stage: {stage}"),
+    };
+    let path = write_stage_json(out_dir.join(file), &serde_json::json!({ key: [] }))?;
+    Ok(Some(path))
+}
+
+fn dispatch_stage(
+    stage: &str,
+    input: &Path,
+    checkpoint: &ProduceCheckpoint,
+    out_dir: &Path,
+    analysis_cfg: &AnalysisConfig,
+) -> Result<Option<PathBuf>> {
+    match stage {
+        "ExtractAudio" => Ok(Some(stage_extract_audio(
+            input,
+            out_dir,
+            analysis_cfg.sample_rate_hz,
+        )?)),
+        "VoiceActivityDetect" => Ok(Some(stage_vad(input, out_dir, analysis_cfg)?)),
+        "AudioMix" => Ok(Some(stage_audio_mix(
+            input,
+            checkpoint,
+            out_dir,
+            analysis_cfg.sample_rate_hz,
+        )?)),
+        "Export" => Ok(Some(stage_export(
+            input,
+            checkpoint,
+            out_dir,
+            analysis_cfg.sample_rate_hz,
+        )?)),
+        _ => dispatch_json_stage(stage, out_dir),
+    }
+}
+
 fn execute_stage(
     stage: &str,
     input: &Path,
@@ -166,64 +219,7 @@ fn execute_stage(
 ) -> Result<()> {
     let analysis_cfg = AnalysisConfig::default();
     info!(stage, "Executing stage");
-    let artifact = match stage {
-        "ExtractAudio" => Some(stage_extract_audio(
-            input,
-            out_dir,
-            analysis_cfg.sample_rate_hz,
-        )?),
-        "SceneDetect" => Some(write_stage_json(
-            out_dir.join("scenes.json"),
-            &serde_json::json!({ "scenes": [] }),
-        )?),
-        "VoiceActivityDetect" => {
-            let vad_path = out_dir.join("timeline.json");
-            let timeline = extract_timeline(input, &analysis_cfg)?;
-            fs::write(&vad_path, serde_json::to_string_pretty(&timeline)?)?;
-            Some(vad_path)
-        }
-        "Transcribe" => Some(write_stage_json(
-            out_dir.join("transcription.json"),
-            &serde_json::json!({ "transcripts": [] }),
-        )?),
-        "CharacterAssign" => Some(write_stage_json(
-            out_dir.join("characters.json"),
-            &serde_json::json!({ "characters": [] }),
-        )?),
-        "VoiceSynthesize" => Some(write_stage_json(
-            out_dir.join("voices.json"),
-            &serde_json::json!({ "synthesized": [] }),
-        )?),
-        "NarratorGenerate" => Some(write_stage_json(
-            out_dir.join("narration_scripts.json"),
-            &serde_json::json!({ "scripts": [] }),
-        )?),
-        "NarratorSynthesize" => Some(write_stage_json(
-            out_dir.join("narrator_audio.json"),
-            &serde_json::json!({ "audio_segments": [] }),
-        )?),
-        "SfxSelect" => Some(write_stage_json(
-            out_dir.join("sfx_selections.json"),
-            &serde_json::json!({ "sfx": [] }),
-        )?),
-        "SfxFetch" => Some(write_stage_json(
-            out_dir.join("sfx_fetched.json"),
-            &serde_json::json!({ "files": [] }),
-        )?),
-        "AudioMix" => Some(stage_audio_mix(
-            input,
-            checkpoint,
-            out_dir,
-            analysis_cfg.sample_rate_hz,
-        )?),
-        "Export" => Some(stage_export(
-            input,
-            checkpoint,
-            out_dir,
-            analysis_cfg.sample_rate_hz,
-        )?),
-        _ => bail!("Unknown stage: {stage}"),
-    };
+    let artifact = dispatch_stage(stage, input, checkpoint, out_dir, &analysis_cfg)?;
 
     checkpoint.mark_completed(stage, artifact);
     checkpoint.save(checkpoint_path)?;

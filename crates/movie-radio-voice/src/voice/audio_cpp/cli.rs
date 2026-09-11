@@ -127,10 +127,15 @@ mod tests {
             ..AudioCppConfig::default()
         };
         let req_valid = SynthesisRequest::default();
-        let res_ref = synthesize_local_cli(&config_ref, &req_valid, &params, Duration::from_secs(5)).await;
+        let res_ref =
+            synthesize_local_cli(&config_ref, &req_valid, &params, Duration::from_secs(5)).await;
         assert!(res_ref.is_err());
         assert_eq!(
-            res_ref.err().unwrap().downcast::<SynthesisValidationError>().unwrap(),
+            res_ref
+                .err()
+                .unwrap()
+                .downcast::<SynthesisValidationError>()
+                .unwrap(),
             SynthesisValidationError::InvalidVoiceId
         );
     }

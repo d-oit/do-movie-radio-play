@@ -339,7 +339,11 @@ mod tests {
         .await;
         assert!(res_ref.is_err());
         assert_eq!(
-            res_ref.err().unwrap().downcast::<SynthesisValidationError>().unwrap(),
+            res_ref
+                .err()
+                .unwrap()
+                .downcast::<SynthesisValidationError>()
+                .unwrap(),
             SynthesisValidationError::InvalidVoiceId
         );
     }

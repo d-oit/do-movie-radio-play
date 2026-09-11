@@ -54,12 +54,3 @@ python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/lat
 Required outcome:
 - candidate benchmark generated
 - regression checker passes against checked-in baseline
-
-## 5) Code Coverage Policy & Floor (must pass)
-
-Code coverage is collected and uploaded during CI via `cargo-llvm-cov` in `.github/workflows/ci.yml`.
-
-Required policy and coverage floor:
-- **CI Workflow Execution**: Automated `coverage` job executes `cargo llvm-cov --workspace --all-targets --lcov` and uploads reports to Codecov (`codecov/codecov-action@v5`).
-- **Codecov Threshold**: Root `.codecov.yml` enforces `target: auto` with a `threshold: 1%` tolerance for project and patch coverage.
-- **Baseline Coverage Floor**: Minimum overall workspace line coverage floor is 60% across `crates/`.

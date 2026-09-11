@@ -2189,11 +2189,9 @@ dependencies = [
  "movie-radio-pipeline",
  "movie-radio-types",
  "movie-radio-validation",
- "movie-radio-verification",
  "movie-radio-voice",
  "serde",
  "serde_json",
- "tempfile",
  "tokio",
  "tracing",
 ]

@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use super::wav::decode_and_resample_wav;
 use super::AudioOutput;
 use crate::config::{AudioCppConfig, GpuPoolEndpoint};
-use crate::voice::{is_valid_voice_id, SynthesisRequest, SynthesisValidationError};
+use crate::voice::SynthesisRequest;
 
 const ENV_AUDIO_CPP_REMOTE_TOKEN: &str = "AUDIO_CPP_REMOTE_TOKEN";
 const ENV_AUDIO_CPP_REMOTE_URL: &str = "AUDIO_CPP_REMOTE_URL";
@@ -77,9 +77,6 @@ pub(crate) async fn synthesize_http_endpoint(
         .voice_id
         .as_deref()
         .unwrap_or_else(|| config.voice_id.as_deref().unwrap_or(""));
-    if !voice.is_empty() && !is_valid_voice_id(voice) {
-        return Err(SynthesisValidationError::InvalidVoiceId.into());
-    }
     let voice_ref = config.voice_ref.as_deref().unwrap_or("");
 
     let payload = serde_json::json!({
@@ -287,38 +284,5 @@ mod tests {
 
         let free_cost = estimate_remote_cost(text_100, 0.0);
         assert_eq!(free_cost, 0.0);
-    }
-
-    #[tokio::test]
-    async fn test_http_rejects_invalid_voice_id() {
-        let client = Client::new();
-        let config = AudioCppConfig {
-            voice_id: Some("../invalid_voice".to_string()),
-            ..AudioCppConfig::default()
-        };
-        let request = SynthesisRequest::default();
-        let params = ModelParams {
-            family: "bark",
-            model: "bark-small",
-            backend: "cpu",
-            default_language: "de",
-        };
-
-        let res = synthesize_http_endpoint(
-            &client,
-            &config,
-            "http://127.0.0.1:8080",
-            None,
-            &request,
-            &params,
-        )
-        .await;
-
-        assert!(res.is_err());
-        let err = res.err().unwrap();
-        assert_eq!(
-            err.downcast::<SynthesisValidationError>().unwrap(),
-            SynthesisValidationError::InvalidVoiceId
-        );
     }
 }

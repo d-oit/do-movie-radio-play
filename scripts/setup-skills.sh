@@ -23,7 +23,9 @@ for d in "$SKILLS_DIR"/*; do
   name="$(basename "$d")"
 
   # Skip hidden or backup directories
-  [[ "$name" != _* ]] && [[ "$name" != .* ]] || continue
+  if [[ "$name" == _* || "$name" == .* ]]; then
+    continue
+  fi
 
   skill_file="$d/SKILL.md"
 

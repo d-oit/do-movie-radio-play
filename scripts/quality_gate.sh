@@ -181,7 +181,7 @@ printf "\n"
 if command -v cargo-audit &>/dev/null; then
   info "Running security audit..."
   AUDIT_OUTPUT=$(cargo audit 2>&1) && AUDIT_EXIT=$? || AUDIT_EXIT=$?
-  if [ $AUDIT_EXIT -ne 0 ]; then
+  if [ "$AUDIT_EXIT" -ne 0 ]; then
     if echo "$AUDIT_OUTPUT" | grep -q "unsupported CVSS version"; then
       warn "cargo-audit: Skipping due to RustSec advisory format issue"
     else
@@ -230,10 +230,10 @@ fi
 # ============================================================
 info "Scanning for potential secrets..."
 SECRET_PATTERN="(api_key|token|secret|password|auth|key)[[:space:]]*[:=][[:space:]]*['\"][a-zA-Z0-9_\-]{16,}['\"]"
-EXCLUDE_DIR='--exclude-dir=.git --exclude-dir=target --exclude-dir=.agents --exclude-dir=.opencode'
+EXCLUDE_DIRS=(--exclude-dir=.git --exclude-dir=target --exclude-dir=.agents --exclude-dir=.opencode)
 EXCLUDE_SECRET='example\.com|example\.org|test\.com|GITHUB_TOKEN|CARGO_REGISTRY_TOKEN|worktree'
 
-if grep -rE "$SECRET_PATTERN" $EXCLUDE_DIR crates/ config/ 2>/dev/null | grep -vE "$EXCLUDE_SECRET"; then
+if grep -rE "$SECRET_PATTERN" "${EXCLUDE_DIRS[@]}" crates/ config/ 2>/dev/null | grep -vE "$EXCLUDE_SECRET"; then
   fail "Secret Scan: potential secret detected"
 else
   pass "Secret Scan: OK"
@@ -340,12 +340,12 @@ printf "\n"
 # SUMMARY
 # ============================================================
 if [[ $FAILED -ne 0 ]]; then
-  printf "${RED}─────────────────────────────────────────────────────────────────${NC}\n"
-  printf "${RED}│ ✗ Quality Gate FAILED                                         │${NC}\n"
-  printf "${RED}─────────────────────────────────────────────────────────────────${NC}\n"
+  printf "%b─────────────────────────────────────────────────────────────────%b\n" "${RED}" "${NC}"
+  printf "%b│ ✗ Quality Gate FAILED                                         │%b\n" "${RED}" "${NC}"
+  printf "%b─────────────────────────────────────────────────────────────────%b\n" "${RED}" "${NC}"
   exit 1
 fi
 
-printf "${GREEN}─────────────────────────────────────────────────────────────────${NC}\n"
-printf "${GREEN}│ ✓ All Quality Gates PASSED                                    │${NC}\n"
-printf "${GREEN}─────────────────────────────────────────────────────────────────${NC}\n"
+printf "%b─────────────────────────────────────────────────────────────────%b\n" "${GREEN}" "${NC}"
+printf "%b│ ✓ All Quality Gates PASSED                                    │%b\n" "${GREEN}" "${NC}"
+printf "%b─────────────────────────────────────────────────────────────────%b\n" "${GREEN}" "${NC}"

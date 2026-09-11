@@ -120,9 +120,7 @@ impl VoiceSynthesisConfig {
             voice_cfg.language = "de".to_string();
         }
 
-        if voice_cfg.providers.elevenlabs.is_none()
-            && std::env::var("ELEVENLABS_API_KEY").is_ok()
-        {
+        if voice_cfg.providers.elevenlabs.is_none() && std::env::var("ELEVENLABS_API_KEY").is_ok() {
             voice_cfg.providers.elevenlabs = Some(ElevenLabsConfig {
                 api_key_env: "ELEVENLABS_API_KEY".to_string(),
                 voice_id: "pNInz6obpgDQGcFmaJgB".to_string(),
@@ -471,16 +469,18 @@ mod tests {
 
     #[test]
     fn test_voice_synthesis_config_custom_override() {
-        let mut analysis_cfg = AnalysisConfig::default();
-        analysis_cfg.voice_synthesis = Some(VoiceSynthesisConfig {
-            provider: "elevenlabs".to_string(),
-            fallback_chain: vec!["elevenlabs".to_string()],
-            emotion_mapping: false,
-            language: "en".to_string(),
-            voice_id: Some("custom_voice_123".to_string()),
-            max_cost_per_run_usd: 10.0,
-            providers: VoiceProvidersConfig::default(),
-        });
+        let analysis_cfg = AnalysisConfig {
+            voice_synthesis: Some(VoiceSynthesisConfig {
+                provider: "elevenlabs".to_string(),
+                fallback_chain: vec!["elevenlabs".to_string()],
+                emotion_mapping: false,
+                language: "en".to_string(),
+                voice_id: Some("custom_voice_123".to_string()),
+                max_cost_per_run_usd: 10.0,
+                providers: VoiceProvidersConfig::default(),
+            }),
+            ..Default::default()
+        };
 
         let voice_cfg = VoiceSynthesisConfig::from_analysis_config(&analysis_cfg);
 

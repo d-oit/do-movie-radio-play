@@ -455,7 +455,7 @@ mod tests {
         std::env::remove_var("MODAL_TTS_ENDPOINT");
         let mut ctx = crate::PipelineContext::new(
             std::path::PathBuf::from("movie.mp4"),
-            std::path::PathBuf::from("/tmp/opencode/out.wav"),
+            std::path::PathBuf::from("out.wav"),
         );
         ctx.config.voice_synthesis = Some(movie_radio_types::VoiceSynthesisConfig {
             provider: "modal".to_string(),
@@ -472,8 +472,10 @@ mod tests {
 
         let err = result.expect_err("total synthesis failure expected when provider missing");
         assert!(err.to_string().contains("all 1 narration syntheses failed"));
-        assert_eq!(ctx.narration_audio.len(), 1);
-        assert!(ctx.narration_audio[0].is_none());
+        assert!(
+            ctx.narration_audio.is_empty(),
+            "failed synthesis must roll back its partial entries"
+        );
     }
 }
 

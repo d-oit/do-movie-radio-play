@@ -286,4 +286,3 @@ fn encode_to_mp3(wav_path: &std::path::Path, mp3_path: &std::path::Path) -> Resu
     }
     Ok(())
 }
-

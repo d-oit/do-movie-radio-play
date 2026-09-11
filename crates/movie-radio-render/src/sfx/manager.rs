@@ -1,7 +1,12 @@
 use anyhow::{bail, Result};
-use movie_radio_types::{SfxCandidate, SfxProviderCapabilities, SfxQuery};
+use movie_radio_types::{
+    SfxCandidate, SfxProviderCapabilities, SfxQuery, SfxTrigger, SoundEffectsConfig,
+};
 
-use super::{processor::SfxProcessor, SoundEffectBackend};
+use super::{
+    ai_generate::AiGenerateSfxBackend, freesound::FreesoundBackend, local::LocalSfxBackend,
+    processor::SfxProcessor, SoundEffectBackend,
+};
 
 pub struct SfxManager {
     backends: Vec<Box<dyn SoundEffectBackend>>,
@@ -82,6 +87,90 @@ impl SfxManager {
             samples
         }
     }
+
+    pub fn from_config(config: &SoundEffectsConfig) -> Result<Self> {
+        let mut backends: Vec<Box<dyn SoundEffectBackend>> = Vec::new();
+        if !config.enabled {
+            return Ok(Self { backends });
+        }
+
+        if let Ok(local) = LocalSfxBackend::new(config.local.clone()) {
+            backends.push(Box::new(local));
+        }
+        if config.freesound.enabled {
+            if let Ok(freesound) = FreesoundBackend::new(config.freesound.clone()) {
+                backends.push(Box::new(freesound));
+            }
+        }
+        if config.ai_generate.enabled {
+            if let Ok(ai) = AiGenerateSfxBackend::new(config.ai_generate.clone()) {
+                backends.push(Box::new(ai));
+            }
+        }
+
+        Ok(Self { backends })
+    }
+
+    pub async fn render_trigger(
+        &self,
+        trigger: &SfxTrigger,
+        sample_rate: u32,
+        duration_secs: Option<f32>,
+    ) -> Result<Option<Vec<f32>>> {
+        let Some(query) = trigger_to_query(trigger, duration_secs) else {
+            return Ok(None);
+        };
+
+        if self.backends.is_empty() {
+            return Ok(None);
+        }
+
+        match self.fetch_best(&query).await {
+            Ok((_cand, bytes)) => {
+                let samples =
+                    Self::decode_and_mix_params(&bytes, sample_rate, query.duration_secs)?;
+                Ok(Some(samples))
+            }
+            Err(e) => {
+                tracing::warn!("Failed to fetch SFX for trigger {:?}: {e}", trigger);
+                Ok(None)
+            }
+        }
+    }
+}
+
+fn trigger_to_query(trigger: &SfxTrigger, duration_secs: Option<f32>) -> Option<SfxQuery> {
+    match trigger {
+        SfxTrigger::None => None,
+        SfxTrigger::AutoSelect { tags, mood } => Some(SfxQuery {
+            tags: tags.clone(),
+            mood: mood.clone(),
+            duration_secs,
+            prompt: None,
+        }),
+        SfxTrigger::Specific { sfx_id } => Some(SfxQuery {
+            tags: vec![sfx_id.clone()],
+            mood: None,
+            duration_secs,
+            prompt: Some(sfx_id.clone()),
+        }),
+        SfxTrigger::AiGenerate {
+            prompt,
+            duration_secs: dur,
+        } => {
+            let d = if *dur > 0.0 {
+                Some(*dur)
+            } else {
+                duration_secs
+            };
+            Some(SfxQuery {
+                tags: Vec::new(),
+                mood: None,
+                duration_secs: d,
+                prompt: Some(prompt.clone()),
+            })
+        }
+    }
 }
 
 #[cfg(test)]
@@ -113,6 +202,24 @@ mod tests {
         }
     }
 
+    fn make_test_wav_bytes() -> Vec<u8> {
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: 16000,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut buf = Vec::new();
+        let mut cursor = std::io::Cursor::new(&mut buf);
+        let mut w = hound::WavWriter::new(&mut cursor, spec).expect("writer");
+        for i in 0..160 {
+            let s = (i as f32 * 0.1).sin() * 1000.0;
+            w.write_sample(s as i16).expect("sample");
+        }
+        w.finalize().expect("finalize");
+        buf
+    }
+
     #[tokio::test]
     async fn test_search_all_deterministic() -> Result<()> {
         let mgr = SfxManager::new(vec![
@@ -142,6 +249,50 @@ mod tests {
         let res = mgr.search_all(&SfxQuery::default()).await?;
         assert_eq!(res[0].id, "a");
         assert_eq!(res[1].id, "b");
+        Ok(())
+    }
+
+    #[test]
+    fn test_from_config() -> Result<()> {
+        let cfg = SoundEffectsConfig::default();
+        let mgr = SfxManager::from_config(&cfg)?;
+        // Default config has local enabled (if assets dir exists or default) and others disabled
+        assert!(mgr.backend_count() >= 1);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_render_trigger_none() -> Result<()> {
+        let mgr = SfxManager::new(Vec::new());
+        let res = mgr.render_trigger(&SfxTrigger::None, 16000, None).await?;
+        assert!(res.is_none());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_render_trigger_success() -> Result<()> {
+        let wav = make_test_wav_bytes();
+        let mgr = SfxManager::new(vec![Box::new(MockBackend {
+            candidates: vec![SfxCandidate {
+                id: "rain_sfx".to_string(),
+                path_or_url: "rain.wav".to_string(),
+                license: SfxLicense::Cc0,
+                duration_secs: Some(1.0),
+                tags: vec!["rain".to_string()],
+                provider: "local".to_string(),
+            }],
+            bytes: wav,
+        })]);
+
+        let trigger = SfxTrigger::AutoSelect {
+            tags: vec!["rain".to_string()],
+            mood: None,
+        };
+        let res = mgr
+            .render_trigger(&trigger, 16000, Some(0.01))
+            .await?
+            .expect("rendered audio");
+        assert!(!res.is_empty());
         Ok(())
     }
 }

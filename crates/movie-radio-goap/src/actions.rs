@@ -297,7 +297,10 @@ impl Action for AssembleRadioPlay {
     }
 
     async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
-        use crate::assemble::RadioPlayAssembler;
+        use crate::assemble::{RadioPlayAssembler, SfxSegment};
+        use movie_radio_pipeline::pipeline::sfx_autofill::autofill_silent_scene_sfx;
+        use movie_radio_render::sfx::SfxManager;
+        use movie_radio_types::SfxTrigger;
 
         let original = ctx
             .original_audio
@@ -309,7 +312,36 @@ impl Action for AssembleRadioPlay {
         let narration_segments =
             build_narration_segments(scripts, &ctx.narration_audio, &assembler);
 
-        let radio_play = assembler.assemble(original, &narration_segments)?;
+        let mut sfx_segments = Vec::new();
+        if let Some(ref mut timeline) = ctx.timeline {
+            autofill_silent_scene_sfx(timeline);
+            let sfx_cfg = ctx.config.sound_effects.clone().unwrap_or_default();
+            if let Ok(sfx_mgr) = SfxManager::from_config(&sfx_cfg) {
+                for seg in &timeline.segments {
+                    if let Some(ref trigger) = seg.sfx_trigger {
+                        if *trigger != SfxTrigger::None {
+                            let duration_secs =
+                                (seg.end_ms.saturating_sub(seg.start_ms)) as f32 / 1000.0;
+                            if let Ok(Some(samples)) = sfx_mgr
+                                .render_trigger(trigger, ctx.sample_rate, Some(duration_secs))
+                                .await
+                            {
+                                let start_sample = (seg.start_ms as f64 * ctx.sample_rate as f64
+                                    / 1000.0)
+                                    as usize;
+                                sfx_segments.push(SfxSegment {
+                                    start_sample,
+                                    samples,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let radio_play =
+            assembler.assemble_with_sfx(original, &narration_segments, &sfx_segments)?;
 
         let spec = hound::WavSpec {
             channels: 1,

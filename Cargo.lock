@@ -2187,6 +2187,7 @@ dependencies = [
  "hound",
  "movie-radio-learning",
  "movie-radio-pipeline",
+ "movie-radio-render",
  "movie-radio-types",
  "movie-radio-validation",
  "movie-radio-verification",

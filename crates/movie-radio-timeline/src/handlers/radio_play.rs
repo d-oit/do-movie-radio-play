@@ -2,13 +2,15 @@ use anyhow::{bail, Result};
 use std::path::PathBuf;
 use tracing::info;
 
-use movie_radio_goap::assemble::RadioPlayAssembler;
+use movie_radio_goap::assemble::{NarrationSegment, RadioPlayAssembler, SfxSegment};
 use movie_radio_goap::gaps::GapIdentifier;
-use movie_radio_goap::narrate::NarrationGenerator;
+use movie_radio_goap::narrate::{NarrationGenerator, NarrationScript};
 use movie_radio_io::json::{read_timeline, write_json_pretty};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_pipeline::pipeline::extract_timeline;
-use movie_radio_types::AnalysisConfig;
+use movie_radio_pipeline::pipeline::sfx_autofill::autofill_silent_scene_sfx;
+use movie_radio_render::sfx::SfxManager;
+use movie_radio_types::{AnalysisConfig, SfxTrigger, SoundEffectsConfig, TimelineOutput};
 use movie_radio_voice::config::{
     ElevenLabsConfig, ModalConfig, OpenAiConfig, VoiceProvidersConfig, VoiceSynthesisConfig,
 };
@@ -72,52 +74,86 @@ fn run_full_pipeline(
     });
 
     let cfg = AnalysisConfig::default();
+    let mut timeline = resolve_timeline(&movie, timeline_path, &cfg)?;
+    autofill_silent_scene_sfx(&mut timeline);
 
-    let timeline = if let Some(p) = timeline_path {
-        info!(timeline = %p.display(), "Using provided timeline");
-        read_timeline(&p)?
-    } else {
-        info!("Extracting timeline from movie");
-        extract_timeline(&movie, &cfg)?
-    };
-
-    let srt_content = if let Some(p) = subtitles_path {
-        Some(std::fs::read_to_string(p)?)
-    } else {
-        None
-    };
-
+    let srt_content = subtitles_path.map(std::fs::read_to_string).transpose()?;
     let identifier = GapIdentifier::default();
     let srt_ref: Option<&str> = srt_content.as_deref();
     // skipcq: RS-E1015 — DeepSource false positive: srt_ref is Option<&str>, not unit-type
     let gap_analysis = identifier.identify_gaps(&timeline, srt_ref)?; // skipcq: RS-E1015
     info!(gaps = gap_analysis.gaps.len(), "Identified visual gaps");
 
-    if gap_analysis.gaps.is_empty() {
-        info!("No gaps found — copying original audio as radio play");
-        let (samples, sample_rate) = decode_audio(&movie, cfg.sample_rate_hz)?;
-        let wav_path = output_path.with_extension("tmp.wav");
-        write_wav(&wav_path, &samples, sample_rate)?;
-        encode_to_mp3(&wav_path, &output_path)?;
-        let _ = std::fs::remove_file(&wav_path);
-        return Ok(());
+    let scripts = if gap_analysis.gaps.is_empty() {
+        info!("No gaps found — skipping narration generation");
+        Vec::new()
+    } else {
+        let generator = NarrationGenerator::default();
+        let s = generator.generate(&timeline, &gap_analysis.gaps)?;
+        info!(scripts = s.len(), "Generated narration scripts");
+        s
+    };
+
+    let sample_rate = cfg.sample_rate_hz;
+    let runtime = tokio::runtime::Runtime::new()?;
+
+    let narration_segments = if scripts.is_empty() {
+        Vec::new()
+    } else {
+        let orchestrator = SynthesisOrchestrator::new(build_default_voice_config());
+        synthesize_narrations(&scripts, &orchestrator, &runtime, sample_rate)
+    };
+
+    let sfx_segments = render_sfx_segments(&timeline, &runtime, sample_rate);
+
+    info!(
+        segments = narration_segments.len(),
+        sfx_count = sfx_segments.len(),
+        "Loading original audio for assembly"
+    );
+    let (original, _) = decode_audio(&movie, sample_rate)?;
+    let assembler = RadioPlayAssembler::new(sample_rate, 50, 0.3);
+    let radio_play = assembler.assemble_with_sfx(&original, &narration_segments, &sfx_segments)?;
+
+    write_and_encode_output(&radio_play, sample_rate, &output_path)?;
+
+    info!(
+        output = %output_path.display(),
+        duration_s = radio_play.len() as f64 / sample_rate as f64,
+        "Radio play saved"
+    );
+
+    Ok(())
+}
+
+fn resolve_timeline(
+    movie: &std::path::Path,
+    timeline_path: Option<PathBuf>,
+    cfg: &AnalysisConfig,
+) -> Result<TimelineOutput> {
+    if let Some(p) = timeline_path {
+        info!(timeline = %p.display(), "Using provided timeline");
+        read_timeline(&p)
+    } else {
+        info!("Extracting timeline from movie");
+        extract_timeline(movie, cfg)
     }
+}
 
-    let generator = NarrationGenerator::default();
-    let scripts = generator.generate(&timeline, &gap_analysis.gaps)?;
-    info!(scripts = scripts.len(), "Generated narration scripts");
+fn write_and_encode_output(
+    samples: &[f32],
+    sample_rate: u32,
+    output_path: &std::path::Path,
+) -> Result<()> {
+    let wav_path = output_path.with_extension("tmp.wav");
+    write_wav(&wav_path, samples, sample_rate)?;
+    encode_to_mp3(&wav_path, output_path)?;
+    let _ = std::fs::remove_file(&wav_path);
+    Ok(())
+}
 
-    if scripts.is_empty() {
-        info!("No narration scripts — copying original audio as radio play");
-        let (samples, sample_rate) = decode_audio(&movie, cfg.sample_rate_hz)?;
-        let wav_path = output_path.with_extension("tmp.wav");
-        write_wav(&wav_path, &samples, sample_rate)?;
-        encode_to_mp3(&wav_path, &output_path)?;
-        let _ = std::fs::remove_file(&wav_path);
-        return Ok(());
-    }
-
-    let voice_config = VoiceSynthesisConfig {
+fn build_default_voice_config() -> VoiceSynthesisConfig {
+    VoiceSynthesisConfig {
         provider: "modal".to_string(),
         fallback_chain: vec![
             "modal".to_string(),
@@ -148,13 +184,17 @@ fn run_full_pipeline(
             openai: openai_config_from_env(),
             audio_cpp: None,
         },
-    };
+    }
+}
 
-    let orchestrator = SynthesisOrchestrator::new(voice_config);
-
-    let sample_rate = cfg.sample_rate_hz;
-    let runtime = tokio::runtime::Runtime::new()?;
+fn synthesize_narrations(
+    scripts: &[NarrationScript],
+    orchestrator: &SynthesisOrchestrator,
+    runtime: &tokio::runtime::Runtime,
+    sample_rate: u32,
+) -> Vec<NarrationSegment> {
     let mut narration_segments = Vec::new();
+    let assembler = RadioPlayAssembler::new(sample_rate, 50, 0.3);
 
     for (i, script) in scripts.iter().enumerate() {
         info!(
@@ -176,8 +216,7 @@ fn run_full_pipeline(
 
         match runtime.block_on(orchestrator.synthesize(&request)) {
             Ok(audio) => {
-                let segment = RadioPlayAssembler::new(sample_rate, 50, 0.3)
-                    .narration_to_segment(script, &audio.samples);
+                let segment = assembler.narration_to_segment(script, &audio.samples);
                 narration_segments.push(segment);
                 info!(
                     i = i + 1,
@@ -191,27 +230,46 @@ fn run_full_pipeline(
         }
     }
 
-    info!(
-        segments = narration_segments.len(),
-        "Loading original audio for assembly"
-    );
-    let (original, _) = decode_audio(&movie, sample_rate)?;
+    narration_segments
+}
 
-    let assembler = RadioPlayAssembler::new(sample_rate, 50, 0.3);
-    let radio_play = assembler.assemble(&original, &narration_segments)?;
+fn render_sfx_segments(
+    timeline: &TimelineOutput,
+    runtime: &tokio::runtime::Runtime,
+    sample_rate: u32,
+) -> Vec<SfxSegment> {
+    let sfx_config = SoundEffectsConfig {
+        enabled: true,
+        ..Default::default()
+    };
+    let mut sfx_segments = Vec::new();
+    let Ok(sfx_mgr) = SfxManager::from_config(&sfx_config) else {
+        return sfx_segments;
+    };
 
-    let wav_path = output_path.with_extension("tmp.wav");
-    write_wav(&wav_path, &radio_play, sample_rate)?;
-    encode_to_mp3(&wav_path, &output_path)?;
-    let _ = std::fs::remove_file(&wav_path);
+    for seg in &timeline.segments {
+        let Some(ref trigger) = seg.sfx_trigger else {
+            continue;
+        };
+        if *trigger == SfxTrigger::None {
+            continue;
+        }
+        let duration_secs =
+            ((seg.end_ms.saturating_sub(seg.start_ms)) as f32 / 1000.0).clamp(0.0, 300.0);
+        match runtime.block_on(sfx_mgr.render_trigger(trigger, sample_rate, Some(duration_secs))) {
+            Ok(Some(samples)) => {
+                let start_sample = (seg.start_ms as f64 * sample_rate as f64 / 1000.0) as usize;
+                sfx_segments.push(SfxSegment {
+                    start_sample,
+                    samples,
+                });
+            }
+            Ok(None) => {}
+            Err(e) => tracing::warn!(error = %e, "Failed to render SFX for trigger, skipping"),
+        }
+    }
 
-    info!(
-        output = %output_path.display(),
-        duration_s = radio_play.len() as f64 / sample_rate as f64,
-        "Radio play saved"
-    );
-
-    Ok(())
+    sfx_segments
 }
 
 fn write_wav(path: &std::path::Path, samples: &[f32], sample_rate: u32) -> Result<()> {

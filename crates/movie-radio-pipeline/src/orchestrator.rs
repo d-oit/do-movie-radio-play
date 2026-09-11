@@ -270,8 +270,12 @@ pub fn handle_produce(
     }
 
     let out_dir = if let Some(ref r) = resume {
-        r.parent()
-            .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
+        let parent = r.parent().unwrap_or_else(|| Path::new("."));
+        if parent.as_os_str().is_empty() {
+            PathBuf::from(".")
+        } else {
+            parent.to_path_buf()
+        }
     } else {
         input
             .parent()
@@ -290,7 +294,15 @@ pub fn handle_produce(
         .unwrap_or_else(|| out_dir.join("checkpoint.json"));
 
     let mut checkpoint = if checkpoint_file.exists() {
-        ProduceCheckpoint::load(&checkpoint_file)?
+        let cp = ProduceCheckpoint::load(&checkpoint_file)?;
+        if !cp.input_file.is_empty() && cp.input_file != input.to_string_lossy() {
+            anyhow::bail!(
+                "checkpoint input file mismatch: expected {}, found {}",
+                cp.input_file,
+                input.display()
+            );
+        }
+        cp
     } else {
         ProduceCheckpoint {
             input_file: input.to_string_lossy().to_string(),
@@ -401,5 +413,25 @@ mod tests {
         for stage in STAGES {
             assert!(loaded_ckpt.is_stage_completed(stage));
         }
+    }
+
+    #[test]
+    fn resume_rejects_input_mismatch() {
+        let temp_dir = tempfile::tempdir().expect("create tempdir");
+        let wav_path_a = temp_dir.path().join("input_a.wav");
+        let wav_path_b = temp_dir.path().join("input_b.wav");
+        let ckpt_path = temp_dir.path().join("checkpoint.json");
+
+        let ckpt = ProduceCheckpoint {
+            input_file: wav_path_a.to_string_lossy().to_string(),
+            ..Default::default()
+        };
+        ckpt.save(&ckpt_path).expect("save checkpoint");
+
+        let cfg = AppConfig::default();
+        let res = handle_produce(wav_path_b, Some(ckpt_path), false, &cfg);
+        assert!(res.is_err());
+        let err_msg = res.unwrap_err().to_string();
+        assert!(err_msg.contains("checkpoint input file mismatch"));
     }
 }

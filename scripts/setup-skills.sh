@@ -63,16 +63,19 @@ for cli_rel in "${CLI_DIRS[@]}"; do
 
   if [[ -L "$cli_target" ]]; then
     link_dest="$(readlink "$cli_target")"
-    if [[ "$link_dest" == *"agents/skills"* ]]; then
-      # Update target if relative depth was incorrect
-      rm -f "$cli_target"
-      ln -s "../.agents/skills" "$cli_target"
-      echo "symlink ok: $cli_rel -> ../.agents/skills"
-    else
-      echo "updating symlink: $cli_rel"
-      rm -f "$cli_target"
-      ln -s "../.agents/skills" "$cli_target"
-    fi
+    case "$link_dest" in
+      *"agents/skills"*)
+        # Update target if relative depth was incorrect
+        rm -f "$cli_target"
+        ln -s "../.agents/skills" "$cli_target"
+        echo "symlink ok: $cli_rel -> ../.agents/skills"
+        ;;
+      *)
+        echo "updating symlink: $cli_rel"
+        rm -f "$cli_target"
+        ln -s "../.agents/skills" "$cli_target"
+        ;;
+    esac
   elif [[ -d "$cli_target" ]]; then
     echo "converting dir to symlink: $cli_rel"
     rm -rf "$cli_target"

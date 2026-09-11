@@ -423,7 +423,7 @@ mod tests {
         std::env::remove_var("MODAL_TTS_ENDPOINT");
         let mut ctx = crate::PipelineContext::new(
             std::path::PathBuf::from("movie.mp4"),
-            std::path::PathBuf::from("/tmp/opencode/out.wav"),
+            std::path::PathBuf::from("out.wav"),
         );
         ctx.config.voice_synthesis = Some(movie_radio_types::VoiceSynthesisConfig {
             provider: "modal".to_string(),

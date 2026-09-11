@@ -87,6 +87,75 @@ fn reject_traversal(path: &Path, field: &str) -> Result<()> {
     Ok(())
 }
 
+fn write_wav_file(path: &Path, samples: &[f32], sr: u32) -> Result<()> {
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate: sr,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut writer = hound::WavWriter::create(path, spec)?;
+    for &s in samples {
+        let clamped = s.clamp(-1.0, 1.0);
+        let sample = (clamped * i16::MAX as f32) as i16;
+        writer.write_sample(sample)?;
+    }
+    writer.finalize()?;
+    Ok(())
+}
+
+fn write_stage_json(path: PathBuf, value: &serde_json::Value) -> Result<PathBuf> {
+    fs::write(&path, serde_json::to_string_pretty(value)?)?;
+    Ok(path)
+}
+
+fn stage_extract_audio(input: &Path, out_dir: &Path, sr_hz: u32) -> Result<PathBuf> {
+    let extracted_path = out_dir.join("extracted.wav");
+    let (samples, sr) = decode_audio(input, sr_hz)?;
+    write_wav_file(&extracted_path, &samples, sr)?;
+    Ok(extracted_path)
+}
+
+fn stage_audio_mix(
+    input: &Path,
+    checkpoint: &ProduceCheckpoint,
+    out_dir: &Path,
+    sr_hz: u32,
+) -> Result<PathBuf> {
+    let path = out_dir.join("mix.wav");
+    let audio_input = checkpoint
+        .artifacts
+        .get("ExtractAudio")
+        .map(PathBuf::from)
+        .filter(|p| p.exists())
+        .unwrap_or_else(|| input.to_path_buf());
+    let (samples, sr) = decode_audio(&audio_input, sr_hz)?;
+    write_wav_file(&path, &samples, sr)?;
+    Ok(path)
+}
+
+fn stage_export(
+    input: &Path,
+    checkpoint: &ProduceCheckpoint,
+    out_dir: &Path,
+    sr_hz: u32,
+) -> Result<PathBuf> {
+    let path = out_dir.join("export.wav");
+    let mix_input = checkpoint
+        .artifacts
+        .get("AudioMix")
+        .map(PathBuf::from)
+        .filter(|p| p.exists())
+        .unwrap_or_else(|| out_dir.join("mix.wav"));
+    if mix_input.exists() {
+        fs::copy(&mix_input, &path)?;
+    } else {
+        let (samples, sr) = decode_audio(input, sr_hz)?;
+        write_wav_file(&path, &samples, sr)?;
+    }
+    Ok(path)
+}
+
 fn execute_stage(
     stage: &str,
     input: &Path,
@@ -98,133 +167,23 @@ fn execute_stage(
     let analysis_cfg = AnalysisConfig::default();
     info!(stage, "Executing stage");
     let artifact = match stage {
-        "ExtractAudio" => {
-            let extracted_path = out_dir.join("extracted.wav");
-            let (samples, sr) = decode_audio(input, analysis_cfg.sample_rate_hz)?;
-            let spec = hound::WavSpec {
-                channels: 1,
-                sample_rate: sr,
-                bits_per_sample: 16,
-                sample_format: hound::SampleFormat::Int,
-            };
-            let mut writer = hound::WavWriter::create(&extracted_path, spec)?;
-            for &s in &samples {
-                let clamped = s.clamp(-1.0, 1.0);
-                let sample = (clamped * i16::MAX as f32) as i16;
-                writer.write_sample(sample)?;
-            }
-            writer.finalize()?;
-            Some(extracted_path)
-        }
-        "SceneDetect" => {
-            let scene_path = out_dir.join("scenes.json");
-            let scenes = serde_json::json!({
-                "scenes": []
-            });
-            fs::write(&scene_path, serde_json::to_string_pretty(&scenes)?)?;
-            Some(scene_path)
-        }
+        "ExtractAudio" => Some(stage_extract_audio(input, out_dir, analysis_cfg.sample_rate_hz)?),
+        "SceneDetect" => Some(write_stage_json(out_dir.join("scenes.json"), &serde_json::json!({ "scenes": [] }))?),
         "VoiceActivityDetect" => {
             let vad_path = out_dir.join("timeline.json");
             let timeline = extract_timeline(input, &analysis_cfg)?;
-            let json = serde_json::to_string_pretty(&timeline)?;
-            fs::write(&vad_path, json)?;
+            fs::write(&vad_path, serde_json::to_string_pretty(&timeline)?)?;
             Some(vad_path)
         }
-        "Transcribe" => {
-            let path = out_dir.join("transcription.json");
-            let data = serde_json::json!({ "transcripts": [] });
-            fs::write(&path, serde_json::to_string_pretty(&data)?)?;
-            Some(path)
-        }
-        "CharacterAssign" => {
-            let path = out_dir.join("characters.json");
-            let data = serde_json::json!({ "characters": [] });
-            fs::write(&path, serde_json::to_string_pretty(&data)?)?;
-            Some(path)
-        }
-        "VoiceSynthesize" => {
-            let path = out_dir.join("voices.json");
-            let data = serde_json::json!({ "synthesized": [] });
-            fs::write(&path, serde_json::to_string_pretty(&data)?)?;
-            Some(path)
-        }
-        "NarratorGenerate" => {
-            let path = out_dir.join("narration_scripts.json");
-            let data = serde_json::json!({ "scripts": [] });
-            fs::write(&path, serde_json::to_string_pretty(&data)?)?;
-            Some(path)
-        }
-        "NarratorSynthesize" => {
-            let path = out_dir.join("narrator_audio.json");
-            let data = serde_json::json!({ "audio_segments": [] });
-            fs::write(&path, serde_json::to_string_pretty(&data)?)?;
-            Some(path)
-        }
-        "SfxSelect" => {
-            let path = out_dir.join("sfx_selections.json");
-            let data = serde_json::json!({ "sfx": [] });
-            fs::write(&path, serde_json::to_string_pretty(&data)?)?;
-            Some(path)
-        }
-        "SfxFetch" => {
-            let path = out_dir.join("sfx_fetched.json");
-            let data = serde_json::json!({ "files": [] });
-            fs::write(&path, serde_json::to_string_pretty(&data)?)?;
-            Some(path)
-        }
-        "AudioMix" => {
-            let path = out_dir.join("mix.wav");
-            let audio_input = checkpoint
-                .artifacts
-                .get("ExtractAudio")
-                .map(PathBuf::from)
-                .filter(|p| p.exists())
-                .unwrap_or_else(|| input.to_path_buf());
-            let (samples, sr) = decode_audio(&audio_input, analysis_cfg.sample_rate_hz)?;
-            let spec = hound::WavSpec {
-                channels: 1,
-                sample_rate: sr,
-                bits_per_sample: 16,
-                sample_format: hound::SampleFormat::Int,
-            };
-            let mut writer = hound::WavWriter::create(&path, spec)?;
-            for &s in &samples {
-                let clamped = s.clamp(-1.0, 1.0);
-                let sample = (clamped * i16::MAX as f32) as i16;
-                writer.write_sample(sample)?;
-            }
-            writer.finalize()?;
-            Some(path)
-        }
-        "Export" => {
-            let path = out_dir.join("export.wav");
-            let mix_input = checkpoint
-                .artifacts
-                .get("AudioMix")
-                .map(PathBuf::from)
-                .filter(|p| p.exists())
-                .unwrap_or_else(|| out_dir.join("mix.wav"));
-            if mix_input.exists() {
-                fs::copy(&mix_input, &path)?;
-            } else {
-                let (samples, sr) = decode_audio(input, analysis_cfg.sample_rate_hz)?;
-                let spec = hound::WavSpec {
-                    channels: 1,
-                    sample_rate: sr,
-                    bits_per_sample: 16,
-                    sample_format: hound::SampleFormat::Int,
-                };
-                let mut writer = hound::WavWriter::create(&path, spec)?;
-                for &s in &samples {
-                    let clamped = s.clamp(-1.0, 1.0);
-                    let sample = (clamped * i16::MAX as f32) as i16;
-                    writer.write_sample(sample)?;
-                }
-                writer.finalize()?;
-            }
-            Some(path)
-        }
+        "Transcribe" => Some(write_stage_json(out_dir.join("transcription.json"), &serde_json::json!({ "transcripts": [] }))?),
+        "CharacterAssign" => Some(write_stage_json(out_dir.join("characters.json"), &serde_json::json!({ "characters": [] }))?),
+        "VoiceSynthesize" => Some(write_stage_json(out_dir.join("voices.json"), &serde_json::json!({ "synthesized": [] }))?),
+        "NarratorGenerate" => Some(write_stage_json(out_dir.join("narration_scripts.json"), &serde_json::json!({ "scripts": [] }))?),
+        "NarratorSynthesize" => Some(write_stage_json(out_dir.join("narrator_audio.json"), &serde_json::json!({ "audio_segments": [] }))?),
+        "SfxSelect" => Some(write_stage_json(out_dir.join("sfx_selections.json"), &serde_json::json!({ "sfx": [] }))?),
+        "SfxFetch" => Some(write_stage_json(out_dir.join("sfx_fetched.json"), &serde_json::json!({ "files": [] }))?),
+        "AudioMix" => Some(stage_audio_mix(input, checkpoint, out_dir, analysis_cfg.sample_rate_hz)?),
+        "Export" => Some(stage_export(input, checkpoint, out_dir, analysis_cfg.sample_rate_hz)?),
         _ => bail!("Unknown stage: {stage}"),
     };
 

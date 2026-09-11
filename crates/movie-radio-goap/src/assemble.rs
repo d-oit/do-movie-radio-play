@@ -77,13 +77,7 @@ impl RadioPlayAssembler {
         let total_len = narr_ducked.len();
         let mut sfx_track = vec![0.0f32; total_len];
         for seg in sfx_segments {
-            for (i, &s) in seg.samples.iter().enumerate() {
-                if let Some(pos) = seg.start_sample.checked_add(i) {
-                    if pos < total_len {
-                        sfx_track[pos] += s;
-                    }
-                }
-            }
+            add_sfx_segment(&mut sfx_track, seg);
         }
 
         let track_main = TrackInput {
@@ -118,7 +112,20 @@ impl RadioPlayAssembler {
 
         Ok(mono)
     }
+}
 
+fn add_sfx_segment(track: &mut [f32], seg: &SfxSegment) {
+    let start = seg.start_sample;
+    if start >= track.len() {
+        return;
+    }
+    let copy_len = seg.samples.len().min(track.len() - start);
+    for (t, s) in track[start..start + copy_len].iter_mut().zip(&seg.samples) {
+        *t += *s;
+    }
+}
+
+impl RadioPlayAssembler {
     fn validate_no_overlaps(&self, narrations: &[NarrationSegment]) -> Result<()> {
         for i in 0..narrations.len() {
             for j in (i + 1)..narrations.len() {

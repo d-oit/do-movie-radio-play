@@ -464,7 +464,7 @@ mod tests {
             language: "en-US".to_string(),
             voice_id: Some("narrator-voice-1".to_string()),
             max_cost_per_run_usd: 10.0,
-            providers: Default::default(),
+            providers: movie_radio_types::VoiceProvidersConfig::default(),
         });
         ctx.scripts = Some(vec![script(500)]);
 

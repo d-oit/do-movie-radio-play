@@ -287,9 +287,31 @@ jobs:
         run: bash scripts/check_version.sh
 
   # ───────────────────────────────────────────────────
+  msrv:
+    name: MSRV Check
+    needs: [changes]
+    if: >
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88"
+      - uses: Swatinem/rust-cache@v2
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - name: Audit MSRV compliance
+        run: ./scripts/audit-msrv.sh
+      - name: Check workspace compilation with MSRV
+        run: cargo check --workspace --all-targets
+
+  # ───────────────────────────────────────────────────
   ci-success:
     name: CI Success
-    needs: [validate-agents, lint, shellcheck, gitleaks, fmt, clippy, test, coverage, security, deny, benchmark, version-check]
+    needs: [validate-agents, lint, shellcheck, gitleaks, fmt, clippy, msrv, test, coverage, security, deny, benchmark, version-check]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -302,6 +324,7 @@ jobs:
             "${{ needs.gitleaks.result }}"
             "${{ needs.fmt.result }}"
             "${{ needs.clippy.result }}"
+            "${{ needs.msrv.result }}"
             "${{ needs.test.result }}"
             "${{ needs.coverage.result }}"
             "${{ needs.security.result }}"

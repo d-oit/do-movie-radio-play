@@ -81,7 +81,23 @@ fi
 printf "\n"
 
 # ============================================================
-# 3. FORMAT
+# 3. MSRV AUDIT
+# ============================================================
+info "Auditing MSRV compliance..."
+if [ -f "./scripts/audit-msrv.sh" ]; then
+  if ! OUTPUT=$(./scripts/audit-msrv.sh 2>&1); then
+    fail "MSRV audit failed"
+    printf "%s\n" "$OUTPUT" >&2
+  else
+    pass "MSRV audit: OK"
+  fi
+else
+  fail "MSRV audit: scripts/audit-msrv.sh not found"
+fi
+printf "\n"
+
+# ============================================================
+# 4. FORMAT
 # ============================================================
 info "Running format check..."
 if $FIX; then
@@ -98,7 +114,7 @@ fi
 printf "\n"
 
 # ============================================================
-# 4. CLIPPY
+# 5. CLIPPY
 # ============================================================
 info "Running clippy..."
 if $FIX; then
@@ -115,7 +131,7 @@ fi
 printf "\n"
 
 # ============================================================
-# 5. BUILD
+# 6. BUILD
 # ============================================================
 info "Running build..."
 if ! OUTPUT=$(cargo build --workspace --all-targets 2>&1); then
@@ -127,7 +143,7 @@ fi
 printf "\n"
 
 # ============================================================
-# 6. TESTS
+# 7. TESTS
 # ============================================================
 info "Running tests..."
 if command -v cargo-nextest &>/dev/null; then
@@ -148,7 +164,7 @@ fi
 printf "\n"
 
 # ============================================================
-# 7. DOC TESTS
+# 8. DOC TESTS
 # ============================================================
 info "Running doc tests..."
 if ! OUTPUT=$(cargo test --doc 2>&1); then
@@ -160,12 +176,12 @@ fi
 printf "\n"
 
 # ============================================================
-# 8. SECURITY AUDIT (optional)
+# 9. SECURITY AUDIT (optional)
 # ============================================================
 if command -v cargo-audit &>/dev/null; then
   info "Running security audit..."
   AUDIT_OUTPUT=$(cargo audit 2>&1) && AUDIT_EXIT=$? || AUDIT_EXIT=$?
-  if [ $AUDIT_EXIT -ne 0 ]; then
+  if [ "$AUDIT_EXIT" -ne 0 ]; then
     if echo "$AUDIT_OUTPUT" | grep -q "unsupported CVSS version"; then
       warn "cargo-audit: Skipping due to RustSec advisory format issue"
     else
@@ -178,7 +194,7 @@ if command -v cargo-audit &>/dev/null; then
 fi
 
 # ============================================================
-# 9. SUPPLY CHAIN (optional)
+# 10. SUPPLY CHAIN (optional)
 # ============================================================
 if command -v cargo-deny &>/dev/null; then
   info "Running supply chain check..."
@@ -192,7 +208,7 @@ if command -v cargo-deny &>/dev/null; then
 fi
 
 # ============================================================
-# 10. SHELLCHECK
+# 11. SHELLCHECK
 # ============================================================
 if command -v shellcheck &>/dev/null; then
   info "Running shellcheck..."
@@ -210,14 +226,14 @@ if command -v shellcheck &>/dev/null; then
 fi
 
 # ============================================================
-# 11. SECRET SCAN
+# 12. SECRET SCAN
 # ============================================================
 info "Scanning for potential secrets..."
 SECRET_PATTERN="(api_key|token|secret|password|auth|key)[[:space:]]*[:=][[:space:]]*['\"][a-zA-Z0-9_\-]{16,}['\"]"
-EXCLUDE_DIR='--exclude-dir=.git --exclude-dir=target --exclude-dir=.agents --exclude-dir=.opencode'
+EXCLUDE_DIRS=(--exclude-dir=.git --exclude-dir=target --exclude-dir=.agents --exclude-dir=.opencode)
 EXCLUDE_SECRET='example\.com|example\.org|test\.com|GITHUB_TOKEN|CARGO_REGISTRY_TOKEN|worktree'
 
-if grep -rE "$SECRET_PATTERN" $EXCLUDE_DIR crates/ config/ 2>/dev/null | grep -vE "$EXCLUDE_SECRET"; then
+if grep -rE "$SECRET_PATTERN" "${EXCLUDE_DIRS[@]}" crates/ config/ 2>/dev/null | grep -vE "$EXCLUDE_SECRET"; then
   fail "Secret Scan: potential secret detected"
 else
   pass "Secret Scan: OK"
@@ -225,7 +241,7 @@ fi
 printf "\n"
 
 # ============================================================
-# 12. AGENT ENTRYPOINTS
+# 13. AGENT ENTRYPOINTS
 # ============================================================
 info "Validating agent entrypoints..."
 if [[ -f "./scripts/validate-agent-entrypoints.sh" ]]; then
@@ -240,7 +256,7 @@ fi
 printf "\n"
 
 # ============================================================
-# 13. RENDER PERFORMANCE & REGRESSION
+# 14. RENDER PERFORMANCE & REGRESSION
 # ============================================================
 parse_to_ms() {
   local line="$1"
@@ -255,10 +271,12 @@ parse_to_ms() {
   local unit2
   unit2=$(echo "$line" | sed -E 's/.*\[[^ ]+ [^ ]+ ([0-9.]+) ([^ ]+) .*/\2/')
 
-  if [[ ! "$num2" =~ ^[0-9.]+$ ]]; then
-    echo ""
-    return
-  fi
+  case "$num2" in
+    *[!0-9.]*|"")
+      echo ""
+      return
+      ;;
+  esac
 
   case "$unit2" in
     ms)
@@ -324,12 +342,12 @@ printf "\n"
 # SUMMARY
 # ============================================================
 if [[ $FAILED -ne 0 ]]; then
-  printf "${RED}─────────────────────────────────────────────────────────────────${NC}\n"
-  printf "${RED}│ ✗ Quality Gate FAILED                                         │${NC}\n"
-  printf "${RED}─────────────────────────────────────────────────────────────────${NC}\n"
+  printf "%b─────────────────────────────────────────────────────────────────%b\n" "${RED}" "${NC}"
+  printf "%b│ ✗ Quality Gate FAILED                                         │%b\n" "${RED}" "${NC}"
+  printf "%b─────────────────────────────────────────────────────────────────%b\n" "${RED}" "${NC}"
   exit 1
 fi
 
-printf "${GREEN}─────────────────────────────────────────────────────────────────${NC}\n"
-printf "${GREEN}│ ✓ All Quality Gates PASSED                                    │${NC}\n"
-printf "${GREEN}─────────────────────────────────────────────────────────────────${NC}\n"
+printf "%b─────────────────────────────────────────────────────────────────%b\n" "${GREEN}" "${NC}"
+printf "%b│ ✓ All Quality Gates PASSED                                    │%b\n" "${GREEN}" "${NC}"
+printf "%b─────────────────────────────────────────────────────────────────%b\n" "${GREEN}" "${NC}"

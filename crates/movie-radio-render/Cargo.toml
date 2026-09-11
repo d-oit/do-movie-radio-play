@@ -2,6 +2,7 @@
 name = "movie-radio-render"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 description = "Audio rendering and mixing for radio plays"
 

@@ -2,6 +2,7 @@
 name = "movie-radio-learning"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 description = "Self-learning and calibration subsystem"
 

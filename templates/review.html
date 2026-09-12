@@ -41,10 +41,12 @@
     .controls {{ display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }}
     .window-info {{ margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 8px; background: #fff9f4; font-size: 0.92rem; }}
     .timeline-shell {{ margin-top: 10px; }}
-    .timeline-track {{ position: relative; height: 18px; border: 1px solid var(--line); border-radius: 999px; background: #fbf6ef; overflow: hidden; }}
+    .timeline-track {{ position: relative; height: 18px; border: 1px solid var(--line); border-radius: 999px; background: #fbf6ef; overflow: hidden; cursor: pointer; user-select: none; }}
+    .timeline-track.dragging {{ cursor: grabbing; }}
     .marker {{ position: absolute; top: 0; height: 100%; background: rgba(182, 83, 40, 0.55); cursor: pointer; }}
     .marker.active {{ background: rgba(182, 83, 40, 0.9); }}
-    .playhead {{ position: absolute; top: 0; width: 2px; height: 100%; background: #1f140d; pointer-events: none; }}
+    .playhead {{ position: absolute; top: 0; width: 3px; height: 100%; background: #1f140d; pointer-events: none; transform: translateX(-50%); transition: left 0.05s ease-out; }}
+    .timeline-track.dragging .playhead {{ transition: none; }}
     .timeline-legend {{ margin-top: 6px; font-size: 0.85rem; color: var(--muted); display: flex; justify-content: space-between; }}
     button {{
       border: 1px solid #ca9d83;
@@ -115,6 +117,7 @@
         <button type="button" id="toggle-merged">Show as Single Block (m)</button>
         <button type="button" id="mark-voice">Mark Voice (x)</button>
         <button type="button" id="undo">Undo (u)</button>
+        <button type="button" id="restore-all" disabled>Restore All (r)</button>
         <button type="button" id="save-html">Save Reviewed HTML</button>
         <button type="button" id="export-learning">Export Learning Data (e)</button>
         <button type="button" id="pause">Pause (space)</button>
@@ -195,6 +198,7 @@
     const btnToggleMerged = document.getElementById('toggle-merged');
     const btnMarkVoice = document.getElementById('mark-voice');
     const btnUndo = document.getElementById('undo');
+    const btnRestoreAll = document.getElementById('restore-all');
     const btnSaveHtml = document.getElementById('save-html');
     const btnExportLearning = document.getElementById('export-learning');
     const btnPause = document.getElementById('pause');
@@ -294,9 +298,17 @@
 
     function renderList() {{
       if (segments.length === 0) {{
-        segmentList.innerHTML = '<p class="muted">No non-voice segments found in this JSON.</p>';
+        if (excluded.size > 0) {{
+          segmentList.innerHTML = '<p class="muted">All segments marked as voice / excluded.</p><button type="button" id="restore-all-empty" style="margin-top: 8px;">Restore All Segments (r)</button>';
+          const btnEmpty = document.getElementById('restore-all-empty');
+          if (btnEmpty) {{
+            btnEmpty.addEventListener('click', restoreAll);
+          }}
+        }} else {{
+          segmentList.innerHTML = '<p class="muted">No non-voice segments found in this JSON.</p>';
+        }}
         summary.textContent = '0 non-voice segments';
-        status.textContent = 'No playable non-voice windows in this file.';
+        status.textContent = excluded.size > 0 ? 'All segments excluded. Click Restore All to recover.' : 'No playable non-voice windows in this file.';
         btnPrev.disabled = true;
         btnPlay.disabled = true;
         btnPlayAll.disabled = true;
@@ -304,6 +316,7 @@
         btnPause.disabled = true;
         btnNext.disabled = true;
         btnUndo.disabled = undoStack.length === 0;
+        btnRestoreAll.disabled = excluded.size === 0;
         return;
       }}
       summary.textContent = segments.length + " non-voice segments (reviewed) | preroll " + preRoll + "s | postroll " + postRoll + "s";
@@ -315,6 +328,7 @@
       btnPause.disabled = false;
       btnNext.disabled = false;
       btnUndo.disabled = undoStack.length === 0;
+      btnRestoreAll.disabled = excluded.size === 0;
       segmentList.innerHTML = '';
       for (let i = 0; i < segments.length; i++) {{
         const seg = segments[i];
@@ -455,6 +469,7 @@
         marker.style.width = Math.min(100 - leftPct, widthPct) + '%';
         marker.title = '#' + seg.index + ' ' + formatClock(seg.start_ms / 1000) + ' - ' + formatClock(seg.end_ms / 1000) + ' (' + seconds(seg.duration_ms) + 's)';
         marker.addEventListener('click', () => {{
+          if (dragMoved) return;
           currentIndex = i;
           jumpToCurrent(false);
         }});
@@ -462,6 +477,78 @@
       }}
       highlight();
     }}
+
+    let isDragging = false;
+    let dragMoved = false;
+
+    function seekFromEvent(e) {{
+      const totalMs = mediaDurationMs();
+      if (totalMs <= 0) return;
+      const rect = timelineTrack.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+      const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+      const pct = x / rect.width;
+      const targetTimeSec = (pct * totalMs) / 1000;
+
+      try {{
+        video.currentTime = targetTimeSec;
+      }} catch (_) {{}}
+
+      playhead.style.left = (pct * 100) + '%';
+
+      if (segments.length > 0) {{
+        const targetMs = targetTimeSec * 1000;
+        const matchingIndex = segments.findIndex(s =>
+          targetMs >= s.start_ms - preRoll * 1000 && targetMs <= s.end_ms + postRoll * 1000
+        );
+        if (matchingIndex !== -1 && matchingIndex !== currentIndex) {{
+          currentIndex = matchingIndex;
+          stopAt = segments[currentIndex].end_ms / 1000 + postRoll;
+          highlight();
+        }}
+      }}
+    }}
+
+    timelineTrack.addEventListener('mousedown', (e) => {{
+      isDragging = true;
+      dragMoved = false;
+      timelineTrack.classList.add('dragging');
+      seekFromEvent(e);
+    }});
+
+    window.addEventListener('mousemove', (e) => {{
+      if (!isDragging) return;
+      dragMoved = true;
+      seekFromEvent(e);
+    }});
+
+    window.addEventListener('mouseup', () => {{
+      if (isDragging) {{
+        isDragging = false;
+        timelineTrack.classList.remove('dragging');
+      }}
+    }});
+
+    timelineTrack.addEventListener('touchstart', (e) => {{
+      isDragging = true;
+      dragMoved = false;
+      timelineTrack.classList.add('dragging');
+      seekFromEvent(e);
+    }}, {{ passive: true }});
+
+    window.addEventListener('touchmove', (e) => {{
+      if (!isDragging) return;
+      dragMoved = true;
+      seekFromEvent(e);
+    }}, {{ passive: true }});
+
+    window.addEventListener('touchend', () => {{
+      if (isDragging) {{
+        isDragging = false;
+        timelineTrack.classList.remove('dragging');
+      }}
+    }});
 
     function jumpToCurrent(playNow) {{
       if (segments.length === 0) return;
@@ -586,10 +673,28 @@
         jumpToCurrent(false);
       }}
     }});
+    function restoreAll() {{
+      if (excluded.size === 0) return;
+      undoStack.push(Array.from(excluded));
+      excluded.clear();
+      refreshSegments();
+      renderList();
+      renderTimelineMarkers();
+      if (segments.length > 0) {{
+        currentIndex = 0;
+        jumpToCurrent(false);
+      }}
+      status.textContent = 'All segments restored.';
+    }}
+
     btnUndo.addEventListener('click', () => {{
-      const key = undoStack.pop();
-      if (!key) return;
-      excluded.delete(key);
+      const item = undoStack.pop();
+      if (!item) return;
+      if (Array.isArray(item)) {{
+        for (const key of item) excluded.add(key);
+      }} else {{
+        excluded.delete(item);
+      }}
       refreshSegments();
       renderList();
       renderTimelineMarkers();
@@ -597,6 +702,7 @@
         jumpToCurrent(false);
       }}
     }});
+    btnRestoreAll.addEventListener('click', restoreAll);
     btnSaveHtml.addEventListener('click', saveReviewedHtml);
     btnExportLearning.addEventListener('click', exportLearningData);
     btnPause.addEventListener('click', () => {{
@@ -636,6 +742,7 @@
       if (event.key === 'f') btnToggleFull.click();
       if (event.key === 'x') btnMarkVoice.click();
       if (event.key === 'u') btnUndo.click();
+      if (event.key === 'r') btnRestoreAll.click();
       if (event.key === 'e') btnExportLearning.click();
       if ((event.ctrlKey || event.metaKey) && event.key === 's') {{
         event.preventDefault();

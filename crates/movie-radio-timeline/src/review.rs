@@ -414,4 +414,39 @@ mod tests {
         assert!(html.contains("priority_review"));
         assert!(html.contains("Priority Review Candidates"));
     }
+
+    #[test]
+    fn test_merged_view_state_persistence_in_review_html() {
+        let dir = tempdir().unwrap();
+        let media_file = dir.path().join("test.wav");
+        std::fs::write(&media_file, "dummy").unwrap();
+
+        let timeline = TimelineOutput {
+            file: "test.wav".to_string(),
+            analysis_sample_rate: 16000,
+            frame_ms: 20,
+            segments: vec![Segment {
+                start_ms: 0,
+                end_ms: 1000,
+                kind: SegmentKind::NonVoice,
+                confidence: 0.8,
+                tags: vec![],
+                prompt: None,
+                sfx_trigger: None,
+            }],
+        };
+
+        let output_false = dir.path().join("review_unmerged.html");
+        write_review_html_with_options(&media_file, &timeline, &output_false, 1.0, 1.0, None, false)
+            .unwrap();
+        let html_false = std::fs::read_to_string(output_false).unwrap();
+        assert!(html_false.contains(r#"<script id="merged-data" type="application/json">false</script>"#));
+        assert!(html_false.contains("mergedDataNode.textContent = JSON.stringify(mergedMode)"));
+
+        let output_true = dir.path().join("review_merged.html");
+        write_review_html_with_options(&media_file, &timeline, &output_true, 1.0, 1.0, None, true)
+            .unwrap();
+        let html_true = std::fs::read_to_string(output_true).unwrap();
+        assert!(html_true.contains(r#"<script id="merged-data" type="application/json">true</script>"#));
+    }
 }

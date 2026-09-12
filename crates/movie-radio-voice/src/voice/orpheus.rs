@@ -162,7 +162,11 @@ impl OrpheusProvider {
     }
 
     /// Runs ONNX inference on SNAC codebook levels using the loaded vocoder session.
-    fn decode_snac_onnx(&self, session: &Mutex<Session>, tokens: &[LlamaToken]) -> Result<Vec<f32>> {
+    fn decode_snac_onnx(
+        &self,
+        session: &Mutex<Session>,
+        tokens: &[LlamaToken],
+    ) -> Result<Vec<f32>> {
         let (l0, l1, l2) = Self::parse_snac_levels(tokens);
         let num_frames = l0.len();
 

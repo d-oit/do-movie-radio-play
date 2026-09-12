@@ -226,6 +226,8 @@ pub struct Qwen3Config {
 pub struct OrpheusConfig {
     pub model_path: PathBuf,
     pub device: String,
+    #[serde(default)]
+    pub vocoder_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

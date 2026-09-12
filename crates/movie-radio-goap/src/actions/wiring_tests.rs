@@ -55,4 +55,34 @@ mod wiring_tests {
             "learning db must be created when configured"
         );
     }
+
+    #[tokio::test]
+    async fn record_execution_trace_honors_no_learn() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("learn.db");
+        let mut ctx = PipelineContext::new(PathBuf::from("movie.mkv"), PathBuf::from("out.wav"));
+        ctx.learning_db_path = Some(db_path.clone());
+        ctx.no_learn = true;
+
+        crate::record_execution_trace(&ctx).await.expect("record trace with no_learn");
+
+        assert!(
+            !db_path.exists(),
+            "db should not be created when no_learn is true"
+        );
+
+        ctx.no_learn = false;
+        crate::record_execution_trace(&ctx).await.expect("record trace");
+
+        assert!(
+            db_path.exists(),
+            "db should be created when no_learn is false"
+        );
+
+        let db = movie_radio_learning::database::LearningDb::new(&db_path)
+            .await
+            .unwrap();
+        let traces = db.get_run_traces(10).await.unwrap();
+        assert_eq!(traces.len(), 1);
+    }
 }

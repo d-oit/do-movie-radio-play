@@ -424,38 +424,6 @@ pub fn handle_ai_voice_extract(
     Ok(())
 }
 
-pub fn handle_learning_stats(
-    learning_db: std::path::PathBuf,
-    output: Option<std::path::PathBuf>,
-) -> Result<()> {
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .context("failed to create async runtime for learning db")?;
-    let db = rt.block_on(database::LearningDb::new(&learning_db))?;
-    let stats = rt.block_on(db.get_statistics())?;
-    let recommendations = rt.block_on(db.get_threshold_recommendations())?;
-    let latest_threshold = rt.block_on(db.get_latest_threshold())?;
-
-    let report = serde_json::json!({
-        "learning_db": learning_db,
-        "statistics": stats,
-        "recommendations": recommendations,
-        "latest_threshold": latest_threshold,
-    });
-
-    if let Some(output_path) = output {
-        if let Some(parent) = output_path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::write(&output_path, serde_json::to_vec_pretty(&report)?)?;
-        tracing::info!(output = %output_path.display(), "learning stats written");
-    } else {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-    }
-    Ok(())
-}
-
 pub fn handle_review(
     input_media: std::path::PathBuf,
     input: std::path::PathBuf,

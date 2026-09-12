@@ -63,6 +63,10 @@ pub struct PipelineContext {
     pub learning_db_path: Option<PathBuf>,
     /// Assembled radio play PCM samples after `assemble_radio_play` action.
     pub assembled_audio: Option<Vec<f32>>,
+    /// Skip trace recording and learning adaptations when true (`--no-learn`).
+    pub no_learn: bool,
+    /// Unique identifier for this pipeline run.
+    pub run_id: Option<String>,
 }
 
 impl PipelineContext {
@@ -85,8 +89,121 @@ impl PipelineContext {
             learning_state_path: None,
             learning_db_path: None,
             assembled_audio: None,
+            no_learn: false,
+            run_id: None,
         }
     }
+}
+
+/// Record execution traces (`RunTrace`, `EmotionOutcome`, `ProviderPerformance`)
+/// to the learning database if learning is enabled (`!ctx.no_learn`).
+pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
+    if ctx.no_learn {
+        tracing::info!("--no-learn enabled: skipping execution trace recording");
+        return Ok(());
+    }
+
+    let Some(ref db_path) = ctx.learning_db_path else {
+        tracing::info!("no learning_db_path configured: skipping trace recording");
+        return Ok(());
+    };
+
+    let run_id = ctx.run_id.clone().unwrap_or_else(|| {
+        let movie_name = ctx
+            .movie_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("movie");
+        let truncated_name = &movie_name[..std::cmp::min(8, movie_name.len())];
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        format!("run-{timestamp}-{truncated_name}")
+    });
+
+    let movie_hash = ctx
+        .movie_path
+        .file_name()
+        .map_or_else(|| "unknown".to_string(), |s| s.to_string_lossy().to_string());
+
+    let quality_score = if let Some(ref rep) = ctx.verification {
+        let total = rep.summary.total_segments;
+        if total > 0 {
+            Some(rep.summary.verified_count as f64 / total as f64)
+        } else {
+            Some(1.0)
+        }
+    } else if let Some(ref scripts) = ctx.scripts {
+        let total = scripts.len();
+        if total > 0 {
+            let succ = ctx.narration_audio.iter().filter(|a| a.is_some()).count();
+            Some(succ as f64 / total as f64)
+        } else {
+            Some(1.0)
+        }
+    } else {
+        Some(1.0)
+    };
+
+    let duration_ms = ctx.original_audio.as_ref().map(|s| {
+        if ctx.sample_rate > 0 {
+            ((s.len() as f64 / f64::from(ctx.sample_rate)) * 1000.0) as i64
+        } else {
+            0
+        }
+    });
+
+    let db = movie_radio_learning::database::LearningDb::new(db_path).await?;
+
+    let trace = movie_radio_learning::trace_store::RunTrace {
+        id: run_id.clone(),
+        movie_hash,
+        created_at: None,
+        quality_score,
+        total_cost_usd: Some(0.0),
+        duration_ms,
+    };
+
+    db.record_run_trace(&trace).await?;
+
+    if let Some(ref scripts) = ctx.scripts {
+        let provider_name = ctx
+            .voice_config
+            .as_ref()
+            .and_then(|c| c.fallback_chain.first())
+            .cloned()
+            .unwrap_or_else(|| "auto".to_string());
+
+        for (i, script) in scripts.iter().enumerate() {
+            let is_success = ctx.narration_audio.get(i).and_then(|a| a.as_ref()).is_some();
+            let outcome = movie_radio_learning::trace_store::EmotionOutcome {
+                id: None,
+                segment_tag: "narration_gap".to_string(),
+                emotion_used: format!("{:?}", script.emotion).to_lowercase(),
+                provider: provider_name.clone(),
+                quality_score: Some(if is_success { 1.0 } else { 0.0 }),
+                user_approved: None,
+                run_id: Some(run_id.clone()),
+            };
+            let _ = db.record_emotion_outcome(&outcome).await;
+        }
+
+        let perf = movie_radio_learning::trace_store::ProviderPerformance {
+            id: None,
+            provider: provider_name,
+            scene_type: Some("radio-play".to_string()),
+            avg_quality: quality_score,
+            avg_latency_ms: None,
+            failure_rate: Some(1.0 - quality_score.unwrap_or(1.0)),
+            cost_per_char: Some(0.0),
+            last_updated: None,
+        };
+        let _ = db.record_provider_performance(&perf).await;
+    }
+
+    tracing::info!(run_id = %run_id, "Execution trace recorded to learning database");
+    Ok(())
 }
 
 /// Replanning/learning signal: verification flagged most non-voice segments

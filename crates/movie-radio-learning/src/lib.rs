@@ -6,6 +6,7 @@ pub mod database;
 pub mod gap_store;
 pub mod profiles;
 pub mod threshold_store;
+pub mod trace_store;
 
 #[allow(unused_imports)]
 pub use database::{
@@ -15,3 +16,7 @@ pub use database::{
 pub use gap_store::GapDecision;
 #[allow(unused_imports)]
 pub use threshold_store::{ThresholdHistoryEntry, ThresholdRecommendation};
+#[allow(unused_imports)]
+pub use trace_store::{
+    AdaptationLog, EmotionOutcome, LearningsExport, ProviderPerformance, RunTrace,
+};

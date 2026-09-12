@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use libsql::{Builder, Connection, Value};
 use std::path::Path;
 
-use crate::{gap_store, threshold_store};
+use crate::{gap_store, threshold_store, trace_store};
 
 pub mod queries;
 pub mod types;
@@ -90,6 +90,7 @@ impl LearningDb {
             .await?;
 
         gap_store::create_gap_tables(&self.conn).await?;
+        trace_store::create_trace_tables(&self.conn).await?;
 
         self.conn
             .execute(
@@ -260,5 +261,62 @@ impl LearningDb {
         &self,
     ) -> Result<Option<threshold_store::ThresholdHistoryEntry>> {
         threshold_store::get_latest_threshold(&self.conn).await
+    }
+
+    pub async fn record_run_trace(&self, trace: &trace_store::RunTrace) -> Result<()> {
+        trace_store::record_run_trace(&self.conn, trace).await
+    }
+
+    pub async fn record_emotion_outcome(
+        &self,
+        outcome: &trace_store::EmotionOutcome,
+    ) -> Result<i64> {
+        trace_store::record_emotion_outcome(&self.conn, outcome).await
+    }
+
+    pub async fn record_provider_performance(
+        &self,
+        perf: &trace_store::ProviderPerformance,
+    ) -> Result<i64> {
+        trace_store::record_provider_performance(&self.conn, perf).await
+    }
+
+    pub async fn record_adaptation_log(
+        &self,
+        log: &trace_store::AdaptationLog,
+    ) -> Result<i64> {
+        trace_store::record_adaptation_log(&self.conn, log).await
+    }
+
+    pub async fn get_run_traces(&self, limit: usize) -> Result<Vec<trace_store::RunTrace>> {
+        trace_store::get_run_traces(&self.conn, limit).await
+    }
+
+    pub async fn get_adaptation_logs(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<trace_store::AdaptationLog>> {
+        trace_store::get_adaptation_logs(&self.conn, limit).await
+    }
+
+    pub async fn get_emotion_outcomes(
+        &self,
+        run_id: Option<&str>,
+    ) -> Result<Vec<trace_store::EmotionOutcome>> {
+        trace_store::get_emotion_outcomes(&self.conn, run_id).await
+    }
+
+    pub async fn get_provider_performances(
+        &self,
+    ) -> Result<Vec<trace_store::ProviderPerformance>> {
+        trace_store::get_provider_performances(&self.conn).await
+    }
+
+    pub async fn reset_learnings(&self) -> Result<()> {
+        trace_store::reset_learnings(&self.conn).await
+    }
+
+    pub async fn export_learnings(&self) -> Result<trace_store::LearningsExport> {
+        trace_store::export_learnings(&self.conn).await
     }
 }

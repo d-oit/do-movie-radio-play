@@ -143,3 +143,59 @@ fn test_run_pipeline_smoke() {
     assert!(!result.timeline.segments.is_empty());
     assert_eq!(result.timeline.analysis_sample_rate, 16000);
 }
+
+#[test]
+fn test_chunked_streaming_extraction_deterministic() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let wav_path = temp_dir.path().join("test_chunked_det.wav");
+    let spec = WavSpec {
+        channels: 1,
+        sample_rate: 16000,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut writer = WavWriter::create(&wav_path, spec).unwrap();
+    for i in 0..80000 {
+        let t = i as f32 / 16000.0;
+        let val = if (1.0..2.5).contains(&t) || (3.5..4.5).contains(&t) {
+            ((2.0 * std::f32::consts::PI * 440.0 * t).sin() * 0.5 * i16::MAX as f32) as i16
+        } else {
+            0i16
+        };
+        writer.write_sample(val).unwrap();
+    }
+    writer.finalize().unwrap();
+
+    let cfg_standard = AnalysisConfig {
+        min_non_voice_ms: 200,
+        chunk_duration_sec: None,
+        ..AnalysisConfig::default()
+    };
+    let timeline_standard = extract_timeline(&wav_path, &cfg_standard).unwrap();
+
+    let cfg_chunked = AnalysisConfig {
+        min_non_voice_ms: 200,
+        chunk_duration_sec: Some(60),
+        ..AnalysisConfig::default()
+    };
+    let timeline_chunked = extract_timeline(&wav_path, &cfg_chunked).unwrap();
+
+    println!("STANDARD SEGMENTS: {:?}", timeline_standard.segments);
+    println!("CHUNKED SEGMENTS:  {:?}", timeline_chunked.segments);
+
+    assert_eq!(
+        timeline_standard.segments.len(),
+        timeline_chunked.segments.len(),
+        "Segment count mismatch between standard and chunked streaming"
+    );
+
+    for (s1, s2) in timeline_standard
+        .segments
+        .iter()
+        .zip(timeline_chunked.segments.iter())
+    {
+        assert_eq!(s1.start_ms, s2.start_ms);
+        assert_eq!(s1.end_ms, s2.end_ms);
+        assert_eq!(s1.kind, s2.kind);
+    }
+}

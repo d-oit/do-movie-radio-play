@@ -39,9 +39,19 @@ pub fn add_tags(
     timeline: &mut TimelineOutput,
     rules: Option<&TagRules>,
 ) -> Result<()> {
+    let (samples, sr) = decode::decode_audio(input_media, timeline.analysis_sample_rate)?;
+    add_tags_from_samples(&samples, sr, timeline, rules);
+    Ok(())
+}
+
+pub fn add_tags_from_samples(
+    samples: &[f32],
+    sr: u32,
+    timeline: &mut TimelineOutput,
+    rules: Option<&TagRules>,
+) {
     let default_rules = TagRules::default();
     let rules = rules.unwrap_or(&default_rules);
-    let (samples, sr) = decode::decode_audio(input_media, timeline.analysis_sample_rate)?;
     let mut extractor = FeatureExtractor::new(1024);
     for seg in &mut timeline.segments {
         if seg.kind != SegmentKind::NonVoice {
@@ -58,7 +68,6 @@ pub fn add_tags(
         seg.tags = map_tags(f, rules);
     }
     autofill_silent_scene_sfx(timeline);
-    Ok(())
 }
 
 fn map_tags(f: crate::pipeline::features::FeatureSet, rules: &TagRules) -> Vec<String> {

@@ -229,7 +229,7 @@ impl RadioPlayAssembler {
         if self.allow_time_stretch && samples.len() > gap_samples && gap_samples > 0 {
             let max_expansion_samples =
                 (self.max_expansion_ms as f64 * self.sample_rate as f64 / 1000.0) as usize;
-            let max_allowed_from_gap = gap_samples + max_expansion_samples;
+            let max_allowed_from_gap = gap_samples.saturating_add(max_expansion_samples);
             let max_allowed_from_next = if let Some(next_ms) = next_gap_start_ms {
                 let next_start = (next_ms as f64 * self.sample_rate as f64 / 1000.0) as usize;
                 next_start.saturating_sub(start_sample)
@@ -237,7 +237,8 @@ impl RadioPlayAssembler {
                 usize::MAX
             };
 
-            let target_samples = max_allowed_from_gap.min(max_allowed_from_next).max(1);
+            let max_bound = max_allowed_from_gap.min(max_allowed_from_next);
+            let target_samples = if max_bound == 0 { 1 } else { max_bound };
 
             if samples.len() > target_samples {
                 let ratio = target_samples as f64 / samples.len() as f64;
@@ -271,11 +272,13 @@ impl RadioPlayAssembler {
         scripts: &[NarrationScript],
         narration_audio: &[Option<movie_radio_voice::AudioOutput>],
     ) -> Vec<NarrationSegment> {
-        let valid_entries: Vec<(&NarrationScript, &movie_radio_voice::AudioOutput)> = scripts
+        let mut valid_entries: Vec<(&NarrationScript, &movie_radio_voice::AudioOutput)> = scripts
             .iter()
             .zip(narration_audio.iter())
             .filter_map(|(s, a)| a.as_ref().map(|audio| (s, audio)))
             .collect();
+
+        valid_entries.sort_by_key(|(s, _)| s.gap_start_ms);
 
         let mut segments = Vec::new();
 
@@ -443,5 +446,43 @@ mod tests {
         let audio_samples = vec![0.2; 48000]; // 3000 ms audio = 48000 samples
         let segment = assembler.narration_to_segment(&script, &audio_samples);
         assert_eq!(segment.samples.len(), 48000);
+    }
+
+    #[test]
+    fn test_time_stretch_with_out_of_order_scripts() {
+        let assembler = RadioPlayAssembler::new(16000, 50, 0.3);
+        let scripts = vec![
+            NarrationScript {
+                gap_start_ms: 2200,
+                gap_end_ms: 3000,
+                text: "Second".to_string(),
+                emotion: movie_radio_voice::Emotion::Neutral,
+                word_count: 1,
+                duration_ms: 800,
+            },
+            NarrationScript {
+                gap_start_ms: 1000,
+                gap_end_ms: 2000,
+                text: "First".to_string(),
+                emotion: movie_radio_voice::Emotion::Neutral,
+                word_count: 1,
+                duration_ms: 2000,
+            },
+        ];
+        let narration_audio = vec![
+            Some(movie_radio_voice::AudioOutput {
+                samples: vec![0.3; 8000],
+                sample_rate_hz: 16000,
+            }),
+            Some(movie_radio_voice::AudioOutput {
+                samples: vec![0.2; 64000],
+                sample_rate_hz: 16000,
+            }),
+        ];
+
+        let segments = assembler.build_narration_segments(&scripts, &narration_audio);
+        assert_eq!(segments.len(), 2);
+        assert!(segments[0].start_sample < segments[1].start_sample);
+        assert!(segments[0].end_sample <= segments[1].start_sample);
     }
 }

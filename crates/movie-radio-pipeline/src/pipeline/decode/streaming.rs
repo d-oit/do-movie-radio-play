@@ -88,8 +88,8 @@ where
     }
 
     let status = child.wait().context("failed to wait on ffmpeg process")?;
-    if !status.success() && total_samples_emitted == 0 {
-        let mut stderr = String::new();
+    if !status.success() {
+        let mut stderr = String::default();
         if let Some(mut err_pipe) = child.stderr.take() {
             let _ = err_pipe.read_to_string(&mut stderr);
         }
@@ -97,6 +97,10 @@ where
             bail!(TimelineError::Decode(stderr));
         }
         return Err(TimelineError::Decode(stderr).into());
+    }
+
+    if total_samples_emitted == 0 {
+        return Err(TimelineError::EmptyAudio.into());
     }
 
     Ok(())

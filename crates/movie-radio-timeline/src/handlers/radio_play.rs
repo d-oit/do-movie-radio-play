@@ -85,7 +85,9 @@ fn run_full_pipeline(
         info!("Decoding movie audio for timeline extraction and assembly");
         let (audio, _) = decode_audio(&movie, sample_rate)?;
         info!("Extracting timeline from loaded audio");
-        let tl = movie_radio_pipeline::pipeline::extract_timeline_from_samples(&audio, &cfg)?;
+        let tl = movie_radio_pipeline::pipeline::extract_timeline_from_samples_with_path(
+            &audio, &movie, &cfg,
+        )?;
         (tl, audio)
     };
     autofill_silent_scene_sfx(&mut timeline);

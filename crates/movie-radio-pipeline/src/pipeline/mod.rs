@@ -83,6 +83,14 @@ pub fn extract_timeline_from_samples(
     samples: &[f32],
     cfg: &AnalysisConfig,
 ) -> Result<TimelineOutput> {
+    extract_timeline_from_samples_with_path(samples, Path::new("in_memory.wav"), cfg)
+}
+
+pub fn extract_timeline_from_samples_with_path(
+    samples: &[f32],
+    file_path: &Path,
+    cfg: &AnalysisConfig,
+) -> Result<TimelineOutput> {
     info!(
         sample_count = samples.len(),
         sample_rate = cfg.sample_rate_hz,
@@ -90,12 +98,13 @@ pub fn extract_timeline_from_samples(
         "extract_from_samples start"
     );
     let total_start = Instant::now();
+    // skipcq: RS-E1015 — DeepSource false positive on ? with Result<PipelineArtifacts>
     let PipelineArtifacts {
         timeline,
         frame_count,
         speech_segment_count,
         stage_ms,
-    } = run_pipeline_from_samples(samples, Path::new("in_memory.wav"), cfg)?;
+    } = run_pipeline_from_samples(samples, file_path, cfg)?; // skipcq: RS-E1015
     info!(
         total_ms = total_start.elapsed().as_millis() as u64,
         frames = frame_count,

@@ -175,7 +175,7 @@ fn test_decode_audio_chunks_cb_streaming() {
     let mut chunk_count = 0;
     let mut total_samples = 0;
 
-    decode_audio_chunks_cb(&wav_path, 16000, 1, |chunk_samples, idx| {
+    streaming::stream_ffmpeg_chunks(&wav_path, 16000, 1, |chunk_samples, idx| {
         assert_eq!(chunk_count, idx);
         chunk_count += 1;
         total_samples += chunk_samples.len();

@@ -10,7 +10,7 @@ use crate::gaps::GapIdentifier;
 use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
-use movie_radio_pipeline::pipeline::{extract_timeline, extract_timeline_from_samples};
+use movie_radio_pipeline::pipeline::{extract_timeline, extract_timeline_from_samples_with_path};
 
 #[derive(Debug, Default)]
 pub struct DecodeMovie;
@@ -73,7 +73,7 @@ impl Action for ExtractTimeline {
     async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
         info!("Extracting audio timeline");
         let timeline = if let Some(ref original) = ctx.original_audio {
-            extract_timeline_from_samples(original, &ctx.config)?
+            extract_timeline_from_samples_with_path(original, &ctx.movie_path, &ctx.config)?
         } else {
             extract_timeline(&ctx.movie_path, &ctx.config)?
         };

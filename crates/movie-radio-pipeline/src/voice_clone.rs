@@ -25,9 +25,7 @@ pub fn extract_candidates(
             cfg.voice_clone.family
         );
     }
-    if !cfg.voice.audio_cpp.remote.server_url.is_empty()
-        && cfg.voice_clone.routing.mode == "auto"
-    {
+    if !cfg.voice.audio_cpp.remote.server_url.is_empty() && cfg.voice_clone.routing.mode == "auto" {
         tracing::info!(
             "reference audio would be sent to remote endpoint (explicit consent required)"
         );

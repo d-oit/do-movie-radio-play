@@ -1,7 +1,7 @@
-use std::path::PathBuf;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[async_trait]
 pub trait VoiceSynthesizer: Send + Sync {

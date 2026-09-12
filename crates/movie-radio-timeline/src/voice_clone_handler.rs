@@ -39,7 +39,10 @@ pub fn handle_voice_samples(
         out.display(),
         candidates.len()
     );
-    println!("runtime={} family={} — capability check passed", cfg.voice_clone.runtime, cfg.voice_clone.family);
+    println!(
+        "runtime={} family={} — capability check passed",
+        cfg.voice_clone.runtime, cfg.voice_clone.family
+    );
     Ok(())
 }
 
@@ -119,7 +122,11 @@ mod tests {
         let temp_dir = TempDir::new()?;
         let out_json = temp_dir.path().join("alice.json");
 
-        handle_voice_samples("alice".to_string(), PathBuf::from("testdata/movie.mkv"), Some(out_json.clone()))?;
+        handle_voice_samples(
+            "alice".to_string(),
+            PathBuf::from("testdata/movie.mkv"),
+            Some(out_json.clone()),
+        )?;
         assert!(out_json.exists());
 
         let content = fs::read_to_string(&out_json)?;

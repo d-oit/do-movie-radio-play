@@ -14,7 +14,7 @@ pub mod radio_play;
 pub mod validate;
 
 pub use extract::{handle_bench, handle_extract, handle_gen_fixtures};
-pub use radio_play::handle_radio_play;
+pub use radio_play::{handle_radio_play, RadioPlayOptions};
 pub use validate::{
     handle_ai_voice_extract, handle_export, handle_learning_experiments, handle_learning_stats,
     handle_merge_timeline, handle_prompt, handle_review, handle_tag, handle_update_thresholds,

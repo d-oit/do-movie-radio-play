@@ -223,6 +223,14 @@ pub enum Commands {
         output: Option<PathBuf>,
         #[arg(long)]
         analyze_only: bool,
+        #[arg(long)]
+        verify_quality: bool,
+        #[arg(long)]
+        apply_learnings: bool,
+        #[arg(long)]
+        learning_state: Option<PathBuf>,
+        #[arg(long)]
+        learning_db: Option<PathBuf>,
     },
     /// Preview a WAV file by streaming to system audio output.
     /// Useful for quick QA without writing intermediate files.

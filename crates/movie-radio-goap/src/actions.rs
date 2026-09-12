@@ -2,8 +2,10 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use tracing::info;
 
+mod assemble_action;
 mod verify;
 
+pub use assemble_action::AssembleRadioPlay;
 pub use verify::{ApplyLearnings, VerifyQuality};
 
 use crate::gaps::GapIdentifier;
@@ -34,6 +36,10 @@ impl Action for DecodeMovie {
     }
 
     async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
+        if ctx.original_audio.is_some() {
+            info!("Original audio already present in context");
+            return Ok(());
+        }
         info!(movie = %ctx.movie_path.display(), "Decoding movie audio");
         let (samples, sample_rate) = decode_audio(&ctx.movie_path, ctx.sample_rate)?;
         ctx.original_audio = Some(samples);
@@ -71,6 +77,10 @@ impl Action for ExtractTimeline {
     }
 
     async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
+        if ctx.timeline.is_some() {
+            info!("Timeline already present in context");
+            return Ok(());
+        }
         info!("Extracting audio timeline");
         let timeline = if let Some(ref original) = ctx.original_audio {
             extract_timeline_from_samples_with_path(original, &ctx.movie_path, &ctx.config)?
@@ -264,102 +274,6 @@ impl Action for SynthesizeNarrator {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct AssembleRadioPlay;
-
-#[async_trait]
-impl Action for AssembleRadioPlay {
-    fn name(&self) -> &str {
-        "assemble_radio_play"
-    }
-    fn preconditions(&self) -> WorldState {
-        WorldState {
-            narrator_voice_synthesized: true,
-            movie_decoded: true,
-            ..WorldState::default()
-        }
-    }
-    fn effects(&self) -> WorldState {
-        WorldState {
-            radio_play_assembled: true,
-            ..WorldState::default()
-        }
-    }
-    fn cost(&self, _state: &WorldState) -> f32 {
-        1.5
-    }
-
-    async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
-        use crate::assemble::{RadioPlayAssembler, SfxSegment};
-        use movie_radio_pipeline::pipeline::sfx_autofill::autofill_silent_scene_sfx;
-        use movie_radio_render::sfx::SfxManager;
-        use movie_radio_types::SfxTrigger;
-
-        let original = ctx
-            .original_audio
-            .as_ref()
-            .context("Original audio not decoded")?;
-        let scripts = ctx.scripts.as_ref().context("Scripts not generated")?;
-
-        let assembler = RadioPlayAssembler::new(ctx.sample_rate, 50, 0.3);
-        let narration_segments =
-            build_narration_segments(scripts, &ctx.narration_audio, &assembler);
-
-        let mut sfx_segments = Vec::new();
-        if let Some(ref mut timeline) = ctx.timeline {
-            autofill_silent_scene_sfx(timeline);
-            let sfx_cfg = ctx.config.sound_effects.clone().unwrap_or_default();
-            if let Ok(sfx_mgr) = SfxManager::from_config(&sfx_cfg) {
-                for seg in &timeline.segments {
-                    if let Some(ref trigger) = seg.sfx_trigger {
-                        if *trigger != SfxTrigger::None {
-                            let duration_secs =
-                                (seg.end_ms.saturating_sub(seg.start_ms)) as f32 / 1000.0;
-                            if let Ok(Some(samples)) = sfx_mgr
-                                .render_trigger(trigger, ctx.sample_rate, Some(duration_secs))
-                                .await
-                            {
-                                let start_sample = (seg.start_ms as f64 * ctx.sample_rate as f64
-                                    / 1000.0)
-                                    as usize;
-                                sfx_segments.push(SfxSegment {
-                                    start_sample,
-                                    samples,
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let radio_play =
-            assembler.assemble_with_sfx(original, &narration_segments, &sfx_segments)?;
-
-        let spec = hound::WavSpec {
-            channels: 1,
-            sample_rate: ctx.sample_rate,
-            bits_per_sample: 16,
-            sample_format: hound::SampleFormat::Int,
-        };
-
-        let mut writer = hound::WavWriter::create(&ctx.output_path, spec)?;
-        for &s in &radio_play {
-            let clamped = s.clamp(-1.0, 1.0);
-            let sample = (clamped * i16::MAX as f32) as i16;
-            writer.write_sample(sample)?;
-        }
-        writer.finalize()?;
-
-        info!(
-            output = %ctx.output_path.display(),
-            duration_s = radio_play.len() as f64 / ctx.sample_rate as f64,
-            "Radio play assembled"
-        );
-        Ok(())
-    }
-}
-
 pub fn get_all_actions() -> Vec<Box<dyn Action>> {
     vec![
         Box::new(DecodeMovie),
@@ -373,6 +287,7 @@ pub fn get_all_actions() -> Vec<Box<dyn Action>> {
     ]
 }
 
+#[cfg(test)]
 fn build_narration_segments(
     scripts: &[crate::narrate::NarrationScript],
     narration_audio: &[Option<movie_radio_voice::AudioOutput>],

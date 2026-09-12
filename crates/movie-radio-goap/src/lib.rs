@@ -61,6 +61,8 @@ pub struct PipelineContext {
     pub learning_state_path: Option<PathBuf>,
     /// Optional libsql database path for threshold history persistence.
     pub learning_db_path: Option<PathBuf>,
+    /// Assembled radio play PCM samples after `assemble_radio_play` action.
+    pub assembled_audio: Option<Vec<f32>>,
 }
 
 impl PipelineContext {
@@ -82,6 +84,7 @@ impl PipelineContext {
             learning: None,
             learning_state_path: None,
             learning_db_path: None,
+            assembled_audio: None,
         }
     }
 }

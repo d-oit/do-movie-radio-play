@@ -158,6 +158,7 @@
     </aside>
   </div>
   <script id="segments-data" type="application/json">{segments_json}</script>
+  <script id="merged-data" type="application/json">{merged_json}</script>
   <script>
     function esc(t) {{
       if (!t) return "";
@@ -173,6 +174,7 @@
     const preRoll = {pre_roll_json};
     const postRoll = {post_roll_json};
     const segmentsDataNode = document.getElementById('segments-data');
+    const mergedDataNode = document.getElementById('merged-data');
     const allSegments = JSON.parse(segmentsDataNode.textContent || '[]');
     const excluded = new Set();
     const undoStack = [];
@@ -205,7 +207,7 @@
     let stopAt = null;
     let playAll = false;
     let nonVoiceOnlyMode = true;
-    let mergedMode = {merged_json};
+    let mergedMode = mergedDataNode ? JSON.parse(mergedDataNode.textContent || 'false') : {merged_json};
     let currentFilter = 'all';
     let currentSort = 'time';
 
@@ -234,6 +236,9 @@
     }}
 
     function saveReviewedHtml() {{
+      if (mergedDataNode) {{
+        mergedDataNode.textContent = JSON.stringify(mergedMode);
+      }}
       const htmlDoc = '<!doctype html>\n' + document.documentElement.outerHTML;
       const blob = new Blob([htmlDoc], {{ type: 'text/html' }});
       const url = URL.createObjectURL(blob);
@@ -493,6 +498,9 @@
     }}
 
     function updateMergedUi() {{
+      if (mergedDataNode) {{
+        mergedDataNode.textContent = JSON.stringify(mergedMode);
+      }}
       if (mergedMode) {{
         btnToggleMerged.textContent = 'Show Individual Segments (m)';
         status.textContent = 'Merged view: all non-voice shown as single block.';
@@ -677,6 +685,7 @@
     video.addEventListener('loadedmetadata', renderTimelineMarkers);
     renderTimelineMarkers();
     updateModeUi();
+    updateMergedUi();
     jumpToCurrent(false);
   </script>
 </body>

@@ -437,16 +437,27 @@ mod tests {
         };
 
         let output_false = dir.path().join("review_unmerged.html");
-        write_review_html_with_options(&media_file, &timeline, &output_false, 1.0, 1.0, None, false)
-            .unwrap();
+        write_review_html_with_options(
+            &media_file,
+            &timeline,
+            &output_false,
+            1.0,
+            1.0,
+            None,
+            false,
+        )
+        .unwrap();
         let html_false = std::fs::read_to_string(output_false).unwrap();
-        assert!(html_false.contains(r#"<script id="merged-data" type="application/json">false</script>"#));
+        assert!(html_false
+            .contains(r#"<script id="merged-data" type="application/json">false</script>"#));
         assert!(html_false.contains("mergedDataNode.textContent = JSON.stringify(mergedMode)"));
 
         let output_true = dir.path().join("review_merged.html");
         write_review_html_with_options(&media_file, &timeline, &output_true, 1.0, 1.0, None, true)
             .unwrap();
         let html_true = std::fs::read_to_string(output_true).unwrap();
-        assert!(html_true.contains(r#"<script id="merged-data" type="application/json">true</script>"#));
+        assert!(
+            html_true.contains(r#"<script id="merged-data" type="application/json">true</script>"#)
+        );
     }
 }

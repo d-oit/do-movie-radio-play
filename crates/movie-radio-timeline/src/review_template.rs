@@ -79,10 +79,13 @@ mod tests {
     #[test]
     fn test_merged_state_script_element() {
         let html_false = render_review_html("[]", r#""test.mp4""#, "0.5", "0.5", "false");
-        assert!(html_false.contains(r#"<script id="merged-data" type="application/json">false</script>"#));
+        assert!(html_false
+            .contains(r#"<script id="merged-data" type="application/json">false</script>"#));
 
         let html_true = render_review_html("[]", r#""test.mp4""#, "0.5", "0.5", "true");
-        assert!(html_true.contains(r#"<script id="merged-data" type="application/json">true</script>"#));
+        assert!(
+            html_true.contains(r#"<script id="merged-data" type="application/json">true</script>"#)
+        );
     }
 
     #[test]

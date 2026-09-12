@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_backend::LlamaBackend;
@@ -8,6 +8,7 @@ use llama_cpp_2::model::LlamaModel;
 use llama_cpp_2::sampling::LlamaSampler;
 use llama_cpp_2::token::LlamaToken;
 use once_cell::sync::OnceCell;
+use ort::session::Session;
 use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
@@ -19,6 +20,7 @@ static LLAMA_BACKEND: OnceCell<Mutex<LlamaBackend>> = OnceCell::new();
 pub struct OrpheusProvider {
     config: OrpheusConfig,
     model: OnceCell<Arc<LlamaModel>>,
+    vocoder_session: OnceCell<Option<Arc<Mutex<Session>>>>,
 }
 
 impl OrpheusProvider {
@@ -26,6 +28,7 @@ impl OrpheusProvider {
         Self {
             config,
             model: OnceCell::new(),
+            vocoder_session: OnceCell::new(),
         }
     }
 
@@ -89,19 +92,185 @@ impl OrpheusProvider {
         }
     }
 
+    fn ensure_vocoder(&self) -> Option<Arc<Mutex<Session>>> {
+        self.vocoder_session
+            .get_or_init(|| {
+                let vocoder_path = self.config.vocoder_path.as_ref()?;
+                if !vocoder_path.exists() {
+                    warn!(
+                        path = %vocoder_path.display(),
+                        "Configured SNAC vocoder path does not exist. Fallback will be used."
+                    );
+                    return None;
+                }
+
+                let session_res = Session::builder()
+                    .map_err(|e| anyhow::anyhow!("Failed session builder: {:?}", e))
+                    .and_then(|b| {
+                        b.with_intra_threads(2)
+                            .map_err(|e| anyhow::anyhow!("Failed intra threads: {:?}", e))
+                    })
+                    .and_then(|mut b| {
+                        b.commit_from_file(vocoder_path)
+                            .map_err(|e| anyhow::anyhow!("Failed commit file: {:?}", e))
+                    });
+
+                match session_res {
+                    Ok(session) => {
+                        info!(
+                            path = %vocoder_path.display(),
+                            inputs = session.inputs().len(),
+                            outputs = session.outputs().len(),
+                            "Loaded SNAC ONNX vocoder session"
+                        );
+                        Some(Arc::new(Mutex::new(session)))
+                    }
+                    Err(e) => {
+                        warn!(
+                            path = %vocoder_path.display(),
+                            error = %e,
+                            "Failed to load SNAC ONNX vocoder model. Fallback will be used."
+                        );
+                        None
+                    }
+                }
+            })
+            .clone()
+    }
+
+    /// De-interleaves sequential Orpheus SNAC speech tokens into 3 hierarchical codebook levels.
+    /// SNAC 24kHz uses 7 tokens per frame: Level 0 (1 token), Level 1 (2 tokens), Level 2 (4 tokens).
+    fn parse_snac_levels(tokens: &[LlamaToken]) -> (Vec<i64>, Vec<i64>, Vec<i64>) {
+        let frame_size = 7;
+        let num_frames = tokens.len() / frame_size;
+
+        let mut l0 = Vec::with_capacity(num_frames);
+        let mut l1 = Vec::with_capacity(num_frames * 2);
+        let mut l2 = Vec::with_capacity(num_frames * 4);
+
+        for chunk in tokens[..num_frames * frame_size].chunks_exact(frame_size) {
+            l0.push(chunk[0].0 as i64);
+            l1.push(chunk[1].0 as i64);
+            l1.push(chunk[2].0 as i64);
+            l2.push(chunk[3].0 as i64);
+            l2.push(chunk[4].0 as i64);
+            l2.push(chunk[5].0 as i64);
+            l2.push(chunk[6].0 as i64);
+        }
+
+        (l0, l1, l2)
+    }
+
+    /// Runs ONNX inference on SNAC codebook levels using the loaded vocoder session.
+    fn decode_snac_onnx(&self, session: &Mutex<Session>, tokens: &[LlamaToken]) -> Result<Vec<f32>> {
+        let (l0, l1, l2) = Self::parse_snac_levels(tokens);
+        let num_frames = l0.len();
+
+        if num_frames == 0 {
+            return Ok(Vec::new());
+        }
+
+        let mut guard = session
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Vocoder session lock poisoned"))?;
+
+        let inputs = guard.inputs();
+        if inputs.is_empty() {
+            anyhow::bail!("SNAC ONNX vocoder model has no input tensors");
+        }
+
+        let output_name = guard
+            .outputs()
+            .first()
+            .context("Vocoder model has no output tensor")?
+            .name()
+            .to_owned();
+
+        let outputs = if inputs.len() >= 3 {
+            let name0 = inputs[0].name().to_owned();
+            let name1 = inputs[1].name().to_owned();
+            let name2 = inputs[2].name().to_owned();
+
+            let t0_shape = [1usize, 1, num_frames];
+            let t1_shape = [1usize, 2, num_frames];
+            let t2_shape = [1usize, 4, num_frames];
+
+            let val0 = ort::value::TensorRef::from_array_view((t0_shape, l0.as_slice()))?;
+            let val1 = ort::value::TensorRef::from_array_view((t1_shape, l1.as_slice()))?;
+            let val2 = ort::value::TensorRef::from_array_view((t2_shape, l2.as_slice()))?;
+
+            guard.run(ort::inputs![
+                name0.as_str() => val0.into_dyn(),
+                name1.as_str() => val1.into_dyn(),
+                name2.as_str() => val2.into_dyn()
+            ])?
+        } else {
+            let name = inputs[0].name().to_owned();
+            let mut combined = Vec::with_capacity(7 * num_frames);
+
+            for f in 0..num_frames {
+                combined.push(l0[f]);
+                combined.push(l1[f * 2]);
+                combined.push(l1[f * 2 + 1]);
+                combined.push(l2[f * 4]);
+                combined.push(l2[f * 4 + 1]);
+                combined.push(l2[f * 4 + 2]);
+                combined.push(l2[f * 4 + 3]);
+            }
+
+            let shape = [1usize, 7, num_frames];
+            let val = ort::value::TensorRef::from_array_view((shape, combined.as_slice()))?;
+
+            guard.run(ort::inputs![name.as_str() => val.into_dyn()])?
+        };
+
+        let output_tensor = outputs
+            .get(output_name.as_str())
+            .context("Failed to get output tensor from vocoder session")?;
+
+        let (_shape, data) = output_tensor
+            .try_extract_tensor::<f32>()
+            .context("Failed to extract float audio samples from vocoder output")?;
+
+        Ok(data.to_vec())
+    }
+
     /// Decodes Orpheus-3B speech tokens into PCM samples.
-    /// Orpheus uses a specific SNAC (Spectral Neural Audio Codec) representation.
     ///
-    /// WARNING: This is a synthetic fallback. Real SNAC decoding requires a neural
-    /// audio codec decoder (not yet available). Output will sound like tones, not speech.
+    /// If an ONNX SNAC vocoder model is configured via `vocoder_path` in `OrpheusConfig`,
+    /// this function decodes the multi-level SNAC tokens into real speech audio.
+    /// Otherwise, it logs a warning documenting the missing dependency (`hubertsiuzdak/snac_24khz`
+    /// / ONNX vocoder) and falls back to synthetic tone generation.
     fn decode_snac_tokens(&self, tokens: &[LlamaToken]) -> Vec<f32> {
         if tokens.is_empty() {
             return Vec::new();
         }
 
+        if let Some(session) = self.ensure_vocoder() {
+            match self.decode_snac_onnx(&session, tokens) {
+                Ok(samples) if !samples.is_empty() => {
+                    info!(
+                        sample_count = samples.len(),
+                        token_count = tokens.len(),
+                        "Decoded SNAC tokens to speech PCM using ONNX vocoder"
+                    );
+                    return samples;
+                }
+                Ok(_) => {
+                    warn!("SNAC ONNX vocoder returned empty audio samples");
+                }
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        "SNAC ONNX vocoder inference failed, falling back to synthetic audio"
+                    );
+                }
+            }
+        }
+
         warn!(
             token_count = tokens.len(),
-            "Orpheus SNAC decode: using synthetic fallback (not real audio)"
+            "Orpheus SNAC decode: no valid ONNX vocoder model loaded (configure `vocoder_path` with e.g. `snac_24khz.onnx` from `hubertsiuzdak/snac_24khz`); using synthetic fallback"
         );
 
         let samples_per_token = 320; // 20ms at 16kHz for Orpheus-3B
@@ -228,6 +397,7 @@ mod tests {
         let config = OrpheusConfig {
             model_path: "dummy.gguf".into(),
             device: "cpu".into(),
+            vocoder_path: None,
         };
         let provider = OrpheusProvider::new(config);
 
@@ -254,6 +424,7 @@ mod tests {
         let config = OrpheusConfig {
             model_path: "dummy.gguf".into(),
             device: "cpu".into(),
+            vocoder_path: None,
         };
         let provider = OrpheusProvider::new(config);
         let caps = provider.capabilities();
@@ -261,5 +432,45 @@ mod tests {
         assert!(caps.supports_emotion);
         assert!(caps.languages.contains(&"de".to_string()));
         assert!(caps.languages.contains(&"en".to_string()));
+    }
+
+    #[test]
+    fn test_parse_snac_levels() {
+        // 14 tokens = 2 frames of 7 codes each
+        let tokens: Vec<LlamaToken> = (10..24).map(LlamaToken).collect();
+        let (l0, l1, l2) = OrpheusProvider::parse_snac_levels(&tokens);
+
+        assert_eq!(l0, vec![10, 17]);
+        assert_eq!(l1, vec![11, 12, 18, 19]);
+        assert_eq!(l2, vec![13, 14, 15, 16, 20, 21, 22, 23]);
+    }
+
+    #[test]
+    fn test_decode_snac_tokens_fallback() {
+        let config = OrpheusConfig {
+            model_path: "dummy.gguf".into(),
+            device: "cpu".into(),
+            vocoder_path: Some("nonexistent_snac_model.onnx".into()),
+        };
+        let provider = OrpheusProvider::new(config);
+
+        let tokens: Vec<LlamaToken> = (0..7).map(LlamaToken).collect();
+        let samples = provider.decode_snac_tokens(&tokens);
+
+        // Should return synthetic samples when vocoder model file is missing
+        assert_eq!(samples.len(), 7 * 320);
+    }
+
+    #[test]
+    fn test_decode_snac_tokens_empty() {
+        let config = OrpheusConfig {
+            model_path: "dummy.gguf".into(),
+            device: "cpu".into(),
+            vocoder_path: None,
+        };
+        let provider = OrpheusProvider::new(config);
+
+        let samples = provider.decode_snac_tokens(&[]);
+        assert!(samples.is_empty());
     }
 }

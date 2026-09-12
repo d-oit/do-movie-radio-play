@@ -317,6 +317,7 @@ async fn test_gap_decisions_storage() {
         reason: "long silence".to_string(),
         priority: 5,
         user_approved: Some(true),
+        genre: Some("action".to_string()),
     };
 
     let id = db.record_gap_decision(decision.clone()).await.unwrap();
@@ -327,6 +328,11 @@ async fn test_gap_decisions_storage() {
     assert_eq!(results[0].movie_hash, "movie123");
     assert_eq!(results[0].start_ms, 5000);
     assert_eq!(results[0].user_approved, Some(true));
+    assert_eq!(results[0].genre.as_deref(), Some("action"));
+
+    let genre_results = db.get_gap_decisions_by_genre("action").await.unwrap();
+    assert_eq!(genre_results.len(), 1);
+    assert_eq!(genre_results[0].movie_hash, "movie123");
 }
 
 #[tokio::test]

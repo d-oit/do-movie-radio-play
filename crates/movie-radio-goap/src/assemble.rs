@@ -244,9 +244,11 @@ impl RadioPlayAssembler {
                 let dst_rate = (self.sample_rate as f64 * ratio).round() as u32;
                 let dst_rate = dst_rate.max(1);
 
-                if let Ok(resampled) =
-                    movie_radio_pipeline::pipeline::resample::resample(&samples, self.sample_rate, dst_rate)
-                {
+                if let Ok(resampled) = movie_radio_pipeline::pipeline::resample::resample(
+                    &samples,
+                    self.sample_rate,
+                    dst_rate,
+                ) {
                     samples = resampled;
                     if samples.len() > target_samples {
                         samples.truncate(target_samples);
@@ -374,7 +376,10 @@ mod tests {
 
         // Max expansion is 500 ms (8000 samples). So target_samples = 16000 + 8000 = 24000 samples.
         assert!(segment.samples.len() <= 24000);
-        assert_eq!(segment.end_sample, segment.start_sample + segment.samples.len());
+        assert_eq!(
+            segment.end_sample,
+            segment.start_sample + segment.samples.len()
+        );
     }
 
     #[test]
@@ -417,7 +422,11 @@ mod tests {
         // Validate that assemble succeeds without 0% overlap error
         let original = vec![0.1; 64000];
         let assembled = assembler.assemble(&original, &segments);
-        assert!(assembled.is_ok(), "Assembly must succeed with 0% overlap: {:?}", assembled.err());
+        assert!(
+            assembled.is_ok(),
+            "Assembly must succeed with 0% overlap: {:?}",
+            assembled.err()
+        );
     }
 
     #[test]

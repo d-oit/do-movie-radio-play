@@ -113,4 +113,22 @@ mod tests {
         assert!(escaped.contains("\\u2029"));
         assert!(escaped.contains("\\u0060"));
     }
+
+    #[test]
+    fn test_restore_all_elements_present() {
+        let html = render_review_html("[]", r#""test.mp4""#, "0.5", "0.5", "false");
+        assert!(html.contains(r#"id="restore-all""#));
+        assert!(html.contains(r#"id="restore-all-empty""#));
+        assert!(html.contains("restoreAll"));
+        assert!(html.contains("Restore All (r)"));
+    }
+
+    #[test]
+    fn test_drag_to_seek_handlers_present() {
+        let html = render_review_html("[]", r#""test.mp4""#, "0.5", "0.5", "false");
+        assert!(html.contains("seekFromEvent"));
+        assert!(html.contains("isDragging"));
+        assert!(html.contains("dragMoved"));
+        assert!(html.contains(".timeline-track.dragging"));
+    }
 }

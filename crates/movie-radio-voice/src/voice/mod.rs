@@ -16,13 +16,10 @@ pub const SPEED_RANGE: RangeInclusive<f32> = 0.25..=4.0;
 
 pub mod audio_cpp;
 pub mod elevenlabs;
-#[cfg(feature = "kokoro")]
 pub mod kokoro;
 pub mod modal;
 pub mod openai;
-#[cfg(feature = "orpheus")]
 pub mod orpheus;
-#[cfg(feature = "qwen3")]
 pub mod qwen3;
 
 #[async_trait]
@@ -168,18 +165,15 @@ impl SynthesisOrchestrator {
         let mut providers: std::collections::HashMap<String, Box<dyn VoiceSynthesizer>> =
             std::collections::HashMap::new();
 
-        #[cfg(feature = "kokoro")]
         if let Some(c) = config.providers.kokoro {
             providers.insert(
                 "kokoro".to_string(),
                 Box::new(kokoro::KokoroProvider::new(c)),
             );
         }
-        #[cfg(feature = "qwen3")]
         if let Some(c) = config.providers.qwen3 {
             providers.insert("qwen3".to_string(), Box::new(qwen3::Qwen3Provider::new(c)));
         }
-        #[cfg(feature = "orpheus")]
         if let Some(c) = config.providers.orpheus {
             providers.insert(
                 "orpheus".to_string(),

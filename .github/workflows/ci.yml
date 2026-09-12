@@ -179,23 +179,6 @@ jobs:
       - name: Run doc tests
         run: cargo test --workspace --doc
 
-  test-local-tts:
-    name: Test Local TTS Features
-    needs: [changes]
-    if: >
-      github.event_name != 'pull_request' ||
-      needs.changes.outputs.code == 'true' ||
-      needs.changes.outputs.workflows == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
-      - name: Test local-tts feature compilation and tests
-        run: cargo test -p movie-radio-voice --features local-tts
-
   # ───────────────────────────────────────────────────
   coverage:
     name: Code Coverage
@@ -328,7 +311,7 @@ jobs:
   # ───────────────────────────────────────────────────
   ci-success:
     name: CI Success
-    needs: [validate-agents, lint, shellcheck, gitleaks, fmt, clippy, msrv, test, test-local-tts, coverage, security, deny, benchmark, version-check]
+    needs: [validate-agents, lint, shellcheck, gitleaks, fmt, clippy, msrv, test, coverage, security, deny, benchmark, version-check]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -343,7 +326,6 @@ jobs:
             "${{ needs.clippy.result }}"
             "${{ needs.msrv.result }}"
             "${{ needs.test.result }}"
-            "${{ needs.test-local-tts.result }}"
             "${{ needs.coverage.result }}"
             "${{ needs.security.result }}"
             "${{ needs.deny.result }}"

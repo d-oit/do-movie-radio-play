@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,8 @@ pub struct SynthesisRequest {
     pub text: String,
     pub emotion: Emotion,
     pub voice_id: Option<String>,
+    #[serde(default)]
+    pub reference_audio: Option<PathBuf>,
     #[serde(default = "default_language")]
     pub language: String,
     pub speed: f32,
@@ -30,6 +33,7 @@ impl Default for SynthesisRequest {
             text: String::new(),
             emotion: Emotion::Neutral,
             voice_id: None,
+            reference_audio: None,
             language: default_language(),
             speed: 1.0,
             sample_rate_hz: 16000,

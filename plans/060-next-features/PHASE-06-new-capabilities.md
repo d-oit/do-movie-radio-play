@@ -108,7 +108,7 @@ Complete the voice synthesis providers for production use.
 
 - ✅ Add MP3 decode for ElevenLabs (symphonia; `decode_audio_bytes`)
 - 🔄 Wire Kokoro ONNX inference to output — inference is live, but tokenization maps raw codepoints instead of eSD phoneme vocabulary, so acoustic output is unverified (see plans/130-improvement-analysis-2026-08-25.md §B1)
-- 🔄 Implement Orpheus GGUF loading via llama-cpp-2 — token inference works; SNAC→PCM decode still falls back to synthetic tones
+- ✅ Implement Orpheus GGUF loading via llama-cpp-2 & SNAC ONNX vocoder decoding — token inference and SNAC→PCM ONNX vocoder decoding wired (`vocoder_path`)
 - ✅ Implement Qwen3 model inference (candle-based, CUDA→CPU fallback)
 - ✅ Add OpenAI TTS REST client (registered in `SynthesisOrchestrator` fallback chain)
 - Ensure voice consistency across provider switching

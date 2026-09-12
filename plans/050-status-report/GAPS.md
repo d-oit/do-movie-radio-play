@@ -21,7 +21,7 @@ Gaps between the current specification and the implemented runtime behavior.
 | ElevenLabs | Complete (HTTP) | Yes (MP3 decode via symphonia) | None |
 | OpenAI | Complete (HTTP) | Yes (MP3 decode via symphonia) | One `.expect()` cleanup (see FOLLOWUPS) |
 | Kokoro | Complete (ONNX download) | Partial — real ONNX inference, but tokenization maps raw codepoints instead of eSD phoneme vocabulary | Phoneme tokenizer; acoustic output unverified |
-| Orpheus | Complete (llama.cpp inference) | Partial — real token generation; SNAC→PCM decoding falls back to synthetic tones | SNAC vocoder decode |
+| Orpheus | Complete (llama.cpp inference) | Yes — real token generation; SNAC→PCM ONNX vocoder wired via `vocoder_path` (with synthetic fallback when path unconfigured) | None |
 | Qwen3 | Complete (candle inference) | Yes (CUDA→CPU fallback) | None |
 | PocketTts | Removed | — | Silence stub deleted 2026-09 |
 

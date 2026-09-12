@@ -64,7 +64,9 @@ mod wiring_tests {
         ctx.learning_db_path = Some(db_path.clone());
         ctx.no_learn = true;
 
-        crate::record_execution_trace(&ctx).await.expect("record trace with no_learn");
+        crate::record_execution_trace(&ctx)
+            .await
+            .expect("record trace with no_learn");
 
         assert!(
             !db_path.exists(),
@@ -72,7 +74,9 @@ mod wiring_tests {
         );
 
         ctx.no_learn = false;
-        crate::record_execution_trace(&ctx).await.expect("record trace");
+        crate::record_execution_trace(&ctx)
+            .await
+            .expect("record trace");
 
         assert!(
             db_path.exists(),

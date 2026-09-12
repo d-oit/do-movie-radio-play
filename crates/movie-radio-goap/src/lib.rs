@@ -122,10 +122,10 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
         format!("run-{timestamp}-{truncated_name}")
     });
 
-    let movie_hash = ctx
-        .movie_path
-        .file_name()
-        .map_or_else(|| "unknown".to_string(), |s| s.to_string_lossy().to_string());
+    let movie_hash = ctx.movie_path.file_name().map_or_else(
+        || "unknown".to_string(),
+        |s| s.to_string_lossy().to_string(),
+    );
 
     let quality_score = if let Some(ref rep) = ctx.verification {
         let total = rep.summary.total_segments;
@@ -176,7 +176,11 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
             .unwrap_or_else(|| "auto".to_string());
 
         for (i, script) in scripts.iter().enumerate() {
-            let is_success = ctx.narration_audio.get(i).and_then(|a| a.as_ref()).is_some();
+            let is_success = ctx
+                .narration_audio
+                .get(i)
+                .and_then(|a| a.as_ref())
+                .is_some();
             let outcome = movie_radio_learning::trace_store::EmotionOutcome {
                 id: None,
                 segment_tag: "narration_gap".to_string(),

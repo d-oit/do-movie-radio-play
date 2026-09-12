@@ -199,10 +199,7 @@ pub(crate) async fn record_provider_performance(
     Ok(last_id)
 }
 
-pub(crate) async fn record_adaptation_log(
-    conn: &Connection,
-    log: &AdaptationLog,
-) -> Result<i64> {
+pub(crate) async fn record_adaptation_log(conn: &Connection, log: &AdaptationLog) -> Result<i64> {
     conn.execute(
         "INSERT INTO adaptation_log (parameter, old_value, new_value, reason, improvement_delta)
          VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -220,7 +217,9 @@ pub(crate) async fn record_adaptation_log(
                 .as_ref()
                 .map(|s| Value::Text(s.clone()))
                 .unwrap_or(Value::Null),
-            log.improvement_delta.map(Value::Real).unwrap_or(Value::Null),
+            log.improvement_delta
+                .map(Value::Real)
+                .unwrap_or(Value::Null),
         ],
     )
     .await?;
@@ -234,10 +233,7 @@ pub(crate) async fn record_adaptation_log(
     Ok(last_id)
 }
 
-pub(crate) async fn get_run_traces(
-    conn: &Connection,
-    limit: usize,
-) -> Result<Vec<RunTrace>> {
+pub(crate) async fn get_run_traces(conn: &Connection, limit: usize) -> Result<Vec<RunTrace>> {
     let mut results = Vec::new();
     let mut rows = conn
         .query(

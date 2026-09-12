@@ -281,10 +281,7 @@ impl LearningDb {
         trace_store::record_provider_performance(&self.conn, perf).await
     }
 
-    pub async fn record_adaptation_log(
-        &self,
-        log: &trace_store::AdaptationLog,
-    ) -> Result<i64> {
+    pub async fn record_adaptation_log(&self, log: &trace_store::AdaptationLog) -> Result<i64> {
         trace_store::record_adaptation_log(&self.conn, log).await
     }
 
@@ -306,9 +303,7 @@ impl LearningDb {
         trace_store::get_emotion_outcomes(&self.conn, run_id).await
     }
 
-    pub async fn get_provider_performances(
-        &self,
-    ) -> Result<Vec<trace_store::ProviderPerformance>> {
+    pub async fn get_provider_performances(&self) -> Result<Vec<trace_store::ProviderPerformance>> {
         trace_store::get_provider_performances(&self.conn).await
     }
 

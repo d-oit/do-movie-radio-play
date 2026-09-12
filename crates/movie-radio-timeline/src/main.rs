@@ -160,6 +160,7 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             apply_learnings,
             learning_state,
             learning_db,
+            no_learn,
         } => handlers::handle_radio_play(
             movie,
             handlers::RadioPlayOptions {
@@ -171,6 +172,7 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
                 apply_learnings,
                 learning_state,
                 learning_db,
+                no_learn,
             },
         ),
         Commands::Calibrate {
@@ -268,9 +270,23 @@ fn dispatch_verification_and_output(cmd: Commands) -> Result<()> {
             output,
         } => handlers::handle_update_thresholds(learning_state, learning_db, output),
         Commands::LearningStats {
+            radio_play,
             learning_db,
             output,
-        } => handlers::handle_learning_stats(learning_db, output),
+        } => handlers::handle_learning_stats(learning_db, radio_play, output),
+        Commands::LearningLog {
+            last,
+            learning_db,
+            output,
+        } => handlers::handle_learning_log(last, learning_db, output),
+        Commands::ResetLearnings {
+            confirm,
+            learning_db,
+        } => handlers::handle_reset_learnings(confirm, learning_db),
+        Commands::ExportLearnings {
+            output,
+            learning_db,
+        } => handlers::handle_export_learnings(output, learning_db),
         Commands::LearningExperiments {
             learning_db,
             output,

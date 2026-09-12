@@ -1,5 +1,6 @@
 pub use benchmark::benchmark_file;
 pub mod benchmark;
+pub mod chunked;
 pub mod decode;
 pub mod features;
 pub mod filters;
@@ -45,8 +46,6 @@ struct PipelineArtifacts {
     stage_ms: StageDurations,
 }
 
-/// Times a pipeline stage, records the elapsed duration into `stage_ms`,
-/// and returns the stage result.
 macro_rules! timed_stage {
     ($stage_ms:expr, $field:ident, $body:block) => {{
         let __stage_start = Instant::now();
@@ -58,7 +57,7 @@ macro_rules! timed_stage {
 
 pub fn extract_timeline(input: &Path, cfg: &AnalysisConfig) -> Result<TimelineOutput> {
     if let Some(chunk_sec) = cfg.chunk_duration_sec.filter(|&s| s > 0) {
-        return extract_timeline_chunked(input, cfg, chunk_sec);
+        return chunked::extract_timeline_chunked(input, cfg, chunk_sec);
     }
     info!(input = %input.display(), sample_rate = cfg.sample_rate_hz, frame_ms = cfg.frame_ms, "extract start");
     let total_start = Instant::now();
@@ -80,208 +79,67 @@ pub fn extract_timeline(input: &Path, cfg: &AnalysisConfig) -> Result<TimelineOu
     Ok(timeline)
 }
 
-fn extract_timeline_chunked(
-    input: &Path,
+pub fn extract_timeline_from_samples(
+    samples: &[f32],
     cfg: &AnalysisConfig,
-    chunk_duration_sec: u64,
+) -> Result<TimelineOutput> {
+    let dummy_path = Path::new("in_memory.wav");
+    // skipcq: RS-E1015 — DeepSource false positive: dummy_path is &Path, not ()
+    extract_timeline_from_samples_with_path(samples, dummy_path, cfg) // skipcq: RS-E1015
+}
+
+pub fn extract_timeline_from_samples_with_path(
+    samples: &[f32],
+    file_path: &Path,
+    cfg: &AnalysisConfig,
 ) -> Result<TimelineOutput> {
     info!(
-        input = %input.display(),
-        chunk_sec = chunk_duration_sec,
-        "extract start (chunked)"
+        sample_count = samples.len(),
+        sample_rate = cfg.sample_rate_hz,
+        frame_ms = cfg.frame_ms,
+        "extract_from_samples start"
     );
     let total_start = Instant::now();
-    let effective_threshold = cfg.energy_threshold + cfg.vad_threshold_delta;
-
-    let frame_ms = cfg.frame_ms;
-    let hangover_ms = cfg.speech_hangover_ms;
-    let warmup_frames = ((hangover_ms + 500) / frame_ms) as usize;
-
-    let chunks = decode::decode_audio_chunked(input, cfg.sample_rate_hz, chunk_duration_sec)?;
-
-    let (vad_threshold, vad_flatness_max, vad_entropy_min, vad_centroid_min, vad_centroid_max) = (
-        effective_threshold,
-        cfg.spectral_flatness_max,
-        cfg.spectral_entropy_min,
-        cfg.spectral_centroid_min,
-        cfg.spectral_centroid_max,
-    );
-
-    let mut all_segments = Vec::new();
-    let mut chunk_offset_ms: u64 = 0;
-    let mut prev_frames: Vec<movie_radio_types::Frame> = Vec::new();
-    let mut prev_likelihoods: Vec<f32> = Vec::new();
-    let mut prev_samples: Vec<f32> = Vec::new();
-
-    for (chunk_idx, chunk_samples) in chunks.iter().enumerate() {
-        let chunk_len = chunk_samples.len();
-
-        let frames = framing::build_frames(chunk_samples, cfg.sample_rate_hz, frame_ms, false);
-        let chunk_ms = chunk_len as u64 * 1000 / cfg.sample_rate_hz as u64;
-
-        let mut combined_frames = prev_frames.clone();
-        combined_frames.extend_from_slice(&frames);
-
-        let mut combined_likelihoods = prev_likelihoods.clone();
-
-        let mut vad_engine = create_engine(
-            &cfg.vad_engine,
-            vad_threshold,
-            vad_flatness_max,
-            vad_entropy_min,
-            vad_centroid_min,
-            vad_centroid_max,
-            cfg.sample_rate_hz,
-            frame_ms,
-        )?;
-
-        let mut combined_samples = prev_samples.clone();
-        combined_samples.extend_from_slice(chunk_samples);
-        let vad_output = classify_with_engine(
-            vad_engine.as_mut(),
-            &combined_frames,
-            &combined_samples,
-            cfg.sample_rate_hz,
-            frame_ms,
-        )?;
-        let speech = vad_output.decisions;
-        combined_likelihoods.extend_from_slice(&vad_output.likelihoods);
-
-        let smoothed = tri_state::resolve_speech_with_ambiguity(
-            &speech,
-            &combined_frames,
-            &combined_likelihoods,
-            frame_ms,
-            hangover_ms,
-        );
-
-        let warmup_count = prev_frames.len();
-        let chunk_smoothed = &smoothed[warmup_count..];
-        let chunk_likelihoods = &combined_likelihoods[warmup_count..];
-        let chunk_frame_start_ms = chunk_offset_ms;
-
-        let speech_segments = segmenter::speech_segments(
-            chunk_smoothed,
-            frame_ms,
-            cfg.min_speech_ms,
-            chunk_likelihoods,
-        );
-
-        let merged_speech = segmenter::merge_close_segments(&speech_segments, cfg.merge_gap_ms);
-        let prune_floor_ms = cfg
-            .merge_options
-            .as_ref()
-            .map(|opts| opts.min_speech_duration)
-            .unwrap_or(cfg.min_speech_ms);
-        let pruned_speech = segmenter::prune_short_speech_segments(&merged_speech, prune_floor_ms);
-
-        let chunk_total_ms = chunk_ms;
-        let non_voice = segmenter::invert_to_non_voice(
-            &pruned_speech,
-            chunk_total_ms,
-            cfg.min_non_voice_ms,
-            frame_ms,
-            chunk_likelihoods,
-        );
-
-        let bridge_speech_ms = cfg
-            .merge_options
-            .as_ref()
-            .map(|opts| opts.min_speech_duration)
-            .unwrap_or(0);
-        let non_voice = segmenter::bridge_non_voice_segments(&non_voice, bridge_speech_ms);
-        let non_voice = if let Some(merge_options) = cfg.merge_options.as_ref() {
-            segmenter::apply_non_voice_merge_policy(&non_voice, merge_options)
-        } else {
-            non_voice
-        };
-        let non_voice = nonvoice_expand::expand_non_voice_segments_into_ambiguous(
-            &non_voice,
-            chunk_likelihoods,
-            frame_ms,
-            ambiguous_expand_max_ms(cfg),
-        );
-
-        for seg in non_voice {
-            let adjusted = movie_radio_types::Segment {
-                start_ms: seg.start_ms + chunk_frame_start_ms,
-                end_ms: seg.end_ms + chunk_frame_start_ms,
-                kind: seg.kind,
-                confidence: seg.confidence,
-                tags: seg.tags,
-                prompt: seg.prompt,
-                sfx_trigger: seg.sfx_trigger,
-            };
-            all_segments.push(adjusted);
-        }
-
-        if warmup_count > 0 && frames.len() > warmup_frames {
-            prev_frames = frames[frames.len() - warmup_frames..].to_vec();
-            prev_likelihoods =
-                chunk_likelihoods[chunk_likelihoods.len() - warmup_frames..].to_vec();
-            // Exact sample coverage of the retained frames: full frames except
-            // possibly the chunk tail, so sample-based engines stay aligned
-            // with frame-based decisions.
-            let flen = frame_len(cfg.sample_rate_hz, frame_ms);
-            let tail = chunk_samples.len() % flen;
-            let mut sample_count = warmup_frames * flen;
-            if tail != 0 {
-                sample_count -= flen - tail;
-            }
-            prev_samples = tail_samples(chunk_samples, sample_count);
-        } else {
-            prev_frames = frames;
-            prev_likelihoods = chunk_likelihoods.to_vec();
-            prev_samples.clone_from(chunk_samples);
-        }
-
-        chunk_offset_ms += chunk_ms;
-
-        if chunk_idx % 10 == 0 {
-            info!(
-                chunk = chunk_idx,
-                offset_ms = chunk_offset_ms,
-                segments_so_far = all_segments.len(),
-                "chunk processed"
-            );
-        }
-    }
-
-    let total_samples: u64 = chunks.iter().map(|c| c.len() as u64).sum();
-    let total_audio_ms = total_samples * 1000 / cfg.sample_rate_hz as u64;
-
-    all_segments.sort_by_key(|s| s.start_ms);
-
-    let timeline = TimelineOutput {
-        file: input.file_name().map_or_else(
-            || "unknown".to_string(),
-            |s| s.to_string_lossy().to_string(),
-        ),
-        analysis_sample_rate: cfg.sample_rate_hz,
-        frame_ms: cfg.frame_ms,
-        segments: all_segments,
-    };
-
+    // skipcq: RS-E1015 — DeepSource false positive on ? with Result<PipelineArtifacts>
+    let PipelineArtifacts {
+        timeline,
+        frame_count,
+        speech_segment_count,
+        stage_ms,
+    } = run_pipeline_from_samples(samples, file_path, cfg)?; // skipcq: RS-E1015
     info!(
         total_ms = total_start.elapsed().as_millis() as u64,
-        total_audio_ms,
+        frames = frame_count,
+        speech_segments = speech_segment_count,
         non_voice_segments = timeline.segments.len(),
-        "extract done (chunked)"
+        decode_ms = stage_ms.decode_ms,
+        vad_ms = stage_ms.vad_ms,
+        "extract_from_samples done"
     );
-
     Ok(timeline)
 }
 
 fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts> {
+    let mut stage_ms = StageDurations::default();
+    let (mono, _source_rate) = decode_stage(input, cfg, &mut stage_ms)?;
+    let mut artifacts = run_pipeline_from_samples(&mono, input, cfg)?;
+    artifacts.stage_ms.decode_ms = stage_ms.decode_ms;
+    Ok(artifacts)
+}
+
+fn run_pipeline_from_samples(
+    mono: &[f32],
+    file_path: &Path,
+    cfg: &AnalysisConfig,
+) -> Result<PipelineArtifacts> {
     let effective_threshold = cfg.energy_threshold + cfg.vad_threshold_delta;
     let mut stage_ms = StageDurations::default();
 
-    let (mono, _source_rate) = decode_stage(input, cfg, &mut stage_ms)?;
-    let frames = framing_stage(&mono, cfg, &mut stage_ms);
+    let frames = framing_stage(mono, cfg, &mut stage_ms);
     let frame_count = frames.len();
 
     let (speech, frame_likelihoods) =
-        vad_stage(&mono, &frames, cfg, effective_threshold, &mut stage_ms)?;
+        vad_stage(mono, &frames, cfg, effective_threshold, &mut stage_ms)?;
     let smoothed = smoothing_stage(&speech, &frames, &frame_likelihoods, cfg, &mut stage_ms);
     let speech_segments = speech_segments_stage(&smoothed, &frame_likelihoods, cfg, &mut stage_ms);
     let filtered_speech = merging_stage(&speech_segments, &frames, cfg, &mut stage_ms);
@@ -289,7 +147,7 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
 
     let total_audio_ms = mono.len() as u64 * 1000 / cfg.sample_rate_hz as u64;
     let segments = non_voice_inversion_stage(
-        input,
+        file_path,
         &filtered_speech,
         &frame_likelihoods,
         total_audio_ms,
@@ -297,11 +155,13 @@ fn run_pipeline(input: &Path, cfg: &AnalysisConfig) -> Result<PipelineArtifacts>
         &mut stage_ms,
     )?;
 
+    let file_name = file_path.file_name().map_or_else(
+        || "unknown".to_string(),
+        |s| s.to_string_lossy().to_string(),
+    );
+
     let timeline = TimelineOutput {
-        file: input.file_name().map_or_else(
-            || "unknown".to_string(),
-            |s| s.to_string_lossy().to_string(),
-        ),
+        file: file_name,
         analysis_sample_rate: cfg.sample_rate_hz,
         frame_ms: cfg.frame_ms,
         segments,
@@ -332,18 +192,6 @@ fn framing_stage(mono: &[f32], cfg: &AnalysisConfig, stage_ms: &mut StageDuratio
     });
     info!(stage = "frame", ms = stage_ms.frame_ms, frames = frames.len(), "stage complete");
     frames
-}
-
-fn frame_len(sample_rate_hz: u32, frame_ms: u32) -> usize {
-    ((sample_rate_hz as usize * frame_ms as usize) / 1000).max(1)
-}
-
-fn tail_samples(samples: &[f32], n: usize) -> Vec<f32> {
-    if n >= samples.len() {
-        samples.to_vec()
-    } else {
-        samples[samples.len() - n..].to_vec()
-    }
 }
 
 #[rustfmt::skip]

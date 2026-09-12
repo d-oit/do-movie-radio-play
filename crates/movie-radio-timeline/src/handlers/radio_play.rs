@@ -7,7 +7,6 @@ use movie_radio_goap::gaps::GapIdentifier;
 use movie_radio_goap::narrate::{NarrationGenerator, NarrationScript};
 use movie_radio_io::json::{read_timeline, write_json_pretty};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
-use movie_radio_pipeline::pipeline::extract_timeline;
 use movie_radio_pipeline::pipeline::sfx_autofill::autofill_silent_scene_sfx;
 use movie_radio_render::sfx::SfxManager;
 use movie_radio_types::{AnalysisConfig, SfxTrigger, SoundEffectsConfig, TimelineOutput};
@@ -74,7 +73,23 @@ fn run_full_pipeline(
     });
 
     let cfg = AnalysisConfig::default();
-    let mut timeline = resolve_timeline(&movie, timeline_path, &cfg)?;
+    let sample_rate = cfg.sample_rate_hz;
+
+    let (mut timeline, original) = if let Some(p) = timeline_path {
+        info!(timeline = %p.display(), "Using provided timeline");
+        let tl = read_timeline(&p)?;
+        info!("Loading original audio for assembly");
+        let (audio, _) = decode_audio(&movie, sample_rate)?;
+        (tl, audio)
+    } else {
+        info!("Decoding movie audio for timeline extraction and assembly");
+        let (audio, _) = decode_audio(&movie, sample_rate)?;
+        info!("Extracting timeline from loaded audio");
+        let tl = movie_radio_pipeline::pipeline::extract_timeline_from_samples_with_path(
+            &audio, &movie, &cfg,
+        )?;
+        (tl, audio)
+    };
     autofill_silent_scene_sfx(&mut timeline);
 
     let srt_content = subtitles_path.map(std::fs::read_to_string).transpose()?;
@@ -94,7 +109,6 @@ fn run_full_pipeline(
         s
     };
 
-    let sample_rate = cfg.sample_rate_hz;
     let runtime = tokio::runtime::Runtime::new()?;
 
     let narration_segments = if scripts.is_empty() {
@@ -109,9 +123,8 @@ fn run_full_pipeline(
     info!(
         segments = narration_segments.len(),
         sfx_count = sfx_segments.len(),
-        "Loading original audio for assembly"
+        "Assembling radio play with audio"
     );
-    let (original, _) = decode_audio(&movie, sample_rate)?;
     let assembler = RadioPlayAssembler::new(sample_rate, 50, 0.3);
     let radio_play = assembler.assemble_with_sfx(&original, &narration_segments, &sfx_segments)?;
 
@@ -124,20 +137,6 @@ fn run_full_pipeline(
     );
 
     Ok(())
-}
-
-fn resolve_timeline(
-    movie: &std::path::Path,
-    timeline_path: Option<PathBuf>,
-    cfg: &AnalysisConfig,
-) -> Result<TimelineOutput> {
-    if let Some(p) = timeline_path {
-        info!(timeline = %p.display(), "Using provided timeline");
-        read_timeline(&p)
-    } else {
-        info!("Extracting timeline from movie");
-        extract_timeline(movie, cfg)
-    }
 }
 
 fn write_and_encode_output(

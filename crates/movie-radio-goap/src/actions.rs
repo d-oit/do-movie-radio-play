@@ -385,15 +385,7 @@ fn build_narration_segments(
     narration_audio: &[Option<movie_radio_voice::AudioOutput>],
     assembler: &crate::assemble::RadioPlayAssembler,
 ) -> Vec<crate::assemble::NarrationSegment> {
-    scripts
-        .iter()
-        .zip(narration_audio.iter())
-        .filter_map(|(script, audio)| {
-            audio
-                .as_ref()
-                .map(|audio| assembler.narration_to_segment(script, &audio.samples))
-        })
-        .collect()
+    assembler.build_narration_segments(scripts, narration_audio)
 }
 
 #[cfg(test)]

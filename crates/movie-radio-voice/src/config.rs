@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+pub const ENV_ELEVENLABS_API_KEY: &str = "ELEVENLABS_API_KEY";
+pub const ENV_MODAL_TTS_ENDPOINT: &str = "MODAL_TTS_ENDPOINT";
+pub const ENV_OPENAI_API_KEY: &str = "OPENAI_API_KEY";
+pub const ENV_OPENAI_TTS_BASE_URL: &str = "OPENAI_TTS_BASE_URL";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoiceSynthesisConfig {
     pub provider: String,
@@ -12,7 +17,75 @@ pub struct VoiceSynthesisConfig {
     pub providers: VoiceProvidersConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for VoiceSynthesisConfig {
+    fn default() -> Self {
+        Self {
+            provider: "modal".to_string(),
+            fallback_chain: vec![
+                "modal".to_string(),
+                "elevenlabs".to_string(),
+                "openai".to_string(),
+            ],
+            emotion_mapping: true,
+            language: "de".to_string(),
+            voice_id: None,
+            max_cost_per_run_usd: 25.0,
+            providers: VoiceProvidersConfig {
+                modal: Some(ModalConfig {
+                    endpoint_url_env: ENV_MODAL_TTS_ENDPOINT.to_string(),
+                    max_monthly_cost: 25.0,
+                }),
+                ..VoiceProvidersConfig::default()
+            },
+        }
+    }
+}
+
+impl VoiceSynthesisConfig {
+    /// Builds a `VoiceSynthesisConfig` reading available provider credentials from environment variables.
+    pub fn from_env() -> Self {
+        let mut config = Self::default();
+        if std::env::var(ENV_ELEVENLABS_API_KEY).is_ok() {
+            config.providers.elevenlabs = Some(ElevenLabsConfig {
+                api_key_env: ENV_ELEVENLABS_API_KEY.to_string(),
+                voice_id: "pNInz6obpgDQGcFmaJgB".to_string(),
+                model: "eleven_multilingual_v2".to_string(),
+                stability: 0.5,
+                similarity_boost: 0.75,
+            });
+        }
+        config.providers.openai = Self::openai_config_from_env();
+        config
+    }
+
+    fn openai_config_from_env() -> Option<OpenAiConfig> {
+        if std::env::var(ENV_OPENAI_API_KEY).is_ok() {
+            return Some(OpenAiConfig {
+                api_key_env: Some(ENV_OPENAI_API_KEY.to_string()),
+                base_url: default_openai_base_url(),
+                model: "tts-1-hd".to_string(),
+                voice: "onyx".to_string(),
+                response_format: "mp3".to_string(),
+            });
+        }
+
+        std::env::var(ENV_OPENAI_TTS_BASE_URL).ok().map(|base_url| {
+            tracing::info!(
+                base_url = %base_url,
+                "Using OpenAI-compatible TTS sidecar (German PocketTTS defaults)"
+            );
+            OpenAiConfig {
+                api_key_env: None,
+                base_url,
+                model: "pocket-tts".to_string(),
+                voice: "alba".to_string(),
+                response_format: "wav".to_string(),
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct VoiceProvidersConfig {
     #[serde(default)]
     pub kokoro: Option<KokoroConfig>,

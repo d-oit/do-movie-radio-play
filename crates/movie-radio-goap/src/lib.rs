@@ -49,6 +49,8 @@ pub struct PipelineContext {
     pub narration_audio: Vec<Option<movie_radio_voice::AudioOutput>>,
     pub original_audio: Option<Vec<f32>>,
     pub sample_rate: u32,
+    /// Optional voice synthesis config (providers, fallback chain, language, voice_id).
+    pub voice_config: Option<movie_radio_voice::VoiceSynthesisConfig>,
     /// Adaptive thresholds after the `apply_learnings` action, when run.
     pub learning: Option<movie_radio_learning::adaptive_thresholds::AdaptiveThresholds>,
     /// Verification report produced by the `verify_quality` action.
@@ -75,6 +77,7 @@ impl PipelineContext {
             scripts: None,
             narration_audio: Vec::new(),
             original_audio: None,
+            voice_config: None,
             verification: None,
             learning: None,
             learning_state_path: None,

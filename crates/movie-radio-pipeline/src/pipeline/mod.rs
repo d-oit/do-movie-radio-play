@@ -83,7 +83,9 @@ pub fn extract_timeline_from_samples(
     samples: &[f32],
     cfg: &AnalysisConfig,
 ) -> Result<TimelineOutput> {
-    extract_timeline_from_samples_with_path(samples, Path::new("in_memory.wav"), cfg)
+    let dummy_path = Path::new("in_memory.wav");
+    // skipcq: RS-E1015 — DeepSource false positive: dummy_path is &Path, not ()
+    extract_timeline_from_samples_with_path(samples, dummy_path, cfg) // skipcq: RS-E1015
 }
 
 pub fn extract_timeline_from_samples_with_path(

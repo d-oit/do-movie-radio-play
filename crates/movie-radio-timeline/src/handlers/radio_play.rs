@@ -193,8 +193,7 @@ fn synthesize_narrations(
     runtime: &tokio::runtime::Runtime,
     sample_rate: u32,
 ) -> Vec<NarrationSegment> {
-    let mut narration_segments = Vec::new();
-    let assembler = RadioPlayAssembler::new(sample_rate, 50, 0.3);
+    let mut narration_audio = Vec::new();
 
     for (i, script) in scripts.iter().enumerate() {
         info!(
@@ -216,21 +215,22 @@ fn synthesize_narrations(
 
         match runtime.block_on(orchestrator.synthesize(&request)) {
             Ok(audio) => {
-                let segment = assembler.narration_to_segment(script, &audio.samples);
-                narration_segments.push(segment);
                 info!(
                     i = i + 1,
                     samples = audio.samples.len(),
                     "Narration synthesized"
                 );
+                narration_audio.push(Some(audio));
             }
             Err(e) => {
                 tracing::warn!(i = i + 1, error = %e, "TTS failed for this gap, skipping");
+                narration_audio.push(None);
             }
         }
     }
 
-    narration_segments
+    let assembler = RadioPlayAssembler::new(sample_rate, 50, 0.3);
+    assembler.build_narration_segments(scripts, &narration_audio)
 }
 
 fn render_sfx_segments(

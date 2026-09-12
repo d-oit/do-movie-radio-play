@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::database::types::SpectralFeatures;
+use serde::{Deserialize, Serialize};
 
 /// Normalized 8-dimensional acoustic spectral feature vector representation.
 /// Features: [rms, zcr, spectral_flux, spectral_flatness, spectral_entropy, centroid_hz, low_band_ratio, high_band_ratio]

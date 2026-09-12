@@ -31,7 +31,8 @@ impl GapIdentifier {
         let min_silence = (3000i64 + profile.min_non_voice_ms_delta).max(500) as u64;
         Self {
             min_silence_duration_ms: min_silence,
-            high_confidence_threshold: (0.8 + profile.confidence_threshold_delta as f32).clamp(0.1, 1.0),
+            high_confidence_threshold: (0.8 + profile.confidence_threshold_delta as f32)
+                .clamp(0.1, 1.0),
             profile: Some(profile),
         }
     }

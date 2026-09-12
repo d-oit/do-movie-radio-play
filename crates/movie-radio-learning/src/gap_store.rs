@@ -78,10 +78,7 @@ pub(crate) async fn record_gap_decision(conn: &Connection, decision: GapDecision
             Value::Text(decision.reason),
             Value::Integer(decision.priority as i64),
             approved.map(Value::Integer).unwrap_or(Value::Null),
-            decision
-                .genre
-                .map(Value::Text)
-                .unwrap_or(Value::Null),
+            decision.genre.map(Value::Text).unwrap_or(Value::Null),
         ],
     )
     .await?;

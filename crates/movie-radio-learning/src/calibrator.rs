@@ -72,6 +72,7 @@ pub fn apply_calibration_report(report_path: &Path, output_profile: &Path) -> Re
             report_path.display()
         )
     })?;
+    let base = profiles::profile(&report.profile);
     let profile = CalibrationProfile {
         name: format!("{}-v{}", report.profile, report.version + 1),
         energy_threshold_delta: report.recommended_energy_threshold_delta,
@@ -79,6 +80,9 @@ pub fn apply_calibration_report(report_path: &Path, output_profile: &Path) -> Re
         tag_thresholds: None,
         profile_id: Some(report.profile.clone()),
         experiment_tags: vec![],
+        min_non_voice_ms_delta: base.min_non_voice_ms_delta,
+        confidence_threshold_delta: base.confidence_threshold_delta,
+        narration_density_multiplier: base.narration_density_multiplier,
     };
     if let Some(parent) = output_profile.parent() {
         fs::create_dir_all(parent)?;

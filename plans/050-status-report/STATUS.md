@@ -15,21 +15,22 @@
 
 ## Workspace Restructure (2026-06-22)
 
-Major workspace restructure extracted monolithic `src/` into 9 focused crates:
+Major workspace restructure extracted monolithic `src/` into 10 focused crates:
 
 | Crate | LOC | Purpose | Status |
 |-------|-----|---------|--------|
-| `movie-radio-types` | 392 | Shared types (Frame, Segment, Metrics, Emotion, AudioOutput, config) | Complete |
-| `movie-radio-pipeline` | 3,245 | VAD, framing, segmentation, features, tags, prompts, decode | Complete |
-| `movie-radio-learning` | 1,605 | Calibration, adaptive thresholds, libsql database, profiles | Complete |
-| `movie-radio-verification` | 1,356 | Spectral verification, fingerprinting, segment extraction | Complete |
-| `movie-radio-validation` | 745 | Validation, comparison, SRT parsing, synthetic fixtures | Complete |
-| `movie-radio-voice` | 624 | TTS providers (Kokoro, PocketTts, Qwen3, Orpheus, ElevenLabs) | Structurally complete; most providers return silence |
-| `movie-radio-io` | 309 | JSON, EDL, VTT, WAV I/O utilities | Complete |
-| `movie-radio-goap` | 1,275 | GOAP planner, orchestrator, actions, gaps, narrate, assemble | All modules implemented; orchestrator doesn't execute real work |
-| `movie-radio-timeline` | 2,241 | CLI binary with 16 subcommands, handlers, config | Complete |
+| `movie-radio-types` | ~450 | Shared types (Frame, Segment, Metrics, Emotion, AudioOutput, config, validation) | Complete |
+| `movie-radio-pipeline` | ~3,500 | VAD engines, framing, segmentation, features, tags, prompts, Symphonia decode | Complete |
+| `movie-radio-learning` | ~1,650 | Calibration, adaptive thresholds, libsql database, gap store, profiles | Complete |
+| `movie-radio-verification` | ~1,400 | Spectral verification, fingerprinting, segment extraction | Complete |
+| `movie-radio-validation` | ~800 | Validation, comparison, SRT parsing, synthetic fixtures | Complete |
+| `movie-radio-voice` | ~1,200 | TTS providers (audio_cpp, Modal, ElevenLabs, OpenAI, Kokoro, Qwen3, Orpheus) | Complete |
+| `movie-radio-io` | ~350 | JSON, EDL, VTT, WAV I/O utilities, review player HTML generation | Complete |
+| `movie-radio-goap` | ~1,500 | GOAP planner, orchestrator, actions, gaps, narrate, assemble | Complete |
+| `movie-radio-render` | ~1,100 | Spatial audio, AGC, reverb, sound effects (`SfxManager`), mixer | Complete |
+| `movie-radio-timeline` | ~2,500 | CLI binary with subcommands, handlers, config | Complete |
 
-**Total:** ~11,800 LOC across 76 Rust source files.
+**Total:** ~14,500 LOC across workspace member crates.
 
 ## CLI Commands (16 subcommands)
 
@@ -56,34 +57,35 @@ Major workspace restructure extracted monolithic `src/` into 9 focused crates:
 
 | Provider | File | Real Logic | Synthesis Output | Notes |
 |----------|------|------------|------------------|-------|
-| **Modal** | `src/voice/modal.rs` | HTTP POST + PCM WAV decode | Real audio | PR #110; free-tier serverless GPU |
-| **ElevenLabs** | `src/voice/elevenlabs.rs` | HTTP POST, API key auth | Mock audio (no MP3 decode) | Real API calls, needs MP3 decoder |
-| **Kokoro** | `src/voice/kokoro.rs` | ONNX model download + session load | Silence (no inference) | Infrastructure ready |
-| **Orpheus** | `src/voice/orpheus.rs` | Emotion tag wrapping | Silence | Stub |
-| **Qwen3** | `src/voice/qwen3.rs` | German emotion prompts | Silence | Stub |
-| **PocketTts** | `src/voice/pockettts.rs` | None | Silence | Fully stubbed |
+| **audio_cpp** | `crates/movie-radio-voice/src/voice/audio_cpp/` | Local CLI/HTTP & remote HTTPS GPU pools | Real audio | Primary C++ runtime provider |
+| **Modal** | `crates/movie-radio-voice/src/voice/modal.rs` | HTTP POST + PCM WAV decode | Real audio | PR #110; free-tier serverless GPU |
+| **ElevenLabs** | `crates/movie-radio-voice/src/voice/elevenlabs.rs` | HTTP POST + Symphonia MP3 decode | Real audio | API provider with native MP3 decoding |
+| **OpenAI** | `crates/movie-radio-voice/src/voice/openai.rs` | HTTP POST + Symphonia MP3 decode | Real audio | API provider with native MP3 decoding |
+| **Kokoro** | `crates/movie-radio-voice/src/voice/kokoro.rs` | ONNX model download + session load | ONNX Session | Infrastructure & ONNX loading ready |
+| **Orpheus** | `crates/movie-radio-voice/src/voice/orpheus.rs` | Emotion tag wrapping | Stub | Stub |
+| **Qwen3** | `crates/movie-radio-voice/src/voice/qwen3.rs` | German emotion prompts | Stub | Stub |
 
-**Fallback chain:** `SynthesisOrchestrator` in `src/voice/mod.rs` iterates configured provider list, tries each in order, falls through on failure. Monthly spend tracking via `LearningDb`.
+**Fallback chain:** `SynthesisOrchestrator` in `crates/movie-radio-voice/src/voice/mod.rs` validates requests (`SynthesisRequest::validate`), iterates configured provider list, tries each in order, and falls through on failure. Monthly spend tracking via `LearningDb.provider_usage`.
 
-## GOAP Pipeline
+## GOAP & Unified Orchestrator (#246)
 
 | Component | File | Status |
 |-----------|------|--------|
-| A* Planner | `movie-radio-goap/src/planner.rs` | Fully implemented with tests |
-| World State | `movie-radio-goap/src/lib.rs` | 11-field boolean state, `meets(goal)` |
-| Actions | `movie-radio-goap/src/actions.rs` | 8 actions with preconditions/effects/costs |
-| Orchestrator | `movie-radio-goap/src/orchestrator.rs` | Structural loop works; doesn't execute real work |
-| Gap Identifier | `movie-radio-goap/src/gaps.rs` | 5-signal scoring, fully implemented |
-| Narration Generator | `movie-radio-goap/src/narrate.rs` | Template-based German text, fully implemented |
-| Audio Assembler | `movie-radio-goap/src/assemble.rs` | Crossfade + ducking, fully implemented |
+| A* Planner | `crates/movie-radio-goap/src/planner.rs` | Fully implemented with tests |
+| World State | `crates/movie-radio-goap/src/lib.rs` | 11-field boolean state, `meets(goal)` |
+| Actions | `crates/movie-radio-goap/src/actions/` | 8 GOAP actions with real stage execution |
+| Orchestrator | `crates/movie-radio-pipeline/src/orchestrator.rs` | Unified engine executing 12 stages with checkpoint persistence |
+| Gap Identifier | `crates/movie-radio-goap/src/gaps.rs` | 5-signal modular scoring, fully implemented |
+| Narration Generator | `crates/movie-radio-goap/src/narrate.rs` | Context-aware German description generator |
+| Audio Assembler | `crates/movie-radio-goap/src/assemble.rs` | Crossfade + ducking + SFX mixing end-to-end (#287) |
 
 ## Pipeline Stages (execution order)
 
-1. **Decode** — Symphonia native + ffmpeg fallback
+1. **Decode** — Symphonia native (with 16/24-bit PCM & 32-bit float support #250) + ffmpeg fallback
 2. **Resample** — Linear interpolation (rubato behind feature flag)
 3. **Framing** — 20ms windows, parallel feature extraction
 4. **Feature Extraction** — FFT-based 8 spectral features
-5. **VAD** — Energy / Spectral / Hybrid engines
+5. **VAD** — Energy / Spectral / Hybrid / WebRTC (feature `webrtc-vad` #253) / Silero engines
 6. **Tri-State Smoothing** — Speech/MusicLike/NoiseLike classification
 7. **Speech Segmentation** — Hangover smoothing, merge, prune
 8. **Speech Evidence Filter** — Remove implausible speech segments
@@ -120,11 +122,7 @@ Major workspace restructure extracted monolithic `src/` into 9 focused crates:
 
 | Gap | Severity | Location | Notes |
 |-----|----------|----------|-------|
-| Voice providers return silence | High | `movie-radio-voice/src/voice/` | Only Modal + ElevenLabs make real calls |
-| GOAP orchestrator doesn't execute | Medium | `movie-radio-goap/src/orchestrator.rs` | Simulates state transitions only |
-| Radio-play CLI not wired | Medium | `src/handlers/radio_play.rs` | analyze-only mode works; full pipeline stub |
-| OpenAI TTS provider missing | Low | N/A | Not implemented at all |
-| MP3 decode for ElevenLabs | Low | `src/voice/elevenlabs.rs` | HTTP works, response not decoded |
+| Local neural TTS stubs (Kokoro/Orpheus/Qwen3) | Low | `crates/movie-radio-voice/src/voice/` | Cloud providers (Modal, ElevenLabs, OpenAI) and audio_cpp handle real audio |
 
 ## Quality Issues
 
@@ -149,13 +147,21 @@ Dependency security (GitHub Dependabot):
 
 ## Recent Changes
 
-### GOAP Pipeline Wiring (2026-06-23)
-- ElevenLabs MP3 decode via symphonia (replaced mock return)
-- OpenAI TTS provider added (`crates/movie-radio-voice/src/voice/openai.rs`)
-- GOAP orchestrator wired to real pipeline stages (`async fn execute()` on Action trait)
-- Radio-play CLI full pipeline verified as default mode
-- `reqwest` query feature enabled for modal.rs
-- Pre-existing clippy warnings fixed
+### SFX Mixing Engine (#287)
+- Integrated `SfxManager` from `movie-radio-render` into `RadioPlayAssembler` (`assemble_with_sfx`)
+- Resolved `SfxTrigger` variants (`AutoSelect`, `Specific`, `AiGenerate`, `None`) into decoded audio sample buffers and mixed end-to-end with ducking.
+
+### WebRTC VAD Integration (#253)
+- Added WebRTC VAD engine support under `--features webrtc-vad` in `crates/movie-radio-pipeline/src/pipeline/vad/webrtc.rs`.
+- Validated support for 8k/16k/32k/48kHz sample rates and 10/20/30ms frames.
+
+### Native 24-bit PCM & 32-bit Float WAV Decoding (#250)
+- Expanded Symphonia WAV decoder in `crates/movie-radio-pipeline/src/pipeline/decode.rs` to decode 24-bit signed PCM and 32-bit float WAV files natively without requiring `ffmpeg` on PATH.
+
+### Unified Orchestrator (#246)
+- Unified GOAP planning and pipeline stage execution in `crates/movie-radio-pipeline/src/orchestrator.rs`.
+- Implemented `ProduceCheckpoint` JSON persistence and progress resumption via `--resume`.
+- Standardized provider configuration and fallback handling.
 
 ### Workspace Restructure (2026-06-22)
 - 128 files changed, 14,890 insertions

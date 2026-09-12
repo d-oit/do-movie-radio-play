@@ -190,9 +190,7 @@ impl Action for SynthesizeNarrator {
     }
 
     async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
-        use movie_radio_voice::config::ModalConfig;
-        use movie_radio_voice::voice::modal::ModalTtsProvider;
-        use movie_radio_voice::voice::{SynthesisRequest, VoiceSynthesizer};
+        use movie_radio_voice::voice::{SynthesisOrchestrator, SynthesisRequest};
 
         let scripts = ctx.scripts.as_ref().context("Scripts not generated")?;
         // Keep the pre-action length so a failed attempt can roll its partial
@@ -200,11 +198,14 @@ impl Action for SynthesizeNarrator {
         // AssembleRadioPlay zips scripts against this vector from its start.
         let narration_baseline = ctx.narration_audio.len();
 
-        let modal_config = ModalConfig {
-            endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
-            max_monthly_cost: 25.0,
-        };
-        let provider = ModalTtsProvider::new(modal_config);
+        let voice_cfg = ctx
+            .voice_config
+            .clone()
+            .unwrap_or_else(movie_radio_voice::config::VoiceSynthesisConfig::from_env);
+
+        let language = voice_cfg.language.clone();
+        let voice_id = voice_cfg.voice_id.clone();
+        let orchestrator = SynthesisOrchestrator::new(voice_cfg);
 
         for (i, script) in scripts.iter().enumerate() {
             info!(
@@ -217,8 +218,8 @@ impl Action for SynthesizeNarrator {
             let request = SynthesisRequest {
                 text: script.text.clone(),
                 emotion: script.emotion.clone(),
-                voice_id: None,
-                language: "de".to_string(),
+                voice_id: voice_id.clone(),
+                language: language.clone(),
                 speed: 1.0,
                 sample_rate_hz: ctx.sample_rate,
             };
@@ -229,19 +230,7 @@ impl Action for SynthesizeNarrator {
                 continue;
             }
 
-            let cap = provider.capabilities().max_text_length;
-            if script.text.chars().count() > cap {
-                tracing::warn!(
-                    i = i + 1,
-                    cap,
-                    chars = script.text.chars().count(),
-                    "Text exceeds provider cap, skipping"
-                );
-                ctx.narration_audio.push(None);
-                continue;
-            }
-
-            match provider.synthesize(&request).await {
+            match orchestrator.synthesize(&request).await {
                 Ok(audio) => {
                     info!(
                         i = i + 1,
@@ -453,6 +442,28 @@ mod tests {
             ctx.narration_audio.is_empty(),
             "failed synthesis must roll back its partial entries"
         );
+    }
+
+    #[tokio::test]
+    async fn test_synthesize_narrator_uses_custom_voice_config() {
+        let mut ctx = crate::PipelineContext::new(
+            std::path::PathBuf::from("movie.mp4"),
+            std::path::PathBuf::from("out.wav"),
+        );
+        let voice_cfg = movie_radio_voice::VoiceSynthesisConfig {
+            language: "en".to_string(),
+            voice_id: Some("narrator-custom".to_string()),
+            fallback_chain: vec!["modal".to_string()],
+            ..movie_radio_voice::VoiceSynthesisConfig::default()
+        };
+        ctx.voice_config = Some(voice_cfg);
+        ctx.scripts = Some(vec![script(100)]);
+
+        const MODAL_TTS_ENDPOINT_ENV: &str = "MODAL_TTS_ENDPOINT";
+        std::env::remove_var(MODAL_TTS_ENDPOINT_ENV);
+        let result = SynthesizeNarrator.execute(&mut ctx).await;
+        let err = result.expect_err("synthesis failure expected without endpoint");
+        assert!(err.to_string().contains("all 1 narration syntheses failed"));
     }
 }
 

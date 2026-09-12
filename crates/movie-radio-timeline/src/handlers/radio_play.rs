@@ -96,17 +96,17 @@ fn run_full_pipeline(
     } else {
         let voice_config = VoiceSynthesisConfig::from_analysis_config(&cfg);
         let language = if voice_config.language.is_empty() {
-            "de"
+            "de".to_string()
         } else {
-            &voice_config.language
+            voice_config.language.clone()
         };
-        let voice_id = voice_config.voice_id.as_deref();
+        let voice_id = voice_config.voice_id.clone();
         let orchestrator = SynthesisOrchestrator::new(voice_config);
         synthesize_narrations(
             &scripts,
             &orchestrator,
-            language,
-            voice_id,
+            &language,
+            voice_id.as_deref(),
             &runtime,
             sample_rate,
         )

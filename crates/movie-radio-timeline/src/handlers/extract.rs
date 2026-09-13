@@ -57,6 +57,7 @@ pub fn handle_extract(
 
     if save_calibration {
         let profile_path = util::get_calibration_dir()?.join("latest.json");
+        let base = movie_radio_learning::profiles::profile("drama");
         let profile = CalibrationProfile {
             name: "runtime".to_string(),
             energy_threshold_delta: cfg.vad_threshold_delta,
@@ -64,6 +65,9 @@ pub fn handle_extract(
             tag_thresholds: None,
             profile_id: Some("runtime".to_string()),
             experiment_tags: vec![],
+            min_non_voice_ms_delta: base.min_non_voice_ms_delta,
+            confidence_threshold_delta: base.confidence_threshold_delta,
+            narration_density_multiplier: base.narration_density_multiplier,
         };
         if let Some(parent) = profile_path.parent() {
             std::fs::create_dir_all(parent)?;

@@ -233,6 +233,13 @@ impl LearningDb {
         gap_store::get_gap_decisions(&self.conn, movie_hash).await
     }
 
+    pub async fn get_gap_decisions_by_genre(
+        &self,
+        genre: &str,
+    ) -> Result<Vec<gap_store::GapDecision>> {
+        gap_store::get_gap_decisions_by_genre(&self.conn, genre).await
+    }
+
     pub async fn get_threshold_recommendations(
         &self,
     ) -> Result<threshold_store::ThresholdRecommendation> {

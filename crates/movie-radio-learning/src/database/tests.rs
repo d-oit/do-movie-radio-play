@@ -373,3 +373,84 @@ async fn test_experiment_tracking_and_profile_versioning() {
     assert_eq!(reports.len(), 1);
     assert_eq!(reports[0].records_seen, 150);
 }
+
+#[tokio::test]
+async fn test_trace_store_operations() {
+    let temp_file = setup_test_db_path();
+    let db = LearningDb::new(temp_file.path()).await.unwrap();
+
+    let run_id = "run-12345".to_string();
+    let run = crate::trace_store::RunTrace {
+        id: run_id.clone(),
+        movie_hash: "movie-abc".to_string(),
+        created_at: None,
+        quality_score: Some(0.95),
+        total_cost_usd: Some(0.012),
+        duration_ms: Some(120_000),
+    };
+    db.record_run_trace(&run).await.unwrap();
+
+    let emotion = crate::trace_store::EmotionOutcome {
+        id: None,
+        segment_tag: "visual_gap".to_string(),
+        emotion_used: "neutral".to_string(),
+        provider: "modal".to_string(),
+        quality_score: Some(1.0),
+        user_approved: Some(true),
+        run_id: Some(run_id.clone()),
+    };
+    let outcome_id = db.record_emotion_outcome(&emotion).await.unwrap();
+    assert!(outcome_id > 0);
+
+    let perf = crate::trace_store::ProviderPerformance {
+        id: None,
+        provider: "modal".to_string(),
+        scene_type: Some("drama".to_string()),
+        avg_quality: Some(0.92),
+        avg_latency_ms: Some(450),
+        failure_rate: Some(0.0),
+        cost_per_char: Some(0.0001),
+        last_updated: None,
+    };
+    let perf_id = db.record_provider_performance(&perf).await.unwrap();
+    assert!(perf_id > 0);
+
+    let log = crate::trace_store::AdaptationLog {
+        id: None,
+        parameter: "flatness_max".to_string(),
+        old_value: Some("0.45".to_string()),
+        new_value: Some("0.48".to_string()),
+        reason: Some("fp rate high".to_string()),
+        improvement_delta: Some(0.03),
+        applied_at: None,
+    };
+    let log_id = db.record_adaptation_log(&log).await.unwrap();
+    assert!(log_id > 0);
+
+    let traces = db.get_run_traces(10).await.unwrap();
+    assert_eq!(traces.len(), 1);
+    assert_eq!(traces[0].id, run_id);
+    assert_eq!(traces[0].quality_score, Some(0.95));
+
+    let outcomes = db.get_emotion_outcomes(Some(&run_id)).await.unwrap();
+    assert_eq!(outcomes.len(), 1);
+    assert_eq!(outcomes[0].provider, "modal");
+
+    let perfs = db.get_provider_performances().await.unwrap();
+    assert_eq!(perfs.len(), 1);
+    assert_eq!(perfs[0].provider, "modal");
+
+    let logs = db.get_adaptation_logs(10).await.unwrap();
+    assert_eq!(logs.len(), 1);
+    assert_eq!(logs[0].parameter, "flatness_max");
+
+    let export = db.export_learnings().await.unwrap();
+    assert_eq!(export.run_traces.len(), 1);
+    assert_eq!(export.emotion_outcomes.len(), 1);
+    assert_eq!(export.provider_performance.len(), 1);
+    assert_eq!(export.adaptation_log.len(), 1);
+
+    db.reset_learnings().await.unwrap();
+    let logs_after_reset = db.get_adaptation_logs(10).await.unwrap();
+    assert_eq!(logs_after_reset.len(), 0);
+}

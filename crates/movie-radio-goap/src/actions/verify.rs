@@ -209,11 +209,17 @@ impl Action for ApplyLearnings {
             );
         }
 
+        let old_flatness = state.current_thresholds.flatness_max;
+        let old_entropy = state.current_thresholds.entropy_min;
+
         // Bounded per-run adjustment: the learning-rate-limited updates in
         // movie-radio-learning keep each parameter move small and clamped.
         if state.total_verifications >= 5 {
             adjust_thresholds_for_fp_rate(&mut state);
         }
+
+        let new_flatness = state.current_thresholds.flatness_max;
+        let new_entropy = state.current_thresholds.entropy_min;
 
         // Persist the state file first: it is the durable record. The
         // threshold-history database write is best-effort telemetry, so a
@@ -244,6 +250,39 @@ impl Action for ApplyLearnings {
                             error = %err,
                             "failed to record thresholds in learning database"
                         );
+                    }
+
+                    if !ctx.no_learn {
+                        if (new_flatness - old_flatness).abs() > 0.0001 {
+                            let log = movie_radio_learning::trace_store::AdaptationLog {
+                                id: None,
+                                parameter: "flatness_max".to_string(),
+                                old_value: Some(format!("{old_flatness:.4}")),
+                                new_value: Some(format!("{new_flatness:.4}")),
+                                reason: Some(format!(
+                                    "adjusted for FP rate {:.2}%",
+                                    state.recent_fp_rate * 100.0
+                                )),
+                                improvement_delta: Some(f64::from(new_flatness - old_flatness)),
+                                applied_at: None,
+                            };
+                            let _ = db.record_adaptation_log(&log).await;
+                        }
+                        if (new_entropy - old_entropy).abs() > 0.0001 {
+                            let log = movie_radio_learning::trace_store::AdaptationLog {
+                                id: None,
+                                parameter: "entropy_min".to_string(),
+                                old_value: Some(format!("{old_entropy:.4}")),
+                                new_value: Some(format!("{new_entropy:.4}")),
+                                reason: Some(format!(
+                                    "adjusted for FP rate {:.2}%",
+                                    state.recent_fp_rate * 100.0
+                                )),
+                                improvement_delta: Some(f64::from(new_entropy - old_entropy)),
+                                applied_at: None,
+                            };
+                            let _ = db.record_adaptation_log(&log).await;
+                        }
                     }
                 }
                 Err(err) => {

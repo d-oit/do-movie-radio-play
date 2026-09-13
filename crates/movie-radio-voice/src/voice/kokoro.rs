@@ -30,7 +30,7 @@ impl KokoroProvider {
         self.config
             .model_path
             .parent()
-            .unwrap_or(&PathBuf::from("."))
+            .unwrap_or_else(|| std::path::Path::new("."))
             .to_path_buf()
     }
 
@@ -103,8 +103,143 @@ impl KokoroProvider {
         Ok(Arc::new(Mutex::new(session)))
     }
 
+    /// Maps a character / phoneme symbol to its corresponding token ID in the
+    /// Kokoro / espeak-ng eSD phoneme vocabulary.
+    // skipcq: RS-R1000
+    pub fn phoneme_to_token(c: char) -> Option<i64> {
+        const PHONEME_TABLE: &[(char, i64)] = &[
+            (';', 1),
+            (':', 2),
+            (',', 3),
+            ('.', 4),
+            ('!', 5),
+            ('?', 6),
+            ('—', 9),
+            ('…', 10),
+            ('"', 11),
+            ('(', 12),
+            (')', 13),
+            ('“', 14),
+            ('”', 15),
+            (' ', 16),
+            ('̃', 17),
+            ('ʣ', 18),
+            ('ʥ', 19),
+            ('ʦ', 20),
+            ('ʨ', 21),
+            ('ᵝ', 22),
+            ('ꭧ', 23),
+            ('A', 24),
+            ('I', 25),
+            ('O', 31),
+            ('Q', 33),
+            ('S', 35),
+            ('T', 36),
+            ('W', 39),
+            ('Y', 41),
+            ('ᵊ', 42),
+            ('a', 43),
+            ('b', 44),
+            ('c', 45),
+            ('d', 46),
+            ('e', 47),
+            ('f', 48),
+            ('g', 49),
+            ('h', 50),
+            ('i', 51),
+            ('j', 52),
+            ('k', 53),
+            ('l', 54),
+            ('m', 55),
+            ('n', 56),
+            ('o', 57),
+            ('p', 58),
+            ('q', 59),
+            ('r', 60),
+            ('s', 61),
+            ('t', 62),
+            ('u', 63),
+            ('v', 64),
+            ('w', 65),
+            ('x', 66),
+            ('y', 67),
+            ('z', 68),
+            ('ɑ', 69),
+            ('ɐ', 70),
+            ('ɒ', 71),
+            ('æ', 72),
+            ('β', 75),
+            ('ɔ', 76),
+            ('ɕ', 77),
+            ('ç', 78),
+            ('ɖ', 80),
+            ('ð', 81),
+            ('ʤ', 82),
+            ('ə', 83),
+            ('ɚ', 85),
+            ('ɛ', 86),
+            ('ɜ', 87),
+            ('ɟ', 90),
+            ('ɡ', 92),
+            ('ɥ', 99),
+            ('ɨ', 101),
+            ('ɪ', 102),
+            ('ʝ', 103),
+            ('ɯ', 110),
+            ('ɰ', 111),
+            ('ŋ', 112),
+            ('ɳ', 113),
+            ('ɲ', 114),
+            ('ɴ', 115),
+            ('ø', 116),
+            ('ɸ', 118),
+            ('θ', 119),
+            ('œ', 120),
+            ('ɹ', 123),
+            ('ɾ', 125),
+            ('ɻ', 126),
+            ('ʁ', 128),
+            ('ɽ', 129),
+            ('ʂ', 130),
+            ('ʃ', 131),
+            ('ʈ', 132),
+            ('ʧ', 133),
+            ('ʊ', 135),
+            ('ʋ', 136),
+            ('ʌ', 138),
+            ('ɣ', 139),
+            ('ɤ', 140),
+            ('χ', 142),
+            ('ʎ', 143),
+            ('ʒ', 147),
+            ('ʔ', 148),
+            ('ˈ', 156),
+            ('ˌ', 157),
+            ('ː', 158),
+            ('ʰ', 162),
+            ('ʲ', 164),
+            ('↓', 169),
+            ('→', 171),
+            ('↗', 172),
+            ('↘', 173),
+            ('ᵻ', 177),
+        ];
+
+        let token = PHONEME_TABLE
+            .iter()
+            .find(|&&(ch, _)| ch == c)
+            .map(|&(_, id)| id);
+
+        token.or_else(|| {
+            c.to_lowercase()
+                .next()
+                .filter(|&lower| lower != c)
+                .and_then(Self::phoneme_to_token)
+        })
+    }
+
     fn phonemize_german(&self, text: &str) -> String {
-        let mut result = String::new();
+        let mut result = String::with_capacity(text.len());
         for ch in text.chars() {
             match ch {
                 'ä' => result.push_str("ae"),
@@ -127,7 +262,10 @@ impl KokoroProvider {
 
     fn text_to_tokens(&self, text: &str) -> Vec<i64> {
         let phonemes = self.phonemize_german(text);
-        phonemes.chars().map(|c| c as i64).collect()
+        phonemes
+            .chars()
+            .filter_map(Self::phoneme_to_token)
+            .collect()
     }
 
     fn resample(&self, samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
@@ -267,7 +405,25 @@ mod tests {
         let provider = KokoroProvider::new(config);
 
         let tokens = provider.text_to_tokens("Hi");
-        assert_eq!(tokens, vec![72, 105]);
+        // 'H' maps via lowercase fallback to 'h' (50), 'i' maps to (51)
+        assert_eq!(tokens, vec![50, 51]);
+    }
+
+    #[test]
+    fn test_text_to_tokens_german_phrase() {
+        let config = KokoroConfig {
+            model_path: "models/dummy.onnx".into(),
+            device: "cpu".into(),
+        };
+        let provider = KokoroProvider::new(config);
+
+        let tokens = provider.text_to_tokens("Hallo, Straße! Tag");
+        // "Hallo, Straße! Tag" -> phonemize_german -> "Hallo, Strasse! Tag"
+        // H(50), a(43), l(54), l(54), o(57), ,(3),  (16), S(35), t(62), r(60), a(43), s(61), s(61), e(47), !(5),  (16), T(36), a(43), g(49)
+        assert_eq!(
+            tokens,
+            vec![50, 43, 54, 54, 57, 3, 16, 35, 62, 60, 43, 61, 61, 47, 5, 16, 36, 43, 49]
+        );
     }
 
     #[test]

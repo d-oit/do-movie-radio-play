@@ -144,6 +144,7 @@ impl KokoroProvider {
             ('d', 46),
             ('e', 47),
             ('f', 48),
+            ('g', 49),
             ('h', 50),
             ('i', 51),
             ('j', 52),
@@ -416,12 +417,12 @@ mod tests {
         };
         let provider = KokoroProvider::new(config);
 
-        let tokens = provider.text_to_tokens("Hallo, Straße!");
-        // "Hallo, Straße!" -> phonemize_german -> "Hallo, Strasse!"
-        // H(50), a(43), l(54), l(54), o(57), ,(3),  (16), S(35), t(62), r(60), a(43), s(61), s(61), e(47), !(5)
+        let tokens = provider.text_to_tokens("Hallo, Straße! Tag");
+        // "Hallo, Straße! Tag" -> phonemize_german -> "Hallo, Strasse! Tag"
+        // H(50), a(43), l(54), l(54), o(57), ,(3),  (16), S(35), t(62), r(60), a(43), s(61), s(61), e(47), !(5),  (16), T(36), a(43), g(49)
         assert_eq!(
             tokens,
-            vec![50, 43, 54, 54, 57, 3, 16, 35, 62, 60, 43, 61, 61, 47, 5]
+            vec![50, 43, 54, 54, 57, 3, 16, 35, 62, 60, 43, 61, 61, 47, 5, 16, 36, 43, 49]
         );
     }
 

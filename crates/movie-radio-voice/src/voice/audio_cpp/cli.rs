@@ -53,7 +53,7 @@ pub(crate) async fn synthesize_local_cli(
     let effective_voice_ref = request
         .reference_audio
         .as_ref()
-.map(|p| p.as_os_str().to_os_string())
+        .map(|p| p.to_string_lossy().to_string())
         .or_else(|| config.voice_ref.clone());
 
     if let Some(ref v_ref) = effective_voice_ref {

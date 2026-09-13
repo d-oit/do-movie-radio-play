@@ -72,15 +72,11 @@ pub fn create_engine(
                 bail!("VAD engine 'webrtc' needs `--features webrtc-vad` (rebuild with the feature enabled)");
             }
         }
+        // Silero is accepted as a name but deferred: silero-vad-rust 6.2.2
+        // targets a pre-rc.13 ort API while the workspace unified on rc.13,
+        // and there is no weight-vendoring convention yet (see ADR-127).
         "silero" => {
-            #[cfg(feature = "silero-vad")]
-            {
-                bail!("VAD engine 'silero' is deferred (blocked on ort 2.x unification and model vendoring, see ADR-127 and MILESTONE-C-DECISION.md)");
-            }
-            #[cfg(not(feature = "silero-vad"))]
-            {
-                bail!("VAD engine 'silero' needs `--features silero-vad` (rebuild with the feature enabled)");
-            }
+            bail!("VAD engine 'silero' is not yet implemented (blocked on ort unification, see ADR-127)");
         }
         _ => bail!("unknown VAD engine '{name}'"),
     }
@@ -223,17 +219,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "silero-vad"))]
-    fn silero_without_feature_errors_helpfully() {
+    fn silero_reports_deferred_status() {
         let err = engine_error("silero", 0.5);
-        assert!(err.contains("--features silero-vad"), "got: {err}");
-    }
-
-    #[test]
-    #[cfg(feature = "silero-vad")]
-    fn silero_with_feature_reports_deferred_status() {
-        let err = engine_error("silero", 0.5);
-        assert!(err.contains("deferred"), "got: {err}");
+        assert!(err.contains("not yet implemented"), "got: {err}");
     }
 
     #[test]

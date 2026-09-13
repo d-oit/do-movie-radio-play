@@ -80,7 +80,13 @@ pub(crate) async fn synthesize_http_endpoint(
     if !voice.is_empty() && !is_valid_voice_id(voice) {
         return Err(SynthesisValidationError::InvalidVoiceId.into());
     }
-    let voice_ref = config.voice_ref.as_deref().unwrap_or("");
+
+    let effective_voice_ref = request
+        .reference_audio
+        .as_ref()
+        .map(|p| p.to_string_lossy().to_string())
+        .or_else(|| config.voice_ref.clone())
+        .unwrap_or_default();
 
     let payload = serde_json::json!({
         "model": params.model,
@@ -89,7 +95,7 @@ pub(crate) async fn synthesize_http_endpoint(
         "language": language,
         "backend": params.backend,
         "family": params.family,
-        "voice_ref": voice_ref,
+        "voice_ref": effective_voice_ref,
         "response_format": "wav",
         "speed": request.speed,
     });

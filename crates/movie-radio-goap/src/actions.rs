@@ -229,6 +229,7 @@ impl Action for SynthesizeNarrator {
                 text: script.text.clone(),
                 emotion: script.emotion.clone(),
                 voice_id: voice_id.clone(),
+                reference_audio: None,
                 language: language.clone(),
                 speed: 1.0,
                 sample_rate_hz: ctx.sample_rate,

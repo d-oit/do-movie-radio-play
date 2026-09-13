@@ -49,7 +49,14 @@ pub(crate) async fn synthesize_local_cli(
         }
         cmd.arg("--voice").arg(effective_voice);
     }
-    if let Some(ref v_ref) = config.voice_ref {
+
+    let effective_voice_ref = request
+        .reference_audio
+        .as_ref()
+        .map(|p| p.to_string_lossy().to_string())
+        .or_else(|| config.voice_ref.clone());
+
+    if let Some(ref v_ref) = effective_voice_ref {
         cmd.arg("--voice-ref").arg(v_ref);
     }
 

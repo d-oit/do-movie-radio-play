@@ -114,7 +114,7 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
             .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or("movie");
-        let truncated_name: String = movie_name.chars().take(8).collect();
+        let truncated_name = &movie_name[..std::cmp::min(8, movie_name.len())];
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())

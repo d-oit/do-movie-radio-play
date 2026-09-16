@@ -1,0 +1,4 @@
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0285", # rustls handshake vulnerability (requires Rust 1.89+ MSRV bump)
+]

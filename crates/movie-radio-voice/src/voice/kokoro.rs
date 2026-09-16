@@ -127,7 +127,7 @@ impl KokoroProvider {
 
     fn text_to_tokens(&self, text: &str) -> Vec<i64> {
         let phonemes = self.phonemize_german(text);
-        phonemes.chars().map(|c| c as i64).collect()
+        phonemes.chars().filter_map(Self::phoneme_to_token).collect()
     }
 
     fn resample(&self, samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {

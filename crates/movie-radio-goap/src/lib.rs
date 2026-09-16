@@ -119,7 +119,7 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
             .unwrap_or(0);
-        format!("run-{timestamp}-{truncated_name}")
+        format!("run-{}-{truncated_name}", uuid::Uuid::new_v4())
     });
 
     let movie_hash = ctx.movie_path.file_name().map_or_else(

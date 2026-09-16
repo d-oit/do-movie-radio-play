@@ -190,7 +190,7 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
                 user_approved: None,
                 run_id: Some(run_id.clone()),
             };
-            db.record_emotion_outcome(&outcome).await?;
+            let _ = db.record_emotion_outcome(&outcome).await;
         }
 
         let perf = movie_radio_learning::trace_store::ProviderPerformance {

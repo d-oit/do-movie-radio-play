@@ -32,6 +32,7 @@ webrtc-vad = { workspace = true, optional = true }
 default = []
 high-quality-resample = ["dep:rubato"]
 webrtc-vad = ["dep:webrtc-vad"]
+silero-vad = []
 
 [dev-dependencies]
 rand.workspace = true

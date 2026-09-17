@@ -1,0 +1,5 @@
+# audit.toml - cargo-audit configuration
+[advisories]
+ignore = [
+  "RUSTSEC-2026-0285", # rustls TLS 1.3 handshake advisory — waiting for upstream reqwest/hyper release
+]

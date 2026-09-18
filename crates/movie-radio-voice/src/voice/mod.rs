@@ -2,6 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::ops::RangeInclusive;
+use std::path::PathBuf;
 
 /// Maximum accepted text length per synthesis request, in characters.
 pub const MAX_REQUEST_TEXT_CHARS: usize = 10_000;
@@ -39,6 +40,11 @@ pub struct SynthesisRequest {
     pub text: String,
     pub emotion: Emotion,
     pub voice_id: Option<String>,
+    /// Optional reference-audio clip for voice cloning (ADR-0125).
+    /// Local file staged to `--voice-ref` for CLI synthesis; for remote
+    /// endpoints it is read and embedded as base64 (never a raw local path).
+    #[serde(default)]
+    pub reference_audio: Option<PathBuf>,
     #[serde(default = "default_language")]
     pub language: String,
     pub speed: f32,          // 0.25 - 4.0
@@ -119,6 +125,7 @@ impl Default for SynthesisRequest {
             text: String::default(),
             emotion: Emotion::Neutral,
             voice_id: None,
+            reference_audio: None,
             language: default_language(),
             speed: 1.0,
             sample_rate_hz: 16000,
@@ -257,6 +264,7 @@ mod tests {
             text: text.to_string(),
             emotion: Emotion::Neutral,
             voice_id: None,
+            reference_audio: None,
             language: default_language(),
             speed,
             sample_rate_hz,

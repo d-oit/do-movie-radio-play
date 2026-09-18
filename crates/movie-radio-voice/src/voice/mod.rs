@@ -252,13 +252,17 @@ impl SynthesisOrchestrator {
             .is_some_and(|p| !p.as_os_str().is_empty());
         for provider_id in &self.fallback_chain {
             if let Some(provider) = self.providers.get(provider_id) {
-                if wants_clone && !provider.capabilities().supports_voice_cloning {
+                // Only the audio.cpp provider consumes `reference_audio`
+                // (CLI --voice-ref / remote base64); every other provider
+                // would silently drop the clip, so skip them for clone
+                // requests instead of returning uncloned audio.
+                if wants_clone && provider_id != "audio_cpp" {
                     tracing::warn!(
                         provider_id,
-                        "Skipping provider without voice-cloning support for reference-audio request"
+                        "Skipping provider that ignores reference_audio for clone request"
                     );
                     last_err = anyhow::anyhow!(
-                        "provider '{}' does not support voice cloning",
+                        "provider '{}' does not honor reference_audio",
                         provider_id
                     );
                     continue;

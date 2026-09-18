@@ -169,18 +169,31 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
         for (i, script) in scripts.iter().enumerate() {
             let audio = ctx.narration_audio.get(i).and_then(|a| a.as_ref());
             let is_success = audio.is_some();
+            // Only a real synthesis gets a provider label: failed scripts
+            // record "none" rather than blaming the chain head.
             let provider_name = ctx
                 .narration_provider
                 .get(i)
                 .and_then(|p| p.as_ref())
                 .cloned()
+                .filter(|_| is_success)
                 .or_else(|| {
-                    ctx.voice_config
-                        .as_ref()
-                        .and_then(|c| c.fallback_chain.first())
-                        .cloned()
+                    if is_success {
+                        ctx.voice_config
+                            .as_ref()
+                            .and_then(|c| c.fallback_chain.first())
+                            .cloned()
+                    } else {
+                        None
+                    }
                 })
-                .unwrap_or_else(|| "auto".to_string());
+                .unwrap_or_else(|| {
+                    if is_success {
+                        "auto".to_string()
+                    } else {
+                        "none".to_string()
+                    }
+                });
             let outcome = movie_radio_learning::trace_store::EmotionOutcome {
                 id: None,
                 segment_tag: "narration_gap".to_string(),
@@ -190,7 +203,9 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
                 user_approved: None,
                 run_id: Some(run_id.clone()),
             };
-            let _ = db.record_emotion_outcome(&outcome).await;
+            if let Err(err) = db.record_emotion_outcome(&outcome).await {
+                tracing::warn!(error = %err, run_id = %run_id, "failed to record emotion outcome");
+            }
         }
 
         let perf = movie_radio_learning::trace_store::ProviderPerformance {
@@ -205,7 +220,9 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
             cost_per_char: Some(0.0),
             last_updated: None,
         };
-        let _ = db.record_provider_performance(&perf).await;
+        if let Err(err) = db.record_provider_performance(&perf).await {
+            tracing::warn!(error = %err, run_id = %run_id, "failed to record provider performance");
+        }
     }
 
     tracing::info!(run_id = %run_id, "Execution trace recorded to learning database");

@@ -11,6 +11,11 @@ pub fn handle_learning_stats(
         .enable_all()
         .build()
         .context("failed to create async runtime for learning db")?;
+    if let Some(parent) = learning_db.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).context("failed to create learning db directory")?;
+        }
+    }
     let db = rt.block_on(database::LearningDb::new(&learning_db))?;
     let stats = rt.block_on(db.get_statistics())?;
     let recommendations = rt.block_on(db.get_threshold_recommendations())?;
@@ -62,6 +67,11 @@ pub fn handle_learning_log(
         .enable_all()
         .build()
         .context("failed to create async runtime for learning db")?;
+    if let Some(parent) = learning_db.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).context("failed to create learning db directory")?;
+        }
+    }
     let db = rt.block_on(database::LearningDb::new(&learning_db))?;
 
     // Display ceiling: huge `--last` values saturate to `i64::MAX` deep in
@@ -99,6 +109,11 @@ pub fn handle_reset_learnings(confirm: bool, learning_db: PathBuf) -> Result<()>
         .enable_all()
         .build()
         .context("failed to create async runtime for learning db")?;
+    if let Some(parent) = learning_db.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).context("failed to create learning db directory")?;
+        }
+    }
     let db = rt.block_on(database::LearningDb::new(&learning_db))?;
 
     rt.block_on(db.reset_learnings())?;
@@ -114,6 +129,11 @@ pub fn handle_export_learnings(output: PathBuf, learning_db: PathBuf) -> Result<
         .enable_all()
         .build()
         .context("failed to create async runtime for learning db")?;
+    if let Some(parent) = learning_db.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).context("failed to create learning db directory")?;
+        }
+    }
     let db = rt.block_on(database::LearningDb::new(&learning_db))?;
 
     let export_data = rt.block_on(db.export_learnings())?;

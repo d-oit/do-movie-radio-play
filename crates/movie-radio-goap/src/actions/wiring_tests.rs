@@ -57,6 +57,36 @@ mod wiring_tests {
     }
 
     #[tokio::test]
+    async fn apply_learnings_freezes_thresholds_under_no_learn() {
+        use movie_radio_learning::adaptive_thresholds::create_learning_state;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state_path = dir.path().join("thresholds.json");
+        let before = create_learning_state(20).current_thresholds.clone();
+        movie_radio_learning::adaptive_thresholds::save_learning_state(
+            &create_learning_state(20),
+            &state_path,
+        )
+        .expect("seed state");
+        let mut ctx = PipelineContext::new(PathBuf::from("movie.mkv"), PathBuf::from("out.wav"));
+        ctx.verification = Some(suspicious_report(6));
+        ctx.learning_state_path = Some(state_path.clone());
+        ctx.no_learn = true;
+
+        ApplyLearnings
+            .execute(&mut ctx)
+            .await
+            .expect("apply learnings with no_learn");
+
+        let frozen = ctx.learning.expect("thresholds exposed");
+        assert_eq!(frozen.flatness_max, before.flatness_max);
+        assert_eq!(frozen.entropy_min, before.entropy_min);
+        assert!(
+            !dir.path().join("learn.db").exists(),
+            "no learning db may be created when no_learn is true"
+        );
+    }
+
+    #[tokio::test]
     async fn apply_learnings_freezes_state_under_no_learn() {
         let dir = tempfile::tempdir().expect("tempdir");
         let state_path = dir.path().join("frozen-state.json");

@@ -130,16 +130,25 @@ pub fn handle_voice_test(character: String, text: String) -> Result<()> {
     // Synthesize with the loaded config's audio.cpp section: `from_env()`
     // defaults to the modal chain and never adds the configured audio_cpp
     // provider, while the repo default selects audio_cpp for cloning.
+    // Remote auth and GPU pool ride along so a configured authenticated
+    // or pooled remote endpoint is actually exercised.
+    //
+    // NOTE: `movie_radio_types::config::AudioCppConfig` and
+    // `movie_radio_voice::config::AudioCppConfig` are distinct types with
+    // the same shape; the fields are copied across here.
     let audio_cpp = movie_radio_voice::AudioCppConfig {
         enabled: cfg.voice.audio_cpp.enabled,
         mode: cfg.voice.audio_cpp.mode.clone(),
         local: movie_radio_voice::AudioCppLocalConfig {
+            mode: cfg.voice.audio_cpp.local.mode.clone(),
+            binary: cfg.voice.audio_cpp.local.binary.clone(),
             server_url: cfg.voice.audio_cpp.local.server_url.clone(),
-            ..movie_radio_voice::AudioCppLocalConfig::default()
         },
         remote: movie_radio_voice::AudioCppRemoteConfig {
+            enabled: cfg.voice.audio_cpp.remote.enabled,
             server_url: cfg.voice.audio_cpp.remote.server_url.clone(),
-            ..movie_radio_voice::AudioCppRemoteConfig::default()
+            auth_env: cfg.voice.audio_cpp.remote.auth_env.clone(),
+            timeout_secs: cfg.voice.audio_cpp.remote.timeout_secs,
         },
         family: cfg.voice.audio_cpp.family.clone(),
         model: cfg.voice.audio_cpp.model.clone(),
@@ -148,8 +157,24 @@ pub fn handle_voice_test(character: String, text: String) -> Result<()> {
         voice_id: cfg.voice.audio_cpp.voice_id.clone(),
         voice_ref: cfg.voice.audio_cpp.voice_ref.clone(),
         timeout_secs: cfg.voice.audio_cpp.timeout_secs,
-        gpu_pool: vec![],
-        gpu_policy: movie_radio_voice::GpuPolicyConfig::default(),
+        gpu_pool: cfg
+            .voice
+            .gpu_pool
+            .iter()
+            .map(|e| movie_radio_voice::GpuPoolEndpoint {
+                name: e.name.clone(),
+                url: e.url.clone(),
+                auth_env: e.auth_env.clone(),
+                priority: e.priority,
+                cost_per_hour: e.cost_per_hour,
+            })
+            .collect(),
+        gpu_policy: movie_radio_voice::GpuPolicyConfig {
+            prefer_free: cfg.voice.gpu_policy.prefer_free,
+            allow_paid: cfg.voice.gpu_policy.allow_paid,
+            max_cost_per_job: cfg.voice.gpu_policy.max_cost_per_job,
+            max_cost_per_day: cfg.voice.gpu_policy.max_cost_per_day,
+        },
     };
     let voice_cfg = movie_radio_voice::VoiceSynthesisConfig {
         provider: "audio_cpp".to_string(),

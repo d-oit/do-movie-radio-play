@@ -192,21 +192,26 @@ impl Action for ApplyLearnings {
         // learning state. A segment verification flagged as suspicious or
         // rejected means the extractor cut a likely speech segment as
         // non-voice - a false positive from the learning loop's viewpoint.
+        // Under `--no-learn` the state is loaded read-only for the report
+        // below: `record_verification_result` itself nudges thresholds on
+        // false positives, so calling it would unfreeze what we claim frozen.
         let mut state = match &ctx.learning_state_path {
             Some(path) if path.exists() => load_learning_state(path)?,
             _ => create_learning_state(20),
         };
-        for (i, result) in report.segment_results.iter().enumerate() {
-            let feats = &result.spectral_features;
-            record_verification_result(
-                &mut state,
-                i,
-                !result.is_verified,
-                feats.spectral_entropy,
-                feats.spectral_flatness,
-                feats.rms,
-                feats.centroid_hz,
-            );
+        if !ctx.no_learn {
+            for (i, result) in report.segment_results.iter().enumerate() {
+                let feats = &result.spectral_features;
+                record_verification_result(
+                    &mut state,
+                    i,
+                    !result.is_verified,
+                    feats.spectral_entropy,
+                    feats.spectral_flatness,
+                    feats.rms,
+                    feats.centroid_hz,
+                );
+            }
         }
 
         let old_flatness = state.current_thresholds.flatness_max;

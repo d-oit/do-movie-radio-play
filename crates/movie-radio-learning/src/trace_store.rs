@@ -238,7 +238,7 @@ pub(crate) async fn get_run_traces(conn: &Connection, limit: usize) -> Result<Ve
     let mut rows = conn
         .query(
             "SELECT id, movie_hash, created_at, quality_score, total_cost_usd, duration_ms
-             FROM run_traces ORDER BY created_at DESC LIMIT ?1",
+             FROM run_traces ORDER BY created_at DESC, id DESC LIMIT ?1",
             [Value::Integer(i64::try_from(limit).unwrap_or(i64::MAX))],
         )
         .await?;
@@ -403,7 +403,7 @@ pub(crate) async fn get_all_run_traces(conn: &Connection) -> Result<Vec<RunTrace
     let mut rows = conn
         .query(
             "SELECT id, movie_hash, created_at, quality_score, total_cost_usd, duration_ms
-             FROM run_traces ORDER BY created_at DESC",
+             FROM run_traces ORDER BY created_at DESC, id DESC",
             (),
         )
         .await?;

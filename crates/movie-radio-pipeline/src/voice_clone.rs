@@ -62,7 +62,8 @@ pub fn extract_candidates(
     // `voice_clone.min_sample_seconds` must change what is accepted.
     let min_ms = ((f64::from(cfg.voice_clone.min_sample_seconds) * 1000.0).round() as u64)
         .max(MIN_CANDIDATE_MS);
-    if let Ok(timeline) = crate::pipeline::extract_timeline(input, &AnalysisConfig::default()) {
+    let timeline = crate::pipeline::extract_timeline(input, &AnalysisConfig::default()).ok();
+    if let Some(timeline) = timeline.as_ref() {
         // The timeline carries non-voice segments; the gaps between them are
         // the speech/dialogue regions eligible as clone candidates.
         let mut gaps: Vec<(u64, u64)> = Vec::new();
@@ -114,9 +115,11 @@ pub fn extract_candidates(
         }
     }
 
-    // Fallback for undecodable/mock inputs: keep one reviewable candidate so
-    // the workflow stays deterministic instead of erroring out.
-    if candidates.is_empty() {
+    // Fallback for undecodable inputs only: keep one reviewable candidate so
+    // the workflow stays deterministic instead of erroring out. When
+    // extraction succeeded but every gap fell outside the duration window,
+    // an empty set is the honest answer (no duration metadata to report).
+    if candidates.is_empty() && timeline.is_none() {
         let mut meta = HashMap::default();
         meta.insert("fallback".to_string(), serde_json::json!(true));
         let candidate = VoiceReference {

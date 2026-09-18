@@ -275,7 +275,9 @@ impl Action for ApplyLearnings {
                                 improvement_delta: Some(f64::from(new_flatness - old_flatness)),
                                 applied_at: None,
                             };
-                            let _ = db.record_adaptation_log(&log).await;
+                            if let Err(err) = db.record_adaptation_log(&log).await {
+                                tracing::warn!(error = %err, "failed to record adaptation log");
+                            }
                         }
                         if (new_entropy - old_entropy).abs() > 0.0001 {
                             let log = movie_radio_learning::trace_store::AdaptationLog {
@@ -290,7 +292,9 @@ impl Action for ApplyLearnings {
                                 improvement_delta: Some(f64::from(new_entropy - old_entropy)),
                                 applied_at: None,
                             };
-                            let _ = db.record_adaptation_log(&log).await;
+                            if let Err(err) = db.record_adaptation_log(&log).await {
+                                tracing::warn!(error = %err, "failed to record adaptation log");
+                            }
                         }
                     }
                     Err(err) => {

@@ -41,7 +41,9 @@ pub fn handle_learning_stats(
 
     if let Some(output_path) = output {
         if let Some(parent) = output_path.parent() {
-            std::fs::create_dir_all(parent)?;
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent)?;
+            }
         }
         std::fs::write(&output_path, serde_json::to_vec_pretty(&report)?)?;
         tracing::info!(output = %output_path.display(), "learning stats written");
@@ -62,8 +64,8 @@ pub fn handle_learning_log(
         .context("failed to create async runtime for learning db")?;
     let db = rt.block_on(database::LearningDb::new(&learning_db))?;
 
-    // Clamp display window: `usize::MAX` would otherwise saturate deep in
-    // the store; fail visibly at the boundary instead of silently capping.
+    // Display ceiling: huge `--last` values saturate to `i64::MAX` deep in
+    // the store, so cap the window here where the choice stays visible.
     let last = last.min(100_000);
     let adaptations = rt.block_on(db.get_adaptation_logs(last))?;
     let traces = rt.block_on(db.get_run_traces(last))?;
@@ -76,7 +78,9 @@ pub fn handle_learning_log(
 
     if let Some(output_path) = output {
         if let Some(parent) = output_path.parent() {
-            std::fs::create_dir_all(parent)?;
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent)?;
+            }
         }
         std::fs::write(&output_path, serde_json::to_vec_pretty(&report)?)?;
         tracing::info!(output = %output_path.display(), "learning log written");
@@ -115,7 +119,9 @@ pub fn handle_export_learnings(output: PathBuf, learning_db: PathBuf) -> Result<
     let export_data = rt.block_on(db.export_learnings())?;
 
     if let Some(parent) = output.parent() {
-        std::fs::create_dir_all(parent)?;
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
     }
     std::fs::write(&output, serde_json::to_vec_pretty(&export_data)?)?;
     tracing::info!(output = %output.display(), "learnings exported");

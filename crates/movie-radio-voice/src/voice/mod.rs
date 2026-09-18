@@ -41,8 +41,10 @@ pub struct SynthesisRequest {
     pub emotion: Emotion,
     pub voice_id: Option<String>,
     /// Optional reference-audio clip for voice cloning (ADR-0125).
-    /// Local file staged to `--voice-ref` for CLI synthesis; for remote
-    /// endpoints it is read and embedded as base64 (never a raw local path).
+    /// Honored by the audio.cpp provider: staged to `--voice-ref` for CLI
+    /// synthesis, read and base64-embedded for its remote endpoint (never a
+    /// raw local path). Providers without cloning support are skipped for
+    /// such requests.
     #[serde(default)]
     pub reference_audio: Option<PathBuf>,
     #[serde(default = "default_language")]
@@ -244,8 +246,23 @@ impl SynthesisOrchestrator {
         let text_chars = request.text.chars().count();
         let mut last_err = anyhow::anyhow!("No provider available in fallback chain");
 
+        let wants_clone = request
+            .reference_audio
+            .as_deref()
+            .is_some_and(|p| !p.as_os_str().is_empty());
         for provider_id in &self.fallback_chain {
             if let Some(provider) = self.providers.get(provider_id) {
+                if wants_clone && !provider.capabilities().supports_voice_cloning {
+                    tracing::warn!(
+                        provider_id,
+                        "Skipping provider without voice-cloning support for reference-audio request"
+                    );
+                    last_err = anyhow::anyhow!(
+                        "provider '{}' does not support voice cloning",
+                        provider_id
+                    );
+                    continue;
+                }
                 let cap = provider.capabilities().max_text_length;
                 if text_chars > cap {
                     tracing::warn!(

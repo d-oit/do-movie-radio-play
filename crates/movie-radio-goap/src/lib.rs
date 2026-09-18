@@ -368,6 +368,10 @@ pub(crate) mod test_support {
     }
 }
 
+/// Per-process sequence so two ids minted in the same millisecond still
+/// differ (wall clock + pid alone cannot separate them).
+static RUN_ID_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Build the collision-resistant fallback id (extracted for testing).
 pub fn fallback_run_id(movie_path: &std::path::Path) -> String {
     let movie_name = movie_path
@@ -383,8 +387,9 @@ pub fn fallback_run_id(movie_path: &std::path::Path) -> String {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis())
         .unwrap_or(0);
+    let seq = RUN_ID_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     format!(
-        "run-{timestamp}-{millis}-{}-{truncated_name}",
+        "run-{timestamp}-{millis}-{}-{seq}-{truncated_name}",
         std::process::id()
     )
 }
@@ -398,6 +403,12 @@ mod run_id_tests {
         let id = fallback_run_id(std::path::Path::new("some-movie-name.mkv"));
         assert!(id.starts_with("run-"), "{id}");
         assert!(id.ends_with("some-mov"), "{id}");
+    }
+
+    #[test]
+    fn fallback_run_ids_differ_within_one_millisecond() {
+        let path = std::path::Path::new("same-movie-name.mkv");
+        assert_ne!(fallback_run_id(path), fallback_run_id(path));
     }
 
     #[tokio::test]

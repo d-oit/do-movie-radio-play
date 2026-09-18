@@ -108,11 +108,12 @@ async fn test_falls_back_when_text_exceeds_provider_cap() {
         ],
         &["small", "big"],
     );
-    let output = orchestrator
-        .synthesize(&request("a".repeat(10).as_str(), 1.0, 16_000))
+    let (output, provider) = orchestrator
+        .synthesize_with_provider(&request("a".repeat(10).as_str(), 1.0, 16_000))
         .await
         .expect("second provider must serve the request");
     assert_eq!(output.sample_rate_hz, 16_000);
+    assert_eq!(provider, "big");
 }
 
 #[tokio::test]

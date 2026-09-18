@@ -127,7 +127,41 @@ pub fn handle_voice_test(character: String, text: String) -> Result<()> {
         sample_rate_hz: 16_000,
     };
     request.validate().map_err(|e| anyhow::anyhow!(e))?;
-    let voice_cfg = movie_radio_voice::VoiceSynthesisConfig::from_env();
+    // Synthesize with the loaded config's audio.cpp section: `from_env()`
+    // defaults to the modal chain and never adds the configured audio_cpp
+    // provider, while the repo default selects audio_cpp for cloning.
+    let audio_cpp = movie_radio_voice::AudioCppConfig {
+        enabled: cfg.voice.audio_cpp.enabled,
+        mode: cfg.voice.audio_cpp.mode.clone(),
+        local: movie_radio_voice::AudioCppLocalConfig {
+            server_url: cfg.voice.audio_cpp.local.server_url.clone(),
+            ..movie_radio_voice::AudioCppLocalConfig::default()
+        },
+        remote: movie_radio_voice::AudioCppRemoteConfig {
+            server_url: cfg.voice.audio_cpp.remote.server_url.clone(),
+            ..movie_radio_voice::AudioCppRemoteConfig::default()
+        },
+        family: cfg.voice.audio_cpp.family.clone(),
+        model: cfg.voice.audio_cpp.model.clone(),
+        backend: cfg.voice.audio_cpp.backend.clone(),
+        language: cfg.voice.audio_cpp.language.clone(),
+        voice_id: cfg.voice.audio_cpp.voice_id.clone(),
+        voice_ref: cfg.voice.audio_cpp.voice_ref.clone(),
+        timeout_secs: cfg.voice.audio_cpp.timeout_secs,
+        gpu_pool: vec![],
+        gpu_policy: movie_radio_voice::GpuPolicyConfig::default(),
+    };
+    let voice_cfg = movie_radio_voice::VoiceSynthesisConfig {
+        provider: "audio_cpp".to_string(),
+        fallback_chain: vec!["audio_cpp".to_string()],
+        language: cfg.voice.audio_cpp.language.clone(),
+        voice_id: cfg.voice.audio_cpp.voice_id.clone(),
+        providers: movie_radio_voice::VoiceProvidersConfig {
+            audio_cpp: Some(audio_cpp),
+            ..movie_radio_voice::VoiceProvidersConfig::default()
+        },
+        ..movie_radio_voice::VoiceSynthesisConfig::default()
+    };
     let orchestrator = movie_radio_voice::voice::SynthesisOrchestrator::new(voice_cfg);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()

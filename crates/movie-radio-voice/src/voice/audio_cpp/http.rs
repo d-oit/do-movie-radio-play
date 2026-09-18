@@ -28,20 +28,32 @@ fn resolve_remote_voice_ref(request: &SynthesisRequest, config: &AudioCppConfig)
         // request carries an explicit clip (ADR-0125: log when audio leaves
         // the local machine).
         const MAX_VOICE_REF_BYTES: u64 = 5 * 1024 * 1024;
-        if std::fs::metadata(path).is_ok_and(|m| m.len() > MAX_VOICE_REF_BYTES) {
+        let meta = std::fs::metadata(path)
+            .with_context(|| format!("failed to read reference audio {}", path.display()))?;
+        // Regular files only: FIFOs/sockets/devices would block a sync open
+        // or stream forever, and the size cap cannot bound them.
+        if !meta.file_type().is_file() {
+            anyhow::bail!("reference audio must be a regular file");
+        }
+        if meta.len() > MAX_VOICE_REF_BYTES {
             anyhow::bail!("reference audio exceeds 5 MiB voice_ref limit");
         }
-        // Stream with an enforced cap: `metadata` is only a pre-check
-        // (TOCTOU / special files), so the read itself must stop at the
-        // limit instead of allocating the whole file first.
-        let mut file = std::fs::File::open(path)
-            .with_context(|| format!("failed to read reference audio {}", path.display()))?;
-        let mut bytes = Vec::new();
-        use std::io::Read as _;
-        file.by_ref()
-            .take(MAX_VOICE_REF_BYTES + 1)
-            .read_to_end(&mut bytes)
-            .with_context(|| format!("failed to read reference audio {}", path.display()))?;
+        // Capped blocking read on a dedicated thread: the caller is async,
+        // so a FIFO/slow file must never stall the Tokio worker. Regular-file
+        // check above already rejects non-files; the cap re-check covers
+        // growth between metadata and read (TOCTOU).
+        let owned = path.to_path_buf();
+        let bytes = tokio::task::block_in_place(|| {
+            use std::io::Read as _;
+            let mut file = std::fs::File::open(&owned)
+                .with_context(|| format!("failed to read reference audio {}", owned.display()))?;
+            let mut bytes = Vec::new();
+            file.by_ref()
+                .take(MAX_VOICE_REF_BYTES + 1)
+                .read_to_end(&mut bytes)
+                .with_context(|| format!("failed to read reference audio {}", owned.display()))?;
+            Ok::<_, anyhow::Error>(bytes)
+        })?;
         if bytes.len() as u64 > MAX_VOICE_REF_BYTES {
             anyhow::bail!("reference audio exceeds 5 MiB voice_ref limit");
         }

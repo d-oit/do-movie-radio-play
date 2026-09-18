@@ -150,7 +150,7 @@ mod tests {
         assert!(extract_candidates(&PathBuf::from("../secret/movie.mkv"), &cfg, "alice").is_err());
         assert!(extract_candidates(&PathBuf::from("testdata/a.mkv"), &cfg, "../../pwn").is_err());
         // Absolute paths are accepted: reads use the caller's own privileges.
-        let abs = std::env::temp_dir().join("movie.mkv");
+        let abs = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/movie.mkv"));
         assert!(extract_candidates(&abs, &cfg, "alice").is_ok());
     }
 }

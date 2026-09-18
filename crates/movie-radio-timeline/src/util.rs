@@ -64,7 +64,7 @@ fn try_open_wsl(path_str: &str, absolute: &std::path::Path) -> Result<bool> {
             info!(path = %absolute.display(), opener = "explorer.exe", "opened review output in browser");
             return Ok(true);
         }
-        // Harden powershell call by using EncodedCommand and LiteralPath to prevent command injection
+        // Harden powershell call with EncodedCommand (-FilePath has no -LiteralPath variant)
         let encoded_cmd = build_powershell_encoded_cmd(&win_path);
         if try_open(
             "powershell.exe",
@@ -96,7 +96,7 @@ fn try_open_windows(path_str: &str, absolute: &std::path::Path) -> Result<()> {
         info!(path = %absolute.display(), opener = "explorer", "opened review output in browser");
         return Ok(());
     }
-    // Harden powershell call by using EncodedCommand and LiteralPath to prevent command injection
+    // Harden powershell call with EncodedCommand (-FilePath has no -LiteralPath variant)
     let encoded_cmd = build_powershell_encoded_cmd(path_str);
     if try_open(
         "powershell",
@@ -112,9 +112,9 @@ fn try_open_windows(path_str: &str, absolute: &std::path::Path) -> Result<()> {
 }
 
 /// Build a Base64 encoded UTF-16LE command string for PowerShell `-EncodedCommand`.
-/// Using `-LiteralPath` ensures wildcards and special characters in paths are not evaluated as patterns.
+/// `-FilePath` names the file to open; encoding the script avoids quoting/injection issues.
 fn build_powershell_encoded_cmd(path: &str) -> String {
-    let script = format!("Start-Process -LiteralPath '{}'", path.replace('\'', "''"));
+    let script = format!("Start-Process -FilePath '{}'", path.replace('\'', "''"));
     let utf16: Vec<u16> = script.encode_utf16().collect();
     let bytes: Vec<u8> = utf16.into_iter().flat_map(|u| u.to_le_bytes()).collect();
     encode_base64(&bytes)
@@ -288,7 +288,7 @@ mod tests {
         let encoded = build_powershell_encoded_cmd(path);
         assert!(!encoded.is_empty());
 
-        let expected_script = "Start-Process -LiteralPath 'C:\\path\\to''file\\test[1].html'";
+        let expected_script = "Start-Process -FilePath 'C:\\path\\to''file\\test[1].html'";
         let utf16: Vec<u16> = expected_script.encode_utf16().collect();
         let bytes: Vec<u8> = utf16.into_iter().flat_map(|u| u.to_le_bytes()).collect();
         let expected_encoded = encode_base64(&bytes);

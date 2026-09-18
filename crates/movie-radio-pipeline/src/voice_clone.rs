@@ -6,7 +6,9 @@ use std::path::Path;
 const MIN_CANDIDATE_MS: u64 = 2000;
 const MAX_CANDIDATE_MS: u64 = 15000;
 
-/// Validate that a user-supplied path stays inside the project (no escapes).
+/// Reject `..` escapes so persisted sample references stay portable. Reads run
+/// with the caller's own privileges and no write path derives from `input`,
+/// so absolute paths remain accepted.
 fn reject_escape(path: &Path, field: &str) -> Result<()> {
     if path.to_string_lossy().contains("..") {
         anyhow::bail!("{field} must not contain ..");
@@ -147,5 +149,8 @@ mod tests {
         let cfg = AppConfig::default();
         assert!(extract_candidates(&PathBuf::from("../secret/movie.mkv"), &cfg, "alice").is_err());
         assert!(extract_candidates(&PathBuf::from("testdata/a.mkv"), &cfg, "../../pwn").is_err());
+        // Absolute paths are accepted: reads use the caller's own privileges.
+        let abs = std::env::temp_dir().join("movie.mkv");
+        assert!(extract_candidates(&abs, &cfg, "alice").is_ok());
     }
 }

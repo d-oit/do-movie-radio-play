@@ -27,9 +27,13 @@ fn resolve_remote_voice_ref(request: &SynthesisRequest, config: &AudioCppConfig)
         // Enforce the offline boundary: remote upload happens only when the
         // request carries an explicit clip (ADR-0125: log when audio leaves
         // the local machine).
+        const MAX_VOICE_REF_BYTES: u64 = 5 * 1024 * 1024;
+        if std::fs::metadata(path).is_ok_and(|m| m.len() > MAX_VOICE_REF_BYTES) {
+            anyhow::bail!("reference audio exceeds 5 MiB voice_ref limit");
+        }
         let bytes = std::fs::read(path)
             .with_context(|| format!("failed to read reference audio {}", path.display()))?;
-        if bytes.len() > 5 * 1024 * 1024 {
+        if bytes.len() > MAX_VOICE_REF_BYTES as usize {
             anyhow::bail!("reference audio exceeds 5 MiB voice_ref limit");
         }
         tracing::info!(

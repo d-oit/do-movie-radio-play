@@ -18,7 +18,8 @@ impl From<&SpectralFeatures> for SpectralVector {
                 (sf.zcr as f32).clamp(0.0, 1.0),
                 (sf.spectral_flux as f32).clamp(0.0, 1.0),
                 (sf.spectral_flatness as f32).clamp(0.0, 1.0),
-                (sf.spectral_entropy as f32).clamp(0.0, 1.0),
+                // Normalize spectral entropy (Shannon bits, typical range 0-8) to ~[0, 1].
+                (sf.spectral_entropy as f32 / 8.0).clamp(0.0, 1.0),
                 // Normalize centroid_hz (typical range 0 - 8000 Hz) to ~[0, 1].
                 (sf.centroid_hz as f32 / 8000.0).clamp(0.0, 1.0),
                 (sf.low_band_ratio as f32).clamp(0.0, 1.0),
@@ -106,5 +107,14 @@ mod tests {
         let v = SpectralVector::from(&sf);
         assert!(v.values.iter().all(|x| (0.0..=1.0).contains(x)));
         assert!((v.values[5] - 0.5).abs() < 1e-6);
+        // Realistic Shannon-bits entropy (~5) must normalize distinctively,
+        // not collapse onto the 1.0 clamp shared by every high-entropy input.
+        let hi = SpectralFeatures { spectral_entropy: 5.2, ..sf };
+        let lo = SpectralFeatures { spectral_entropy: 3.1, ..sf };
+        let v_hi = SpectralVector::from(&hi);
+        let v_lo = SpectralVector::from(&lo);
+        assert!((v_hi.values[4] - 0.65).abs() < 1e-6);
+        assert!((v_lo.values[4] - 0.3875).abs() < 1e-6);
+        assert!(v_hi.values[4] - v_lo.values[4] > 0.2);
     }
 }

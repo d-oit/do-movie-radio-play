@@ -307,12 +307,16 @@ impl LearningDb {
     pub async fn get_emotion_outcomes(
         &self,
         run_id: Option<&str>,
+        limit: usize,
     ) -> Result<Vec<trace_store::EmotionOutcome>> {
-        trace_store::get_emotion_outcomes(&self.conn, run_id).await
+        trace_store::get_emotion_outcomes(&self.conn, run_id, limit).await
     }
 
-    pub async fn get_provider_performances(&self) -> Result<Vec<trace_store::ProviderPerformance>> {
-        trace_store::get_provider_performances(&self.conn).await
+    pub async fn get_provider_performances(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<trace_store::ProviderPerformance>> {
+        trace_store::get_provider_performances(&self.conn, limit).await
     }
 
     pub async fn reset_learnings(&self) -> Result<()> {

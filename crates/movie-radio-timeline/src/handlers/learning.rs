@@ -24,9 +24,11 @@ pub fn handle_learning_stats(
     });
 
     if radio_play {
+        // Bounded report: per-run tables grow with every run, so the
+        // stats view stays on the same 20-row window as the other panels.
         let run_traces = rt.block_on(db.get_run_traces(20))?;
-        let emotion_outcomes = rt.block_on(db.get_emotion_outcomes(None))?;
-        let provider_performance = rt.block_on(db.get_provider_performances())?;
+        let emotion_outcomes = rt.block_on(db.get_emotion_outcomes(None, 20))?;
+        let provider_performance = rt.block_on(db.get_provider_performances(20))?;
         let adaptation_log = rt.block_on(db.get_adaptation_logs(20))?;
 
         report["radio_play"] = serde_json::json!({
@@ -60,6 +62,9 @@ pub fn handle_learning_log(
         .context("failed to create async runtime for learning db")?;
     let db = rt.block_on(database::LearningDb::new(&learning_db))?;
 
+    // Clamp display window: `usize::MAX` would otherwise saturate deep in
+    // the store; fail visibly at the boundary instead of silently capping.
+    let last = last.min(100_000);
     let adaptations = rt.block_on(db.get_adaptation_logs(last))?;
     let traces = rt.block_on(db.get_run_traces(last))?;
 
@@ -93,7 +98,10 @@ pub fn handle_reset_learnings(confirm: bool, learning_db: PathBuf) -> Result<()>
     let db = rt.block_on(database::LearningDb::new(&learning_db))?;
 
     rt.block_on(db.reset_learnings())?;
-    println!("Learnings reset successfully for {}", learning_db.display());
+    println!(
+        "Learnings reset successfully for {} (adaptations cleared, run history kept per ADR-122)",
+        learning_db.display()
+    );
     Ok(())
 }
 

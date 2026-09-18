@@ -188,6 +188,7 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
     LearningLog {
+        // 100k rows is the display ceiling; the store clamps to i64 range.
         #[arg(long, default_value_t = 10)]
         last: usize,
         #[arg(long, default_value = "analysis/thresholds/learning.db")]
@@ -196,6 +197,7 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
     ResetLearnings {
+        /// Reset adaptations; run history survives per ADR-122.
         #[arg(long)]
         confirm: bool,
         #[arg(long, default_value = "analysis/thresholds/learning.db")]

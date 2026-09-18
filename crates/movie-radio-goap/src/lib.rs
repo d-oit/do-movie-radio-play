@@ -47,6 +47,10 @@ pub struct PipelineContext {
     /// Narration audio aligned 1:1 with `scripts` (same order/length);
     /// `None` marks a script whose synthesis failed.
     pub narration_audio: Vec<Option<movie_radio_voice::AudioOutput>>,
+    /// Provider that synthesized each entry of `narration_audio` (`None`
+    /// for failed/skipped scripts). Keeps trace attribution honest when
+    /// the fallback chain serves different scripts with different voices.
+    pub narration_provider: Vec<Option<String>>,
     pub original_audio: Option<Vec<f32>>,
     pub sample_rate: u32,
     /// Optional voice synthesis config (providers, fallback chain, language, voice_id).
@@ -82,6 +86,7 @@ impl PipelineContext {
             gap_analysis: None,
             scripts: None,
             narration_audio: Vec::new(),
+            narration_provider: Vec::new(),
             original_audio: None,
             voice_config: None,
             verification: None,
@@ -120,7 +125,16 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
             .unwrap_or(0);
-        format!("run-{timestamp}-{truncated_name}")
+        // Millis + process id: two CLI runs of the same movie started in
+        // the same second must not share a primary-key run id.
+        let millis = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+        format!(
+            "run-{timestamp}-{millis}-{}-{truncated_name}",
+            std::process::id()
+        )
     });
 
     let movie_hash = ctx.movie_path.file_name().map_or_else(
@@ -169,19 +183,23 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
     db.record_run_trace(&trace).await?;
 
     if let Some(ref scripts) = ctx.scripts {
-        let provider_name = ctx
-            .voice_config
-            .as_ref()
-            .and_then(|c| c.fallback_chain.first())
-            .cloned()
-            .unwrap_or_else(|| "auto".to_string());
-
+        // Attribute each outcome to the provider that actually synthesized
+        // it; only fall back to the chain head when the label is missing.
         for (i, script) in scripts.iter().enumerate() {
-            let is_success = ctx
-                .narration_audio
+            let audio = ctx.narration_audio.get(i).and_then(|a| a.as_ref());
+            let is_success = audio.is_some();
+            let provider_name = ctx
+                .narration_provider
                 .get(i)
-                .and_then(|a| a.as_ref())
-                .is_some();
+                .and_then(|p| p.as_ref())
+                .cloned()
+                .or_else(|| {
+                    ctx.voice_config
+                        .as_ref()
+                        .and_then(|c| c.fallback_chain.first())
+                        .cloned()
+                })
+                .unwrap_or_else(|| "auto".to_string());
             let outcome = movie_radio_learning::trace_store::EmotionOutcome {
                 id: None,
                 segment_tag: "narration_gap".to_string(),
@@ -196,7 +214,9 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
 
         let perf = movie_radio_learning::trace_store::ProviderPerformance {
             id: None,
-            provider: provider_name,
+            // Aggregate rows describe the run's mix; outcomes carry the
+            // per-script provider labels.
+            provider: "mixed".to_string(),
             scene_type: Some("radio-play".to_string()),
             avg_quality: quality_score,
             avg_latency_ms: None,
@@ -364,5 +384,30 @@ pub(crate) mod test_support {
             centroid_min: 100.0,
             centroid_max: 6000.0,
         }
+    }
+}
+
+#[cfg(test)]
+mod run_id_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn fallback_run_ids_are_unique_within_one_second() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("runs.db");
+        let mut ctx = PipelineContext::new(
+            PathBuf::from("same-movie-name.mkv"),
+            PathBuf::from("out.wav"),
+        );
+        ctx.learning_db_path = Some(db_path);
+        record_execution_trace(&ctx).await.expect("first trace");
+        record_execution_trace(&ctx).await.expect("second trace");
+
+        let db = movie_radio_learning::database::LearningDb::new(
+            &ctx.learning_db_path.clone().expect("db path"),
+        )
+        .await
+        .expect("open db");
+        assert_eq!(db.get_run_traces(10).await.expect("traces").len(), 2);
     }
 }

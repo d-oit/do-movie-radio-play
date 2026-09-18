@@ -239,7 +239,7 @@ pub(crate) async fn get_run_traces(conn: &Connection, limit: usize) -> Result<Ve
         .query(
             "SELECT id, movie_hash, created_at, quality_score, total_cost_usd, duration_ms
              FROM run_traces ORDER BY created_at DESC LIMIT ?1",
-            [Value::Integer(limit as i64)],
+            [Value::Integer(i64::try_from(limit).unwrap_or(i64::MAX))],
         )
         .await?;
 
@@ -265,7 +265,7 @@ pub(crate) async fn get_adaptation_logs(
         .query(
             "SELECT id, parameter, old_value, new_value, reason, improvement_delta, applied_at
              FROM adaptation_log ORDER BY id DESC LIMIT ?1",
-            [Value::Integer(limit as i64)],
+            [Value::Integer(i64::try_from(limit).unwrap_or(i64::MAX))],
         )
         .await?;
 
@@ -286,18 +286,22 @@ pub(crate) async fn get_adaptation_logs(
 pub(crate) async fn get_emotion_outcomes(
     conn: &Connection,
     run_id: Option<&str>,
+    limit: usize,
 ) -> Result<Vec<EmotionOutcome>> {
     let mut results = Vec::new();
     let (sql, params): (&str, Vec<Value>) = match run_id {
         Some(rid) => (
             "SELECT id, segment_tag, emotion_used, provider, quality_score, user_approved, run_id
-             FROM emotion_outcomes WHERE run_id = ?1 ORDER BY id ASC",
-            vec![Value::Text(rid.to_string())],
+             FROM emotion_outcomes WHERE run_id = ?1 ORDER BY id ASC LIMIT ?2",
+            vec![
+                Value::Text(rid.to_string()),
+                Value::Integer(i64::try_from(limit).unwrap_or(i64::MAX)),
+            ],
         ),
         None => (
             "SELECT id, segment_tag, emotion_used, provider, quality_score, user_approved, run_id
-             FROM emotion_outcomes ORDER BY id DESC",
-            vec![],
+             FROM emotion_outcomes ORDER BY id DESC LIMIT ?1",
+            vec![Value::Integer(i64::try_from(limit).unwrap_or(i64::MAX))],
         ),
     };
 
@@ -319,13 +323,14 @@ pub(crate) async fn get_emotion_outcomes(
 
 pub(crate) async fn get_provider_performances(
     conn: &Connection,
+    limit: usize,
 ) -> Result<Vec<ProviderPerformance>> {
     let mut results = Vec::new();
     let mut rows = conn
         .query(
             "SELECT id, provider, scene_type, avg_quality, avg_latency_ms, failure_rate, cost_per_char, last_updated
-             FROM provider_performance ORDER BY id DESC",
-            (),
+             FROM provider_performance ORDER BY id DESC LIMIT ?1",
+            [Value::Integer(i64::try_from(limit).unwrap_or(i64::MAX))],
         )
         .await?;
 
@@ -345,6 +350,10 @@ pub(crate) async fn get_provider_performances(
 }
 
 pub(crate) async fn reset_learnings(conn: &Connection) -> Result<()> {
+    // ADR-122 contract: reset clears adaptations, run history
+    // (`run_traces`, `emotion_outcomes`, `provider_performance`) is the
+    // audit trail and survives. `learning-stats --radio-play` showing
+    // history after a reset is intended, not a leak.
     conn.execute("DELETE FROM threshold_history", ()).await?;
     conn.execute("DELETE FROM adaptation_log", ()).await?;
     Ok(())
@@ -370,10 +379,13 @@ pub(crate) async fn export_learnings(conn: &Connection) -> Result<LearningsExpor
         });
     }
 
-    let run_traces = get_run_traces(conn, 1000).await?;
-    let emotion_outcomes = get_emotion_outcomes(conn, None).await?;
-    let provider_performance = get_provider_performances(conn).await?;
-    let adaptation_log = get_adaptation_logs(conn, 1000).await?;
+    // Full export: run-scoped tables are small (one row per run/segment);
+    // bounded reads stay on the per-run getters, without silent 1000-row
+    // truncation that would corrupt a sharing/backup payload.
+    let run_traces = get_all_run_traces(conn).await?;
+    let emotion_outcomes = get_all_emotion_outcomes(conn).await?;
+    let provider_performance = get_all_provider_performances(conn).await?;
+    let adaptation_log = get_all_adaptation_logs(conn).await?;
 
     Ok(LearningsExport {
         threshold_history: thresholds,
@@ -382,4 +394,61 @@ pub(crate) async fn export_learnings(conn: &Connection) -> Result<LearningsExpor
         provider_performance,
         adaptation_log,
     })
+}
+
+/// Unbounded export reads: the backup payload must not silently truncate.
+/// Callers showing live stats use the `limit`-taking getters above instead.
+pub(crate) async fn get_all_run_traces(conn: &Connection) -> Result<Vec<RunTrace>> {
+    let mut results = Vec::new();
+    let mut rows = conn
+        .query(
+            "SELECT id, movie_hash, created_at, quality_score, total_cost_usd, duration_ms
+             FROM run_traces ORDER BY created_at DESC",
+            (),
+        )
+        .await?;
+    while let Some(row) = rows.next().await? {
+        results.push(RunTrace {
+            id: row.get(0)?,
+            movie_hash: row.get(1)?,
+            created_at: row.get(2)?,
+            quality_score: row.get(3)?,
+            total_cost_usd: row.get(4)?,
+            duration_ms: row.get(5)?,
+        });
+    }
+    Ok(results)
+}
+
+pub(crate) async fn get_all_adaptation_logs(conn: &Connection) -> Result<Vec<AdaptationLog>> {
+    let mut results = Vec::new();
+    let mut rows = conn
+        .query(
+            "SELECT id, parameter, old_value, new_value, reason, improvement_delta, applied_at
+             FROM adaptation_log ORDER BY id DESC",
+            (),
+        )
+        .await?;
+    while let Some(row) = rows.next().await? {
+        results.push(AdaptationLog {
+            id: row.get(0)?,
+            parameter: row.get(1)?,
+            old_value: row.get(2)?,
+            new_value: row.get(3)?,
+            reason: row.get(4)?,
+            improvement_delta: row.get(5)?,
+            applied_at: row.get(6)?,
+        });
+    }
+    Ok(results)
+}
+
+pub(crate) async fn get_all_emotion_outcomes(conn: &Connection) -> Result<Vec<EmotionOutcome>> {
+    get_emotion_outcomes(conn, None, usize::MAX).await
+}
+
+pub(crate) async fn get_all_provider_performances(
+    conn: &Connection,
+) -> Result<Vec<ProviderPerformance>> {
+    get_provider_performances(conn, usize::MAX).await
 }

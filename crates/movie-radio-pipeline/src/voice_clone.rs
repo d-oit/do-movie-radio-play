@@ -10,7 +10,10 @@ const MAX_CANDIDATE_MS: u64 = 15000;
 /// with the caller's own privileges and no write path derives from `input`,
 /// so absolute paths remain accepted.
 fn reject_escape(path: &Path, field: &str) -> Result<()> {
-    if path.to_string_lossy().contains("..") {
+    if path
+        .components()
+        .any(|c| c == std::path::Component::ParentDir)
+    {
         anyhow::bail!("{field} must not contain ..");
     }
     Ok(())
@@ -55,42 +58,59 @@ pub fn extract_candidates(
     let max_candidates = usize::try_from(cfg.voice_clone.max_samples_per_character).unwrap_or(1);
     let mut candidates = Vec::new();
 
+    // Configured minimum wins over the hardcoded floor: changing
+    // `voice_clone.min_sample_seconds` must change what is accepted.
+    let min_ms = ((f64::from(cfg.voice_clone.min_sample_seconds) * 1000.0).round() as u64)
+        .max(MIN_CANDIDATE_MS);
     if let Ok(timeline) = crate::pipeline::extract_timeline(input, &AnalysisConfig::default()) {
         // The timeline carries non-voice segments; the gaps between them are
         // the speech/dialogue regions eligible as clone candidates.
+        let mut gaps: Vec<(u64, u64)> = Vec::new();
         let mut last_end_ms: u64 = 0;
-        for (idx, seg) in timeline.segments.iter().enumerate() {
+        for seg in &timeline.segments {
             if seg.start_ms > last_end_ms {
-                let start = last_end_ms;
-                let end = seg.start_ms;
-                let duration_ms = end - start;
-                if (MIN_CANDIDATE_MS..=MAX_CANDIDATE_MS).contains(&duration_ms) {
-                    let mut meta = HashMap::default();
-                    meta.insert("start_ms".to_string(), serde_json::json!(start));
-                    meta.insert("end_ms".to_string(), serde_json::json!(end));
-                    meta.insert("duration_ms".to_string(), serde_json::json!(duration_ms));
-                    meta.insert("confidence".to_string(), serde_json::json!(seg.confidence));
+                gaps.push((last_end_ms, seg.start_ms));
+            }
+            last_end_ms = seg.end_ms.max(last_end_ms);
+        }
+        // Trailing speech after the final non-voice segment is a candidate
+        // too; total duration comes from the decoded audio, not the last
+        // segment end. `extract_timeline` errors on undecodable input, in
+        // which case the fallback candidate below still applies.
+        if let Ok((mono, rate)) =
+            crate::pipeline::decode::decode_audio(input, AnalysisConfig::default().sample_rate_hz)
+        {
+            let total_ms = mono.len() as u64 * 1000 / u64::from(rate.max(1));
+            if total_ms > last_end_ms {
+                gaps.push((last_end_ms, total_ms));
+            }
+        }
+        for (idx, (start, end)) in gaps.iter().enumerate() {
+            let duration_ms = end.saturating_sub(*start);
+            if (min_ms..=MAX_CANDIDATE_MS).contains(&duration_ms) {
+                let mut meta = HashMap::default();
+                meta.insert("start_ms".to_string(), serde_json::json!(start));
+                meta.insert("end_ms".to_string(), serde_json::json!(end));
+                meta.insert("duration_ms".to_string(), serde_json::json!(duration_ms));
 
-                    let cand = VoiceReference {
-                        id: format!("{character}_candidate_{}", idx + 1),
-                        character_name: character.to_string(),
-                        sample_paths: vec![input.to_path_buf()],
-                        metadata: meta,
-                        created_at: None,
-                        runtime: cfg.voice_clone.runtime.clone(),
-                        family: cfg.voice_clone.family.clone(),
-                        model: cfg.voice_clone.model.clone(),
-                        language: cfg.voice_clone.language.clone(),
-                    };
-                    if cand.validate().is_ok() {
-                        candidates.push(cand);
-                        if candidates.len() >= max_candidates.max(1) {
-                            break;
-                        }
+                let cand = VoiceReference {
+                    id: format!("{character}_candidate_{}", idx + 1),
+                    character_name: character.to_string(),
+                    sample_paths: vec![input.to_path_buf()],
+                    metadata: meta,
+                    created_at: None,
+                    runtime: cfg.voice_clone.runtime.clone(),
+                    family: cfg.voice_clone.family.clone(),
+                    model: cfg.voice_clone.model.clone(),
+                    language: cfg.voice_clone.language.clone(),
+                };
+                if cand.validate().is_ok() {
+                    candidates.push(cand);
+                    if candidates.len() >= max_candidates.max(1) {
+                        break;
                     }
                 }
             }
-            last_end_ms = seg.end_ms;
         }
     }
 
@@ -142,6 +162,32 @@ mod tests {
     fn empty_character_rejected() {
         let cfg = AppConfig::default();
         assert!(extract_candidates(&PathBuf::from("testdata/a.mkv"), &cfg, "").is_err());
+    }
+
+    #[test]
+    fn dotted_filenames_accepted() {
+        let cfg = AppConfig::default();
+        // `..` inside a filename is not a parent-dir escape.
+        assert!(
+            extract_candidates(&PathBuf::from("testdata/movie..final.mkv"), &cfg, "alice").is_ok()
+        );
+    }
+
+    #[test]
+    fn configured_minimum_sample_seconds_enforced() {
+        let mut cfg = AppConfig::default();
+        // Default floor is 6s; raising it must not admit shorter gaps.
+        cfg.voice_clone.min_sample_seconds = 60.0;
+        let cands =
+            extract_candidates(&PathBuf::from("testdata/movie.mkv"), &cfg, "alice").expect("run");
+        for cand in &cands {
+            if let Some(serde_json::Value::Number(ms)) = cand.metadata.get("duration_ms") {
+                assert!(
+                    ms.as_u64().unwrap_or(u64::MAX) >= 60_000
+                        || cand.metadata.contains_key("fallback")
+                );
+            }
+        }
     }
 
     #[test]

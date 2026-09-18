@@ -438,11 +438,11 @@ async fn test_trace_store_operations() {
     assert_eq!(traces[0].id, run_id);
     assert_eq!(traces[0].quality_score, Some(0.95));
 
-    let outcomes = db.get_emotion_outcomes(Some(&run_id)).await.unwrap();
+    let outcomes = db.get_emotion_outcomes(Some(&run_id), 10).await.unwrap();
     assert_eq!(outcomes.len(), 1);
     assert_eq!(outcomes[0].provider, "modal");
 
-    let perfs = db.get_provider_performances().await.unwrap();
+    let perfs = db.get_provider_performances(10).await.unwrap();
     assert_eq!(perfs.len(), 1);
     assert_eq!(perfs[0].provider, "modal");
 
@@ -459,4 +459,6 @@ async fn test_trace_store_operations() {
     db.reset_learnings().await.unwrap();
     let logs_after_reset = db.get_adaptation_logs(10).await.unwrap();
     assert_eq!(logs_after_reset.len(), 0);
+    // ADR-122: run history survives a reset (audit trail).
+    assert_eq!(db.get_run_traces(10).await.unwrap().len(), 1);
 }

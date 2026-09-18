@@ -115,11 +115,32 @@ pub fn handle_voice_test(character: String, text: String) -> Result<()> {
         }
     }
 
+    // Actually exercise the clone: build a request and synthesize, so a
+    // bad reference or broken provider fails loudly instead of printing.
+    let request = movie_radio_voice::SynthesisRequest {
+        text: text.clone(),
+        emotion: movie_radio_voice::Emotion::Neutral,
+        voice_id: None,
+        reference_audio: ref_audio.clone(),
+        language: cfg.voice_clone.language.clone(),
+        speed: 1.0,
+        sample_rate_hz: 16_000,
+    };
+    request.validate().map_err(|e| anyhow::anyhow!(e))?;
+    let voice_cfg = movie_radio_voice::VoiceSynthesisConfig::from_env();
+    let orchestrator = movie_radio_voice::voice::SynthesisOrchestrator::new(voice_cfg);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .context("failed to create async runtime for voice test")?;
+    let (audio, provider) = rt.block_on(orchestrator.synthesize_with_provider(&request))?;
+
     println!(
-        "voice test character={character} text={text:?} runtime={} endpoint={} reference_audio={:?}",
+        "voice test character={character} text={text:?} runtime={} endpoint={} provider={provider} reference_audio={ref_audio:?} samples={} sample_rate_hz={}",
         cfg.voice_clone.runtime,
         if cfg.voice.audio_cpp.remote.server_url.is_empty() { "local" } else { "remote" },
-        ref_audio
+        audio.samples.len(),
+        audio.sample_rate_hz,
     );
     Ok(())
 }

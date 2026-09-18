@@ -141,9 +141,17 @@ pub fn handle_voice_test(
     // NOTE: `movie_radio_types::config::AudioCppConfig` and
     // `movie_radio_voice::config::AudioCppConfig` are distinct types with
     // the same shape; the fields are copied across here.
+    // Voice-clone routing wins over the general-TTS mode: a clone-only
+    // `remote` routing must reach the provider even when the shared
+    // audio_cpp section still says `auto`/`local`.
+    let clone_mode = if cfg.voice_clone.routing.mode == "auto" {
+        cfg.voice.audio_cpp.mode.clone()
+    } else {
+        cfg.voice_clone.routing.mode.clone()
+    };
     let audio_cpp = movie_radio_voice::AudioCppConfig {
         enabled: cfg.voice.audio_cpp.enabled,
-        mode: cfg.voice.audio_cpp.mode.clone(),
+        mode: clone_mode,
         local: movie_radio_voice::AudioCppLocalConfig {
             mode: cfg.voice.audio_cpp.local.mode.clone(),
             binary: cfg.voice.audio_cpp.local.binary.clone(),

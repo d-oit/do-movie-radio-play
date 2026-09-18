@@ -109,8 +109,14 @@ mod tests {
         assert!((v.values[5] - 0.5).abs() < 1e-6);
         // Realistic Shannon-bits entropy (~5) must normalize distinctively,
         // not collapse onto the 1.0 clamp shared by every high-entropy input.
-        let hi = SpectralFeatures { spectral_entropy: 5.2, ..sf };
-        let lo = SpectralFeatures { spectral_entropy: 3.1, ..sf };
+        let hi = SpectralFeatures {
+            spectral_entropy: 5.2,
+            ..sf
+        };
+        let lo = SpectralFeatures {
+            spectral_entropy: 3.1,
+            ..sf
+        };
         let v_hi = SpectralVector::from(&hi);
         let v_lo = SpectralVector::from(&lo);
         assert!((v_hi.values[4] - 0.65).abs() < 1e-6);

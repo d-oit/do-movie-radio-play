@@ -180,10 +180,32 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
     LearningStats {
+        #[arg(long)]
+        radio_play: bool,
         #[arg(long, default_value = "analysis/thresholds/learning.db")]
         learning_db: PathBuf,
         #[arg(long)]
         output: Option<PathBuf>,
+    },
+    LearningLog {
+        #[arg(long, default_value_t = 10)]
+        last: usize,
+        #[arg(long, default_value = "analysis/thresholds/learning.db")]
+        learning_db: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+    ResetLearnings {
+        #[arg(long)]
+        confirm: bool,
+        #[arg(long, default_value = "analysis/thresholds/learning.db")]
+        learning_db: PathBuf,
+    },
+    ExportLearnings {
+        #[arg(long, default_value = "analysis/learnings/export.json")]
+        output: PathBuf,
+        #[arg(long, default_value = "analysis/thresholds/learning.db")]
+        learning_db: PathBuf,
     },
     LearningExperiments {
         #[arg(long, default_value = "analysis/thresholds/learning.db")]
@@ -231,6 +253,8 @@ pub enum Commands {
         learning_state: Option<PathBuf>,
         #[arg(long)]
         learning_db: Option<PathBuf>,
+        #[arg(long)]
+        no_learn: bool,
     },
     /// Preview a WAV file by streaming to system audio output.
     /// Useful for quick QA without writing intermediate files.

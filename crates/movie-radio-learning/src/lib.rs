@@ -7,6 +7,7 @@ pub mod gap_store;
 pub mod pattern_similarity;
 pub mod profiles;
 pub mod threshold_store;
+pub mod trace_store;
 
 #[allow(unused_imports)]
 pub use database::{
@@ -18,3 +19,7 @@ pub use gap_store::GapDecision;
 pub use pattern_similarity::{PatternMatchResult, SpectralVector};
 #[allow(unused_imports)]
 pub use threshold_store::{ThresholdHistoryEntry, ThresholdRecommendation};
+#[allow(unused_imports)]
+pub use trace_store::{
+    AdaptationLog, EmotionOutcome, LearningsExport, ProviderPerformance, RunTrace,
+};

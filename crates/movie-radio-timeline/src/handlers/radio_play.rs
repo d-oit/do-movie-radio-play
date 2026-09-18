@@ -29,6 +29,9 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     });
 
     let mut ctx = PipelineContext::new(movie, output_path);
+    // Unique run id up front: same-movie runs started in the same second
+    // must not share the run_traces primary key.
+    ctx.run_id = Some(movie_radio_goap::fallback_run_id(&ctx.movie_path));
     ctx.subtitles_path = opts.subtitles;
     ctx.voice_config = Some(VoiceSynthesisConfig::from_env());
     ctx.learning_state_path = opts.learning_state;

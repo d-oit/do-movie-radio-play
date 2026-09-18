@@ -113,29 +113,10 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
         return Ok(());
     };
 
-    let run_id = ctx.run_id.clone().unwrap_or_else(|| {
-        let movie_name = ctx
-            .movie_path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("movie");
-        // Char-boundary-safe truncation (byte slicing can panic on multi-byte UTF-8).
-        let truncated_name: String = movie_name.chars().take(8).collect();
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
-        // Millis + process id: two CLI runs of the same movie started in
-        // the same second must not share a primary-key run id.
-        let millis = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis())
-            .unwrap_or(0);
-        format!(
-            "run-{timestamp}-{millis}-{}-{truncated_name}",
-            std::process::id()
-        )
-    });
+    let run_id = ctx
+        .run_id
+        .clone()
+        .unwrap_or_else(|| fallback_run_id(&ctx.movie_path));
 
     let movie_hash = ctx.movie_path.file_name().map_or_else(
         || "unknown".to_string(),
@@ -387,9 +368,37 @@ pub(crate) mod test_support {
     }
 }
 
+/// Build the collision-resistant fallback id (extracted for testing).
+pub fn fallback_run_id(movie_path: &std::path::Path) -> String {
+    let movie_name = movie_path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("movie");
+    let truncated_name: String = movie_name.chars().take(8).collect();
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    format!(
+        "run-{timestamp}-{millis}-{}-{truncated_name}",
+        std::process::id()
+    )
+}
+
 #[cfg(test)]
 mod run_id_tests {
     use super::*;
+
+    #[test]
+    fn fallback_run_id_format_is_stable() {
+        let id = fallback_run_id(std::path::Path::new("some-movie-name.mkv"));
+        assert!(id.starts_with("run-"), "{id}");
+        assert!(id.ends_with("some-mov"), "{id}");
+    }
 
     #[tokio::test]
     async fn fallback_run_ids_are_unique_within_one_second() {

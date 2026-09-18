@@ -200,9 +200,11 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
                 output,
             } => crate::voice_clone_handler::handle_voice_samples(character, input, output),
             crate::cli::VoiceCommands::List => crate::voice_clone_handler::handle_voice_list(),
-            crate::cli::VoiceCommands::Test { character, text } => {
-                crate::voice_clone_handler::handle_voice_test(character, text)
-            }
+            crate::cli::VoiceCommands::Test {
+                character,
+                text,
+                samples_from,
+            } => crate::voice_clone_handler::handle_voice_test(character, text, samples_from),
         },
         Commands::Narrate {
             scene,

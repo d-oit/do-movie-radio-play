@@ -60,7 +60,8 @@ pub fn extract_candidates(
 
     let max_candidates = usize::try_from(cfg.voice_clone.max_samples_per_character).unwrap_or(1);
     let mut candidates = Vec::new();
-    // Decoded once for trailing-gap math and clip slicing below.
+    // Decoded once for trailing-gap math; clip slicing decodes per
+    // candidate (cheap relative to extraction, keeps the helper pure).
     let decoded =
         crate::pipeline::decode::decode_audio(input, AnalysisConfig::default().sample_rate_hz).ok();
 
@@ -177,7 +178,11 @@ fn write_candidate_clip(
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("movie");
-    let clip_name = format!("{stem}.{character}.candidate{idx}.wav");
+    let ext = input
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("audio");
+    let clip_name = format!("{stem}.{ext}.{character}.candidate{idx}.wav");
     let clip_path = input.with_file_name(clip_name);
     let spec = hound::WavSpec {
         channels: 1,

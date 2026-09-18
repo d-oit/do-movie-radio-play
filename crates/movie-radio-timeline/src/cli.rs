@@ -325,5 +325,9 @@ pub enum VoiceCommands {
         character: String,
         #[arg(long)]
         text: String,
+        /// Sample file written by `voice samples --output`; defaults to
+        /// `voice_samples/{character}.json`.
+        #[arg(long)]
+        samples_from: Option<PathBuf>,
     },
 }

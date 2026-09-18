@@ -123,18 +123,28 @@ pub async fn record_execution_trace(ctx: &PipelineContext) -> Result<()> {
         |s| s.to_string_lossy().to_string(),
     );
 
-    let quality_score = if let Some(ref rep) = ctx.verification {
-        let total = rep.summary.total_segments;
+    // Narration success rate drives the learning quality: verification
+    // scores the source timeline (voice segments are skipped without a
+    // result, so its total over-counts), not TTS outcomes.
+    let quality_score = if let Some(ref scripts) = ctx.scripts {
+        let total = scripts.len();
         if total > 0 {
-            Some(rep.summary.verified_count as f64 / total as f64)
+            let succ = ctx
+                .narration_audio
+                .iter()
+                .take(total)
+                .filter(|a| a.is_some())
+                .count();
+            Some(succ as f64 / total as f64)
         } else {
             Some(1.0)
         }
-    } else if let Some(ref scripts) = ctx.scripts {
-        let total = scripts.len();
+    } else if let Some(ref rep) = ctx.verification {
+        // Denominator counts verification results: `total_segments`
+        // includes skipped voice segments that can never verify.
+        let total = rep.segment_results.len();
         if total > 0 {
-            let succ = ctx.narration_audio.iter().filter(|a| a.is_some()).count();
-            Some(succ as f64 / total as f64)
+            Some(rep.segment_results.iter().filter(|r| r.is_verified).count() as f64 / total as f64)
         } else {
             Some(1.0)
         }
@@ -409,6 +419,53 @@ pub fn fallback_run_id(movie_path: &std::path::Path) -> String {
         "run-{timestamp}-{millis}-{}-{seq}-{truncated_name}",
         std::process::id()
     )
+}
+
+#[cfg(test)]
+mod trace_quality_tests {
+    use super::*;
+    use crate::test_support::healthy_report;
+
+    #[tokio::test]
+    async fn narration_failures_drive_quality_despite_verified_timeline() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("q.db");
+        let mut ctx = PipelineContext::new(PathBuf::from("movie.mkv"), PathBuf::from("out.wav"));
+        ctx.learning_db_path = Some(db_path);
+        ctx.verification = Some(healthy_report());
+        ctx.scripts = Some(vec![
+            crate::narrate::NarrationScript {
+                gap_start_ms: 0,
+                gap_end_ms: 1000,
+                text: "a".to_string(),
+                emotion: movie_radio_voice::Emotion::Neutral,
+                word_count: 1,
+                duration_ms: 500,
+            },
+            crate::narrate::NarrationScript {
+                gap_start_ms: 2000,
+                gap_end_ms: 3000,
+                text: "b".to_string(),
+                emotion: movie_radio_voice::Emotion::Neutral,
+                word_count: 1,
+                duration_ms: 500,
+            },
+        ]);
+        ctx.narration_audio = vec![None, None];
+        ctx.narration_provider = vec![None, None];
+        record_execution_trace(&ctx).await.expect("trace");
+        let db = movie_radio_learning::database::LearningDb::new(
+            ctx.learning_db_path.as_ref().expect("db path"),
+        )
+        .await
+        .expect("open db");
+        let traces = db.get_run_traces(10).await.expect("traces");
+        assert_eq!(traces.len(), 1);
+        assert_eq!(traces[0].quality_score, Some(0.0));
+        let perfs = db.get_provider_performances(10).await.expect("perfs");
+        assert_eq!(perfs.len(), 1);
+        assert_eq!(perfs[0].failure_rate, Some(1.0));
+    }
 }
 
 #[cfg(test)]

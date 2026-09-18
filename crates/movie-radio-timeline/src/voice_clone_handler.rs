@@ -92,11 +92,16 @@ pub fn handle_voice_list() -> Result<()> {
     }
 }
 
-pub fn handle_voice_test(character: String, text: String) -> Result<()> {
+pub fn handle_voice_test(
+    character: String,
+    text: String,
+    samples_from: Option<PathBuf>,
+) -> Result<()> {
     validate_character_handle(&character)?;
     let cfg = crate::app_config_loader::load_app_config(None)?;
 
-    let sample_file = PathBuf::from(format!("voice_samples/{character}.json"));
+    let sample_file =
+        samples_from.unwrap_or_else(|| PathBuf::from(format!("voice_samples/{character}.json")));
     let mut ref_audio = None;
 
     if sample_file.exists() {

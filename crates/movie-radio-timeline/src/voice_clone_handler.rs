@@ -92,6 +92,43 @@ pub fn handle_voice_list() -> Result<()> {
     }
 }
 
+/// Load the first usable clone reference from a `voice samples` JSON file.
+///
+/// Every failure is fatal: a clone test without a clone reference silently
+/// degrades to plain synthesis, so stale entries are skipped and an empty,
+/// malformed, or reference-less file errors with a recovery hint.
+fn load_clone_reference(sample_file: &std::path::Path, character: &str) -> Result<PathBuf> {
+    let content = fs::read_to_string(sample_file).with_context(|| {
+        format!(
+            "no voice samples for character '{character}': cannot read {} — run `voice samples --character {character} --input <movie>` first or pass --samples-from <file>",
+            sample_file.display()
+        )
+    })?;
+    let cands: Vec<VoiceReference> = serde_json::from_str(&content)
+        .with_context(|| format!("failed to parse voice samples {}", sample_file.display()))?;
+    if cands.is_empty() {
+        anyhow::bail!(
+            "voice samples {} contain no candidates — re-run `voice samples --character {character} --input <movie>`",
+            sample_file.display()
+        );
+    }
+    // First candidate whose stored reference still points at a real file;
+    // stale entries (moved/deleted clips) are skipped, and a file with no
+    // usable reference at all fails instead of testing the wrong voice.
+    cands
+        .iter()
+        .filter(|c| c.validate().is_ok())
+        .flat_map(|c| c.sample_paths.iter())
+        .find(|p| p.is_file())
+        .cloned()
+        .with_context(|| {
+            format!(
+                "voice samples {} contain no usable reference audio (all sample paths missing or stale) — re-run `voice samples --character {character} --input <movie>`",
+                sample_file.display()
+            )
+        })
+}
+
 pub fn handle_voice_test(
     character: String,
     text: String,
@@ -102,23 +139,7 @@ pub fn handle_voice_test(
 
     let sample_file =
         samples_from.unwrap_or_else(|| PathBuf::from(format!("voice_samples/{character}.json")));
-    let mut ref_audio = None;
-
-    if sample_file.exists() {
-        if let Ok(content) = fs::read_to_string(&sample_file) {
-            if let Ok(cands) = serde_json::from_str::<Vec<VoiceReference>>(&content) {
-                if let Some(first) = cands.first() {
-                    // Only surface a stored reference when it still points at a
-                    // real file; stale/mock paths stay local-only.
-                    if let Some(path) = first.sample_paths.first() {
-                        if path.exists() {
-                            ref_audio = Some(path.clone());
-                        }
-                    }
-                }
-            }
-        }
-    }
+    let ref_audio = load_clone_reference(&sample_file, &character)?;
 
     // Actually exercise the clone: build a request and synthesize, so a
     // bad reference or broken provider fails loudly instead of printing.
@@ -126,7 +147,7 @@ pub fn handle_voice_test(
         text: text.clone(),
         emotion: movie_radio_voice::Emotion::Neutral,
         voice_id: None,
-        reference_audio: ref_audio.clone(),
+        reference_audio: Some(ref_audio.clone()),
         language: cfg.voice_clone.language.clone(),
         speed: 1.0,
         sample_rate_hz: 16_000,
@@ -141,9 +162,12 @@ pub fn handle_voice_test(
     // NOTE: `movie_radio_types::config::AudioCppConfig` and
     // `movie_radio_voice::config::AudioCppConfig` are distinct types with
     // the same shape; the fields are copied across here.
-    // Voice-clone routing wins over the general-TTS mode: a clone-only
-    // `remote` routing must reach the provider even when the shared
-    // audio_cpp section still says `auto`/`local`.
+    // The clone section wins over the general-TTS audio_cpp section: mode,
+    // GPU routing prefs, and family/model/language all come from
+    // `voice_clone` so a clone-only override reaches the provider even
+    // when the shared section still says `auto`/`local`. Transport-level
+    // fields (endpoints, auth, backend, cost caps) only exist on the
+    // shared section and are copied across.
     let clone_mode = if cfg.voice_clone.routing.mode == "auto" {
         cfg.voice.audio_cpp.mode.clone()
     } else {
@@ -163,10 +187,10 @@ pub fn handle_voice_test(
             auth_env: cfg.voice.audio_cpp.remote.auth_env.clone(),
             timeout_secs: cfg.voice.audio_cpp.remote.timeout_secs,
         },
-        family: cfg.voice.audio_cpp.family.clone(),
-        model: cfg.voice.audio_cpp.model.clone(),
+        family: cfg.voice_clone.family.clone(),
+        model: cfg.voice_clone.model.clone(),
         backend: cfg.voice.audio_cpp.backend.clone(),
-        language: cfg.voice.audio_cpp.language.clone(),
+        language: cfg.voice_clone.language.clone(),
         voice_id: cfg.voice.audio_cpp.voice_id.clone(),
         voice_ref: cfg.voice.audio_cpp.voice_ref.clone(),
         timeout_secs: cfg.voice.audio_cpp.timeout_secs,
@@ -183,8 +207,8 @@ pub fn handle_voice_test(
             })
             .collect(),
         gpu_policy: movie_radio_voice::GpuPolicyConfig {
-            prefer_free: cfg.voice.gpu_policy.prefer_free,
-            allow_paid: cfg.voice.gpu_policy.allow_paid,
+            prefer_free: cfg.voice_clone.routing.prefer_free,
+            allow_paid: cfg.voice_clone.routing.allow_paid,
             max_cost_per_job: cfg.voice.gpu_policy.max_cost_per_job,
             max_cost_per_day: cfg.voice.gpu_policy.max_cost_per_day,
         },
@@ -192,7 +216,7 @@ pub fn handle_voice_test(
     let voice_cfg = movie_radio_voice::VoiceSynthesisConfig {
         provider: "audio_cpp".to_string(),
         fallback_chain: vec!["audio_cpp".to_string()],
-        language: cfg.voice.audio_cpp.language.clone(),
+        language: cfg.voice_clone.language.clone(),
         voice_id: cfg.voice.audio_cpp.voice_id.clone(),
         providers: movie_radio_voice::VoiceProvidersConfig {
             audio_cpp: Some(audio_cpp),
@@ -208,9 +232,10 @@ pub fn handle_voice_test(
     let (audio, provider) = rt.block_on(orchestrator.synthesize_with_provider(&request))?;
 
     println!(
-        "voice test character={character} text={text:?} runtime={} endpoint={} provider={provider} reference_audio={ref_audio:?} samples={} sample_rate_hz={}",
+        "voice test character={character} text={text:?} runtime={} endpoint={} provider={provider} reference_audio={} samples={} sample_rate_hz={}",
         cfg.voice_clone.runtime,
         if cfg.voice.audio_cpp.remote.server_url.is_empty() { "local" } else { "remote" },
+        ref_audio.display(),
         audio.samples.len(),
         audio.sample_rate_hz,
     );
@@ -247,5 +272,72 @@ mod tests {
         assert!(validate_character_handle("../../pwn").is_err());
         assert!(validate_character_handle("a/b").is_err());
         assert!(validate_character_handle("").is_err());
+    }
+
+    fn write_reference_file(dir: &std::path::Path, paths: &[PathBuf]) -> PathBuf {
+        let file = dir.join("refs.json");
+        let refs = vec![VoiceReference {
+            id: "alice_candidate_1".to_string(),
+            character_name: "alice".to_string(),
+            sample_paths: paths.to_vec(),
+            metadata: std::collections::HashMap::new(),
+            created_at: None,
+            runtime: "audio_cpp".to_string(),
+            family: "qwen3_tts".to_string(),
+            model: "models/Qwen3-TTS-12Hz-1.7B-Base".to_string(),
+            language: "de".to_string(),
+        }];
+        fs::write(&file, serde_json::to_string_pretty(&refs).unwrap()).unwrap();
+        file
+    }
+
+    #[test]
+    fn missing_samples_file_fails() {
+        let dir = TempDir::new().unwrap();
+        let missing = dir.path().join("missing.json");
+        assert!(load_clone_reference(&missing, "alice").is_err());
+    }
+
+    #[test]
+    fn stale_reference_fails_instead_of_plain_synthesis() -> Result<()> {
+        let dir = TempDir::new()?;
+        let file = write_reference_file(dir.path(), &[PathBuf::from("voice_samples/gone.wav")]);
+        assert!(load_clone_reference(&file, "alice").is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn skips_stale_entry_for_live_reference() -> Result<()> {
+        let dir = TempDir::new()?;
+        let live = dir.path().join("live.wav");
+        fs::write(&live, b"RIFF")?;
+        let file = dir.path().join("refs.json");
+        let refs = vec![
+            VoiceReference {
+                id: "alice_candidate_1".to_string(),
+                character_name: "alice".to_string(),
+                sample_paths: vec![PathBuf::from("voice_samples/gone.wav")],
+                metadata: std::collections::HashMap::new(),
+                created_at: None,
+                runtime: "audio_cpp".to_string(),
+                family: "qwen3_tts".to_string(),
+                model: "models/Qwen3-TTS-12Hz-1.7B-Base".to_string(),
+                language: "de".to_string(),
+            },
+            VoiceReference {
+                id: "alice_candidate_2".to_string(),
+                character_name: "alice".to_string(),
+                sample_paths: vec![live.clone()],
+                metadata: std::collections::HashMap::new(),
+                created_at: None,
+                runtime: "audio_cpp".to_string(),
+                family: "qwen3_tts".to_string(),
+                model: "models/Qwen3-TTS-12Hz-1.7B-Base".to_string(),
+                language: "de".to_string(),
+            },
+        ];
+        fs::write(&file, serde_json::to_string_pretty(&refs)?)?;
+        assert_eq!(load_clone_reference(&file, "alice")?, live);
+        Ok(())
     }
 }

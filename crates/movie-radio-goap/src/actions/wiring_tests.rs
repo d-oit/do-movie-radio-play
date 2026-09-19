@@ -55,4 +55,94 @@ mod wiring_tests {
             "learning db must be created when configured"
         );
     }
+
+    #[tokio::test]
+    async fn apply_learnings_freezes_thresholds_under_no_learn() {
+        use movie_radio_learning::adaptive_thresholds::create_learning_state;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state_path = dir.path().join("thresholds.json");
+        let before = create_learning_state(20).current_thresholds.clone();
+        movie_radio_learning::adaptive_thresholds::save_learning_state(
+            &create_learning_state(20),
+            &state_path,
+        )
+        .expect("seed state");
+        let mut ctx = PipelineContext::new(PathBuf::from("movie.mkv"), PathBuf::from("out.wav"));
+        ctx.verification = Some(suspicious_report(6));
+        ctx.learning_state_path = Some(state_path.clone());
+        ctx.no_learn = true;
+
+        ApplyLearnings
+            .execute(&mut ctx)
+            .await
+            .expect("apply learnings with no_learn");
+
+        let frozen = ctx.learning.expect("thresholds exposed");
+        assert_eq!(frozen.flatness_max, before.flatness_max);
+        assert_eq!(frozen.entropy_min, before.entropy_min);
+        assert!(
+            !dir.path().join("learn.db").exists(),
+            "no learning db may be created when no_learn is true"
+        );
+    }
+
+    #[tokio::test]
+    async fn apply_learnings_freezes_state_under_no_learn() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let state_path = dir.path().join("frozen-state.json");
+        let db_path = dir.path().join("frozen.db");
+        let mut ctx = PipelineContext::new(PathBuf::from("movie.mkv"), PathBuf::from("out.wav"));
+        ctx.verification = Some(suspicious_report(6));
+        ctx.learning_state_path = Some(state_path.clone());
+        ctx.learning_db_path = Some(db_path.clone());
+        ctx.no_learn = true;
+
+        ApplyLearnings
+            .execute(&mut ctx)
+            .await
+            .expect("apply learnings with no_learn");
+
+        assert!(
+            !state_path.exists(),
+            "no state file may be written when no_learn is true"
+        );
+        assert!(
+            !db_path.exists(),
+            "no learning db may be created when no_learn is true"
+        );
+    }
+
+    #[tokio::test]
+    async fn record_execution_trace_honors_no_learn() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("learn.db");
+        let mut ctx = PipelineContext::new(PathBuf::from("movie.mkv"), PathBuf::from("out.wav"));
+        ctx.learning_db_path = Some(db_path.clone());
+        ctx.no_learn = true;
+
+        crate::record_execution_trace(&ctx)
+            .await
+            .expect("record trace with no_learn");
+
+        assert!(
+            !db_path.exists(),
+            "db should not be created when no_learn is true"
+        );
+
+        ctx.no_learn = false;
+        crate::record_execution_trace(&ctx)
+            .await
+            .expect("record trace");
+
+        assert!(
+            db_path.exists(),
+            "db should be created when no_learn is false"
+        );
+
+        let db = movie_radio_learning::database::LearningDb::new(&db_path)
+            .await
+            .unwrap();
+        let traces = db.get_run_traces(10).await.unwrap();
+        assert_eq!(traces.len(), 1);
+    }
 }

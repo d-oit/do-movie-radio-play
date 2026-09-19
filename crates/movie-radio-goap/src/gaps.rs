@@ -2,9 +2,12 @@ use anyhow::Result;
 use movie_radio_types::{GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap};
 use movie_radio_validation::srt;
 
+use movie_radio_learning::profiles::CalibrationProfile;
+
 pub struct GapIdentifier {
     pub min_silence_duration_ms: u64,
     pub high_confidence_threshold: f32,
+    pub profile: Option<CalibrationProfile>,
 }
 
 impl Default for GapIdentifier {
@@ -12,6 +15,7 @@ impl Default for GapIdentifier {
         Self {
             min_silence_duration_ms: 3000,
             high_confidence_threshold: 0.8,
+            profile: None,
         }
     }
 }
@@ -20,6 +24,23 @@ impl GapIdentifier {
     /// Creates a gap identifier with default signal thresholds.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Creates a gap identifier tuned by a calibration profile
+    /// (e.g. genre-aware adaptation from `movie_radio_learning::profiles`).
+    /// Duration deltas use saturating arithmetic; the acceptance threshold
+    /// below is driven by `high_confidence_threshold` so the delta has
+    /// an observable effect on gap filtering.
+    pub fn with_profile(profile: CalibrationProfile) -> Self {
+        let min_silence = 3000i64
+            .saturating_add(profile.min_non_voice_ms_delta)
+            .max(500) as u64;
+        Self {
+            min_silence_duration_ms: min_silence,
+            high_confidence_threshold: (0.8 + profile.confidence_threshold_delta as f32)
+                .clamp(0.1, 1.0),
+            profile: Some(profile),
+        }
     }
 
     /// Identifies silent gaps in the timeline that are suitable candidates for audio description.
@@ -71,7 +92,7 @@ impl GapIdentifier {
                 confidence = 0.0;
             }
 
-            if confidence > 0.3 {
+            if confidence >= self.high_confidence_threshold {
                 // Priority is influenced by confidence and duration.
                 // Longer gaps with high confidence are most important.
                 let priority = ((confidence * 10.0) + (duration as f32 / 5000.0)).min(15.0) as u32;

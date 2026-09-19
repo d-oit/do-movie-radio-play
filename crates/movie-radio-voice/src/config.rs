@@ -2,9 +2,12 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 pub const ENV_ELEVENLABS_API_KEY: &str = "ELEVENLABS_API_KEY";
+pub const ENV_KOKORO_ENDPOINT_URL: &str = "KOKORO_ENDPOINT_URL";
 pub const ENV_MODAL_TTS_ENDPOINT: &str = "MODAL_TTS_ENDPOINT";
 pub const ENV_OPENAI_API_KEY: &str = "OPENAI_API_KEY";
 pub const ENV_OPENAI_TTS_BASE_URL: &str = "OPENAI_TTS_BASE_URL";
+const LEGACY_KOKORO_MODEL_PATH: &str = "models/kokoro-martin.onnx";
+const LEGACY_KOKORO_DEVICE: &str = "cpu";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoiceSynthesisConfig {
@@ -54,8 +57,23 @@ impl VoiceSynthesisConfig {
                 similarity_boost: 0.75,
             });
         }
+        let kokoro_endpoint = std::env::var(ENV_KOKORO_ENDPOINT_URL).ok();
+        Self::configure_kokoro_sidecar(&mut config, kokoro_endpoint.as_deref());
         config.providers.openai = Self::openai_config_from_env();
         config
+    }
+
+    fn configure_kokoro_sidecar(config: &mut Self, endpoint_url: Option<&str>) {
+        if endpoint_url.is_none_or(|url| url.trim().is_empty()) {
+            return;
+        }
+
+        config.providers.kokoro = Some(KokoroConfig {
+            model_path: PathBuf::from(LEGACY_KOKORO_MODEL_PATH),
+            device: LEGACY_KOKORO_DEVICE.to_string(),
+        });
+        config.provider = "kokoro".to_string();
+        config.fallback_chain.insert(0, "kokoro".to_string());
     }
 
     fn openai_config_from_env() -> Option<OpenAiConfig> {
@@ -283,8 +301,46 @@ pub struct ModalConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KokoroConfig {
+    /// Retained for compatibility. The local Kokoro sidecar manages model artifacts.
+    /// Setting `KOKORO_ENDPOINT_URL` activates the sidecar in `from_env()`.
     pub model_path: PathBuf,
     pub device: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn kokoro_endpoint_activates_and_prioritizes_the_sidecar() {
+        let mut config = VoiceSynthesisConfig::default();
+
+        VoiceSynthesisConfig::configure_kokoro_sidecar(&mut config, Some("http://127.0.0.1:8881"));
+
+        assert_eq!(config.provider, "kokoro");
+        assert_eq!(config.fallback_chain.first(), Some(&"kokoro".to_string()));
+        assert_eq!(
+            config
+                .providers
+                .kokoro
+                .as_ref()
+                .map(|provider| (&provider.model_path, provider.device.as_str())),
+            Some((
+                &PathBuf::from(LEGACY_KOKORO_MODEL_PATH),
+                LEGACY_KOKORO_DEVICE
+            ))
+        );
+    }
+
+    #[test]
+    fn empty_kokoro_endpoint_does_not_activate_the_sidecar() {
+        let mut config = VoiceSynthesisConfig::default();
+
+        VoiceSynthesisConfig::configure_kokoro_sidecar(&mut config, Some("  "));
+
+        assert!(config.providers.kokoro.is_none());
+        assert_eq!(config.fallback_chain.first(), Some(&"modal".to_string()));
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

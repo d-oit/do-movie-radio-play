@@ -100,14 +100,14 @@ Wire the implemented GOAP modules into an end-to-end radio-play CLI command.
 - ✅ Wire GOAP orchestrator to execute real pipeline stages
 - ✅ Wire radio-play CLI handler to full pipeline (gap → narrate → TTS → assemble → output)
 - ✅ Add MP3 decode for ElevenLabs response (symphonia; reused by OpenAI-compatible provider)
-- ✅ Implement local TTS inference (Qwen3 via candle; Kokoro via ONNX Runtime; Orpheus via llama.cpp — remaining quality caveats tracked in §6.10)
+- ✅ Implement local TTS inference (Qwen3 via candle; Kokoro via its supported local OpenAI-compatible sidecar; Orpheus via llama.cpp — remaining quality caveats tracked in §6.10)
 
 ## 6.10 Voice Provider Hardening
 
 Complete the voice synthesis providers for production use.
 
 - ✅ Add MP3 decode for ElevenLabs (symphonia; `decode_audio_bytes`)
-- 🔄 Wire Kokoro ONNX inference to output — inference is live, but tokenization maps raw codepoints instead of eSD phoneme vocabulary, so acoustic output is unverified (see plans/130-improvement-analysis-2026-08-25.md §B1)
+- ✅ Route Kokoro ONNX synthesis through its supported local OpenAI-compatible sidecar, which owns German normalization, eSpeak phonemization, voice styles, and ONNX inputs; reject empty or silent returned audio
 - ✅ Implement Orpheus GGUF loading via llama-cpp-2 & SNAC ONNX vocoder decoding — token inference and SNAC→PCM ONNX vocoder decoding wired (`vocoder_path`)
 - ✅ Implement Qwen3 model inference (candle-based, CUDA→CPU fallback)
 - ✅ Add OpenAI TTS REST client (registered in `SynthesisOrchestrator` fallback chain)

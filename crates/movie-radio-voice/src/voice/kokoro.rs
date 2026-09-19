@@ -1,369 +1,155 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use ort::session::Session;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use tracing::{debug, info, warn};
+use reqwest::Client;
+use std::env;
+use std::time::Duration;
+use tracing::warn;
 
 use super::{AudioOutput, ProviderCapabilities, SynthesisRequest, VoiceSynthesizer};
-use crate::config::KokoroConfig;
+use crate::config::{KokoroConfig, ENV_KOKORO_ENDPOINT_URL};
 
-const KOKORO_MODEL_URL: &str =
-    "https://huggingface.co/Godelaune/Kokoro-82M-ONNX-German-Martin/resolve/main/model.onnx";
-
-const KOKORO_SAMPLE_RATE: u32 = 24000;
+const MAX_CONNECT_ATTEMPTS: usize = 3;
+const RETRY_DELAY: Duration = Duration::from_millis(250);
+const DEFAULT_ENDPOINT_URL: &str = "http://127.0.0.1:8881";
+const KOKORO_VOICE_ID: &str = "martin";
 
 pub struct KokoroProvider {
-    config: KokoroConfig,
-    session: Option<Arc<Mutex<Session>>>,
+    endpoint_url: String,
+    client: Client,
 }
 
 impl KokoroProvider {
-    pub fn new(config: KokoroConfig) -> Self {
+    pub fn new(_config: KokoroConfig) -> Self {
+        let endpoint_override = env::var(ENV_KOKORO_ENDPOINT_URL).ok();
         Self {
-            config,
-            session: None,
+            endpoint_url: Self::resolve_endpoint_url(endpoint_override.as_deref()),
+            client: Client::new(),
         }
     }
 
-    fn model_dir(&self) -> PathBuf {
-        self.config
-            .model_path
-            .parent()
-            .unwrap_or_else(|| std::path::Path::new("."))
-            .to_path_buf()
+    fn resolve_endpoint_url(endpoint_override: Option<&str>) -> String {
+        endpoint_override
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| DEFAULT_ENDPOINT_URL.to_string())
     }
 
-    fn onnx_path(&self) -> PathBuf {
-        self.model_dir().join("kokoro-german-martin.onnx")
+    fn endpoint(&self) -> Result<String> {
+        let base_url = self.endpoint_url.trim_end_matches('/');
+        if base_url.is_empty() {
+            anyhow::bail!("Kokoro endpoint_url must not be empty");
+        }
+        Ok(format!("{base_url}/v1/audio/speech"))
     }
 
-    async fn ensure_model(&self) -> Result<()> {
-        let onnx_path = self.onnx_path();
-        if onnx_path.exists() {
-            info!(path = %onnx_path.display(), "Kokoro model found");
-            return Ok(());
+    fn build_request(&self, request: &SynthesisRequest) -> Result<reqwest::RequestBuilder> {
+        let voice = request.voice_id.as_deref().unwrap_or(KOKORO_VOICE_ID);
+        if voice != KOKORO_VOICE_ID {
+            anyhow::bail!(
+                "Kokoro German Martin sidecar supports only voice_id '{KOKORO_VOICE_ID}'"
+            );
         }
-
-        info!("Downloading Kokoro German Martin model...");
-        let model_dir = self.model_dir();
-        std::fs::create_dir_all(&model_dir)?;
-
-        let client = reqwest::Client::new();
-        let response = client
-            .get(KOKORO_MODEL_URL)
-            .send()
-            .await
-            .context("Failed to download model")?;
-
-        let bytes = response
-            .bytes()
-            .await
-            .context("Failed to read model bytes")?;
-
-        std::fs::write(&onnx_path, &bytes)?;
-        info!(
-            path = %onnx_path.display(),
-            size_mb = bytes.len() / (1024 * 1024),
-            "Model downloaded"
-        );
-
-        Ok(())
-    }
-
-    fn load_session(&self) -> Result<Arc<Mutex<Session>>> {
-        if let Some(session) = &self.session {
-            return Ok(Arc::clone(session));
-        }
-
-        let onnx_path = self.onnx_path();
-        if !onnx_path.exists() {
-            anyhow::bail!("Model not found at {}", onnx_path.display());
-        }
-
-        let session = Session::builder()
-            .map_err(|e| anyhow::anyhow!("Failed to create session builder: {}", e))?
-            .with_intra_threads(2)
-            .map_err(|e| anyhow::anyhow!("Failed to set threads: {}", e))?
-            .commit_from_file(&onnx_path)
-            .map_err(|e| anyhow::anyhow!("Failed to load model: {}", e))?;
-
-        info!(
-            inputs = session.inputs().len(),
-            outputs = session.outputs().len(),
-            "Kokoro session loaded"
-        );
-        for input in session.inputs() {
-            debug!(name = %input.name(), "model input");
-        }
-        for output in session.outputs() {
-            debug!(name = %output.name(), "model output");
-        }
-
-        Ok(Arc::new(Mutex::new(session)))
-    }
-
-    /// Maps a character / phoneme symbol to its corresponding token ID in the
-    /// Kokoro / espeak-ng eSD phoneme vocabulary.
-    // skipcq: RS-R1000
-    pub fn phoneme_to_token(c: char) -> Option<i64> {
-        const PHONEME_TABLE: &[(char, i64)] = &[
-            (';', 1),
-            (':', 2),
-            (',', 3),
-            ('.', 4),
-            ('!', 5),
-            ('?', 6),
-            ('—', 9),
-            ('…', 10),
-            ('"', 11),
-            ('(', 12),
-            (')', 13),
-            ('“', 14),
-            ('”', 15),
-            (' ', 16),
-            ('̃', 17),
-            ('ʣ', 18),
-            ('ʥ', 19),
-            ('ʦ', 20),
-            ('ʨ', 21),
-            ('ᵝ', 22),
-            ('ꭧ', 23),
-            ('A', 24),
-            ('I', 25),
-            ('O', 31),
-            ('Q', 33),
-            ('S', 35),
-            ('T', 36),
-            ('W', 39),
-            ('Y', 41),
-            ('ᵊ', 42),
-            ('a', 43),
-            ('b', 44),
-            ('c', 45),
-            ('d', 46),
-            ('e', 47),
-            ('f', 48),
-            ('g', 49),
-            ('h', 50),
-            ('i', 51),
-            ('j', 52),
-            ('k', 53),
-            ('l', 54),
-            ('m', 55),
-            ('n', 56),
-            ('o', 57),
-            ('p', 58),
-            ('q', 59),
-            ('r', 60),
-            ('s', 61),
-            ('t', 62),
-            ('u', 63),
-            ('v', 64),
-            ('w', 65),
-            ('x', 66),
-            ('y', 67),
-            ('z', 68),
-            ('ɑ', 69),
-            ('ɐ', 70),
-            ('ɒ', 71),
-            ('æ', 72),
-            ('β', 75),
-            ('ɔ', 76),
-            ('ɕ', 77),
-            ('ç', 78),
-            ('ɖ', 80),
-            ('ð', 81),
-            ('ʤ', 82),
-            ('ə', 83),
-            ('ɚ', 85),
-            ('ɛ', 86),
-            ('ɜ', 87),
-            ('ɟ', 90),
-            ('ɡ', 92),
-            ('ɥ', 99),
-            ('ɨ', 101),
-            ('ɪ', 102),
-            ('ʝ', 103),
-            ('ɯ', 110),
-            ('ɰ', 111),
-            ('ŋ', 112),
-            ('ɳ', 113),
-            ('ɲ', 114),
-            ('ɴ', 115),
-            ('ø', 116),
-            ('ɸ', 118),
-            ('θ', 119),
-            ('œ', 120),
-            ('ɹ', 123),
-            ('ɾ', 125),
-            ('ɻ', 126),
-            ('ʁ', 128),
-            ('ɽ', 129),
-            ('ʂ', 130),
-            ('ʃ', 131),
-            ('ʈ', 132),
-            ('ʧ', 133),
-            ('ʊ', 135),
-            ('ʋ', 136),
-            ('ʌ', 138),
-            ('ɣ', 139),
-            ('ɤ', 140),
-            ('χ', 142),
-            ('ʎ', 143),
-            ('ʒ', 147),
-            ('ʔ', 148),
-            ('ˈ', 156),
-            ('ˌ', 157),
-            ('ː', 158),
-            ('ʰ', 162),
-            ('ʲ', 164),
-            ('↓', 169),
-            ('→', 171),
-            ('↗', 172),
-            ('↘', 173),
-            ('ᵻ', 177),
-        ];
-
-        let token = PHONEME_TABLE
-            .iter()
-            .find(|&&(ch, _)| ch == c)
-            .map(|&(_, id)| id);
-
-        token.or_else(|| {
-            c.to_lowercase()
-                .next()
-                .filter(|&lower| lower != c)
-                .and_then(Self::phoneme_to_token)
-        })
-    }
-
-    fn phonemize_german(&self, text: &str) -> String {
-        let mut result = String::with_capacity(text.len());
-        for ch in text.chars() {
-            match ch {
-                'ä' => result.push_str("ae"),
-                'ö' => result.push_str("oe"),
-                'ü' => result.push_str("ue"),
-                'Ä' => result.push_str("Ae"),
-                'Ö' => result.push_str("Oe"),
-                'Ü' => result.push_str("Ue"),
-                'ß' => result.push_str("ss"),
-                'é' | 'è' | 'ê' => result.push('e'),
-                'á' | 'à' => result.push('a'),
-                'ô' => result.push('o'),
-                'î' => result.push('i'),
-                'û' => result.push('u'),
-                _ => result.push(ch),
-            }
-        }
-        result
-    }
-
-    fn text_to_tokens(&self, text: &str) -> Vec<i64> {
-        let phonemes = self.phonemize_german(text);
-        phonemes
-            .chars()
-            .filter_map(Self::phoneme_to_token)
-            .collect()
-    }
-
-    fn resample(&self, samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
-        if from_rate == to_rate {
-            return samples.to_vec();
-        }
-        let ratio = to_rate as f64 / from_rate as f64;
-        let output_len = (samples.len() as f64 * ratio) as usize;
-        let mut resampled = Vec::with_capacity(output_len);
-        for i in 0..output_len {
-            let src_idx = i as f64 / ratio;
-            let idx = src_idx as usize;
-            let frac = src_idx - idx as f64;
-            let s0 = samples[idx.min(samples.len() - 1)];
-            let s1 = samples[(idx + 1).min(samples.len() - 1)];
-            resampled.push(s0 + (s1 - s0) * frac as f32);
-        }
-        resampled
-    }
-
-    fn synthesize_with_session(
-        &self,
-        session: &Mutex<Session>,
-        request: &SynthesisRequest,
-    ) -> Result<AudioOutput> {
-        let tokens = self.text_to_tokens(&request.text);
-        info!(token_count = tokens.len(), "Running Kokoro inference");
-
-        let mut guard = session
-            .lock()
-            .map_err(|_| anyhow::anyhow!("Session lock poisoned"))?;
-
-        let input_name = guard
-            .inputs()
-            .first()
-            .context("Model has no inputs")?
-            .name()
-            .to_owned();
-
-        let output_name = guard
-            .outputs()
-            .first()
-            .context("Model has no outputs")?
-            .name()
-            .to_owned();
-
-        let input_shape = [1usize, tokens.len()];
-        let input_value = ort::value::TensorRef::from_array_view((input_shape, tokens.as_slice()))
-            .context("Failed to create input tensor")?;
-
-        let outputs = guard
-            .run(ort::inputs![input_name.as_str() => input_value.into_dyn()])
-            .context("ONNX inference failed")?;
-
-        let output_tensor = outputs
-            .get(output_name.as_str())
-            .context("Output tensor not found")?;
-
-        let (shape, data) = output_tensor
-            .try_extract_tensor::<f32>()
-            .context("Failed to extract f32 output tensor")?;
-
-        let raw_samples: Vec<f32> = data.to_vec();
-
-        if raw_samples.iter().all(|&s| s == 0.0) {
-            warn!(
-                shape = ?shape,
-                "Kokoro produced all-zero output, model may not be loaded correctly"
+        if request.language != "de" {
+            anyhow::bail!(
+                "Kokoro German Martin sidecar supports only language 'de', got '{}'",
+                request.language
             );
         }
 
-        let samples = self.resample(&raw_samples, KOKORO_SAMPLE_RATE, request.sample_rate_hz);
+        Ok(self.client.post(self.endpoint()?).json(&serde_json::json!({
+            "model": "kokoro-german-martin",
+            "voice": voice,
+            "input": request.text,
+            "language": request.language,
+            "response_format": "wav",
+            "speed": request.speed,
+        })))
+    }
 
-        info!(
-            raw_len = raw_samples.len(),
-            output_len = samples.len(),
-            "Kokoro inference complete"
-        );
+    async fn send_with_retry(&self, request: &SynthesisRequest) -> Result<reqwest::Response> {
+        let endpoint = self.endpoint()?;
+        let mut last_err = None;
+        for attempt in 1..=MAX_CONNECT_ATTEMPTS {
+            match self.build_request(request)?.send().await {
+                Ok(response) => return Ok(response),
+                Err(error) if error.is_connect() || error.is_timeout() => {
+                    warn!(attempt, endpoint = %endpoint, error = %error, "Transient Kokoro sidecar failure");
+                    last_err = Some(error);
+                    if attempt < MAX_CONNECT_ATTEMPTS {
+                        tokio::time::sleep(RETRY_DELAY).await;
+                    }
+                }
+                Err(error) => return Err(error).context("Failed to send Kokoro synthesis request"),
+            }
+        }
+        match last_err {
+            Some(error) => Err(error).with_context(|| {
+                format!(
+                    "Kokoro sidecar unreachable after {MAX_CONNECT_ATTEMPTS} attempts: {endpoint}"
+                )
+            }),
+            None => {
+                anyhow::bail!("Kokoro retry loop exhausted without a transport error: {endpoint}")
+            }
+        }
+    }
 
-        Ok(AudioOutput {
-            samples,
-            sample_rate_hz: request.sample_rate_hz,
-        })
+    fn validate_audio(samples: &[f32]) -> Result<()> {
+        if samples.is_empty() {
+            anyhow::bail!("Kokoro sidecar returned empty audio");
+        }
+        if samples.iter().any(|sample| !sample.is_finite()) {
+            anyhow::bail!("Kokoro sidecar returned invalid audio");
+        }
+        if !samples.iter().any(|sample| *sample != 0.0) {
+            anyhow::bail!("Kokoro sidecar returned silent audio");
+        }
+        Ok(())
     }
 }
 
 #[async_trait]
 impl VoiceSynthesizer for KokoroProvider {
     async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
-        self.ensure_model().await?;
-        let session = self.load_session()?;
+        let response = self.send_with_retry(request).await?;
+        if !response.status().is_success() {
+            let error_text = match response.text().await {
+                Ok(text) => text,
+                Err(error) => format!("failed to read sidecar error response: {error}"),
+            };
+            anyhow::bail!(
+                "Kokoro sidecar error at {}: {}",
+                self.endpoint()?,
+                error_text
+            );
+        }
 
-        self.synthesize_with_session(&session, request)
+        let content_type = response
+            .headers()
+            .get("content-type")
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or_default()
+            .to_string();
+        if !content_type.contains("audio") {
+            anyhow::bail!("Kokoro sidecar returned unexpected content-type: {content_type}");
+        }
+
+        let bytes = response
+            .bytes()
+            .await
+            .context("Failed to read Kokoro audio response")?;
+        let samples = super::elevenlabs::decode_audio_bytes(&bytes, request.sample_rate_hz)
+            .context("Failed to decode Kokoro audio response")?;
+        Self::validate_audio(&samples)?;
+
+        Ok(AudioOutput {
+            samples,
+            sample_rate_hz: request.sample_rate_hz,
+        })
     }
 
     fn capabilities(&self) -> ProviderCapabilities {
         ProviderCapabilities {
-            supports_emotion: true,
+            supports_emotion: false,
             supports_voice_cloning: false,
             supports_streaming: false,
             max_text_length: 1000,
@@ -380,63 +166,153 @@ impl VoiceSynthesizer for KokoroProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{Read, Write};
 
-    #[test]
-    fn test_phonemize_german() {
-        let config = KokoroConfig {
-            model_path: "models/dummy.onnx".into(),
-            device: "cpu".into(),
-        };
-        let provider = KokoroProvider::new(config);
+    fn provider(endpoint_url: &str) -> KokoroProvider {
+        KokoroProvider {
+            endpoint_url: endpoint_url.to_string(),
+            client: Client::new(),
+        }
+    }
 
-        assert_eq!(provider.phonemize_german("Hallo"), "Hallo");
-        assert_eq!(provider.phonemize_german("Über"), "Ueber");
-        assert_eq!(provider.phonemize_german("über"), "ueber");
-        assert_eq!(provider.phonemize_german("Straße"), "Strasse");
-        assert_eq!(provider.phonemize_german("schön"), "schoen");
+    fn wav_bytes(samples: &[i16]) -> Vec<u8> {
+        let data_len = std::mem::size_of_val(samples) as u32;
+        let mut wav = Vec::with_capacity(44 + data_len as usize);
+        wav.extend_from_slice(b"RIFF");
+        wav.extend_from_slice(&(36 + data_len).to_le_bytes());
+        wav.extend_from_slice(b"WAVEfmt ");
+        wav.extend_from_slice(&16_u32.to_le_bytes());
+        wav.extend_from_slice(&1_u16.to_le_bytes());
+        wav.extend_from_slice(&1_u16.to_le_bytes());
+        wav.extend_from_slice(&24_000_u32.to_le_bytes());
+        wav.extend_from_slice(&48_000_u32.to_le_bytes());
+        wav.extend_from_slice(&2_u16.to_le_bytes());
+        wav.extend_from_slice(&16_u16.to_le_bytes());
+        wav.extend_from_slice(b"data");
+        wav.extend_from_slice(&data_len.to_le_bytes());
+        for sample in samples {
+            wav.extend_from_slice(&sample.to_le_bytes());
+        }
+        wav
     }
 
     #[test]
-    fn test_text_to_tokens() {
-        let config = KokoroConfig {
-            model_path: "models/dummy.onnx".into(),
-            device: "cpu".into(),
-        };
-        let provider = KokoroProvider::new(config);
-
-        let tokens = provider.text_to_tokens("Hi");
-        // 'H' maps via lowercase fallback to 'h' (50), 'i' maps to (51)
-        assert_eq!(tokens, vec![50, 51]);
+    fn rejects_empty_or_silent_audio() {
+        assert!(KokoroProvider::validate_audio(&[]).is_err());
+        assert!(KokoroProvider::validate_audio(&[0.0, f32::NAN]).is_err());
+        assert!(KokoroProvider::validate_audio(&[0.25, f32::INFINITY]).is_err());
+        assert!(KokoroProvider::validate_audio(&[0.0, 0.25]).is_ok());
     }
 
     #[test]
-    fn test_text_to_tokens_german_phrase() {
-        let config = KokoroConfig {
-            model_path: "models/dummy.onnx".into(),
-            device: "cpu".into(),
-        };
-        let provider = KokoroProvider::new(config);
-
-        let tokens = provider.text_to_tokens("Hallo, Straße! Tag");
-        // "Hallo, Straße! Tag" -> phonemize_german -> "Hallo, Strasse! Tag"
-        // H(50), a(43), l(54), l(54), o(57), ,(3),  (16), S(35), t(62), r(60), a(43), s(61), s(61), e(47), !(5),  (16), T(36), a(43), g(49)
+    fn endpoint_normalizes_trailing_slash() -> Result<()> {
+        let provider = provider("http://127.0.0.1:8881/");
         assert_eq!(
-            tokens,
-            vec![50, 43, 54, 54, 57, 3, 16, 35, 62, 60, 43, 61, 61, 47, 5, 16, 36, 43, 49]
+            provider.endpoint()?,
+            "http://127.0.0.1:8881/v1/audio/speech"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn default_sidecar_endpoint_is_used_without_an_override() {
+        assert_eq!(
+            KokoroProvider::resolve_endpoint_url(None),
+            DEFAULT_ENDPOINT_URL
         );
     }
 
     #[test]
-    fn test_resample() {
-        let config = KokoroConfig {
-            model_path: "models/dummy.onnx".into(),
-            device: "cpu".into(),
-        };
-        let provider = KokoroProvider::new(config);
+    fn sidecar_endpoint_override_is_used_when_configured() {
+        assert_eq!(
+            KokoroProvider::resolve_endpoint_url(Some("http://127.0.0.1:9999")),
+            "http://127.0.0.1:9999"
+        );
+    }
 
-        let input = vec![1.0, 2.0, 3.0, 4.0];
-        let output = provider.resample(&input, 24000, 16000);
-        assert!(!output.is_empty());
-        assert!((output.len() as f64 - 4.0 * 16000.0 / 24000.0).abs() < 2.0);
+    #[test]
+    fn rejects_unsupported_voice() {
+        let provider = provider("http://127.0.0.1:8881");
+        let request = SynthesisRequest {
+            voice_id: Some("other-voice".to_string()),
+            ..SynthesisRequest::default()
+        };
+        assert!(provider.build_request(&request).is_err());
+    }
+
+    #[test]
+    fn rejects_unsupported_language() {
+        let provider = provider("http://127.0.0.1:8881");
+        let request = SynthesisRequest {
+            language: "en".to_string(),
+            ..SynthesisRequest::default()
+        };
+        assert!(provider.build_request(&request).is_err());
+    }
+
+    #[tokio::test]
+    async fn requests_and_decodes_audio_from_sidecar() -> Result<()> {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
+        let port = listener.local_addr()?.port();
+        let source_samples: Vec<i16> = (0..240)
+            .map(|index| if index % 2 == 0 { 1_000 } else { -1_000 })
+            .collect();
+        let body = wav_bytes(&source_samples);
+        let server = std::thread::spawn(move || -> Result<()> {
+            let (mut stream, _) = listener.accept()?;
+            let request = read_request(&mut stream)?;
+            anyhow::ensure!(request.contains("POST /v1/audio/speech"));
+            anyhow::ensure!(request.contains("\"voice\":\"martin\""));
+            anyhow::ensure!(request.contains("\"input\":\"Hallo, Straße!\""));
+            anyhow::ensure!(request.contains("\"language\":\"de\""));
+            anyhow::ensure!(request.contains("\"response_format\":\"wav\""));
+            write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Type: audio/wav\r\nContent-Length: {}\r\n\r\n",
+                body.len()
+            )?;
+            stream.write_all(&body)?;
+            Ok(())
+        });
+
+        let provider = provider(&format!("http://127.0.0.1:{port}"));
+        let audio = provider
+            .synthesize(&SynthesisRequest {
+                text: "Hallo, Straße!".to_string(),
+                ..SynthesisRequest::default()
+            })
+            .await?;
+        assert!(!audio.samples.is_empty());
+        assert_eq!(audio.sample_rate_hz, 16_000);
+        server
+            .join()
+            .map_err(|_| anyhow::anyhow!("Kokoro test server panicked"))??;
+        Ok(())
+    }
+
+    fn read_request(stream: &mut std::net::TcpStream) -> Result<String> {
+        let mut request = Vec::new();
+        let mut chunk = [0_u8; 1_024];
+        loop {
+            let len = stream.read(&mut chunk)?;
+            if len == 0 {
+                break;
+            }
+            request.extend_from_slice(&chunk[..len]);
+
+            if let Some(header_end) = request.windows(4).position(|part| part == b"\r\n\r\n") {
+                let header_end = header_end + 4;
+                let headers = std::str::from_utf8(&request[..header_end])?;
+                let content_len = headers
+                    .lines()
+                    .find_map(|line| line.strip_prefix("content-length: "))
+                    .context("sidecar request has no content-length")?
+                    .parse::<usize>()?;
+                if request.len() >= header_end + content_len {
+                    break;
+                }
+            }
+        }
+        String::from_utf8(request).context("sidecar request must be UTF-8")
     }
 }

@@ -2,7 +2,7 @@
 
 Gaps between the current specification and the implemented runtime behavior.
 
-**Updated:** 2026-09-07
+**Updated:** 2026-09-19
 
 ## Voice Synthesis: Provider Status & Quality Caveats
 
@@ -11,7 +11,7 @@ Gaps between the current specification and the implemented runtime behavior.
 
 **Spec:** All configured TTS providers should produce actual audio output.
 
-**Actual:** Refreshed after workspace-wide analysis (`plans/130-improvement-analysis-2026-08-25.md`). All HTTP providers (Modal, ElevenLabs, OpenAI) produce real audio. Local inference landed for Qwen3 (candle), Kokoro (ONNX Runtime), and Orpheus (llama.cpp token loop), with quality caveats below. PocketTts (silence stub, falsely advertised cloning/streaming caps) was removed in 2026-09 (see `plans/140-codebase-gap-analysis.md`).
+**Actual:** Refreshed after workspace-wide analysis (`plans/130-improvement-analysis-2026-08-25.md`). All HTTP providers (Modal, ElevenLabs, OpenAI) produce real audio. Local inference landed for Qwen3 (candle) and Orpheus (llama.cpp token loop). Kokoro uses a local OpenAI-compatible sidecar, which owns the German normalization, eSpeak phonemization, voice styles, and ONNX inputs. PocketTts (silence stub, falsely advertised cloning/streaming caps) was removed in 2026-09 (see `plans/140-codebase-gap-analysis.md`).
 
 **Provider Status:**
 
@@ -20,12 +20,12 @@ Gaps between the current specification and the implemented runtime behavior.
 | Modal | Complete | Yes (no RIFF validation — see FOLLOWUPS) | Header hardening |
 | ElevenLabs | Complete (HTTP) | Yes (MP3 decode via symphonia) | None |
 | OpenAI | Complete (HTTP) | Yes (MP3 decode via symphonia) | One `.expect()` cleanup (see FOLLOWUPS) |
-| Kokoro | Complete (ONNX download) | Partial — real ONNX inference, but tokenization maps raw codepoints instead of eSD phoneme vocabulary | Phoneme tokenizer; acoustic output unverified |
+| Kokoro | Complete (local OpenAI-compatible sidecar) | Yes — German `martin` synthesis with response decoding and invalid-audio rejection | Sidecar must be running; setting `KOKORO_ENDPOINT_URL` activates it and overrides the default local address |
 | Orpheus | Complete (llama.cpp inference) | Yes — real token generation; SNAC→PCM ONNX vocoder wired via `vocoder_path` (with synthetic fallback when path unconfigured) | None |
 | Qwen3 | Complete (candle inference) | Yes (CUDA→CPU fallback) | None |
 | PocketTts | Removed | — | Silence stub deleted 2026-09 |
 
-**Fix:** Complete Kokoro phoneme tokenization and Orpheus SNAC decode for offline capability. Consider feature-gating local-inference dependencies (`local-tts` umbrella) so default builds skip the llama.cpp/candle/ort compile cost.
+**Fix:** Consider feature-gating local-inference dependencies (`local-tts` umbrella) so default builds skip the llama.cpp/candle/ort compile cost.
 
 ## GOAP Orchestrator Executes Real Pipeline Stages
 

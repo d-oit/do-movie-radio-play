@@ -2,6 +2,15 @@
 
 Features implemented in recent releases.
 
+## 2026-09-19: German Kokoro Sidecar Hardening
+
+- Replaced incomplete direct ONNX/token inference with the supported local
+  OpenAI-compatible sidecar integration.
+- The sidecar now owns German normalization, eSpeak phonemization, Martin voice
+  styles, and model inputs; the client validates decoded audio before use.
+- Set `KOKORO_ENDPOINT_URL` to activate and prioritize the sidecar; it defaults
+  to `http://127.0.0.1:8881` when a Kokoro provider is configured explicitly.
+
 ## Compact Operator Summary
 
 1. Run sweep: `python3 scripts/optimize_fp_sweep.py --output analysis/optimization/fp-sweep-ranked.json`

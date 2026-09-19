@@ -8,7 +8,7 @@
 
 The workspace is functionally rich and clean by marker hygiene (zero `TODO`/`FIXME`/`todo!()`/`unimplemented!()` in `crates/*`, `plans/FOLLOWUPS.md` open list empty). The risk is therefore **silent incompleteness**: no-op actions that return `Ok`, CLI flags that are accepted and ignored, and fully-built subsystems that no caller uses. This doc itemizes the confirmed gaps and the feature opportunities that build on existing assets.
 
-**Doc-staleness caveat:** several planning docs (`plans/120-goap-radio-play-pipeline/ROADMAP.md` 2026-06-22, `plans/050-status-report/STATUS.md` 2026-06-22) lag the source (e.g. they claim "voice providers return silence", "ElevenLabs MP3 not decoded", "output not wired to CLI" — all since fixed). Only findings confirmed in current source are listed below; doc-only claims are flagged. `plans/GOAP_STATE.md` (2026-09-03) shows an in-flight unified-orchestrator goal (branch `feat/goap-unified-orchestrator`, PR #246, T7/T8 open) that may already address item A1 when merged.
+**Doc-staleness caveat:** several planning docs (`plans/120-goap-radio-play-pipeline/ROADMAP.md` 2026-06-22, `plans/050-status-report/STATUS.md` 2026-06-22) lag the source (e.g. they claim "voice providers return silence", "ElevenLabs MP3 not decoded", "output not wired to CLI" — all since fixed). Only findings confirmed in current source are listed below; doc-only claims are flagged. `plans/GOAP_STATE.md` records unified-orchestrator PR #246 as merged on 2026-09-03; re-evaluate its effects before acting on item A1.
 
 ## 2. Missing / incomplete implementations (ranked)
 
@@ -16,7 +16,7 @@ The workspace is functionally rich and clean by marker hygiene (zero `TODO`/`FIX
 - `crates/movie-radio-goap/src/actions.rs:353` `VerifyQuality` and `:383` `ApplyLearnings` only log "(placeholder)" and return `Ok(())`. They never invoke `movie-radio-verification` or `movie-radio-learning` (those crates ARE used by the timeline `validate`/`review`/`extract` handlers), so the goal flags `quality_verified`/`learnings_applied` are asserted without work: no verification report, no calibration/adaptive-threshold update, no execution trace.
 - `crates/movie-radio-goap/src/orchestrator.rs:58` `should_replan()` hardcodes `false` — ADR-120 replan triggers (action failure, resource change, quality below threshold) do not exist.
 - The CLI never uses the planner/orchestrator: `crates/movie-radio-timeline/src/handlers/radio_play.rs` runs a hard-coded linear pipeline and imports only goap `assemble`/`gaps`/`narrate`.
-- Watch: may be superseded by the unmerged PR #246 branch per `plans/GOAP_STATE.md`.
+- Watch: re-evaluate against the merged PR #246 implementation before acting on this finding.
 
 ### A2. Voice cloning (ADR-0125, accepted #239) is a dry-run facade
 - `crates/movie-radio-pipeline/src/voice_clone.rs:4` `extract_candidates()` fabricates one synthetic `VoiceReference` pointing at the whole input file; no speaker/dialogue candidate extraction occurs.
@@ -33,7 +33,7 @@ The workspace is functionally rich and clean by marker hygiene (zero `TODO`/`FIX
 |---|---|
 | PocketTts | Silence stub: returns 1 s of zeros (`crates/movie-radio-voice/src/voice/pockettts.rs:19`) while `capabilities()` advertises `supports_voice_cloning: true`, `supports_streaming: true`; `plans/130` (P1) and `GAPS.md` recommend removal. |
 | Orpheus | Token inference real; SNAC→PCM decode falls back to synthetic tones (`crates/movie-radio-voice/src/voice/orpheus.rs:95-104`). |
-| Kokoro | ONNX inference live; `text_to_tokens()` maps chars to raw codepoints instead of eSD phoneme vocab (`crates/movie-radio-voice/src/voice/kokoro.rs:128-131`) → acoustic output unverified. |
+| Kokoro | Resolved: the local OpenAI-compatible sidecar owns German normalization, eSpeak phonemization, voice styles, and ONNX inputs; the client accepts only German `martin` requests and validates returned audio. |
 | GOAP `SynthesizeNarrator` | Hard-codes Modal + `language: "de"` + env key (`crates/movie-radio-goap/src/actions.rs:191-212`), ignoring `ctx.config` and the voice crate's fallback `SynthesisOrchestrator` used by the CLI handler. |
 | ElevenLabs / OpenAI / Modal / audio_cpp | Real audio paths (incl. symphonia MP3 decode). |
 

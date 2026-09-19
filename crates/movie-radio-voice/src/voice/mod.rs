@@ -2,6 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::ops::RangeInclusive;
+use std::path::PathBuf;
 
 /// Maximum accepted text length per synthesis request, in characters.
 pub const MAX_REQUEST_TEXT_CHARS: usize = 10_000;
@@ -39,6 +40,13 @@ pub struct SynthesisRequest {
     pub text: String,
     pub emotion: Emotion,
     pub voice_id: Option<String>,
+    /// Optional reference-audio clip for voice cloning (ADR-0125).
+    /// Honored by the audio.cpp provider: staged to `--voice-ref` for CLI
+    /// synthesis, read and base64-embedded for its remote endpoint (never a
+    /// raw local path). Providers without cloning support are skipped for
+    /// such requests.
+    #[serde(default)]
+    pub reference_audio: Option<PathBuf>,
     #[serde(default = "default_language")]
     pub language: String,
     pub speed: f32,          // 0.25 - 4.0
@@ -119,6 +127,7 @@ impl Default for SynthesisRequest {
             text: String::default(),
             emotion: Emotion::Neutral,
             voice_id: None,
+            reference_audio: None,
             language: default_language(),
             speed: 1.0,
             sample_rate_hz: 16000,
@@ -212,12 +221,52 @@ impl SynthesisOrchestrator {
     }
 
     pub async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
+        let (output, _) = self.synthesize_with_provider(request).await?;
+        Ok(output)
+    }
+
+    /// Build an orchestrator from prebuilt providers (tests and trace attribution).
+    pub fn from_test_providers(
+        providers: std::collections::HashMap<String, Box<dyn VoiceSynthesizer>>,
+        chain: &[&str],
+    ) -> Self {
+        Self {
+            providers,
+            fallback_chain: chain.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+
+    /// Synthesize, reporting which fallback-chain provider served the
+    /// request so learning traces can attribute outcomes honestly.
+    pub async fn synthesize_with_provider(
+        &self,
+        request: &SynthesisRequest,
+    ) -> Result<(AudioOutput, String)> {
         request.validate()?;
         let text_chars = request.text.chars().count();
         let mut last_err = anyhow::anyhow!("No provider available in fallback chain");
 
+        let wants_clone = request
+            .reference_audio
+            .as_deref()
+            .is_some_and(|p| !p.as_os_str().is_empty());
         for provider_id in &self.fallback_chain {
             if let Some(provider) = self.providers.get(provider_id) {
+                // Only the audio.cpp provider consumes `reference_audio`
+                // (CLI --voice-ref / remote base64); every other provider
+                // would silently drop the clip, so skip them for clone
+                // requests instead of returning uncloned audio.
+                if wants_clone && provider_id != "audio_cpp" {
+                    tracing::warn!(
+                        provider_id,
+                        "Skipping provider that ignores reference_audio for clone request"
+                    );
+                    last_err = anyhow::anyhow!(
+                        "provider '{}' does not honor reference_audio",
+                        provider_id
+                    );
+                    continue;
+                }
                 let cap = provider.capabilities().max_text_length;
                 if text_chars > cap {
                     tracing::warn!(
@@ -235,7 +284,7 @@ impl SynthesisOrchestrator {
                     continue;
                 }
                 match provider.synthesize(request).await {
-                    Ok(output) => return Ok(output),
+                    Ok(output) => return Ok((output, provider_id.clone())),
                     Err(e) => {
                         tracing::warn!("Provider {} failed: {}", provider_id, e);
                         last_err = e;
@@ -257,6 +306,7 @@ mod tests {
             text: text.to_string(),
             emotion: Emotion::Neutral,
             voice_id: None,
+            reference_audio: None,
             language: default_language(),
             speed,
             sample_rate_hz,
@@ -380,111 +430,5 @@ mod tests {
                 Err(SynthesisValidationError::InvalidLanguage)
             );
         }
-    }
-
-    struct FakeProvider {
-        cap: usize,
-        fail: bool,
-    }
-
-    #[async_trait::async_trait]
-    impl VoiceSynthesizer for FakeProvider {
-        async fn synthesize(&self, request: &SynthesisRequest) -> Result<AudioOutput> {
-            if self.fail {
-                anyhow::bail!("injected failure");
-            }
-            Ok(AudioOutput {
-                samples: vec![0.0; 8],
-                sample_rate_hz: request.sample_rate_hz,
-            })
-        }
-
-        fn capabilities(&self) -> ProviderCapabilities {
-            ProviderCapabilities {
-                supports_emotion: false,
-                supports_voice_cloning: false,
-                supports_streaming: false,
-                max_text_length: self.cap,
-                languages: vec!["de".to_string()],
-                requires_gpu: false,
-            }
-        }
-
-        fn estimate_cost(&self, _text_len: usize) -> f64 {
-            0.0
-        }
-    }
-
-    fn orchestrator_with(
-        providers: Vec<(&str, FakeProvider)>,
-        chain: &[&str],
-    ) -> SynthesisOrchestrator {
-        let mut map = std::collections::HashMap::new();
-        for (id, provider) in providers {
-            map.insert(
-                id.to_string(),
-                Box::new(provider) as Box<dyn VoiceSynthesizer>,
-            );
-        }
-        SynthesisOrchestrator {
-            providers: map,
-            fallback_chain: chain.iter().map(|s| s.to_string()).collect(),
-        }
-    }
-
-    #[tokio::test]
-    async fn test_falls_back_when_text_exceeds_provider_cap() {
-        let orchestrator = orchestrator_with(
-            vec![
-                (
-                    "small",
-                    FakeProvider {
-                        cap: 5,
-                        fail: false,
-                    },
-                ),
-                (
-                    "big",
-                    FakeProvider {
-                        cap: 10_000,
-                        fail: false,
-                    },
-                ),
-            ],
-            &["small", "big"],
-        );
-        let output = orchestrator
-            .synthesize(&request("a".repeat(10).as_str(), 1.0, 16_000))
-            .await
-            .expect("second provider must serve the request");
-        assert_eq!(output.sample_rate_hz, 16_000);
-    }
-
-    #[tokio::test]
-    async fn test_errors_when_no_provider_cap_fits() {
-        let orchestrator = orchestrator_with(
-            vec![
-                (
-                    "a",
-                    FakeProvider {
-                        cap: 5,
-                        fail: false,
-                    },
-                ),
-                (
-                    "b",
-                    FakeProvider {
-                        cap: 6,
-                        fail: false,
-                    },
-                ),
-            ],
-            &["a", "b"],
-        );
-        let err = orchestrator
-            .synthesize(&request("abcdefg", 1.0, 16_000))
-            .await
-            .expect_err("no provider can fit the text");
-        assert!(err.to_string().contains("cap of"), "{}", err);
     }
 }

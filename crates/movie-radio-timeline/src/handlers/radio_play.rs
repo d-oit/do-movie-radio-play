@@ -18,6 +18,7 @@ pub struct RadioPlayOptions {
     pub apply_learnings: bool,
     pub learning_state: Option<PathBuf>,
     pub learning_db: Option<PathBuf>,
+    pub no_learn: bool,
 }
 
 pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
@@ -28,10 +29,14 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     });
 
     let mut ctx = PipelineContext::new(movie, output_path);
+    // Unique run id up front: same-movie runs started in the same second
+    // must not share the run_traces primary key.
+    ctx.run_id = Some(movie_radio_goap::fallback_run_id(&ctx.movie_path));
     ctx.subtitles_path = opts.subtitles;
     ctx.voice_config = Some(VoiceSynthesisConfig::from_env());
     ctx.learning_state_path = opts.learning_state;
     ctx.learning_db_path = opts.learning_db;
+    ctx.no_learn = opts.no_learn;
 
     let mut start_state = WorldState::default();
     if let Some(ref p) = opts.timeline {
@@ -72,7 +77,7 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     let goal_state = WorldState {
         radio_play_assembled: true,
         quality_verified: opts.verify_quality,
-        learnings_applied: opts.apply_learnings,
+        learnings_applied: opts.apply_learnings && !opts.no_learn,
         ..WorldState::default()
     };
 

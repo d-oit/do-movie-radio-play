@@ -180,10 +180,34 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
     LearningStats {
+        #[arg(long)]
+        radio_play: bool,
         #[arg(long, default_value = "analysis/thresholds/learning.db")]
         learning_db: PathBuf,
         #[arg(long)]
         output: Option<PathBuf>,
+    },
+    LearningLog {
+        // 100k rows is the display ceiling; the store clamps to i64 range.
+        #[arg(long, default_value_t = 10)]
+        last: usize,
+        #[arg(long, default_value = "analysis/thresholds/learning.db")]
+        learning_db: PathBuf,
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+    ResetLearnings {
+        /// Reset adaptations; run history survives per ADR-122.
+        #[arg(long)]
+        confirm: bool,
+        #[arg(long, default_value = "analysis/thresholds/learning.db")]
+        learning_db: PathBuf,
+    },
+    ExportLearnings {
+        #[arg(long, default_value = "analysis/learnings/export.json")]
+        output: PathBuf,
+        #[arg(long, default_value = "analysis/thresholds/learning.db")]
+        learning_db: PathBuf,
     },
     LearningExperiments {
         #[arg(long, default_value = "analysis/thresholds/learning.db")]
@@ -231,6 +255,8 @@ pub enum Commands {
         learning_state: Option<PathBuf>,
         #[arg(long)]
         learning_db: Option<PathBuf>,
+        #[arg(long)]
+        no_learn: bool,
     },
     /// Preview a WAV file by streaming to system audio output.
     /// Useful for quick QA without writing intermediate files.
@@ -299,5 +325,9 @@ pub enum VoiceCommands {
         character: String,
         #[arg(long)]
         text: String,
+        /// Sample file written by `voice samples --output`; defaults to
+        /// `voice_samples/{character}.json`.
+        #[arg(long)]
+        samples_from: Option<PathBuf>,
     },
 }

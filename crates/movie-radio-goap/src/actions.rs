@@ -229,6 +229,7 @@ impl Action for SynthesizeNarrator {
                 text: script.text.clone(),
                 emotion: script.emotion.clone(),
                 voice_id: voice_id.clone(),
+                reference_audio: None,
                 language: language.clone(),
                 speed: 1.0,
                 sample_rate_hz: ctx.sample_rate,
@@ -237,27 +238,31 @@ impl Action for SynthesizeNarrator {
             if let Err(e) = request.validate() {
                 tracing::warn!(i = i + 1, error = %e, "Invalid synthesis request, skipping");
                 ctx.narration_audio.push(None);
+                ctx.narration_provider.push(None);
                 continue;
             }
 
-            match orchestrator.synthesize(&request).await {
-                Ok(audio) => {
+            match orchestrator.synthesize_with_provider(&request).await {
+                Ok((audio, provider_id)) => {
                     info!(
                         i = i + 1,
                         samples = audio.samples.len(),
                         "Narration synthesized"
                     );
                     ctx.narration_audio.push(Some(audio));
+                    ctx.narration_provider.push(Some(provider_id));
                 }
                 Err(e) => {
                     tracing::warn!(i = i + 1, error = %e, "TTS failed, skipping");
                     ctx.narration_audio.push(None);
+                    ctx.narration_provider.push(None);
                 }
             }
         }
 
         if !scripts.is_empty() && ctx.narration_audio.iter().all(Option::is_none) {
             ctx.narration_audio.truncate(narration_baseline);
+            ctx.narration_provider.truncate(narration_baseline);
             anyhow::bail!(
                 "all {} narration syntheses failed; check TTS provider configuration \
                  (e.g. OPENAI_API_KEY / OPENAI_TTS_BASE_URL / MODAL_TTS_ENDPOINT)",

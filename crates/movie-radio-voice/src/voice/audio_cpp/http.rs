@@ -13,6 +13,74 @@ const ENV_AUDIO_CPP_REMOTE_URL: &str = "AUDIO_CPP_REMOTE_URL";
 
 static CUMULATIVE_DAILY_COST_MILLICENTS: AtomicU64 = AtomicU64::new(0);
 
+/// audio.cpp `voice_ref` accepts a path or base64 payload (ADR-0125). A
+/// remote server cannot read our local filesystem, so a request-level
+/// reference clip is read and embedded as base64; the raw local path is
+/// never sent. Reads are capped at 5 MiB per the server contract.
+fn resolve_remote_voice_ref(request: &SynthesisRequest, config: &AudioCppConfig) -> Result<String> {
+    use base64::Engine as _;
+    if let Some(path) = request
+        .reference_audio
+        .as_deref()
+        .filter(|p| !p.as_os_str().is_empty())
+    {
+        // Enforce the offline boundary: remote upload happens only when the
+        // request carries an explicit clip (ADR-0125: log when audio leaves
+        // the local machine).
+        const MAX_VOICE_REF_BYTES: u64 = 5 * 1024 * 1024;
+        let meta = std::fs::metadata(path)
+            .with_context(|| format!("failed to read reference audio {}", path.display()))?;
+        // Regular files only: FIFOs/sockets/devices would block a sync open
+        // or stream forever, and the size cap cannot bound them.
+        if !meta.file_type().is_file() {
+            anyhow::bail!("reference audio must be a regular file");
+        }
+        if meta.len() > MAX_VOICE_REF_BYTES {
+            anyhow::bail!("reference audio exceeds 5 MiB voice_ref limit");
+        }
+        // Capped blocking read on a dedicated thread: the caller is async,
+        // so a FIFO/slow file must never stall the Tokio worker. Regular-file
+        // check above already rejects non-files; the cap re-check covers
+        // growth between metadata and read (TOCTOU).
+        let owned = path.to_path_buf();
+        let bytes = tokio::task::block_in_place(|| {
+            use std::io::Read as _;
+            let mut file = std::fs::File::open(&owned)
+                .with_context(|| format!("failed to read reference audio {}", owned.display()))?;
+            let mut bytes = Vec::new();
+            file.by_ref()
+                .take(MAX_VOICE_REF_BYTES + 1)
+                .read_to_end(&mut bytes)
+                .with_context(|| format!("failed to read reference audio {}", owned.display()))?;
+            Ok::<_, anyhow::Error>(bytes)
+        })?;
+        if bytes.len() as u64 > MAX_VOICE_REF_BYTES {
+            anyhow::bail!("reference audio exceeds 5 MiB voice_ref limit");
+        }
+        tracing::info!(
+            path = %path.display(),
+            bytes = bytes.len(),
+            "uploading reference audio to remote audio.cpp endpoint"
+        );
+        return Ok(base64::engine::general_purpose::STANDARD.encode(&bytes));
+    }
+    // A configured local clip is a path, not remote payload: the server
+    // cannot read our filesystem, so encode it the same way. Missing
+    // files keep the legacy passthrough (e.g. a server-side voice name).
+    if let Some(local) = config.voice_ref.as_deref().filter(|s| !s.is_empty()) {
+        let path = std::path::Path::new(local);
+        if path.exists() {
+            let nested = SynthesisRequest {
+                reference_audio: Some(path.to_path_buf()),
+                ..SynthesisRequest::default()
+            };
+            let empty = AudioCppConfig::default();
+            return resolve_remote_voice_ref(&nested, &empty);
+        }
+    }
+    Ok(config.voice_ref.clone().unwrap_or_default())
+}
+
 pub(crate) struct ModelParams<'a> {
     pub family: &'a str,
     pub model: &'a str,
@@ -80,7 +148,7 @@ pub(crate) async fn synthesize_http_endpoint(
     if !voice.is_empty() && !is_valid_voice_id(voice) {
         return Err(SynthesisValidationError::InvalidVoiceId.into());
     }
-    let voice_ref = config.voice_ref.as_deref().unwrap_or("");
+    let voice_ref = resolve_remote_voice_ref(request, config)?;
 
     let payload = serde_json::json!({
         "model": params.model,
@@ -320,5 +388,71 @@ mod tests {
             err.downcast::<SynthesisValidationError>().unwrap(),
             SynthesisValidationError::InvalidVoiceId
         );
+    }
+
+    #[test]
+    fn test_remote_voice_ref_prefers_request_clip() {
+        use base64::Engine as _;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let clip = dir.path().join("ref.wav");
+        std::fs::write(&clip, b"fake-wav-bytes").expect("write clip");
+        let config = AudioCppConfig {
+            voice_ref: Some("configured-ref".to_string()),
+            ..AudioCppConfig::default()
+        };
+        let request = SynthesisRequest {
+            reference_audio: Some(clip),
+            ..SynthesisRequest::default()
+        };
+        let resolved = resolve_remote_voice_ref(&request, &config).expect("resolve");
+        assert_eq!(
+            resolved,
+            base64::engine::general_purpose::STANDARD.encode(b"fake-wav-bytes")
+        );
+    }
+
+    #[test]
+    fn test_remote_voice_ref_encodes_configured_local_clip() {
+        use base64::Engine as _;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let clip = dir.path().join("configured.wav");
+        std::fs::write(&clip, b"configured-bytes").expect("write clip");
+        let config = AudioCppConfig {
+            voice_ref: Some(clip.to_string_lossy().to_string()),
+            ..AudioCppConfig::default()
+        };
+        let request = SynthesisRequest::default();
+        let resolved = resolve_remote_voice_ref(&request, &config).expect("resolve");
+        assert_eq!(
+            resolved,
+            base64::engine::general_purpose::STANDARD.encode(b"configured-bytes")
+        );
+    }
+
+    #[test]
+    fn test_remote_voice_ref_rejects_oversize_clip() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let clip = dir.path().join("big.wav");
+        std::fs::write(&clip, vec![0u8; 5 * 1024 * 1024 + 1]).expect("write clip");
+        let config = AudioCppConfig::default();
+        let request = SynthesisRequest {
+            reference_audio: Some(clip),
+            ..SynthesisRequest::default()
+        };
+        assert!(resolve_remote_voice_ref(&request, &config).is_err());
+    }
+
+    #[test]
+    fn test_remote_voice_ref_empty_request_falls_back_to_config() {
+        let config = AudioCppConfig {
+            voice_ref: Some("configured-ref".to_string()),
+            ..AudioCppConfig::default()
+        };
+        let request = SynthesisRequest {
+            reference_audio: Some(std::path::PathBuf::new()),
+            ..SynthesisRequest::default()
+        };
+        let resolved = resolve_remote_voice_ref(&request, &config).expect("resolve");
+        assert_eq!(resolved, "configured-ref");
     }
 }

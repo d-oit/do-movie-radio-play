@@ -39,9 +39,11 @@ impl VoiceReference {
             return Err("sample_paths must not be empty".to_string());
         }
         for p in &self.sample_paths {
-            let s = p.to_string_lossy();
-            if s.contains("..") {
-                return Err(format!("sample path must not contain ..: {s}"));
+            if p.components().any(|c| c == std::path::Component::ParentDir) {
+                return Err(format!(
+                    "sample path must not contain ..: {}",
+                    p.to_string_lossy()
+                ));
             }
         }
         Ok(())
@@ -51,6 +53,22 @@ impl VoiceReference {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dotted_filename_accepted() {
+        let vr = VoiceReference {
+            id: "protagonist_v1".to_string(),
+            character_name: "protagonist".to_string(),
+            sample_paths: vec![PathBuf::from("testdata/movie..final.mkv")],
+            metadata: HashMap::new(),
+            created_at: None,
+            runtime: "audio_cpp".to_string(),
+            family: "qwen3_tts".to_string(),
+            model: "models/Qwen3-TTS-12Hz-1.7B-Base".to_string(),
+            language: "de".to_string(),
+        };
+        assert!(vr.validate().is_ok());
+    }
 
     #[test]
     fn voice_reference_validation() {

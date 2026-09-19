@@ -192,34 +192,52 @@ impl Action for ApplyLearnings {
         // learning state. A segment verification flagged as suspicious or
         // rejected means the extractor cut a likely speech segment as
         // non-voice - a false positive from the learning loop's viewpoint.
+        // Under `--no-learn` the state is loaded read-only for the report
+        // below: `record_verification_result` itself nudges thresholds on
+        // false positives, so calling it would unfreeze what we claim frozen.
         let mut state = match &ctx.learning_state_path {
             Some(path) if path.exists() => load_learning_state(path)?,
             _ => create_learning_state(20),
         };
-        for (i, result) in report.segment_results.iter().enumerate() {
-            let feats = &result.spectral_features;
-            record_verification_result(
-                &mut state,
-                i,
-                !result.is_verified,
-                feats.spectral_entropy,
-                feats.spectral_flatness,
-                feats.rms,
-                feats.centroid_hz,
-            );
+        if !ctx.no_learn {
+            for (i, result) in report.segment_results.iter().enumerate() {
+                let feats = &result.spectral_features;
+                record_verification_result(
+                    &mut state,
+                    i,
+                    !result.is_verified,
+                    feats.spectral_entropy,
+                    feats.spectral_flatness,
+                    feats.rms,
+                    feats.centroid_hz,
+                );
+            }
         }
 
+        let old_flatness = state.current_thresholds.flatness_max;
+        let old_entropy = state.current_thresholds.entropy_min;
+
+        // `--no-learn` freezes adaptation: skip the in-memory mutation too,
+        // so `ctx.learning` reflects the frozen config, not an adjustment
+        // that was merely left unpersisted.
         // Bounded per-run adjustment: the learning-rate-limited updates in
         // movie-radio-learning keep each parameter move small and clamped.
-        if state.total_verifications >= 5 {
+        if !ctx.no_learn && state.total_verifications >= 5 {
             adjust_thresholds_for_fp_rate(&mut state);
         }
+
+        let new_flatness = state.current_thresholds.flatness_max;
+        let new_entropy = state.current_thresholds.entropy_min;
 
         // Persist the state file first: it is the durable record. The
         // threshold-history database write is best-effort telemetry, so a
         // failure there cannot fail the action (which would otherwise retry
         // and re-record the same rows or duplicate state history).
-        if let Some(path) = &ctx.learning_state_path {
+        // Under `--no-learn` neither write happens: the file and the DB
+        // row are both learning adaptations, not read-only telemetry.
+        if ctx.no_learn {
+            tracing::info!("--no-learn enabled: adaptations frozen, state not persisted");
+        } else if let Some(path) = &ctx.learning_state_path {
             save_learning_state(&state, path)?;
         } else {
             tracing::info!(
@@ -228,26 +246,65 @@ impl Action for ApplyLearnings {
         }
 
         if let Some(db_path) = &ctx.learning_db_path {
-            let t = &state.current_thresholds;
-            match LearningDb::new(db_path).await {
-                Ok(db) => {
-                    if let Err(err) = db
-                        .record_threshold(
-                            f64::from(t.flatness_max),
-                            f64::from(t.entropy_min),
-                            f64::from(t.centroid_min),
-                            f64::from(t.centroid_max),
-                        )
-                        .await
-                    {
-                        tracing::warn!(
-                            error = %err,
-                            "failed to record thresholds in learning database"
-                        );
+            if ctx.no_learn {
+                tracing::info!("--no-learn enabled: threshold history not recorded");
+            } else {
+                let t = &state.current_thresholds;
+                match LearningDb::new(db_path).await {
+                    Ok(db) => {
+                        if let Err(err) = db
+                            .record_threshold(
+                                f64::from(t.flatness_max),
+                                f64::from(t.entropy_min),
+                                f64::from(t.centroid_min),
+                                f64::from(t.centroid_max),
+                            )
+                            .await
+                        {
+                            tracing::warn!(
+                                error = %err,
+                                "failed to record thresholds in learning database"
+                            );
+                        }
+
+                        if (new_flatness - old_flatness).abs() > 0.0001 {
+                            let log = movie_radio_learning::trace_store::AdaptationLog {
+                                id: None,
+                                parameter: "flatness_max".to_string(),
+                                old_value: Some(format!("{old_flatness:.4}")),
+                                new_value: Some(format!("{new_flatness:.4}")),
+                                reason: Some(format!(
+                                    "adjusted for FP rate {:.2}%",
+                                    state.recent_fp_rate * 100.0
+                                )),
+                                improvement_delta: Some(f64::from(new_flatness - old_flatness)),
+                                applied_at: None,
+                            };
+                            if let Err(err) = db.record_adaptation_log(&log).await {
+                                tracing::warn!(error = %err, "failed to record adaptation log");
+                            }
+                        }
+                        if (new_entropy - old_entropy).abs() > 0.0001 {
+                            let log = movie_radio_learning::trace_store::AdaptationLog {
+                                id: None,
+                                parameter: "entropy_min".to_string(),
+                                old_value: Some(format!("{old_entropy:.4}")),
+                                new_value: Some(format!("{new_entropy:.4}")),
+                                reason: Some(format!(
+                                    "adjusted for FP rate {:.2}%",
+                                    state.recent_fp_rate * 100.0
+                                )),
+                                improvement_delta: Some(f64::from(new_entropy - old_entropy)),
+                                applied_at: None,
+                            };
+                            if let Err(err) = db.record_adaptation_log(&log).await {
+                                tracing::warn!(error = %err, "failed to record adaptation log");
+                            }
+                        }
                     }
-                }
-                Err(err) => {
-                    tracing::warn!(error = %err, "failed to open learning database");
+                    Err(err) => {
+                        tracing::warn!(error = %err, "failed to open learning database");
+                    }
                 }
             }
         }

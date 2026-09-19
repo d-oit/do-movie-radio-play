@@ -49,8 +49,20 @@ pub(crate) async fn synthesize_local_cli(
         }
         cmd.arg("--voice").arg(effective_voice);
     }
-    if let Some(ref v_ref) = config.voice_ref {
-        cmd.arg("--voice-ref").arg(v_ref);
+    // Request-level reference wins; empty paths count as absent so the
+    // configured fallback still applies. `Command::arg` takes the path
+    // directly to preserve non-UTF-8 bytes (no lossy conversion).
+    let effective_voice_ref = request
+        .reference_audio
+        .as_deref()
+        .filter(|p| !p.as_os_str().is_empty())
+        .map(std::path::Path::as_os_str)
+        .map(|s| s.to_os_string())
+        .or_else(|| config.voice_ref.clone().map(std::ffi::OsString::from));
+    if let Some(ref v_ref) = effective_voice_ref {
+        if !v_ref.is_empty() {
+            cmd.arg("--voice-ref").arg(v_ref);
+        }
     }
 
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());

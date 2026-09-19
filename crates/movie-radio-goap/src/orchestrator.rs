@@ -48,6 +48,9 @@ impl Orchestrator {
         loop {
             if self.current_state.meets(&self.goal_state) {
                 self.check_quality_gate(ctx)?;
+                if let Err(err) = crate::record_execution_trace(ctx).await {
+                    warn!(error = %err, "Failed to record execution trace");
+                }
                 info!("Goal reached!");
                 return Ok(());
             }
@@ -59,6 +62,9 @@ impl Orchestrator {
             match self.execute_plan(ctx).await {
                 Ok(PlanOutcome::GoalMet) => {
                     self.check_quality_gate(ctx)?;
+                    if let Err(err) = crate::record_execution_trace(ctx).await {
+                        warn!(error = %err, "Failed to record execution trace");
+                    }
                     info!("Goal reached!");
                     return Ok(());
                 }

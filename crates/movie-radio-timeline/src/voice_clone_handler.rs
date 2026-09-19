@@ -115,15 +115,28 @@ fn load_clone_reference(sample_file: &std::path::Path, character: &str) -> Resul
     // First candidate whose stored reference still points at a real file;
     // stale entries (moved/deleted clips) are skipped, and a file with no
     // usable reference at all fails instead of testing the wrong voice.
-    cands
+    // Candidates are scoped to the requested character: `--samples-from`
+    // accepts an arbitrary file, so without this check
+    // `--character alice --samples-from bob.json` would clone Bob's voice
+    // while reporting Alice.
+    let matching: Vec<&VoiceReference> = cands
         .iter()
-        .filter(|c| c.validate().is_ok())
+        .filter(|c| c.validate().is_ok() && c.character_name == character)
+        .collect();
+    if !cands.iter().any(|c| c.character_name == character) {
+        anyhow::bail!(
+            "voice samples {} contain no candidates for character '{character}' — re-run `voice samples --character {character} --input <movie>`",
+            sample_file.display()
+        );
+    }
+    matching
+        .iter()
         .flat_map(|c| c.sample_paths.iter())
         .find(|p| p.is_file())
         .cloned()
         .with_context(|| {
             format!(
-                "voice samples {} contain no usable reference audio (all sample paths missing or stale) — re-run `voice samples --character {character} --input <movie>`",
+                "voice samples {} contain no usable reference audio for character '{character}' (all sample paths missing or stale) — re-run `voice samples --character {character} --input <movie>`",
                 sample_file.display()
             )
         })
@@ -296,6 +309,18 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let missing = dir.path().join("missing.json");
         assert!(load_clone_reference(&missing, "alice").is_err());
+    }
+
+    #[test]
+    fn other_character_reference_rejected() -> Result<()> {
+        let dir = TempDir::new()?;
+        let live = dir.path().join("bob.wav");
+        fs::write(&live, b"RIFF")?;
+        let file = write_reference_file(dir.path(), &[live]);
+        // Fixture helper stamps candidates as alice's; loading for bob must
+        // fail rather than clone alice's voice, and vice versa.
+        assert!(load_clone_reference(&file, "bob").is_err());
+        Ok(())
     }
 
     #[test]

@@ -38,15 +38,24 @@ fn resolve_remote_voice_ref(request: &SynthesisRequest, config: &AudioCppConfig)
         if meta.len() > MAX_VOICE_REF_BYTES {
             anyhow::bail!("reference audio exceeds 5 MiB voice_ref limit");
         }
-        // Capped blocking read on a dedicated thread: the caller is async,
-        // so a FIFO/slow file must never stall the Tokio worker. Regular-file
-        // check above already rejects non-files; the cap re-check covers
-        // growth between metadata and read (TOCTOU).
+        // Capped blocking read: the caller is async, so block_in_place lets
+        // the runtime schedule replacement work while this closure runs on
+        // the calling worker thread. The metadata pre-check above rejects
+        // obvious non-files; the opened handle is revalidated below and the
+        // cap re-checked to cover swaps or growth between check and read.
         let owned = path.to_path_buf();
         let bytes = tokio::task::block_in_place(|| {
             use std::io::Read as _;
             let mut file = std::fs::File::open(&owned)
                 .with_context(|| format!("failed to read reference audio {}", owned.display()))?;
+            // Revalidate the opened file, not the pathname: the path may
+            // have been swapped (e.g. for a FIFO) after the pre-check.
+            let opened = file
+                .metadata()
+                .with_context(|| format!("failed to read reference audio {}", owned.display()))?;
+            if !opened.file_type().is_file() {
+                anyhow::bail!("reference audio must be a regular file");
+            }
             let mut bytes = Vec::new();
             file.by_ref()
                 .take(MAX_VOICE_REF_BYTES + 1)

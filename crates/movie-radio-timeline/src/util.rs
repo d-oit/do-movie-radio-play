@@ -64,9 +64,12 @@ fn try_open_wsl(path_str: &str, absolute: &std::path::Path) -> Result<bool> {
             info!(path = %absolute.display(), opener = "explorer.exe", "opened review output in browser");
             return Ok(true);
         }
-        // Harden powershell call by using properly escaped FilePath
-        let ps_cmd = format!("Start-Process -FilePath '{}'", win_path.replace("'", "''"));
-        if try_open("powershell.exe", &["-NoProfile", "-Command", &ps_cmd])? {
+        // Harden powershell call with EncodedCommand (-FilePath has no -LiteralPath variant)
+        let encoded_cmd = build_powershell_encoded_cmd(&win_path);
+        if try_open(
+            "powershell.exe",
+            &["-NoProfile", "-EncodedCommand", &encoded_cmd],
+        )? {
             info!(path = %absolute.display(), opener = "powershell.exe", "opened review output in browser");
             return Ok(true);
         }
@@ -93,9 +96,12 @@ fn try_open_windows(path_str: &str, absolute: &std::path::Path) -> Result<()> {
         info!(path = %absolute.display(), opener = "explorer", "opened review output in browser");
         return Ok(());
     }
-    // Harden powershell call by using properly escaped FilePath
-    let ps_cmd = format!("Start-Process -FilePath '{}'", path_str.replace("'", "''"));
-    if try_open("powershell", &["-NoProfile", "-Command", &ps_cmd])? {
+    // Harden powershell call with EncodedCommand (-FilePath has no -LiteralPath variant)
+    let encoded_cmd = build_powershell_encoded_cmd(path_str);
+    if try_open(
+        "powershell",
+        &["-NoProfile", "-EncodedCommand", &encoded_cmd],
+    )? {
         info!(path = %absolute.display(), opener = "powershell", "opened review output in browser");
         return Ok(());
     }
@@ -103,6 +109,40 @@ fn try_open_windows(path_str: &str, absolute: &std::path::Path) -> Result<()> {
         "could not auto-open browser for {}; open it manually",
         absolute.display()
     )
+}
+
+/// Build a Base64 encoded UTF-16LE command string for PowerShell `-EncodedCommand`.
+/// `-FilePath` names the file to open; encoding the script avoids quoting/injection issues.
+fn build_powershell_encoded_cmd(path: &str) -> String {
+    let script = format!("Start-Process -FilePath '{}'", path.replace('\'', "''"));
+    let utf16: Vec<u16> = script.encode_utf16().collect();
+    let bytes: Vec<u8> = utf16.into_iter().flat_map(|u| u.to_le_bytes()).collect();
+    encode_base64(&bytes)
+}
+
+fn encode_base64(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut res = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let b0 = chunk[0];
+        let b1 = chunk.get(1).copied().unwrap_or(0);
+        let b2 = chunk.get(2).copied().unwrap_or(0);
+
+        let b24 = ((b0 as u32) << 16) | ((b1 as u32) << 8) | (b2 as u32);
+        res.push(TABLE[((b24 >> 18) & 63) as usize] as char);
+        res.push(TABLE[((b24 >> 12) & 63) as usize] as char);
+        if chunk.len() > 1 {
+            res.push(TABLE[((b24 >> 6) & 63) as usize] as char);
+        } else {
+            res.push('=');
+        }
+        if chunk.len() > 2 {
+            res.push(TABLE[(b24 & 63) as usize] as char);
+        } else {
+            res.push('=');
+        }
+    }
+    res
 }
 
 /// Try browser openers on Linux.
@@ -236,4 +276,23 @@ pub fn get_calibration_dir() -> Result<std::path::PathBuf> {
             .map_err(|_| anyhow::anyhow!("Neither XDG_CONFIG_HOME nor HOME set"))?
     };
     Ok(std::path::PathBuf::from(base).join("do-movie-radio-play/profiles"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_powershell_encoded_cmd() {
+        let path = "C:\\path\\to'file\\test[1].html";
+        let encoded = build_powershell_encoded_cmd(path);
+        assert!(!encoded.is_empty());
+
+        let expected_script = "Start-Process -FilePath 'C:\\path\\to''file\\test[1].html'";
+        let utf16: Vec<u16> = expected_script.encode_utf16().collect();
+        let bytes: Vec<u8> = utf16.into_iter().flat_map(|u| u.to_le_bytes()).collect();
+        let expected_encoded = encode_base64(&bytes);
+
+        assert_eq!(encoded, expected_encoded);
+    }
 }

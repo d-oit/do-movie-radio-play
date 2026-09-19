@@ -124,7 +124,10 @@ impl GapIdentifier {
     fn analyze_duration(&self, duration: u64, confidence: &mut f32, reasons: &mut Vec<String>) {
         if duration > self.min_silence_duration_ms {
             *confidence += 0.4;
-            reasons.push(format!("Duration ({}ms) > 3s", duration));
+            reasons.push(format!(
+                "Duration ({}ms) > {}ms",
+                duration, self.min_silence_duration_ms
+            ));
         } else if duration > 1000 {
             *confidence += 0.1;
         }
@@ -313,10 +316,21 @@ mod tests {
         assert!((c - 0.1).abs() < 1e-6);
         assert!(r.is_empty());
 
-        // > min_silence_duration_ms: strong boost plus reason.
+        // > min_silence_duration_ms: strong boost plus reason naming the
+        // effective cutoff (profile-tunable, not always 3s).
         id.analyze_duration(4000, &mut c, &mut r);
         assert!((c - 0.5).abs() < 1e-6);
-        assert_eq!(r, vec!["Duration (4000ms) > 3s".to_string()]);
+        assert_eq!(r, vec!["Duration (4000ms) > 3000ms".to_string()]);
+
+        // Profile-tuned cutoff stays in sync: documentary accepts 2800ms
+        // with a 2700ms reason, not a stale "> 3s" claim.
+        let doc =
+            GapIdentifier::with_profile(movie_radio_learning::profiles::profile("documentary"));
+        let mut c = 0.0;
+        let mut r = Vec::new();
+        doc.analyze_duration(2800, &mut c, &mut r);
+        assert!((c - 0.4).abs() < 1e-6);
+        assert_eq!(r, vec!["Duration (2800ms) > 2700ms".to_string()]);
     }
 
     #[test]

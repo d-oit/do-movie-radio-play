@@ -53,28 +53,69 @@ pub fn handle_voice_samples(
     Ok(())
 }
 
+/// Inventory stored references, surfacing per-file failures instead of
+/// silently dropping them: a directory holding only a corrupted JSON file
+/// must not be reported as "(none stored yet)". Directory-open failure
+/// still propagates; per-file read/parse failures are returned as
+/// `(path, reason)` pairs so the caller can warn without discarding the
+/// readable entries alongside them.
+type VoiceInventory = (Vec<VoiceReference>, Vec<(PathBuf, String)>);
+
+fn collect_voice_references(base_dir: &std::path::Path) -> Result<VoiceInventory> {
+    let mut references = Vec::new();
+    let mut skipped = Vec::new();
+    let entries = fs::read_dir(base_dir).context("failed to read voice_samples directory")?;
+
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(err) => {
+                skipped.push((base_dir.to_path_buf(), err.to_string()));
+                continue;
+            }
+        };
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            continue;
+        }
+        let content = match fs::read_to_string(&path) {
+            Ok(content) => content,
+            Err(err) => {
+                skipped.push((path, err.to_string()));
+                continue;
+            }
+        };
+        match serde_json::from_str::<Vec<VoiceReference>>(&content) {
+            Ok(cands) => references.extend(cands),
+            Err(err) => skipped.push((path, err.to_string())),
+        }
+    }
+    Ok((references, skipped))
+}
+
 pub fn handle_voice_list() -> Result<()> {
     let base_dir = PathBuf::from("voice_samples");
     if !base_dir.exists() {
         println!("voice references: (none stored yet) — use `voice samples --character NAME --input movie.mkv`");
         Ok(())
     } else {
-        let mut references = Vec::new();
-        let entries = fs::read_dir(&base_dir).context("failed to read voice_samples directory")?;
-
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                if let Ok(content) = fs::read_to_string(&path) {
-                    if let Ok(cands) = serde_json::from_str::<Vec<VoiceReference>>(&content) {
-                        references.extend(cands);
-                    }
-                }
-            }
+        let (references, skipped) = collect_voice_references(&base_dir)?;
+        for (path, reason) in &skipped {
+            eprintln!(
+                "warning: skipping unreadable voice samples {}: {reason}",
+                path.display()
+            );
         }
 
         if references.is_empty() {
-            println!("voice references: (none stored yet) — use `voice samples --character NAME --input movie.mkv`");
+            if skipped.is_empty() {
+                println!("voice references: (none stored yet) — use `voice samples --character NAME --input movie.mkv`");
+            } else {
+                println!(
+                    "voice references: (none readable — {} file(s) skipped, see warnings) — repair or re-run `voice samples --character NAME --input movie.mkv`",
+                    skipped.len()
+                );
+            }
         } else {
             println!("voice references (stored total: {}):", references.len());
             for r in &references {
@@ -85,6 +126,12 @@ pub fn handle_voice_list() -> Result<()> {
                     r.runtime,
                     r.family,
                     r.sample_paths.len()
+                );
+            }
+            if !skipped.is_empty() {
+                println!(
+                    "warning: skipped {} unreadable file(s) — listing may be incomplete",
+                    skipped.len()
                 );
             }
         }
@@ -311,6 +358,27 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let missing = dir.path().join("missing.json");
         assert!(load_clone_reference(&missing, "alice").is_err());
+    }
+
+    #[test]
+    fn corrupted_sample_file_is_surfaced_not_silent() -> Result<()> {
+        let dir = TempDir::new()?;
+        fs::write(dir.path().join("broken.json"), b"{ not json")?;
+        let (refs, skipped) = collect_voice_references(dir.path())?;
+        assert!(refs.is_empty());
+        assert_eq!(skipped.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn readable_entries_survive_beside_corrupted_file() -> Result<()> {
+        let dir = TempDir::new()?;
+        fs::write(dir.path().join("broken.json"), b"{ not json")?;
+        write_reference_file(dir.path(), &[PathBuf::from("voice_samples/gone.wav")]);
+        let (refs, skipped) = collect_voice_references(dir.path())?;
+        assert_eq!(refs.len(), 1);
+        assert_eq!(skipped.len(), 1);
+        Ok(())
     }
 
     #[test]

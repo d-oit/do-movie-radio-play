@@ -188,7 +188,7 @@ pub fn handle_voice_test(
     };
     let audio_cpp = movie_radio_voice::AudioCppConfig {
         enabled: cfg.voice.audio_cpp.enabled,
-        mode: clone_mode,
+        mode: clone_mode.clone(),
         local: movie_radio_voice::AudioCppLocalConfig {
             mode: cfg.voice.audio_cpp.local.mode.clone(),
             binary: cfg.voice.audio_cpp.local.binary.clone(),
@@ -244,10 +244,12 @@ pub fn handle_voice_test(
         .context("failed to create async runtime for voice test")?;
     let (audio, provider) = rt.block_on(orchestrator.synthesize_with_provider(&request))?;
 
+    // Report the selected routing mode, not URL presence: the provider
+    // reaches remote GPU pools when mode is `remote` (and may fall back
+    // to them in `auto`), even with an empty `remote.server_url`.
     println!(
-        "voice test character={character} text={text:?} runtime={} endpoint={} provider={provider} reference_audio={} samples={} sample_rate_hz={}",
+        "voice test character={character} text={text:?} runtime={} mode={clone_mode} provider={provider} reference_audio={} samples={} sample_rate_hz={}",
         cfg.voice_clone.runtime,
-        if cfg.voice.audio_cpp.remote.server_url.is_empty() { "local" } else { "remote" },
         ref_audio.display(),
         audio.samples.len(),
         audio.sample_rate_hz,

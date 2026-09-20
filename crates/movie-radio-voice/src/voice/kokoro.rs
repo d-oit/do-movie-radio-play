@@ -20,7 +20,9 @@ pub struct KokoroProvider {
 
 impl KokoroProvider {
     pub fn new(_config: KokoroConfig) -> Self {
-        let endpoint_override = env::var(ENV_KOKORO_ENDPOINT_URL).ok();
+        let endpoint_override = env::var(ENV_KOKORO_ENDPOINT_URL)
+            .ok()
+            .filter(|url| !url.trim().is_empty());
         Self {
             endpoint_url: Self::resolve_endpoint_url(endpoint_override.as_deref()),
             client: Client::new(),

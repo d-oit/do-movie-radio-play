@@ -10,8 +10,22 @@ frames into non-voice segments suitable for production workflows.
 
 ## Prerequisites
 
-- Rust 2021 toolchain (v1.75 or higher)
+- Rust 1.98.1 (the workspace MSRV is 1.88), including `rustfmt` and `clippy`
 - FFmpeg (required when processing non-WAV media containers or encoded audio streams)
+- ALSA development headers for local audio output
+
+On a fresh Ubuntu-based development environment, provision the required Rust
+toolchain and native dependencies with:
+
+```bash
+bash scripts/setup-dev.sh
+```
+
+The setup script installs [Mise](https://mise.jdx.dev/) when necessary, then
+installs the repository-pinned Rust toolchain and configures Bash activation for
+future shells. It needs internet access and `apt-get` privileges for native
+packages. Restart your shell (or run `source ~/.bashrc`) after setup before
+using `cargo` directly.
 
 ## Build
 

@@ -2,7 +2,8 @@
 # Provision the local toolchain required by the Rust workspace.
 set -euo pipefail
 
-readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly REPO_ROOT
 readonly APT_PACKAGES=(
   build-essential
   clang
@@ -30,7 +31,8 @@ fi
 "${APT[@]}" install -y --no-install-recommends "${APT_PACKAGES[@]}"
 
 if command -v mise >/dev/null 2>&1; then
-  readonly MISE_BIN="$(command -v mise)"
+  MISE_BIN="$(command -v mise)"
+  readonly MISE_BIN
 elif [[ -x "$HOME/.local/bin/mise" ]]; then
   readonly MISE_BIN="$HOME/.local/bin/mise"
 else

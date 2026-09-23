@@ -1,16 +1,18 @@
 # Codebase Gap & New-Feature Analysis
 
-**Status:** Draft — audit report, no code changes
-**Date:** 2026-09 (analysis pass)
-**Method:** Static source inspection + workspace-wide greps, cross-referenced against two parallel doc audits (all `plans/` files; ADRs/roadmaps). No build or tests were run during the analysis, so findings are code-level, not compiler/test verified.
+**Status:** Historical audit — findings closed via #261–#285; retained for implementation context
+**Date:** 2026-09 (analysis pass); closeout reviewed 2026-09-22
+**Method:** The original static source inspection and documentation audit was not compiler/test verified. The closeout reconciles every follow-up issue with GitHub and spot-checks the formerly highest-risk implementations; it is not a substitute for end-to-end release validation.
 
 ## 1. Summary
 
-The workspace is functionally rich and clean by marker hygiene (zero `TODO`/`FIXME`/`todo!()`/`unimplemented!()` in `crates/*`, `plans/FOLLOWUPS.md` open list empty). The risk is therefore **silent incompleteness**: no-op actions that return `Ok`, CLI flags that are accepted and ignored, and fully-built subsystems that no caller uses. This doc itemizes the confirmed gaps and the feature opportunities that build on existing assets.
+The original audit found a functionally rich workspace with clean marker hygiene (zero `TODO`/`FIXME`/`todo!()`/`unimplemented!()` in `crates/*`, `plans/FOLLOWUPS.md` open list empty), but identified risks of **silent incompleteness**: no-op actions that return `Ok`, ignored CLI flags, and built subsystems with no caller.
+
+**Closeout:** all follow-ups filed from this audit (#261–#285) are closed. Source spot checks confirm that `VerifyQuality`/`ApplyLearnings`, dialogue-candidate extraction, and produce-stage checkpoint/resume execution now have implementations and regression coverage. Do not treat the historical findings below as current defects without a fresh audit. The remaining release-readiness activity is tracked in #331: provision a reproducible local toolchain and perform a documented, safe end-to-end production run against a licensed or synthetic fixture.
 
 **Doc-staleness caveat:** several planning docs (`plans/120-goap-radio-play-pipeline/ROADMAP.md` 2026-06-22, `plans/050-status-report/STATUS.md` 2026-06-22) lag the source (e.g. they claim "voice providers return silence", "ElevenLabs MP3 not decoded", "output not wired to CLI" — all since fixed). Only findings confirmed in current source are listed below; doc-only claims are flagged. `plans/GOAP_STATE.md` records unified-orchestrator PR #246 as merged on 2026-09-03; re-evaluate its effects before acting on item A1.
 
-## 2. Missing / incomplete implementations (ranked)
+## 2. Historical findings (superseded by #261–#285)
 
 ### A1. GOAP quality/learning actions are placeholders; GOAP engine unused by the CLI
 - `crates/movie-radio-goap/src/actions.rs:353` `VerifyQuality` and `:383` `ApplyLearnings` only log "(placeholder)" and return `Ok(())`. They never invoke `movie-radio-verification` or `movie-radio-learning` (those crates ARE used by the timeline `validate`/`review`/`extract` handlers), so the goal flags `quality_verified`/`learnings_applied` are asserted without work: no verification report, no calibration/adaptive-threshold update, no execution trace.
@@ -79,7 +81,7 @@ Per AGENTS.md, file issues before editing and keep atomic commits + zero-warning
 - 🤖 Agent/Harness Change: stale skill references; `agents-docs` pointers; docs-sync hook.
 - Update `plans/FOLLOWUPS.md` once items are resolved; re-verify doc-vs-code staleness of `plans/120-goap-radio-play-pipeline/ROADMAP.md` and `plans/050-status-report/STATUS.md` after PR #246 lands.
 
-## 5. Follow-up tracking (2026-09-07)
+## 5. Follow-up tracking and closeout
 
 **Implemented in the first recommendations PR** (branch `work/plans-recommendations`):
 - Preview `--skip` / `--duration` now slice playback (`crates/movie-radio-io/src/preview.rs` window helpers + timeline handler) — §A7.
@@ -89,7 +91,7 @@ Per AGENTS.md, file issues before editing and keep atomic commits + zero-warning
 - `high-quality-resample` feature now really pulls in `rubato` (optional dep) — §A10.
 - `plans/050-status-report/GAPS.md` and `plans/060-next-features/PHASE-06-new-capabilities.md` refreshed for the resolved items (incl. WebRTC VAD shipped, WAV 24/32-bit decode already on main).
 
-**Remaining follow-ups filed as GitHub issues #261–#285** (GOAP verify/learn + planner wiring, voice-clone extraction, Kokoro/Orpheus provider completion, SFX end-to-end, produce executors, review-player UX, eval manifest, Silero, learning-loop H, chunked processing, time-stretch, feature gating, CI legs, agent/harness hygiene, doc staleness).
+**All remaining follow-ups filed as GitHub issues #261–#285 are closed.** They covered GOAP verification/learning and planner wiring, voice-clone extraction, Kokoro/Orpheus providers, SFX integration, produce executors, review-player UX, eval manifest work, Silero, learning-loop work, chunked processing, time-stretching, feature gating, CI legs, agent/harness hygiene, and stale documentation. #331 now tracks the separate release-readiness acceptance run rather than reopening historical findings.
 
 ## 6. Sources
 

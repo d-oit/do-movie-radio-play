@@ -89,13 +89,21 @@ impl Mixer {
             };
 
             let (left_gain, right_gain) = track.position.gains();
-            for ((&s, l), r) in reverb
-                .iter()
-                .zip(self.left_channel.iter_mut())
-                .zip(self.right_channel.iter_mut())
-            {
-                *l += s * left_gain;
-                *r += s * right_gain;
+            let limit = reverb
+                .len()
+                .min(self.left_channel.len())
+                .min(self.right_channel.len());
+
+            // Directly sum track samples into panned left/right channel buffers using slice indexing to enable SIMD vectorization
+            let rev_slice = &reverb[..limit];
+            let left_slice = &mut self.left_channel[..limit];
+            let right_slice = &mut self.right_channel[..limit];
+
+            #[allow(clippy::needless_range_loop)]
+            for i in 0..limit {
+                let s = rev_slice[i];
+                left_slice[i] += s * left_gain;
+                right_slice[i] += s * right_gain;
             }
         }
 

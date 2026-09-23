@@ -10,8 +10,7 @@ the canonical workflow and quality requirements).
    `Performance Change`, or `Agent/Harness Change`).
 2. Implement the change in minimal, atomic commits and run
    `bash scripts/quality_gate.sh` before pushing.
-3. Open a pull request — every CI check (Quality Gate, CodeQL, Codacy,
-   DeepSource, Repowise) must pass before it can merge.
+3. Open a pull request — every required CI check (Quality Gate, CodeQL, Codacy, Repowise) must pass before it can merge.
 
 ## Issue & PR Triage Policy
 

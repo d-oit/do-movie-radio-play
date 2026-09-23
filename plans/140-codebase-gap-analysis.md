@@ -4,6 +4,13 @@
 **Date:** 2026-09 (analysis pass); closeout reviewed 2026-09-22
 **Method:** The original static source inspection and documentation audit was not compiler/test verified. The closeout reconciles every follow-up issue with GitHub and spot-checks the formerly highest-risk implementations; it is not a substitute for end-to-end release validation.
 
+## Release-readiness progress (#331)
+
+- ✅ `scripts/setup-dev.sh` was run successfully in a fresh Ubuntu 24.04 managed workspace on 2026-09-23. It installed the required native media/audio packages and provisioned Rust 1.98.1, `cargo`, `rustfmt`, and `clippy` through mise.
+- ✅ Focused orchestration coverage passed: `mise exec -- cargo test -p movie-radio-pipeline orchestrator -- --nocapture` (5 tests).
+- ✅ A provider-free end-to-end `produce` run completed against the synthetic `alternating.wav` fixture on 2026-09-23. It generated all 12 stage artifacts and a checkpoint with 12 completed stages. Re-running the same command with `--resume` skipped all 12 completed stages. The fixture and generated artifacts remain outside the repository (`/tmp/movie-radio-readiness`).
+- ⏳ A configured provider integration remains intentionally deferred until authorized credentials and a safe endpoint are available.
+
 ## 1. Summary
 
 The original audit found a functionally rich workspace with clean marker hygiene (zero `TODO`/`FIXME`/`todo!()`/`unimplemented!()` in `crates/*`, `plans/FOLLOWUPS.md` open list empty), but identified risks of **silent incompleteness**: no-op actions that return `Ok`, ignored CLI flags, and built subsystems with no caller.

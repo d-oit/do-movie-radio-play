@@ -90,28 +90,50 @@ pub fn extract_candidates(
                 gaps.push((last_end_ms, total_ms));
             }
         }
-        for (idx, (start, end)) in gaps.iter().enumerate() {
-            let duration_ms = end.saturating_sub(*start);
-            if (min_ms..=MAX_CANDIDATE_MS).contains(&duration_ms) {
+        // Long, uninterrupted dialogue spans are common in real movies (a
+        // single scene can run well past MAX_CANDIDATE_MS). Slice each span
+        // into consecutive MAX_CANDIDATE_MS windows instead of discarding it
+        // outright, so `voice samples` still yields usable references for
+        // every speaking character rather than only ones with frequent
+        // music/SFX interruptions. A trailing remainder under `min_ms` is
+        // dropped rather than padded, keeping every clip's own duration
+        // honest.
+        let mut candidate_no: usize = 0;
+        'gaps: for (start, end) in &gaps {
+            let mut chunk_start = *start;
+            while chunk_start < *end {
+                let chunk_len = end.saturating_sub(chunk_start).min(MAX_CANDIDATE_MS);
+                if chunk_len < min_ms {
+                    break;
+                }
+                let chunk_end = chunk_start + chunk_len;
+                candidate_no += 1;
+
                 let mut meta = HashMap::default();
-                meta.insert("start_ms".to_string(), serde_json::json!(start));
-                meta.insert("end_ms".to_string(), serde_json::json!(end));
-                meta.insert("duration_ms".to_string(), serde_json::json!(duration_ms));
+                meta.insert("start_ms".to_string(), serde_json::json!(chunk_start));
+                meta.insert("end_ms".to_string(), serde_json::json!(chunk_end));
+                meta.insert("duration_ms".to_string(), serde_json::json!(chunk_len));
 
                 // Persist the interval as its own clip: consumers feed
                 // `sample_paths` straight to synthesis, so the whole movie
                 // here would clone non-voice regions the filter excluded.
-                let sample_path =
-                    match write_candidate_clip(input, character, idx + 1, *start, *end) {
-                        Ok(path) => path,
-                        Err(err) => {
-                            tracing::warn!(error = %err, "skipping candidate: clip write failed");
-                            continue;
-                        }
-                    };
+                let sample_path = match write_candidate_clip(
+                    input,
+                    character,
+                    candidate_no,
+                    chunk_start,
+                    chunk_end,
+                ) {
+                    Ok(path) => path,
+                    Err(err) => {
+                        tracing::warn!(error = %err, "skipping candidate: clip write failed");
+                        chunk_start = chunk_end;
+                        continue;
+                    }
+                };
 
                 let cand = VoiceReference {
-                    id: format!("{character}_candidate_{}", idx + 1),
+                    id: format!("{character}_candidate_{candidate_no}"),
                     character_name: character.to_string(),
                     sample_paths: vec![sample_path],
                     metadata: meta,
@@ -124,9 +146,10 @@ pub fn extract_candidates(
                 if cand.validate().is_ok() {
                     candidates.push(cand);
                     if candidates.len() >= max_candidates.max(1) {
-                        break;
+                        break 'gaps;
                     }
                 }
+                chunk_start = chunk_end;
             }
         }
     }
@@ -233,6 +256,70 @@ mod tests {
             writer.write_sample(sample).expect("write sample");
         }
         writer.finalize().expect("finalize test wav");
+    }
+
+    fn write_long_speech_wav(path: &std::path::Path, secs: u64, speech_end_secs: u64) {
+        // Continuous "speech" tone from 0 up to `speech_end_secs`, then true
+        // silence to `secs`. The silent tail must clear `min_non_voice_ms`
+        // (10s default) so the extractor reports it as one non-voice
+        // segment, leaving a single long dialogue gap in front of it.
+        let rate = 16_000u32;
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: rate,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = hound::WavWriter::create(path, spec).expect("create test wav");
+        for n in 0..rate as u64 * secs {
+            let t = n as f32 / rate as f32;
+            let sample = if (t as u64) < speech_end_secs {
+                (f32::sin(t * 440.0 * std::f32::consts::TAU) * 16_000.0) as i16
+            } else {
+                0i16
+            };
+            writer.write_sample(sample).expect("write sample");
+        }
+        writer.finalize().expect("finalize test wav");
+    }
+
+    #[test]
+    fn long_speech_span_is_chunked_into_multiple_candidates() -> anyhow::Result<()> {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let input = dir.path().join("movie.wav");
+        // 41s of continuous "speech" followed by 11s of silence: one
+        // dialogue gap far longer than MAX_CANDIDATE_MS (15s).
+        write_long_speech_wav(&input, 52, 41);
+        let cfg = AppConfig::default();
+        let cands = extract_candidates(&input, &cfg, "alice")?;
+
+        assert!(
+            cands.len() >= 2,
+            "a >15s span must yield multiple candidates, got {}",
+            cands.len()
+        );
+        for cand in &cands {
+            let duration_ms = cand
+                .metadata
+                .get("duration_ms")
+                .and_then(serde_json::Value::as_u64)
+                .expect("duration_ms present");
+            assert!(duration_ms <= MAX_CANDIDATE_MS, "chunk exceeds cap");
+        }
+        // Chunks must tile the span back-to-back with no gaps between them.
+        let mut sorted: Vec<(u64, u64)> = cands
+            .iter()
+            .map(|c| {
+                let start = c.metadata["start_ms"].as_u64().unwrap();
+                let end = c.metadata["end_ms"].as_u64().unwrap();
+                (start, end)
+            })
+            .collect();
+        sorted.sort_unstable();
+        for pair in sorted.windows(2) {
+            assert_eq!(pair[0].1, pair[1].0, "chunks must be contiguous");
+        }
+        Ok(())
     }
 
     #[test]

@@ -196,7 +196,10 @@ pub fn handle_narrate(
     cfg: &NarratorConfig,
 ) -> Result<()> {
     let tpl_path = template.unwrap_or_else(|| PathBuf::from(&cfg.prompt_template));
-    if tpl_path.to_string_lossy().contains("..") {
+    if tpl_path
+        .components()
+        .any(|c| c == std::path::Component::ParentDir)
+    {
         anyhow::bail!("template path must not contain ..");
     }
     let tpl_text = std::fs::read_to_string(&tpl_path)
@@ -338,5 +341,31 @@ Use present tense."#;
             err.to_string().contains("unknown narrator backend"),
             "got: {err}"
         );
+    }
+
+    #[test]
+    fn handle_narrate_rejects_parent_dir_template_traversal() {
+        use movie_radio_types::AppConfig;
+        let cfg = AppConfig::default().narrator;
+        let err = handle_narrate(
+            None,
+            true,
+            Some(PathBuf::from("../secret/template.md")),
+            &cfg,
+        )
+        .unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("template path must not contain .."),
+            "got: {err}"
+        );
+
+        let res = handle_narrate(
+            None,
+            true,
+            Some(PathBuf::from("templates/my..prompt.md")),
+            &cfg,
+        );
+        assert!(res.is_ok());
     }
 }

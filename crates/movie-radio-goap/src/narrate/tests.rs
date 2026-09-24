@@ -222,3 +222,25 @@ fn test_self_tags_take_precedence_over_neighbour_tags() {
     let scripts = gen.generate(&timeline, &gaps).unwrap();
     assert!(scripts[0].text.contains("Menschenmenge"));
 }
+
+#[test]
+fn test_reject_banned_filler_substitutes_safe_fallback() {
+    for filler in BANNED_FILLER_ONLY {
+        assert_eq!(reject_banned_filler(filler.to_string()), SAFE_FALLBACK);
+    }
+    // Padding whitespace must not evade the guardrail.
+    assert_eq!(
+        reject_banned_filler("  Stille.  ".to_string()),
+        SAFE_FALLBACK
+    );
+}
+
+#[test]
+fn test_reject_banned_filler_leaves_real_content_untouched() {
+    let real = "Ein kräftiger Aufprall ertönt.".to_string();
+    assert_eq!(reject_banned_filler(real.clone()), real);
+    // A banned word used inside a longer, real sentence is not a false
+    // positive: the guardrail only matches the *entire* trimmed text.
+    let compound = "Nach der Stille ertönt ein Aufprall.".to_string();
+    assert_eq!(reject_banned_filler(compound.clone()), compound);
+}

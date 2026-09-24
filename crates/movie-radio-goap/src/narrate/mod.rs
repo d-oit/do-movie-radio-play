@@ -60,7 +60,7 @@ impl NarrationGenerator {
 
             let context = self.extract_context(timeline, gap);
             let emotion = self.infer_emotion(&context);
-            let text = self.generate_text(&context, max_words);
+            let text = reject_banned_filler(self.generate_text(&context, max_words));
 
             if text.is_empty() {
                 continue;
@@ -275,6 +275,32 @@ impl NarrationGenerator {
         }
         words[..max_words].join(" ")
     }
+}
+
+/// Phrases that describe nothing (see ADR-128, `plans/adr/0128-audio-
+/// description-standards.md`). A German audio-description narrator must
+/// name what is happening; these are the historical content-free filler
+/// this repo regressed to once already. This runtime check makes that
+/// regression structurally unrepeatable: even a future template, backend,
+/// or hand-edit that reintroduces a bare filler phrase gets substituted
+/// for the safe, still-grounded fallback clause instead of shipping.
+const BANNED_FILLER_ONLY: &[&str] = &["Stille.", "Pause.", "Schnitt.", "Atmosphäre."];
+
+/// Fallback used when generated text collapses to a banned filler phrase.
+/// Deliberately vague (no tag data available at this call site) but still
+/// content-bearing: it states that the scene continues, not that nothing
+/// is happening.
+const SAFE_FALLBACK: &str = "Die Handlung läuft ohne Dialog weiter.";
+
+fn reject_banned_filler(text: String) -> String {
+    if BANNED_FILLER_ONLY.contains(&text.trim()) {
+        tracing::warn!(
+            rejected = %text,
+            "narration text collapsed to banned filler; see ADR-128 (plans/adr/0128-audio-description-standards.md)"
+        );
+        return SAFE_FALLBACK.to_string();
+    }
+    text
 }
 
 #[derive(Debug, Default)]

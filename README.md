@@ -56,7 +56,7 @@ The compiled executable is placed at `target/release/timeline`.
 - `learning-experiments`: List calibration runs, applied profile versions, and experiment records.
 - `merge-timeline <INPUT> --output <JSON>`: Merge adjacent segments using gap duration thresholds.
 - `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Export timeline to external formats (JSON, EDL, VTT).
-- `radio-play <MOVIE>`: Run the radio-play pipeline via the GOAP orchestrator (gap → narrate → TTS → assemble → output). `--analyze-only` requires `--timeline` and emits gap analysis only.
+- `radio-play <MOVIE>`: Run the radio-play pipeline via the GOAP orchestrator (gap → narrate → TTS → assemble → output). `--analyze-only` requires `--timeline` and emits gap analysis only. Generated narration describes the gap's actual detected content (grounded in tags/context) per German audio-description conventions — never content-free filler; see [ADR-128](plans/adr/0128-audio-description-standards.md).
 - `preview --input <WAV>`: Stream audio playback to system speakers for QA verification (requires the `playback` feature; `--skip`/`--duration` select a window).
 - `config validate [--config <TOML>]`: Validate the layered app config (defaults to `config/default.toml`).
 - `voice samples --character <NAME> --input <MOVIE>`: Extract per-character voice candidates.

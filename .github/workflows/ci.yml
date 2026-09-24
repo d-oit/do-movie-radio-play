@@ -34,13 +34,19 @@ jobs:
             code:
               - 'crates/**'
               - 'benchmarks/**'
+              - 'scripts/**'
+              - 'testdata/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'VERSION'
             heavy:
               - 'crates/**'
               - 'benchmarks/**'
+              - 'scripts/**'
+              - 'testdata/**'
               - 'Cargo.toml'
               - 'Cargo.lock'
+              - 'VERSION'
             agents:
               - 'AGENTS.md'
               - 'CLAUDE.md'

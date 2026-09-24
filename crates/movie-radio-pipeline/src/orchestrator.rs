@@ -9,21 +9,8 @@ use tracing::info;
 use crate::pipeline::decode::decode_audio;
 use crate::pipeline::extract_timeline;
 
-/// Planned `produce` stages, in execution order.
-pub const STAGES: &[&str] = &[
-    "ExtractAudio",
-    "SceneDetect",
-    "VoiceActivityDetect",
-    "Transcribe",
-    "CharacterAssign",
-    "VoiceSynthesize",
-    "NarratorGenerate",
-    "NarratorSynthesize",
-    "SfxSelect",
-    "SfxFetch",
-    "AudioMix",
-    "Export",
-];
+/// Bounded `produce` analysis stages, in execution order.
+pub const STAGES: &[&str] = &["ExtractAudio", "VoiceActivityDetect", "AudioMix", "Export"];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StageCheckpoint {
@@ -104,11 +91,6 @@ fn write_wav_file(path: &Path, samples: &[f32], sr: u32) -> Result<()> {
     Ok(())
 }
 
-fn write_stage_json(path: PathBuf, value: &serde_json::Value) -> Result<PathBuf> {
-    fs::write(&path, serde_json::to_string_pretty(value)?)?;
-    Ok(path)
-}
-
 fn stage_extract_audio(input: &Path, out_dir: &Path, sr_hz: u32) -> Result<PathBuf> {
     let extracted_path = out_dir.join("extracted.wav");
     let (samples, sr) = decode_audio(input, sr_hz)?;
@@ -163,22 +145,6 @@ fn stage_vad(input: &Path, out_dir: &Path, analysis_cfg: &AnalysisConfig) -> Res
     Ok(vad_path)
 }
 
-fn dispatch_json_stage(stage: &str, out_dir: &Path) -> Result<Option<PathBuf>> {
-    let (file, key) = match stage {
-        "SceneDetect" => ("scenes.json", "scenes"),
-        "Transcribe" => ("transcription.json", "transcripts"),
-        "CharacterAssign" => ("characters.json", "characters"),
-        "VoiceSynthesize" => ("voices.json", "synthesized"),
-        "NarratorGenerate" => ("narration_scripts.json", "scripts"),
-        "NarratorSynthesize" => ("narrator_audio.json", "audio_segments"),
-        "SfxSelect" => ("sfx_selections.json", "sfx"),
-        "SfxFetch" => ("sfx_fetched.json", "files"),
-        _ => bail!("Unknown stage: {stage}"),
-    };
-    let path = write_stage_json(out_dir.join(file), &serde_json::json!({ key: [] }))?;
-    Ok(Some(path))
-}
-
 fn dispatch_stage(
     stage: &str,
     input: &Path,
@@ -205,7 +171,7 @@ fn dispatch_stage(
             out_dir,
             analysis_cfg.sample_rate_hz,
         )?)),
-        _ => dispatch_json_stage(stage, out_dir),
+        _ => bail!("Stage '{stage}' is not supported in produce pipeline"),
     }
 }
 
@@ -426,5 +392,53 @@ mod tests {
         assert!(res.is_err());
         let err_msg = res.unwrap_err().to_string();
         assert!(err_msg.contains("checkpoint input file mismatch"));
+    }
+
+    #[test]
+    fn unsupported_stage_returns_error_and_preserves_checkpoint_integrity() {
+        let temp_dir = tempfile::tempdir().expect("create tempdir");
+        let out_dir = temp_dir.path().join("out");
+        fs::create_dir_all(&out_dir).expect("create out dir");
+
+        let input_path = temp_dir.path().join("input.wav");
+        let ckpt_path = out_dir.join("checkpoint.json");
+        let analysis_cfg = AnalysisConfig::default();
+
+        let mut ckpt = ProduceCheckpoint {
+            input_file: input_path.to_string_lossy().to_string(),
+            ..Default::default()
+        };
+        ckpt.mark_completed("ExtractAudio", Some(out_dir.join("extracted.wav")));
+
+        // Dispatching unsupported stage should error
+        let err = dispatch_stage("SceneDetect", &input_path, &ckpt, &out_dir, &analysis_cfg);
+        assert!(err.is_err());
+        let err_msg = err.unwrap_err().to_string();
+        assert!(err_msg.contains("Stage 'SceneDetect' is not supported"));
+
+        // Stage execution error must not record "SceneDetect" as completed in checkpoint
+        let cfg = AppConfig::default();
+        let exec_res = execute_stage(
+            "SceneDetect",
+            &input_path,
+            &mut ckpt,
+            &ckpt_path,
+            &cfg,
+            &out_dir,
+        );
+        assert!(exec_res.is_err());
+
+        // Checkpoint integrity check
+        assert!(ckpt.is_stage_completed("ExtractAudio"));
+        assert!(!ckpt.is_stage_completed("SceneDetect"));
+        assert_eq!(ckpt.artifacts.get("SceneDetect"), None);
+
+        // Checkpoint file on disk should not exist or if loaded should not show SceneDetect completed
+        assert!(
+            !ckpt_path.exists()
+                || !ProduceCheckpoint::load(&ckpt_path)
+                    .unwrap()
+                    .is_stage_completed("SceneDetect")
+        );
     }
 }

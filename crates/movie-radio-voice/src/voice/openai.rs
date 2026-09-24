@@ -61,12 +61,13 @@ impl OpenAiTtsProvider {
             return Err(SynthesisValidationError::InvalidVoiceId.into());
         }
 
+        let speed = request.emotion.effective_speed(request.speed);
         let mut req = self.client.post(self.endpoint()).json(&serde_json::json!({
             "model": self.config.model,
             "voice": voice,
             "input": request.text,
             "response_format": self.config.response_format,
-            "speed": request.speed,
+            "speed": speed,
         }));
         if let Some(auth) = self.auth_header()? {
             req = req.header("Authorization", auth);
@@ -156,7 +157,7 @@ impl VoiceSynthesizer for OpenAiTtsProvider {
 
     fn capabilities(&self) -> ProviderCapabilities {
         ProviderCapabilities {
-            supports_emotion: false,
+            supports_emotion: true,
             supports_voice_cloning: false,
             supports_streaming: true,
             max_text_length: 4096,
@@ -258,6 +259,22 @@ mod tests {
             ..SynthesisRequest::default()
         };
         assert!(provider.build_request(&req_override).is_ok());
+    }
+
+    #[test]
+    fn test_build_request_scales_speed_by_emotion() {
+        let provider = OpenAiTtsProvider::new(config(None, None));
+        let req = SynthesisRequest {
+            emotion: super::super::Emotion::Angry,
+            ..SynthesisRequest::default()
+        };
+        let built = provider.build_request(&req).unwrap().build().unwrap();
+        let body_bytes = built.body().unwrap().as_bytes().unwrap().to_vec();
+        let body: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+        let speed = body["speed"].as_f64().unwrap();
+        let expected = f64::from(req.emotion.effective_speed(req.speed));
+        assert!((speed - expected).abs() < 1e-6, "{body}");
+        assert!((speed - 1.0).abs() > 1e-6, "Angry must shift tempo");
     }
 
     #[test]

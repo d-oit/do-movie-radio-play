@@ -17,6 +17,7 @@ pub const SPEED_RANGE: RangeInclusive<f32> = 0.25..=4.0;
 
 pub mod audio_cpp;
 pub mod elevenlabs;
+pub mod emotion;
 pub mod kokoro;
 pub mod modal;
 pub mod openai;

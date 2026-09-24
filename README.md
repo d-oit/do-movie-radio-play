@@ -45,16 +45,40 @@ The compiled executable is placed at `target/release/timeline`.
 - `apply-calibration --report <JSON>`: Apply calibration report parameters to active profile.
 - `bench <INPUT_MEDIA> --output <JSON>`: Benchmark pipeline processing speed and stage timing metrics.
 - `gen-fixtures`: Generate synthetic test WAV fixtures for pipeline validation.
-- `validate <INPUT_MEDIA> --output <JSON>`: Evaluate segment classification against ground truth or subtitles.
+- `validate` (alias `eval`) `<INPUT_MEDIA> --output <JSON>`: Evaluate segment classification against exactly one of `--truth-json`, `--subtitles`, or `--dataset-manifest`.
 - `ai-voice-extract <INPUT_JSON> --output <JSON>`: Extract speech segments for AI voice replacement workflows.
 - `verify-timeline <MEDIA> --timeline <JSON> --output <JSON>`: Validate segment spectral statistics against bounds.
 - `update-thresholds`: Recalculate adaptive VAD thresholds using stored learning database runs.
-- `learning-stats`: Display summary statistics from the local SQLite learning database.
+- `learning-stats [--radio-play]`: Display summary statistics from the local SQLite learning database.
+- `learning-log [--last N]`: Show recent learning rows.
+- `reset-learnings --confirm`: Reset learned adaptations (run history survives per ADR-122).
+- `export-learnings --output <JSON>`: Export the learning database to JSON.
 - `learning-experiments`: List calibration runs, applied profile versions, and experiment records.
 - `merge-timeline <INPUT> --output <JSON>`: Merge adjacent segments using gap duration thresholds.
 - `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Export timeline to external formats (JSON, EDL, VTT).
-- `radio-play <MOVIE>`: Analyze gap context by matching VAD segments against SRT subtitle entries.
-- `preview --input <WAV>`: Stream audio playback to system speakers for QA verification.
+- `radio-play <MOVIE>`: Run the radio-play pipeline via the GOAP orchestrator (gap → narrate → TTS → assemble → output). `--analyze-only` requires `--timeline` and emits gap analysis only.
+- `preview --input <WAV>`: Stream audio playback to system speakers for QA verification (requires the `playback` feature; `--skip`/`--duration` select a window).
+- `config validate [--config <TOML>]`: Validate the layered app config (defaults to `config/default.toml`).
+- `voice samples --character <NAME> --input <MOVIE>`: Extract per-character voice candidates.
+- `voice list`: Inventory stored voice references.
+- `voice test --character <NAME> --text <TEXT>`: Synthesize text with a stored voice reference.
+- `narrate [--dry-run] [--template <MD>]`: Render the narrator prompt template with example scene context; without `--dry-run` it calls the configured LLM backend (`openai` | `ollama_local` | `anthropic`).
+- `produce --input <MEDIA> [--resume <CHECKPOINT>] [--dry-run]`: Run the 12-stage production pipeline with checkpoint/resume. `ExtractAudio`, `VoiceActivityDetect`, `AudioMix`, and `Export` do real audio work; the remaining stages currently write placeholder JSON (see issue #336).
+
+## End-to-End Workflow
+
+```bash
+timeline extract movie.mp4 --output analysis/timeline.json
+timeline tag movie.mp4 --input analysis/timeline.json --output analysis/tagged.json
+timeline prompt --input-json analysis/tagged.json --output analysis/prompts.json
+timeline review movie.mp4 --input analysis/tagged.json --output reports/nonvoice-review.html
+timeline radio-play movie.mp4 --timeline analysis/tagged.json --analyze-only --output analysis/gaps.json
+```
+
+For the fixed anti-regression order (assets → fixtures → quality gate →
+benchmarks → regression check), run `bash scripts/run_standard_workflow.sh`.
+Contributor gates are defined in `plans/040-validation/ACCEPTANCE.md`, and the
+current app-usage reference is `plans/150-app-usage/PHASE-07-app-usage.md`.
 
 ## Configuration
 

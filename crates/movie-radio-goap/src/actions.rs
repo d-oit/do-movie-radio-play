@@ -234,11 +234,14 @@ impl Action for SynthesizeNarrator {
 
             let request = SynthesisRequest {
                 text: script.text.clone(),
-                speed: emotion.effective_speed(1.0),
                 emotion,
                 voice_id: voice_id.clone(),
                 reference_audio: None,
                 language: language.clone(),
+                // Base speed only: providers resolve `emotion` into their
+                // own speed/stability levers, so pre-scaling here would
+                // square the tempo factor.
+                speed: 1.0,
                 sample_rate_hz: ctx.sample_rate,
             };
 

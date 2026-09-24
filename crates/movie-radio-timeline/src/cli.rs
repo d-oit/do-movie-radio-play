@@ -313,7 +313,8 @@ pub enum Commands {
         #[arg(long)]
         template: Option<PathBuf>,
     },
-    /// Run the 12-stage production pipeline with checkpoint/resume.
+    /// Run bounded produce analysis pipeline (ExtractAudio, VoiceActivityDetect, AudioMix, Export).
+    /// Returns an error if an unsupported pipeline stage is requested.
     Produce {
         #[arg(long)]
         input: PathBuf,

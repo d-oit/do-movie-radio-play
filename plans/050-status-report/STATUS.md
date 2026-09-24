@@ -74,7 +74,7 @@ Major workspace restructure extracted monolithic `src/` into 10 focused crates:
 | A* Planner | `crates/movie-radio-goap/src/planner.rs` | Fully implemented with tests |
 | World State | `crates/movie-radio-goap/src/lib.rs` | 11-field boolean state, `meets(goal)` |
 | Actions | `crates/movie-radio-goap/src/actions/` | 8 GOAP actions with real stage execution |
-| Orchestrator | `crates/movie-radio-pipeline/src/orchestrator.rs` | Unified engine executing 12 stages with checkpoint persistence |
+| Orchestrator | `crates/movie-radio-pipeline/src/orchestrator.rs` | Unified engine executing bounded produce analysis stages (ExtractAudio, VoiceActivityDetect, AudioMix, Export) with checkpoint persistence |
 | Gap Identifier | `crates/movie-radio-goap/src/gaps.rs` | 5-signal modular scoring, fully implemented |
 | Narration Generator | `crates/movie-radio-goap/src/narrate.rs` | Context-aware German description generator |
 | Audio Assembler | `crates/movie-radio-goap/src/assemble.rs` | Crossfade + ducking + SFX mixing end-to-end (#287) |

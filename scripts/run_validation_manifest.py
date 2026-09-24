@@ -23,14 +23,11 @@ def run_entry(entry: dict) -> Optional[dict]:
     config_path = Path(entry["config_path"]) if entry.get("config_path") else None
 
     if not input_media.exists():
-        print(f"WARN: {entry_id}: skipping - missing input_media {input_media}", file=sys.stderr)
-        return None
+        raise FileNotFoundError(f"{entry_id}: missing input_media {input_media}")
     if not truth_path.exists():
-        print(f"WARN: {entry_id}: skipping - missing truth_path {truth_path}", file=sys.stderr)
-        return None
+        raise FileNotFoundError(f"{entry_id}: missing truth_path {truth_path}")
     if config_path is not None and not config_path.exists():
-        print(f"WARN: {entry_id}: skipping - missing config_path {config_path}", file=sys.stderr)
-        return None
+        raise FileNotFoundError(f"{entry_id}: missing config_path {config_path}")
 
     output_report.parent.mkdir(parents=True, exist_ok=True)
     cmd = [

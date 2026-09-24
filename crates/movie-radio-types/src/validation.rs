@@ -104,6 +104,16 @@ fn validate_narrator(n: &NarratorConfig) -> Result<(), String> {
     if n.prompt_template.trim().is_empty() {
         return Err("narrator.prompt_template must not be empty".to_string());
     }
+    let tpl_path = std::path::Path::new(&n.prompt_template);
+    if tpl_path
+        .components()
+        .any(|c| c == std::path::Component::ParentDir)
+    {
+        return Err(
+            "narrator.prompt_template must not contain parent directory (..) path traversal"
+                .to_string(),
+        );
+    }
     Ok(())
 }
 
@@ -145,5 +155,15 @@ mod tests {
         let mut cfg = AppConfig::default();
         cfg.voice.gpu_policy.max_cost_per_job = -1.0;
         assert!(validate_app_config(&cfg).is_err());
+    }
+
+    #[test]
+    fn narrator_prompt_template_traversal_rejected() {
+        let mut cfg = AppConfig::default();
+        cfg.narrator.prompt_template = "../secret/prompt.md".to_string();
+        assert!(validate_app_config(&cfg).is_err());
+
+        cfg.narrator.prompt_template = "templates/my..prompt.md".to_string();
+        assert!(validate_app_config(&cfg).is_ok());
     }
 }

@@ -2,6 +2,24 @@
 
 Features implemented in recent releases.
 
+## 2026-09-24: Grounded Narration + Real-Movie Voice-Clone Chunking
+
+- Narration generator (`crates/movie-radio-goap/src/narrate/`) now grounds
+  generated text in the gap's own detected tags instead of emitting
+  content-free filler ("Stille."/"Pause."). Follows German ARD/MDR
+  audio-description guidelines and DCMP/W3C standards (see
+  [ADR-128](../adr/0128-audio-description-standards.md)). A runtime
+  guardrail (`reject_banned_filler`) substitutes a safe fallback if text
+  ever collapses to a banned filler phrase.
+- `voice samples` (`crates/movie-radio-pipeline/src/voice_clone.rs`) now
+  tiles long dialogue spans into consecutive ≤15s clips instead of
+  requiring an entire span to fit in one window, so real movies with
+  continuous scenes longer than 15s still yield usable voice-clone
+  candidates.
+- Both fixes verified end-to-end against a real, CC BY 3.0 licensed German
+  video (not a synthetic fixture) via the full `timeline radio-play`
+  pipeline. See issues #342, #344 and PRs #343, #345.
+
 ## 2026-09-19: German Kokoro Sidecar Hardening
 
 - Replaced incomplete direct ONNX/token inference with the supported local

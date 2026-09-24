@@ -289,6 +289,8 @@ pub enum Commands {
         #[arg(long)]
         template: Option<PathBuf>,
     },
+    /// Run bounded produce analysis pipeline (ExtractAudio, VoiceActivityDetect, AudioMix, Export).
+    /// Returns an error if an unsupported pipeline stage is requested.
     Produce {
         #[arg(long)]
         input: PathBuf,

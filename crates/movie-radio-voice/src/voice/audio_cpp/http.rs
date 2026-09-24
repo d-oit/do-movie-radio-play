@@ -168,7 +168,7 @@ pub(crate) async fn synthesize_http_endpoint(
         "family": params.family,
         "voice_ref": voice_ref,
         "response_format": "wav",
-        "speed": request.speed,
+        "speed": request.emotion.effective_speed(request.speed),
     });
 
     let mut req_builder = client.post(&speech_url).json(&payload);

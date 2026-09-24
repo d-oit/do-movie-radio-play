@@ -12,7 +12,7 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::packet::Packet;
 
 use super::{
-    is_valid_voice_id, AudioOutput, ProviderCapabilities, SynthesisRequest,
+    is_valid_voice_id, AudioOutput, Emotion, ProviderCapabilities, SynthesisRequest,
     SynthesisValidationError, VoiceSynthesizer,
 };
 use crate::config::ElevenLabsConfig;
@@ -47,6 +47,17 @@ impl ElevenLabsProvider {
             client: Client::new(),
         }
     }
+
+    /// Emotion-resolved `voice_settings` payload: per-emotion
+    /// `(stability, style)` offsets anchored on the configured stability.
+    fn voice_settings(&self, emotion: &Emotion) -> serde_json::Value {
+        let (stability, style) = emotion.elevenlabs_settings(self.config.stability);
+        serde_json::json!({
+            "stability": stability,
+            "style": style,
+            "similarity_boost": self.config.similarity_boost
+        })
+    }
 }
 
 #[async_trait]
@@ -68,6 +79,7 @@ impl VoiceSynthesizer for ElevenLabsProvider {
         }
 
         let url = voice_endpoint(&voice_id);
+        let voice_settings = self.voice_settings(&request.emotion);
 
         let response = self
             .client
@@ -76,10 +88,7 @@ impl VoiceSynthesizer for ElevenLabsProvider {
             .json(&serde_json::json!({
                 "text": request.text,
                 "model_id": self.config.model,
-                "voice_settings": {
-                    "stability": self.config.stability,
-                    "similarity_boost": self.config.similarity_boost
-                }
+                "voice_settings": voice_settings
             }))
             .send()
             .await
@@ -222,7 +231,7 @@ pub fn decode_audio_bytes(bytes: &[u8], target_sample_rate: u32) -> Result<Vec<f
 
 #[cfg(test)]
 mod tests {
-    use super::voice_endpoint;
+    use super::{voice_endpoint, ElevenLabsConfig, ElevenLabsProvider};
 
     #[test]
     fn test_voice_endpoint_leaves_valid_ids_unchanged() {
@@ -248,5 +257,30 @@ mod tests {
             voice_endpoint("a@b:c?x=1#f"),
             "https://api.elevenlabs.io/v1/text-to-speech/a%40b%3Ac%3Fx%3D1%23f"
         );
+    }
+
+    fn provider() -> ElevenLabsProvider {
+        ElevenLabsProvider::new(ElevenLabsConfig {
+            api_key_env: "ELEVENLABS_API_KEY".to_string(),
+            voice_id: "pNInz6obpgDQGcFmaJgB".to_string(),
+            model: "eleven_multilingual_v2".to_string(),
+            stability: 0.5,
+            similarity_boost: 0.75,
+        })
+    }
+
+    #[test]
+    fn test_voice_settings_neutral_keeps_config_stability() {
+        let settings = provider().voice_settings(&super::Emotion::Neutral);
+        assert_eq!(settings["stability"], serde_json::json!(0.5));
+        assert_eq!(settings["style"], serde_json::json!(0.0));
+        assert_eq!(settings["similarity_boost"], serde_json::json!(0.75));
+    }
+
+    #[test]
+    fn test_voice_settings_tense_lowers_stability() {
+        let settings = provider().voice_settings(&super::Emotion::Tense);
+        assert!(settings["stability"].as_f64().unwrap_or(1.0) < 0.5);
+        assert!(settings["style"].as_f64().unwrap_or(0.0) > 0.0);
     }
 }

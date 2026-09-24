@@ -28,13 +28,19 @@ image = (
 def generate_speech(
     text: str = Body(...),
     language: str = Body("de"),
+    speed: float = Body(1.0),
 ):
     import io
     import wave
     from fastapi.responses import Response
 
     try:
-        from piper import PiperVoice
+        from piper import PiperVoice, SynthesisConfig
+
+        # Piper's length_scale is inverse tempo: higher = slower speech.
+        safe_speed = max(0.25, min(4.0, speed)) if speed == speed else 1.0
+        length_scale = 1.0 / safe_speed if safe_speed > 0.0 else 1.0
+        syn_config = SynthesisConfig(length_scale=length_scale)
 
         logger.info("Loading Piper voice model...")
         voice = PiperVoice.load(
@@ -45,7 +51,7 @@ def generate_speech(
 
         wav_buffer = io.BytesIO()
         with wave.open(wav_buffer, "wb") as wav_file:
-            voice.synthesize_wav(text, wav_file)
+            voice.synthesize_wav(text, wav_file, syn_config=syn_config)
 
         wav_bytes = wav_buffer.getvalue()
         logger.info(f"Synthesized {len(wav_bytes)} bytes for text: {text[:50]}...")

@@ -18,6 +18,17 @@ impl ModalTtsProvider {
             client: Client::new(),
         }
     }
+
+    /// Emotion-resolved request payload: tempo-scaled `speed` plus text and
+    /// language. The Piper sidecar maps `speed` onto its inverse
+    /// `length_scale` lever.
+    fn payload(&self, request: &SynthesisRequest) -> serde_json::Value {
+        serde_json::json!({
+            "text": request.text,
+            "language": request.language,
+            "speed": request.emotion.effective_speed(request.speed),
+        })
+    }
 }
 
 #[async_trait]
@@ -33,10 +44,7 @@ impl VoiceSynthesizer for ModalTtsProvider {
         let response = self
             .client
             .post(&endpoint_url)
-            .json(&serde_json::json!({
-                "text": request.text,
-                "language": request.language,
-            }))
+            .json(&self.payload(request))
             .send()
             .await
             .context("Failed to send request to Modal endpoint")?;
@@ -249,5 +257,31 @@ mod tests {
         let data_len_pos = wav.len() - 5;
         wav[data_len_pos..data_len_pos + 4].copy_from_slice(&9999u32.to_le_bytes());
         assert!(wav_pcm16_mono_data(&wav).is_err());
+    }
+
+    fn modal_provider() -> ModalTtsProvider {
+        ModalTtsProvider::new(ModalConfig {
+            endpoint_url_env: "MODAL_TTS_ENDPOINT".to_string(),
+            max_monthly_cost: 25.0,
+        })
+    }
+
+    #[test]
+    fn payload_carries_emotion_scaled_speed() {
+        let provider = modal_provider();
+        let neutral = SynthesisRequest {
+            text: "Hallo".to_string(),
+            ..SynthesisRequest::default()
+        };
+        assert!((provider.payload(&neutral)["speed"].as_f64().unwrap_or(-1.0) - 1.0).abs() < 1e-6);
+
+        let tense = SynthesisRequest {
+            text: "Hallo".to_string(),
+            emotion: super::super::Emotion::Tense,
+            ..SynthesisRequest::default()
+        };
+        let speed = provider.payload(&tense)["speed"].as_f64().unwrap_or(-1.0);
+        let expected = f64::from(tense.emotion.effective_speed(1.0));
+        assert!((speed - expected).abs() < 1e-6);
     }
 }

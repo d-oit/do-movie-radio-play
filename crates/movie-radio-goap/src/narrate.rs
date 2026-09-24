@@ -124,6 +124,15 @@ impl NarrationGenerator {
         if all_tags.iter().any(|t| *t == "impact_heavy") {
             return Emotion::Tense;
         }
+        if all_tags.iter().any(|t| *t == "crowd_like") {
+            return Emotion::Excited;
+        }
+        if all_tags.iter().any(|t| *t == "nature_like") {
+            return Emotion::Joyful;
+        }
+        if all_tags.iter().any(|t| *t == "tonal" || *t == "music_like") {
+            return Emotion::Mysterious;
+        }
         if all_tags.iter().any(|t| *t == "machinery_like") {
             return Emotion::Neutral;
         }
@@ -313,5 +322,43 @@ mod tests {
 
         let scripts = gen.generate(&timeline, &gaps).unwrap();
         assert!(scripts.is_empty());
+    }
+
+    fn gap_context(tags: &[&str]) -> GapContext {
+        GapContext {
+            before_tags: tags.iter().map(|t| t.to_string()).collect(),
+            after_tags: Vec::new(),
+            before_kind: None,
+            after_kind: None,
+            gap_duration_ms: 2_000,
+            gap_reason: String::new(),
+        }
+    }
+
+    #[test]
+    fn test_infer_emotion_covers_full_tag_vocabulary() {
+        let gen = NarrationGenerator::default();
+        for (tags, expected) in [
+            (&["impact_heavy"][..], Emotion::Tense),
+            (&["crowd_like"][..], Emotion::Excited),
+            (&["nature_like"][..], Emotion::Joyful),
+            (&["tonal"][..], Emotion::Mysterious),
+            (&["music_like"][..], Emotion::Mysterious),
+            (&["music_bed"][..], Emotion::Mysterious),
+            (&["machinery_like"][..], Emotion::Neutral),
+            (&["speech_like"][..], Emotion::Neutral),
+            (&["ambience"][..], Emotion::Neutral),
+        ] {
+            assert_eq!(gen.infer_emotion(&gap_context(tags)), expected, "{tags:?}");
+        }
+        // Precedence: impact outranks every other tag, and long silences
+        // without tags resolve to Mysterious.
+        assert_eq!(
+            gen.infer_emotion(&gap_context(&["impact_heavy", "crowd_like"])),
+            Emotion::Tense
+        );
+        let mut long_gap = gap_context(&[]);
+        long_gap.gap_duration_ms = 9_000;
+        assert_eq!(gen.infer_emotion(&long_gap), Emotion::Mysterious);
     }
 }

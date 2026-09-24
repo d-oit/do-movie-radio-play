@@ -215,22 +215,32 @@ impl Action for SynthesizeNarrator {
 
         let language = voice_cfg.language.clone();
         let voice_id = voice_cfg.voice_id.clone();
+        let emotion_mapping = voice_cfg.emotion_mapping;
         let orchestrator = SynthesisOrchestrator::new(voice_cfg);
 
         for (i, script) in scripts.iter().enumerate() {
+            let emotion = if emotion_mapping {
+                script.emotion.clone()
+            } else {
+                movie_radio_voice::Emotion::Neutral
+            };
             info!(
                 i = i + 1,
                 total = scripts.len(),
                 text = %script.text,
+                emotion = ?emotion,
                 "Synthesizing narration"
             );
 
             let request = SynthesisRequest {
                 text: script.text.clone(),
-                emotion: script.emotion.clone(),
+                emotion,
                 voice_id: voice_id.clone(),
                 reference_audio: None,
                 language: language.clone(),
+                // Base speed only: providers resolve `emotion` into their
+                // own speed/stability levers, so pre-scaling here would
+                // square the tempo factor.
                 speed: 1.0,
                 sample_rate_hz: ctx.sample_rate,
             };

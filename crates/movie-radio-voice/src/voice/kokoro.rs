@@ -44,6 +44,7 @@ impl KokoroProvider {
     }
 
     fn build_request(&self, request: &SynthesisRequest) -> Result<reqwest::RequestBuilder> {
+        let speed = request.emotion.effective_speed(request.speed);
         let voice = request.voice_id.as_deref().unwrap_or(KOKORO_VOICE_ID);
         if voice != KOKORO_VOICE_ID {
             anyhow::bail!(
@@ -63,7 +64,7 @@ impl KokoroProvider {
             "input": request.text,
             "language": request.language,
             "response_format": "wav",
-            "speed": request.speed,
+            "speed": speed,
         })))
     }
 
@@ -151,7 +152,7 @@ impl VoiceSynthesizer for KokoroProvider {
 
     fn capabilities(&self) -> ProviderCapabilities {
         ProviderCapabilities {
-            supports_emotion: false,
+            supports_emotion: true,
             supports_voice_cloning: false,
             supports_streaming: false,
             max_text_length: 1000,

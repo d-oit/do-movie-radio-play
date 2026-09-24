@@ -43,7 +43,7 @@ jobs:
           VERSION=$(tr -d '[:space:]' < VERSION)
 
           mkdir -p dist/binary
-          cp target/release/movie-radio-timeline dist/binary/
+          cp target/release/timeline dist/binary/
           if [[ -f README.md ]]; then cp README.md dist/binary/; fi
           if [[ -f LICENSE ]]; then cp LICENSE dist/binary/; fi
           tar -czvf "movie-radio-timeline-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz" -C dist/binary .
@@ -51,6 +51,11 @@ jobs:
           mkdir -p dist/schemas
           cp schema/*.schema.json dist/schemas/
           tar -czvf "schemas-v${VERSION}.tar.gz" -C dist/schemas .
+
+      - name: Smoke Check Release Artifacts
+        run: |
+          ./dist/binary/timeline --help
+          test -f dist/schemas/timeline.schema.json
 
       - name: Upload Artifacts to Action Run
         uses: actions/upload-artifact@v7

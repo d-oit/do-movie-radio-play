@@ -27,6 +27,7 @@ And two modes:
 | Clippy intent | `.clippy.toml` | Linting philosophy and allowed exceptions |
 | Dependency rules | `deny.toml` | Supply chain security and license policy |
 | Architecture | `plans/` | Architecture Decision Records and roadmaps |
+| Narration content standard | `plans/adr/0128-audio-description-standards.md` | What "good" narration/gap-filling text must do; grounds ADR-128 guardrails below |
 
 ### Computational (structural constraints)
 
@@ -35,6 +36,7 @@ And two modes:
 | Unsafe code forbidden | `Cargo.toml` `[workspace.lints.rust]` | `rustc` |
 | Max 500 LOC/file | `AGENTS.md` | Agent self-check |
 | Conventional commits | `commitlint.config.cjs` | `commitlint` pre-commit hook |
+| Narration never content-free filler | `crates/movie-radio-goap/src/narrate/mod.rs` (`reject_banned_filler`) | Runtime substitution + agent self-check (ADR-128) |
 
 ## Feedback Sensors
 
@@ -48,6 +50,7 @@ And two modes:
 | `cargo test` | CI (`ci.yml`) | `Cargo.toml` | Fix failing tests before opening PR |
 | `shellcheck` | pre-commit | `.shellcheckrc` | Fix shell script issues at severity=warning |
 | `gitleaks` | CI (`ci.yml`) | `.gitleaks.toml` | Remove secrets; use env vars or `.env` |
+| `cargo test -p movie-radio-goap narrate` | pre-commit + CI | `crates/movie-radio-goap/src/narrate/tests.rs` | Any new narration source (LLM backend, template) must add a grounding test; see ADR-128 |
 
 ### Inferential (LLM-based — use for direction)
 

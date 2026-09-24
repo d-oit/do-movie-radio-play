@@ -16,3 +16,6 @@ analysis/optimization/fp-sweep-runs/
 /*.wav
 .mimocode/
 __pycache__/
+
+# Hoplite sandbox prebuild metadata (not repo content)
+.context/

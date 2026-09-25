@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use movie_radio_pipeline::voice_clone::extract_candidates;
-use movie_radio_types::VoiceReference;
+use movie_radio_types::{voice_clone::load_reference_audio, VoiceReference};
 use std::fs;
 use std::path::PathBuf;
 
@@ -139,56 +139,6 @@ pub fn handle_voice_list() -> Result<()> {
     }
 }
 
-/// Load the first usable clone reference from a `voice samples` JSON file.
-///
-/// Every failure is fatal: a clone test without a clone reference silently
-/// degrades to plain synthesis, so stale entries are skipped and an empty,
-/// malformed, or reference-less file errors with a recovery hint.
-fn load_clone_reference(sample_file: &std::path::Path, character: &str) -> Result<PathBuf> {
-    let content = fs::read_to_string(sample_file).with_context(|| {
-        format!(
-            "no voice samples for character '{character}': cannot read {} — run `voice samples --character {character} --input <movie>` first or pass --samples-from <file>",
-            sample_file.display()
-        )
-    })?;
-    let cands: Vec<VoiceReference> = serde_json::from_str(&content)
-        .with_context(|| format!("failed to parse voice samples {}", sample_file.display()))?;
-    if cands.is_empty() {
-        anyhow::bail!(
-            "voice samples {} contain no candidates — re-run `voice samples --character {character} --input <movie>`",
-            sample_file.display()
-        );
-    }
-    // First candidate whose stored reference still points at a real file;
-    // stale entries (moved/deleted clips) are skipped, and a file with no
-    // usable reference at all fails instead of testing the wrong voice.
-    // Candidates are scoped to the requested character: `--samples-from`
-    // accepts an arbitrary file, so without this check
-    // `--character alice --samples-from bob.json` would clone Bob's voice
-    // while reporting Alice.
-    let matching: Vec<&VoiceReference> = cands
-        .iter()
-        .filter(|c| c.validate().is_ok() && c.character_name == character)
-        .collect();
-    if !cands.iter().any(|c| c.character_name == character) {
-        anyhow::bail!(
-            "voice samples {} contain no candidates for character '{character}' — re-run `voice samples --character {character} --input <movie>`",
-            sample_file.display()
-        );
-    }
-    matching
-        .iter()
-        .flat_map(|c| c.sample_paths.iter())
-        .find(|p| p.is_file())
-        .cloned()
-        .with_context(|| {
-            format!(
-                "voice samples {} contain no usable reference audio for character '{character}' (all sample paths missing or stale) — re-run `voice samples --character {character} --input <movie>`",
-                sample_file.display()
-            )
-        })
-}
-
 pub fn handle_voice_test(
     character: String,
     text: String,
@@ -199,7 +149,7 @@ pub fn handle_voice_test(
 
     let sample_file =
         samples_from.unwrap_or_else(|| PathBuf::from(format!("voice_samples/{character}.json")));
-    let ref_audio = load_clone_reference(&sample_file, &character)?;
+    let ref_audio = load_reference_audio(&sample_file, &character)?;
 
     // Actually exercise the clone: build a request and synthesize, so a
     // bad reference or broken provider fails loudly instead of printing.
@@ -357,7 +307,7 @@ mod tests {
     fn missing_samples_file_fails() {
         let dir = TempDir::new().unwrap();
         let missing = dir.path().join("missing.json");
-        assert!(load_clone_reference(&missing, "alice").is_err());
+        assert!(load_reference_audio(&missing, "alice").is_err());
     }
 
     #[test]
@@ -389,7 +339,7 @@ mod tests {
         let file = write_reference_file(dir.path(), &[live]);
         // Fixture helper stamps candidates as alice's; loading for bob must
         // fail rather than clone alice's voice, and vice versa.
-        assert!(load_clone_reference(&file, "bob").is_err());
+        assert!(load_reference_audio(&file, "bob").is_err());
         Ok(())
     }
 
@@ -397,7 +347,7 @@ mod tests {
     fn stale_reference_fails_instead_of_plain_synthesis() -> Result<()> {
         let dir = TempDir::new()?;
         let file = write_reference_file(dir.path(), &[PathBuf::from("voice_samples/gone.wav")]);
-        assert!(load_clone_reference(&file, "alice").is_err());
+        assert!(load_reference_audio(&file, "alice").is_err());
         Ok(())
     }
 
@@ -432,7 +382,7 @@ mod tests {
             },
         ];
         fs::write(&file, serde_json::to_string_pretty(&refs)?)?;
-        assert_eq!(load_clone_reference(&file, "alice")?, live);
+        assert_eq!(load_reference_audio(&file, "alice")?, live);
         Ok(())
     }
 }

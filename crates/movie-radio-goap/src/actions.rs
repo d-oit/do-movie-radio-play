@@ -236,7 +236,7 @@ impl Action for SynthesizeNarrator {
                 text: script.text.clone(),
                 emotion,
                 voice_id: voice_id.clone(),
-                reference_audio: None,
+                reference_audio: ctx.voice_reference.clone(),
                 language: language.clone(),
                 // Base speed only: providers resolve `emotion` into their
                 // own speed/stability levers, so pre-scaling here would
@@ -394,6 +394,24 @@ mod tests {
         let result = SynthesizeNarrator.execute(&mut ctx).await;
         let err = result.expect_err("synthesis failure expected without endpoint");
         assert!(err.to_string().contains("all 1 narration syntheses failed"));
+    }
+
+    #[tokio::test]
+    async fn test_synthesize_narrator_passes_voice_reference() {
+        let mut ctx = crate::PipelineContext::new(
+            std::path::PathBuf::from("movie.mp4"),
+            std::path::PathBuf::from("out.wav"),
+        );
+        let ref_path = std::path::PathBuf::from("voice_samples/alice.wav");
+        ctx.voice_reference = Some(ref_path.clone());
+        ctx.scripts = Some(vec![script(100)]);
+
+        const MODAL_TTS_ENDPOINT_ENV: &str = "MODAL_TTS_ENDPOINT";
+        std::env::remove_var(MODAL_TTS_ENDPOINT_ENV);
+        let result = SynthesizeNarrator.execute(&mut ctx).await;
+        let err = result.expect_err("synthesis failure expected without endpoint");
+        assert!(err.to_string().contains("all 1 narration syntheses failed"));
+        assert_eq!(ctx.voice_reference, Some(ref_path));
     }
 }
 

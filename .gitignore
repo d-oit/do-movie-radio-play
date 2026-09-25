@@ -19,3 +19,6 @@ __pycache__/
 
 # Hoplite sandbox prebuild metadata (not repo content)
 .context/
+
+# Local metrics-reporter event log (per-run artifact, not repo content)
+.agents/events/

@@ -18,6 +18,7 @@
 | 124 | Unified Config | Accepted | `plans/adr/0124-unified-config.md` | AppConfig, CLI>env>local>default, MRPLAY_* env, validation, JSON schema. Closes #241. |
 | 125 | Voice Clone Capability | Accepted | `plans/adr/0125-voice-clone-capability.md` | Capability-driven cloning via audio.cpp; no XTTS/RVC impl. Closes #239. |
 | 126 | Narrator Prompt Engine | Accepted | `plans/adr/0126-narrator-prompt-engine.md` | Tera templates, OpenAI/Ollama/Anthropic backends. Closes #240. |
+| 128 | Audio-Description Standards | Accepted | `plans/adr/0128-audio-description-standards.md` | Adopts German ARD/MDR + DCMP/W3C audio-description standards as the normative reference for narration/gap-filling text; runtime + test + review guardrails against content-free filler. Fixes #344. |
 
 ## Notes
 

@@ -189,15 +189,18 @@ fn test_generate_text_is_deterministic() {
 #[test]
 fn test_self_tags_take_precedence_over_neighbour_tags() {
     let gen = NarrationGenerator::default();
-    // Neighbouring non-voice segments carry an unrelated tag; the gap
-    // itself is tagged crowd_like and must drive the description.
+    // The gap itself is tagged machinery_like while the neighbour carries
+    // crowd_like, which outranks machinery_like in the global tag
+    // priority. Only true source precedence (own tags matched before
+    // neighbour tags) selects the machinery clause; a merged tag list
+    // would wrongly describe a crowd.
     let timeline = make_timeline(vec![
         Segment {
             start_ms: 0,
             end_ms: 2_000,
             kind: SegmentKind::NonVoice,
             confidence: 1.0,
-            tags: vec!["machinery_like".to_string()],
+            tags: vec!["crowd_like".to_string()],
             prompt: None,
             sfx_trigger: None,
         },
@@ -206,7 +209,7 @@ fn test_self_tags_take_precedence_over_neighbour_tags() {
             end_ms: 12_000,
             kind: SegmentKind::NonVoice,
             confidence: 1.0,
-            tags: vec!["crowd_like".to_string()],
+            tags: vec!["machinery_like".to_string()],
             prompt: None,
             sfx_trigger: None,
         },
@@ -220,7 +223,11 @@ fn test_self_tags_take_precedence_over_neighbour_tags() {
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
-    assert!(scripts[0].text.contains("Menschenmenge"));
+    assert!(
+        scripts[0].text.contains("Maschinengeräusch"),
+        "expected the gap's own machinery_like tag to win, got: {}",
+        scripts[0].text
+    );
 }
 
 #[test]

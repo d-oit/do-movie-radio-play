@@ -410,10 +410,12 @@ mod tests {
             Some(movie_radio_voice::AudioOutput {
                 samples: vec![0.2; 64000], // 4000 ms audio
                 sample_rate_hz: 16000,
+                is_synthetic_placeholder: false,
             }),
             Some(movie_radio_voice::AudioOutput {
                 samples: vec![0.3; 8000],
                 sample_rate_hz: 16000,
+                is_synthetic_placeholder: false,
             }),
         ];
 
@@ -473,10 +475,12 @@ mod tests {
             Some(movie_radio_voice::AudioOutput {
                 samples: vec![0.3; 8000],
                 sample_rate_hz: 16000,
+                is_synthetic_placeholder: false,
             }),
             Some(movie_radio_voice::AudioOutput {
                 samples: vec![0.2; 64000],
                 sample_rate_hz: 16000,
+                is_synthetic_placeholder: false,
             }),
         ];
 

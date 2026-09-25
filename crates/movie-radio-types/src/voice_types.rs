@@ -56,10 +56,12 @@ pub enum Emotion {
     Custom(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioOutput {
     pub samples: Vec<f32>,
     pub sample_rate_hz: u32,
+    #[serde(default)]
+    pub is_synthetic_placeholder: bool,
 }
 
 pub struct ProviderCapabilities {

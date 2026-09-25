@@ -442,7 +442,8 @@ mod tests {
         use movie_radio_voice::voice::SynthesisOrchestrator;
         use std::collections::HashMap;
 
-        let mut providers: HashMap<String, Box<dyn movie_radio_voice::VoiceSynthesizer>> = HashMap::new();
+        let mut providers: HashMap<String, Box<dyn movie_radio_voice::VoiceSynthesizer>> =
+            HashMap::new();
         providers.insert("mock_orpheus".to_string(), Box::new(SyntheticMockProvider));
 
         let orchestrator = SynthesisOrchestrator::from_test_providers(providers, &["mock_orpheus"]);

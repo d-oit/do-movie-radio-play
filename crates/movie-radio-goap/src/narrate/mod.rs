@@ -105,9 +105,10 @@ impl NarrationGenerator {
         // are the primary grounding signal: they describe what is actually
         // audible during this exact span, which is what the narrator must
         // explain (German audio-description convention: answer "was ist
-        // zu hören"). Persisted timelines only ever contain the non-voice
-        // segments themselves, so the neighbour loop below cannot see this
-        // segment's own tags.
+        // zu hören"). The neighbour loop below only collects strictly
+        // before/after segments, so it skips the segment overlapping the
+        // gap itself — without this explicit lookup its tags would never
+        // be seen.
         if let Some(seg) = timeline
             .segments
             .iter()

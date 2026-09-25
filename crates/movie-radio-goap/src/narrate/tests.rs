@@ -22,11 +22,11 @@ fn test_max_words_for_duration() {
 #[test]
 fn test_fit_chunks_to_budget_never_truncates_mid_sentence() {
     let gen = NarrationGenerator::default();
-    // A budget smaller than the first whole clause yields no text (the
-    // gap is skipped downstream), never a single-word fragment like "Ein".
+    // A budget smaller than the first whole clause still yields the full
+    // first clause — over budget but whole — never a fragment like "Ein".
     assert_eq!(
         gen.fit_chunks_to_budget(&["Ein kräftiger Aufprall ertönt."], 1),
-        ""
+        "Ein kräftiger Aufprall ertönt."
     );
     assert_eq!(
         gen.fit_chunks_to_budget(&["Ein kräftiger Aufprall ertönt."], 4),
@@ -46,10 +46,11 @@ fn test_fit_chunks_to_budget_never_truncates_mid_sentence() {
 }
 
 #[test]
-fn test_generate_skips_gap_when_budget_cannot_fit_a_clause() {
+fn test_generate_always_emits_a_whole_sentence_for_accepted_gaps() {
     let gen = NarrationGenerator::default();
-    // A 1s gap budgets a single word, far below every whole clause, so
-    // the gap is skipped rather than narrated with a fragment.
+    // Even a 1s gap (single-word budget, far below every whole clause)
+    // gets a complete sentence: the assembler absorbs the overrun via
+    // time-stretch, while a fragment or silence would describe nothing.
     let timeline = make_timeline(vec![Segment {
         start_ms: 0,
         end_ms: 1_000,
@@ -68,10 +69,16 @@ fn test_generate_skips_gap_when_budget_cannot_fit_a_clause() {
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
+    assert_eq!(scripts.len(), 1);
     assert!(
-        scripts.is_empty(),
-        "expected the too-short gap to be skipped, got: {:?}",
-        scripts.iter().map(|s| &s.text).collect::<Vec<_>>()
+        scripts[0].text.contains("Menschenmenge"),
+        "expected a whole grounded sentence, got: {}",
+        scripts[0].text
+    );
+    assert!(
+        scripts[0].text.split_whitespace().count() > 1,
+        "must never degenerate to a single-word fragment, got: {}",
+        scripts[0].text
     );
 }
 

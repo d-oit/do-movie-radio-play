@@ -250,20 +250,21 @@ impl NarrationGenerator {
     }
 
     /// Greedily includes whole clauses while staying within `max_words`.
-    /// Clauses are never cut mid-sentence: if even the first clause
-    /// exceeds the budget, this returns empty so `generate` skips the gap
-    /// entirely. A skipped gap leaves the original audio untouched, which
-    /// is always preferable to a truncated fragment like `"Ein"` that
-    /// describes nothing on its own.
+    /// Clauses are never cut mid-sentence and the result is never empty
+    /// for a non-empty `chunks` input (which `build_chunks` guarantees):
+    /// the first clause is always emitted in full even when it exceeds
+    /// the budget, and only secondary clauses are dropped to fit. A
+    /// slightly over-budget whole sentence still describes the gap; a
+    /// truncated fragment like `"Ein"` — or silence where the skill
+    /// promises narration — does not. Overlong audio is absorbed
+    /// downstream by the assembler's time-stretch bound.
     fn fit_chunks_to_budget(&self, chunks: &[&str], max_words: usize) -> String {
         let mut result = String::new();
         let mut word_count = 0usize;
         for (i, chunk) in chunks.iter().enumerate() {
             let chunk_words = chunk.split_whitespace().count();
             if i == 0 {
-                if chunk_words > max_words {
-                    return String::new();
-                }
+                // First clause: always whole, even over budget.
                 result.push_str(chunk);
                 word_count += chunk_words;
                 continue;

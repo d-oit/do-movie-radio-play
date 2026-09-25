@@ -63,6 +63,11 @@ impl NarrationGenerator {
             let text = reject_banned_filler(self.generate_text(&context, max_words));
 
             if text.is_empty() {
+                tracing::debug!(
+                    gap_start_ms = gap.start_ms,
+                    max_words,
+                    "gap too short for any whole narration clause; leaving unnarrated"
+                );
                 continue;
             }
 
@@ -250,21 +255,24 @@ impl NarrationGenerator {
     }
 
     /// Greedily includes whole clauses while staying within `max_words`.
-    /// Clauses are never cut mid-sentence and the result is never empty
-    /// for a non-empty `chunks` input (which `build_chunks` guarantees):
-    /// the first clause is always emitted in full even when it exceeds
-    /// the budget, and only secondary clauses are dropped to fit. A
-    /// slightly over-budget whole sentence still describes the gap; a
-    /// truncated fragment like `"Ein"` — or silence where the skill
-    /// promises narration — does not. Overlong audio is absorbed
-    /// downstream by the assembler's time-stretch bound.
+    /// Clauses are never cut mid-sentence: when even the first clause
+    /// exceeds the budget this returns empty and `generate` leaves the gap
+    /// unnarrated. That is the only consistent resolution — a truncated
+    /// fragment (`"Ein"`) describes nothing, and an over-budget sentence
+    /// would overrun into surrounding dialogue (the assembler only absorbs
+    /// +500 ms). Leaving an unnarratable pause untouched is standard
+    /// audio-description practice; see the skill's budget rule and ADR-128
+    /// rule 5. Real gaps are seconds long, so this path only triggers for
+    /// synthetic edge cases, never production timelines.
     fn fit_chunks_to_budget(&self, chunks: &[&str], max_words: usize) -> String {
         let mut result = String::new();
         let mut word_count = 0usize;
         for (i, chunk) in chunks.iter().enumerate() {
             let chunk_words = chunk.split_whitespace().count();
             if i == 0 {
-                // First clause: always whole, even over budget.
+                if chunk_words > max_words {
+                    return String::new();
+                }
                 result.push_str(chunk);
                 word_count += chunk_words;
                 continue;

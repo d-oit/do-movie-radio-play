@@ -22,11 +22,11 @@ fn test_max_words_for_duration() {
 #[test]
 fn test_fit_chunks_to_budget_never_truncates_mid_sentence() {
     let gen = NarrationGenerator::default();
-    // A budget smaller than the first whole clause still yields the full
-    // first clause — over budget but whole — never a fragment like "Ein".
+    // A budget smaller than the first whole clause yields empty (the gap
+    // is left unnarrated downstream) — never a fragment like "Ein".
     assert_eq!(
         gen.fit_chunks_to_budget(&["Ein kräftiger Aufprall ertönt."], 1),
-        "Ein kräftiger Aufprall ertönt."
+        ""
     );
     assert_eq!(
         gen.fit_chunks_to_budget(&["Ein kräftiger Aufprall ertönt."], 4),
@@ -46,11 +46,13 @@ fn test_fit_chunks_to_budget_never_truncates_mid_sentence() {
 }
 
 #[test]
-fn test_generate_always_emits_a_whole_sentence_for_accepted_gaps() {
+fn test_generate_skips_gap_too_short_for_any_whole_clause() {
     let gen = NarrationGenerator::default();
-    // Even a 1s gap (single-word budget, far below every whole clause)
-    // gets a complete sentence: the assembler absorbs the overrun via
-    // time-stretch, while a fragment or silence would describe nothing.
+    // A 1s gap budgets a single word, far below every whole clause (min 4
+    // words). It is left unnarrated: a fragment would describe nothing and
+    // an over-budget sentence would overrun into dialogue (the assembler
+    // only absorbs +500 ms). Standard audio-description practice; see
+    // ADR-128 rule 5 and the skill's budget rule.
     let timeline = make_timeline(vec![Segment {
         start_ms: 0,
         end_ms: 1_000,
@@ -69,16 +71,10 @@ fn test_generate_always_emits_a_whole_sentence_for_accepted_gaps() {
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
-    assert_eq!(scripts.len(), 1);
     assert!(
-        scripts[0].text.contains("Menschenmenge"),
-        "expected a whole grounded sentence, got: {}",
-        scripts[0].text
-    );
-    assert!(
-        scripts[0].text.split_whitespace().count() > 1,
-        "must never degenerate to a single-word fragment, got: {}",
-        scripts[0].text
+        scripts.is_empty(),
+        "expected the unnarratable gap to be skipped, got: {:?}",
+        scripts.iter().map(|s| &s.text).collect::<Vec<_>>()
     );
 }
 

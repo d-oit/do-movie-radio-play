@@ -250,17 +250,19 @@ impl NarrationGenerator {
     }
 
     /// Greedily includes whole clauses while staying within `max_words`.
-    /// The first clause is always attempted in full; only if it alone
-    /// exceeds the budget does it fall back to word-level truncation, so
-    /// the narration is never empty and rarely cut mid-sentence.
+    /// Clauses are never cut mid-sentence: if even the first clause
+    /// exceeds the budget, this returns empty so `generate` skips the gap
+    /// entirely. A skipped gap leaves the original audio untouched, which
+    /// is always preferable to a truncated fragment like `"Ein"` that
+    /// describes nothing on its own.
     fn fit_chunks_to_budget(&self, chunks: &[&str], max_words: usize) -> String {
         let mut result = String::new();
         let mut word_count = 0usize;
         for (i, chunk) in chunks.iter().enumerate() {
             let chunk_words = chunk.split_whitespace().count();
             if i == 0 {
-                if chunk_words > max_words && max_words > 0 {
-                    return self.fit_to_budget(chunk, max_words);
+                if chunk_words > max_words {
+                    return String::new();
                 }
                 result.push_str(chunk);
                 word_count += chunk_words;
@@ -274,14 +276,6 @@ impl NarrationGenerator {
             word_count += chunk_words;
         }
         result
-    }
-
-    fn fit_to_budget(&self, text: &str, max_words: usize) -> String {
-        let words: Vec<&str> = text.split_whitespace().collect();
-        if words.len() <= max_words {
-            return text.to_string();
-        }
-        words[..max_words].join(" ")
     }
 }
 

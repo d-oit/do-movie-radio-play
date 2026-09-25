@@ -49,8 +49,11 @@ guidelines and the DCMP / W3C WAI audio-description standards:
 4. **Stay deterministic.** No hashing/randomness in text selection for
    identical input (repo-wide rule, AGENTS.md "Deterministic output").
 5. **Fit the budget.** Prefer omitting a secondary clause over truncating a
-   sentence mid-word; never return empty text for a gap that passed the
-   confidence/duration filters.
+   sentence mid-word. If the budget cannot fit even the shortest whole
+   clause, leave the gap unnarrated (skip it): a fragment describes nothing
+   and an over-budget sentence would overrun into surrounding dialogue,
+   while a skipped pause preserves the original audio. Never return empty
+   text for a gap whose budget *can* fit a whole clause.
 
 ## Implementation pattern used in `narrate/mod.rs`
 

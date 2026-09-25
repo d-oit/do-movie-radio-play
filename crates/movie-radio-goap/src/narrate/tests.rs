@@ -20,10 +20,59 @@ fn test_max_words_for_duration() {
 }
 
 #[test]
-fn test_fit_to_budget() {
+fn test_fit_chunks_to_budget_never_truncates_mid_sentence() {
     let gen = NarrationGenerator::default();
-    assert_eq!(gen.fit_to_budget("Stille.", 5), "Stille.");
-    assert_eq!(gen.fit_to_budget("Ein Geräusch ertönt.", 2), "Ein Geräusch");
+    // A budget smaller than the first whole clause yields no text (the
+    // gap is skipped downstream), never a single-word fragment like "Ein".
+    assert_eq!(
+        gen.fit_chunks_to_budget(&["Ein kräftiger Aufprall ertönt."], 1),
+        ""
+    );
+    assert_eq!(
+        gen.fit_chunks_to_budget(&["Ein kräftiger Aufprall ertönt."], 4),
+        "Ein kräftiger Aufprall ertönt."
+    );
+    // An over-budget second clause is dropped whole, not cut mid-sentence.
+    assert_eq!(
+        gen.fit_chunks_to_budget(
+            &[
+                "Ein kräftiger Aufprall ertönt.",
+                "Die Passage dauert einige Sekunden."
+            ],
+            4
+        ),
+        "Ein kräftiger Aufprall ertönt."
+    );
+}
+
+#[test]
+fn test_generate_skips_gap_when_budget_cannot_fit_a_clause() {
+    let gen = NarrationGenerator::default();
+    // A 1s gap budgets a single word, far below every whole clause, so
+    // the gap is skipped rather than narrated with a fragment.
+    let timeline = make_timeline(vec![Segment {
+        start_ms: 0,
+        end_ms: 1_000,
+        kind: SegmentKind::NonVoice,
+        confidence: 1.0,
+        tags: vec!["crowd_like".to_string()],
+        prompt: None,
+        sfx_trigger: None,
+    }]);
+    let gaps = vec![VisualGap {
+        start_ms: 0,
+        end_ms: 1_000,
+        confidence: 0.9,
+        reason: "Short pause".to_string(),
+        priority: 1,
+    }];
+
+    let scripts = gen.generate(&timeline, &gaps).unwrap();
+    assert!(
+        scripts.is_empty(),
+        "expected the too-short gap to be skipped, got: {:?}",
+        scripts.iter().map(|s| &s.text).collect::<Vec<_>>()
+    );
 }
 
 #[test]

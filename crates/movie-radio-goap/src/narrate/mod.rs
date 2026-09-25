@@ -194,8 +194,10 @@ impl NarrationGenerator {
 
     /// Primary clause: what is actually audible. Priority order matches
     /// `infer_emotion` (impact dominates, then crowd/nature/tonal/
-    /// machinery/music/ambience/speech-like). Checks the gap's own tags
-    /// first, then falls back to the neighbouring segments' tags.
+    /// machinery/music/ambience/speech-like). The gap's own tags are
+    /// matched first; neighbouring segments' tags are only a fallback
+    /// when the gap itself carries no known tag, so a loud neighbour can
+    /// never drown out what the gap actually contains.
     fn content_clause(context: &GapContext) -> Option<&'static str> {
         const TAG_CLAUSES: &[(&str, &str)] = &[
             ("impact_heavy", "Ein kräftiger Aufprall ertönt."),
@@ -212,18 +214,24 @@ impl NarrationGenerator {
             ("speech_like", "Gedämpfte Stimmen sind zu hören."),
         ];
 
-        let tags: Vec<&str> = context
-            .self_tags
+        fn first_clause_for(tags: &[&str]) -> Option<&'static str> {
+            TAG_CLAUSES
+                .iter()
+                .find(|(tag, _)| tags.iter().any(|t| t == tag))
+                .map(|(_, clause)| *clause)
+        }
+
+        let own: Vec<&str> = context.self_tags.iter().map(String::as_str).collect();
+        if let Some(clause) = first_clause_for(&own) {
+            return Some(clause);
+        }
+        let neighbour: Vec<&str> = context
+            .before_tags
             .iter()
-            .chain(context.before_tags.iter())
             .chain(context.after_tags.iter())
             .map(String::as_str)
             .collect();
-
-        TAG_CLAUSES
-            .iter()
-            .find(|(tag, _)| tags.iter().any(|t| t == tag))
-            .map(|(_, clause)| *clause)
+        first_clause_for(&neighbour)
     }
 
     /// Secondary clause from the structural gap reason, added only when it

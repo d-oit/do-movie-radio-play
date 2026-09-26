@@ -357,6 +357,8 @@ pub struct OrpheusConfig {
     pub device: String,
     #[serde(default)]
     pub vocoder_path: Option<PathBuf>,
+    #[serde(default)]
+    pub require_real_vocoder: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

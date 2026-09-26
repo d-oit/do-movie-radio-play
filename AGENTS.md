@@ -34,6 +34,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 ## Quick Reference
 | Task | Command |
 | ------ | --------- |
+| Dev Env Setup | `bash scripts/setup-dev-env.sh` |
 | Build | `cargo build --workspace` |
 | Test | `cargo test --workspace` |
 | Quality Gate | `bash scripts/quality_gate.sh` |

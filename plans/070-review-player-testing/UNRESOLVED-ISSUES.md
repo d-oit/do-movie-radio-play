@@ -1,63 +1,55 @@
 # Unresolved Review Player Issues
 
-**Date:** 2026-06-08  
+**Date:** 2026-06-08 (Created) | Updated: 2026-09-24
 **Source:** `plans/070-review-player-testing/TESTING.md` (2026-04-15)  
+**Status:** Resolved — see GitHub issues #269 and #270
 
-These 4 minor bugs were found during review player testing but were never filed as GitHub issues. They remain unresolved.
+All 4 issues listed in this document have been resolved in current source (`templates/review.html`, `crates/movie-radio-timeline/src/review.rs`, `crates/movie-radio-timeline/src/review_template.rs`) and verified with unit tests.
 
 ---
 
 ## 1. Save Reviewed HTML Missing Merged State
 
-**Source:** `src/review.rs:332-343` (original), `src/review_template.rs` (extracted)  
+**Source:** `crates/movie-radio-timeline/src/review.rs` & `templates/review.html`
 **Priority:** Minor
+**Status:** **Resolved** (closed in issue #269)
 
 **Description:** When saving reviewed HTML, the current merged/individual view mode is not preserved in the saved file. The exported HTML defaults to individual view mode on reload, losing the user's last review state.
 
-**Expected behavior:** The exported HTML should auto-load the last review state (merged vs individual view, excluded segments, active segment position).
-
-**Impact:** Users who review in merged mode must manually toggle back each time they reload the saved HTML.
+**Resolution:** `review.rs` persists `merged_json` state into a `<script id="merged-data">` DOM element in the saved HTML. Tests `test_merged_view_state_persistence_in_review_html` in `review.rs` and `test_merged_state_script_element` in `review_template.rs` verify state persistence.
 
 ---
 
 ## 2. No Segment Kind Filtering in UI
 
-**Source:** `src/review.rs:324-330` (original), `src/review_template.rs` (extracted)  
+**Source:** `templates/review.html`
 **Priority:** Minor
+**Status:** **Resolved**
 
 **Description:** The `refreshSegments()` function filters by the excluded Set but provides no UI to filter or sort segments by kind, confidence, or duration.
 
-**Expected behavior:** Users should be able to filter the segment list by:
-- Confidence range (e.g., show only segments with confidence ≥ 0.8)
-- Kind (e.g., show only music, only silence)
-- Duration (e.g., show segments longer than 1s)
-
-Or at minimum sort by these columns.
-
-**Impact:** Users reviewing many segments cannot efficiently find low-confidence or short segments without manually scanning the full list.
+**Resolution:** `templates/review.html` provides `#segment-filter` (all, verified, priority, unverified, suspicious, excluded) and `#segment-sort` (start, confidence, duration) UI controls that filter and sort segments dynamically during `refreshSegments()`.
 
 ---
 
 ## 3. Timeline Markers Not Draggable
 
-**Source:** `src/review.rs:466-470` (original), `src/review_template.rs` (extracted)  
+**Source:** `templates/review.html` & `crates/movie-radio-timeline/src/review_template.rs`
 **Priority:** Minor
+**Status:** **Resolved** (closed in issue #270)
 
 **Description:** Timeline markers are click-only — clicking jumps to the segment start, but there is no drag-to-seek behavior.
 
-**Expected behavior:** Users should be able to click and drag the playhead along the timeline waveform to seek to any position, not just segment boundaries.
-
-**Impact:** Limited manual scrubbing UX. Users cannot fine-tune playback position within a long segment.
+**Resolution:** `templates/review.html` implements drag-to-seek handlers (`dragMoved` and `.timeline-track.dragging` / `mousedown`/`mousemove`/`mouseup` events on track and playhead). Verified by `test_drag_to_seek_handlers_present` in `review_template.rs`.
 
 ---
 
 ## 4. Empty Segments After Exclusion Has No Recovery UX
 
-**Source:** `src/review.rs:359-372` (original), `src/review_template.rs` (extracted)  
+**Source:** `templates/review.html` & `crates/movie-radio-timeline/src/review_template.rs`
 **Priority:** Info
+**Status:** **Resolved** (closed in issue #270)
 
 **Description:** When all segments are marked as voice via the 'x' key, the UI shows "No non-voice segments found" but provides no clear recovery path other than Undo ('u').
 
-**Expected behavior:** A "Restore All" button should appear when all segments are excluded, providing a one-click recovery path.
-
-**Impact:** Users who accidentally exclude all segments must manually undo each one or refresh. The current behavior is functional but provides poor UX for an edge case that should have a self-evident recovery action.
+**Resolution:** `templates/review.html` provides a "Restore All (r)" button when all segments are excluded. Verified by `test_restore_all_elements_present` in `review_template.rs`.

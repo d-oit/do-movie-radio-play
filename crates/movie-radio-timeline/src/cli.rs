@@ -277,6 +277,10 @@ pub enum Commands {
         learning_db: Option<PathBuf>,
         #[arg(long)]
         no_learn: bool,
+        #[arg(long)]
+        voice_reference: Option<PathBuf>,
+        #[arg(long)]
+        character: Option<String>,
     },
     /// Preview a WAV file by streaming to system audio output.
     /// Useful for quick QA without writing intermediate files.

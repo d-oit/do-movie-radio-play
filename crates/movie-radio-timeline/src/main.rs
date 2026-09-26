@@ -161,6 +161,8 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             learning_state,
             learning_db,
             no_learn,
+            voice_reference,
+            character,
         } => handlers::handle_radio_play(
             movie,
             handlers::RadioPlayOptions {
@@ -173,6 +175,8 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
                 learning_state,
                 learning_db,
                 no_learn,
+                voice_reference,
+                character,
             },
         ),
         Commands::Calibrate {

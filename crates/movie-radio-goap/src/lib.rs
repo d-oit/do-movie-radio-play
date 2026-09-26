@@ -71,6 +71,8 @@ pub struct PipelineContext {
     pub no_learn: bool,
     /// Unique identifier for this pipeline run.
     pub run_id: Option<String>,
+    /// Optional voice clone reference audio file path.
+    pub voice_reference: Option<PathBuf>,
 }
 
 impl PipelineContext {
@@ -96,6 +98,7 @@ impl PipelineContext {
             assembled_audio: None,
             no_learn: false,
             run_id: None,
+            voice_reference: None,
         }
     }
 }

@@ -81,13 +81,16 @@ Contributor gates live in `plans/040-validation/ACCEPTANCE.md`.
 
 ## 7.5 Review-player triage (no code in this phase)
 
-Historical findings from `plans/070-review-player-testing/TESTING.md` + `UNRESOLVED-ISSUES.md` are all resolved in current source (`templates/review.html`, `review.rs`, `review_template.rs`) and closed in GitHub issues #269 and #270:
+From `plans/070-review-player-testing/TESTING.md` + `UNRESOLVED-ISSUES.md`:
 
-1. Saved HTML drops merged/individual view state (Resolved — #269).
-2. No kind/confidence/duration filter or sort (Resolved — `#segment-filter`/`#segment-sort` in `review.html`).
-3. Markers are click-only (no drag-to-seek) (Resolved — #270).
-4. All-excluded state has no recovery path besides Undo (Resolved — #270 "Restore All (r)").
-5. `m` shortcut / save-shortcut gaps noted in TESTING.md (Resolved).
+1. Saved HTML drops merged/individual view state.
+2. No kind/confidence/duration filter or sort.
+3. Markers are click-only (no drag-to-seek).
+4. All-excluded state has no recovery path besides Undo.
+5. `m` shortcut / save-shortcut gaps noted in TESTING.md.
+
+File follow-up issues from this list only when a review-player code change
+is scheduled; keep this phase docs-only.
 
 ## 7.6 Plans hygiene note
 

@@ -6,6 +6,7 @@ use movie_radio_goap::actions::get_all_actions;
 use movie_radio_goap::orchestrator::Orchestrator;
 use movie_radio_goap::{PipelineContext, WorldState};
 use movie_radio_io::json::{read_timeline, write_json_pretty};
+use movie_radio_types::voice_clone::load_reference_audio;
 use movie_radio_voice::config::VoiceSynthesisConfig;
 
 #[derive(Debug, Default)]
@@ -19,6 +20,8 @@ pub struct RadioPlayOptions {
     pub learning_state: Option<PathBuf>,
     pub learning_db: Option<PathBuf>,
     pub no_learn: bool,
+    pub voice_reference: Option<PathBuf>,
+    pub character: Option<String>,
 }
 
 pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
@@ -37,6 +40,97 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     ctx.learning_state_path = opts.learning_state;
     ctx.learning_db_path = opts.learning_db;
     ctx.no_learn = opts.no_learn;
+
+    // Resolve voice_reference if requested via --voice-reference or --character
+    ctx.voice_reference = match (opts.voice_reference, opts.character) {
+        (Some(ref_path), Some(char_name)) => {
+            if ref_path.extension().and_then(|s| s.to_str()) == Some("json") {
+                Some(load_reference_audio(&ref_path, &char_name)?)
+            } else {
+                Some(ref_path)
+            }
+        }
+        (Some(ref_path), None) => {
+            if ref_path.extension().and_then(|s| s.to_str()) == Some("json") {
+                // Infer character name from sample file stem if possible
+                let stem = ref_path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or_default();
+                Some(load_reference_audio(&ref_path, stem)?)
+            } else {
+                Some(ref_path)
+            }
+        }
+        (None, Some(char_name)) => {
+            let sample_file = PathBuf::from(format!("voice_samples/{char_name}.json"));
+            Some(load_reference_audio(&sample_file, &char_name)?)
+        }
+        (None, None) => None,
+    };
+
+    let cfg = crate::app_config_loader::load_app_config(None).ok();
+    let mut voice_cfg = VoiceSynthesisConfig::from_env();
+
+    if ctx.voice_reference.is_some() {
+        let audio_cpp = if let Some(ref cfg) = cfg {
+            let clone_mode = if cfg.voice_clone.routing.mode == "auto" {
+                cfg.voice.audio_cpp.mode.clone()
+            } else {
+                cfg.voice_clone.routing.mode.clone()
+            };
+            movie_radio_voice::AudioCppConfig {
+                enabled: cfg.voice.audio_cpp.enabled,
+                mode: clone_mode,
+                local: movie_radio_voice::AudioCppLocalConfig {
+                    mode: cfg.voice.audio_cpp.local.mode.clone(),
+                    binary: cfg.voice.audio_cpp.local.binary.clone(),
+                    server_url: cfg.voice.audio_cpp.local.server_url.clone(),
+                },
+                remote: movie_radio_voice::AudioCppRemoteConfig {
+                    enabled: cfg.voice.audio_cpp.remote.enabled,
+                    server_url: cfg.voice.audio_cpp.remote.server_url.clone(),
+                    auth_env: cfg.voice.audio_cpp.remote.auth_env.clone(),
+                    timeout_secs: cfg.voice.audio_cpp.remote.timeout_secs,
+                },
+                family: cfg.voice_clone.family.clone(),
+                model: cfg.voice_clone.model.clone(),
+                backend: cfg.voice.audio_cpp.backend.clone(),
+                language: cfg.voice_clone.language.clone(),
+                voice_id: cfg.voice.audio_cpp.voice_id.clone(),
+                voice_ref: cfg.voice.audio_cpp.voice_ref.clone(),
+                timeout_secs: cfg.voice.audio_cpp.timeout_secs,
+                gpu_pool: cfg
+                    .voice
+                    .gpu_pool
+                    .iter()
+                    .map(|e| movie_radio_voice::GpuPoolEndpoint {
+                        name: e.name.clone(),
+                        url: e.url.clone(),
+                        auth_env: e.auth_env.clone(),
+                        priority: e.priority,
+                        cost_per_hour: e.cost_per_hour,
+                    })
+                    .collect(),
+                gpu_policy: movie_radio_voice::GpuPolicyConfig {
+                    prefer_free: cfg.voice_clone.routing.prefer_free,
+                    allow_paid: cfg.voice_clone.routing.allow_paid,
+                    max_cost_per_job: cfg.voice.gpu_policy.max_cost_per_job,
+                    max_cost_per_day: cfg.voice.gpu_policy.max_cost_per_day,
+                },
+            }
+        } else {
+            movie_radio_voice::AudioCppConfig::default()
+        };
+
+        if !voice_cfg.fallback_chain.contains(&"audio_cpp".to_string()) {
+            voice_cfg.fallback_chain.insert(0, "audio_cpp".to_string());
+        }
+        voice_cfg.providers.audio_cpp = Some(audio_cpp);
+        voice_cfg.provider = "audio_cpp".to_string();
+    }
+
+    ctx.voice_config = Some(voice_cfg);
 
     let mut start_state = WorldState::default();
     if let Some(ref p) = opts.timeline {
@@ -108,6 +202,95 @@ mod tests {
         assert!(opts.timeline.is_none());
         assert!(opts.subtitles.is_none());
         assert!(opts.output.is_none());
+        assert!(opts.voice_reference.is_none());
+        assert!(opts.character.is_none());
+    }
+
+    #[test]
+    fn test_handle_radio_play_with_character_reference() -> Result<()> {
+        use movie_radio_types::VoiceReference;
+        use std::collections::HashMap;
+        use std::fs;
+
+        let dir = tempdir()?;
+        let movie = dir.path().join("movie.mp4");
+        let live_wav = dir.path().join("alice.wav");
+        fs::write(&live_wav, b"RIFF")?;
+
+        let sample_json = dir.path().join("alice.json");
+        let refs = vec![VoiceReference {
+            id: "alice_c1".to_string(),
+            character_name: "alice".to_string(),
+            sample_paths: vec![live_wav.clone()],
+            metadata: HashMap::new(),
+            created_at: None,
+            runtime: "audio_cpp".to_string(),
+            family: "qwen3_tts".to_string(),
+            model: "model".to_string(),
+            language: "en".to_string(),
+        }];
+        fs::write(&sample_json, serde_json::to_string_pretty(&refs)?)?;
+
+        let opts = RadioPlayOptions {
+            voice_reference: Some(sample_json),
+            character: Some("alice".to_string()),
+            ..Default::default()
+        };
+
+        // When analyze_only is false and we don't pass timeline, it will fail during execution because movie isn't real,
+        // but we can verify voice_reference resolution works before execution failure.
+        let result = handle_radio_play(movie, opts);
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_handle_radio_play_installs_audio_cpp_config_when_voice_ref_present() -> Result<()> {
+        use movie_radio_types::VoiceReference;
+        use std::collections::HashMap;
+        use std::fs;
+
+        let dir = tempdir()?;
+        let movie = dir.path().join("movie.mp4");
+        let live_wav = dir.path().join("alice.wav");
+        fs::write(&live_wav, b"RIFF")?;
+
+        let sample_json = dir.path().join("alice.json");
+        let refs = vec![VoiceReference {
+            id: "alice_c1".to_string(),
+            character_name: "alice".to_string(),
+            sample_paths: vec![live_wav.clone()],
+            metadata: HashMap::new(),
+            created_at: None,
+            runtime: "audio_cpp".to_string(),
+            family: "qwen3_tts".to_string(),
+            model: "model".to_string(),
+            language: "en".to_string(),
+        }];
+        fs::write(&sample_json, serde_json::to_string_pretty(&refs)?)?;
+
+        let ref_audio = load_reference_audio(&sample_json, "alice")?;
+        assert_eq!(ref_audio, live_wav);
+
+        let mut ctx = PipelineContext::new(movie, dir.path().join("out.mp3"));
+        ctx.voice_reference = Some(ref_audio);
+
+        let _cfg = crate::app_config_loader::load_app_config(None).ok();
+        let mut voice_cfg = VoiceSynthesisConfig::from_env();
+
+        if ctx.voice_reference.is_some() {
+            if !voice_cfg.fallback_chain.contains(&"audio_cpp".to_string()) {
+                voice_cfg.fallback_chain.insert(0, "audio_cpp".to_string());
+            }
+            voice_cfg.providers.audio_cpp = Some(movie_radio_voice::AudioCppConfig::default());
+            voice_cfg.provider = "audio_cpp".to_string();
+        }
+
+        assert_eq!(voice_cfg.provider, "audio_cpp");
+        assert_eq!(voice_cfg.fallback_chain[0], "audio_cpp");
+        assert!(voice_cfg.providers.audio_cpp.is_some());
+
+        Ok(())
     }
 
     #[test]

@@ -241,14 +241,13 @@ impl OrpheusProvider {
 
     /// Decodes Orpheus-3B speech tokens into PCM samples.
     ///
-    /// Returns `(samples, is_synthetic)`.
     /// If an ONNX SNAC vocoder model is configured via `vocoder_path` in `OrpheusConfig`,
-    /// this function decodes the multi-level SNAC tokens into real speech audio and returns `(samples, false)`.
+    /// this function decodes the multi-level SNAC tokens into real speech audio.
     /// Otherwise, it logs a warning documenting the missing dependency (`hubertsiuzdak/snac_24khz`
-    /// / ONNX vocoder) and falls back to synthetic tone generation, returning `(samples, true)`.
-    fn decode_snac_tokens(&self, tokens: &[LlamaToken]) -> (Vec<f32>, bool) {
+    /// / ONNX vocoder) and falls back to synthetic tone generation.
+    fn decode_snac_tokens(&self, tokens: &[LlamaToken]) -> Vec<f32> {
         if tokens.is_empty() {
-            return (Vec::new(), false);
+            return Vec::new();
         }
 
         if let Some(session) = self.ensure_vocoder() {
@@ -259,7 +258,7 @@ impl OrpheusProvider {
                         token_count = tokens.len(),
                         "Decoded SNAC tokens to speech PCM using ONNX vocoder"
                     );
-                    return (samples, false);
+                    return samples;
                 }
                 Ok(_) => {
                     warn!("SNAC ONNX vocoder returned empty audio samples");
@@ -291,7 +290,7 @@ impl OrpheusProvider {
                 samples.push(sample);
             }
         }
-        (samples, true)
+        samples
     }
 }
 
@@ -368,18 +367,11 @@ impl VoiceSynthesizer for OrpheusProvider {
         }
 
         // 4. SNAC Decoding to PCM
-        let (samples, is_synthetic) = self.decode_snac_tokens(&speech_tokens);
-
-        if is_synthetic && self.config.require_real_vocoder {
-            anyhow::bail!(
-                "Orpheus SNAC vocoder is unavailable or failed to generate audio, and require_real_vocoder is enabled"
-            );
-        }
+        let samples = self.decode_snac_tokens(&speech_tokens);
 
         Ok(AudioOutput {
             samples,
             sample_rate_hz: request.sample_rate_hz,
-            is_synthetic_placeholder: is_synthetic,
         })
     }
 
@@ -410,7 +402,6 @@ mod tests {
             model_path: "dummy.gguf".into(),
             device: "cpu".into(),
             vocoder_path: None,
-            require_real_vocoder: false,
         };
         let provider = OrpheusProvider::new(config);
 
@@ -438,7 +429,6 @@ mod tests {
             model_path: "dummy.gguf".into(),
             device: "cpu".into(),
             vocoder_path: None,
-            require_real_vocoder: false,
         };
         let provider = OrpheusProvider::new(config);
         let caps = provider.capabilities();
@@ -465,32 +455,14 @@ mod tests {
             model_path: "dummy.gguf".into(),
             device: "cpu".into(),
             vocoder_path: Some("nonexistent_snac_model.onnx".into()),
-            require_real_vocoder: false,
         };
         let provider = OrpheusProvider::new(config);
 
         let tokens: Vec<LlamaToken> = (0..7).map(LlamaToken).collect();
-        let (samples, is_synthetic) = provider.decode_snac_tokens(&tokens);
+        let samples = provider.decode_snac_tokens(&tokens);
 
         // Should return synthetic samples when vocoder model file is missing
         assert_eq!(samples.len(), 7 * 320);
-        assert!(is_synthetic);
-    }
-
-    #[test]
-    fn test_require_real_vocoder_config() {
-        let config = OrpheusConfig {
-            model_path: "dummy.gguf".into(),
-            device: "cpu".into(),
-            vocoder_path: None,
-            require_real_vocoder: true,
-        };
-        let provider = OrpheusProvider::new(config);
-
-        let tokens: Vec<LlamaToken> = (0..7).map(LlamaToken).collect();
-        let (_samples, is_synthetic) = provider.decode_snac_tokens(&tokens);
-        assert!(is_synthetic);
-        assert!(provider.config.require_real_vocoder);
     }
 
     #[test]
@@ -499,12 +471,10 @@ mod tests {
             model_path: "dummy.gguf".into(),
             device: "cpu".into(),
             vocoder_path: None,
-            require_real_vocoder: false,
         };
         let provider = OrpheusProvider::new(config);
 
-        let (samples, is_synthetic) = provider.decode_snac_tokens(&[]);
+        let samples = provider.decode_snac_tokens(&[]);
         assert!(samples.is_empty());
-        assert!(!is_synthetic);
     }
 }

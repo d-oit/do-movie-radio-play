@@ -29,7 +29,6 @@ impl VoiceSynthesizer for FakeProvider {
         Ok(AudioOutput {
             samples: vec![0.0; 8],
             sample_rate_hz: request.sample_rate_hz,
-            is_synthetic_placeholder: false,
         })
     }
 

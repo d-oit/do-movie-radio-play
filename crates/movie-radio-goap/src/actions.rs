@@ -254,24 +254,13 @@ impl Action for SynthesizeNarrator {
 
             match orchestrator.synthesize_with_provider(&request).await {
                 Ok((audio, provider_id)) => {
-                    let effective_provider = if audio.is_synthetic_placeholder {
-                        tracing::warn!(
-                            i = i + 1,
-                            provider = %provider_id,
-                            "Narration synthesized using synthetic fallback placeholder audio"
-                        );
-                        format!("{provider_id}:synthetic")
-                    } else {
-                        provider_id
-                    };
                     info!(
                         i = i + 1,
                         samples = audio.samples.len(),
-                        provider = %effective_provider,
                         "Narration synthesized"
                     );
                     ctx.narration_audio.push(Some(audio));
-                    ctx.narration_provider.push(Some(effective_provider));
+                    ctx.narration_provider.push(Some(provider_id));
                 }
                 Err(e) => {
                     tracing::warn!(i = i + 1, error = %e, "TTS failed, skipping");
@@ -343,7 +332,6 @@ mod tests {
         Some(movie_radio_voice::AudioOutput {
             samples: vec![0.25; len_samples],
             sample_rate_hz: 16_000,
-            is_synthetic_placeholder: false,
         })
     }
 
@@ -424,67 +412,6 @@ mod tests {
         let err = result.expect_err("synthesis failure expected without endpoint");
         assert!(err.to_string().contains("all 1 narration syntheses failed"));
         assert_eq!(ctx.voice_reference, Some(ref_path));
-    }
-
-    struct SyntheticMockProvider;
-
-    #[async_trait]
-    impl movie_radio_voice::VoiceSynthesizer for SyntheticMockProvider {
-        async fn synthesize(
-            &self,
-            request: &movie_radio_voice::SynthesisRequest,
-        ) -> anyhow::Result<movie_radio_voice::AudioOutput> {
-            Ok(movie_radio_voice::AudioOutput {
-                samples: vec![0.1; 1600],
-                sample_rate_hz: request.sample_rate_hz,
-                is_synthetic_placeholder: true,
-            })
-        }
-        fn capabilities(&self) -> movie_radio_voice::ProviderCapabilities {
-            movie_radio_voice::ProviderCapabilities {
-                supports_emotion: true,
-                supports_voice_cloning: false,
-                supports_streaming: false,
-                max_text_length: 4000,
-                languages: vec!["de".to_string(), "en".to_string()],
-                requires_gpu: false,
-            }
-        }
-        fn estimate_cost(&self, _len: usize) -> f64 {
-            0.0
-        }
-    }
-
-    #[tokio::test]
-    async fn test_synthesize_narrator_records_synthetic_provider_metadata() {
-        use movie_radio_voice::voice::SynthesisOrchestrator;
-        use std::collections::HashMap;
-
-        let mut providers: HashMap<String, Box<dyn movie_radio_voice::VoiceSynthesizer>> =
-            HashMap::new();
-        providers.insert("mock_orpheus".to_string(), Box::new(SyntheticMockProvider));
-
-        let orchestrator = SynthesisOrchestrator::from_test_providers(providers, &["mock_orpheus"]);
-        let request = movie_radio_voice::SynthesisRequest {
-            text: "Testing synthetic fallback".to_string(),
-            ..Default::default()
-        };
-
-        let (audio, provider_id) = orchestrator
-            .synthesize_with_provider(&request)
-            .await
-            .expect("synthesize");
-
-        assert!(audio.is_synthetic_placeholder);
-        assert_eq!(provider_id, "mock_orpheus");
-
-        let effective_provider = if audio.is_synthetic_placeholder {
-            format!("{provider_id}:synthetic")
-        } else {
-            provider_id
-        };
-
-        assert_eq!(effective_provider, "mock_orpheus:synthetic");
     }
 }
 

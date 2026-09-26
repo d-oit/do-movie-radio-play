@@ -147,7 +147,6 @@ impl VoiceSynthesizer for KokoroProvider {
         Ok(AudioOutput {
             samples,
             sample_rate_hz: request.sample_rate_hz,
-            is_synthetic_placeholder: false,
         })
     }
 

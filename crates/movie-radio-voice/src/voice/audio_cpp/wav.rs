@@ -110,6 +110,7 @@ pub(crate) fn decode_and_resample_wav(
         return Ok(AudioOutput {
             samples: mono_samples,
             sample_rate_hz: target_sample_rate_hz,
+            is_synthetic_placeholder: false,
         });
     }
 
@@ -131,6 +132,7 @@ pub(crate) fn decode_and_resample_wav(
     Ok(AudioOutput {
         samples: resampled,
         sample_rate_hz: target_sample_rate_hz,
+        is_synthetic_placeholder: false,
     })
 }
 

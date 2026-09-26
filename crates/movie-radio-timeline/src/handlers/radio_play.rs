@@ -7,7 +7,7 @@ use movie_radio_goap::orchestrator::Orchestrator;
 use movie_radio_goap::{PipelineContext, WorldState};
 use movie_radio_io::json::{read_timeline, write_json_pretty};
 use movie_radio_types::voice_clone::load_reference_audio;
-use movie_radio_voice::config::VoiceSynthesisConfig;
+use movie_radio_voice::config::{AudioCppConfig, VoiceSynthesisConfig};
 
 #[derive(Debug, Default)]
 pub struct RadioPlayOptions {
@@ -24,6 +24,26 @@ pub struct RadioPlayOptions {
     pub character: Option<String>,
 }
 
+/// Build the voice config for a run, ensuring clone references are reachable.
+///
+/// `SynthesisOrchestrator::synthesize_with_provider` skips every provider
+/// except `audio_cpp` when `reference_audio` is set, so for a
+/// `--voice-reference`/`--character` run that provider must be installed and
+/// preferred; otherwise the request can never be served and synthesis fails
+/// with "does not honor reference_audio".
+fn voice_config_for_reference(has_reference: bool) -> VoiceSynthesisConfig {
+    let mut config = VoiceSynthesisConfig::from_env();
+    if has_reference {
+        if config.providers.audio_cpp.is_none() {
+            config.providers.audio_cpp = Some(AudioCppConfig::default());
+        }
+        if !config.fallback_chain.iter().any(|p| p == "audio_cpp") {
+            config.fallback_chain.insert(0, "audio_cpp".to_string());
+        }
+    }
+    config
+}
+
 pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     let output_path = opts.output.clone().unwrap_or_else(|| {
         let mut out = movie.clone();
@@ -36,7 +56,6 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     // must not share the run_traces primary key.
     ctx.run_id = Some(movie_radio_goap::fallback_run_id(&ctx.movie_path));
     ctx.subtitles_path = opts.subtitles;
-    ctx.voice_config = Some(VoiceSynthesisConfig::from_env());
     ctx.learning_state_path = opts.learning_state;
     ctx.learning_db_path = opts.learning_db;
     ctx.no_learn = opts.no_learn;
@@ -68,6 +87,7 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
         }
         (None, None) => None,
     };
+    ctx.voice_config = Some(voice_config_for_reference(ctx.voice_reference.is_some()));
 
     let mut start_state = WorldState::default();
     if let Some(ref p) = opts.timeline {
@@ -144,6 +164,23 @@ mod tests {
     }
 
     #[test]
+    fn voice_config_installs_audio_cpp_for_reference() {
+        let with_reference = voice_config_for_reference(true);
+        assert!(with_reference.providers.audio_cpp.is_some());
+        assert_eq!(
+            with_reference.fallback_chain.first().map(String::as_str),
+            Some("audio_cpp")
+        );
+
+        let without_reference = voice_config_for_reference(false);
+        assert!(without_reference.providers.audio_cpp.is_none());
+        assert!(!without_reference
+            .fallback_chain
+            .iter()
+            .any(|p| p == "audio_cpp"));
+    }
+
+    #[test]
     fn test_handle_radio_play_with_character_reference() -> Result<()> {
         use movie_radio_types::VoiceReference;
         use std::collections::HashMap;
@@ -168,14 +205,18 @@ mod tests {
         }];
         fs::write(&sample_json, serde_json::to_string_pretty(&refs)?)?;
 
+        // Assert the resolver itself returns the configured sample; the dummy
+        // movie's execution failure is asserted separately so a resolver
+        // regression cannot masquerade as the expected pipeline failure.
+        assert_eq!(load_reference_audio(&sample_json, "alice")?, live_wav);
+
         let opts = RadioPlayOptions {
             voice_reference: Some(sample_json),
             character: Some("alice".to_string()),
             ..Default::default()
         };
 
-        // When analyze_only is false and we don't pass timeline, it will fail during execution because movie isn't real,
-        // but we can verify voice_reference resolution works before execution failure.
+        // The movie isn't real, so execution fails after reference resolution.
         let result = handle_radio_play(movie, opts);
         assert!(result.is_err());
         Ok(())

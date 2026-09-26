@@ -184,6 +184,10 @@ jobs:
       - run: cargo test --workspace
       - name: Run doc tests
         run: cargo test --workspace --doc
+      - name: Test high-quality-resample feature (sinc path)
+        run: |
+          cargo clippy --quiet -p movie-radio-pipeline --all-targets --features movie-radio-pipeline/high-quality-resample -- -D warnings
+          cargo test --quiet -p movie-radio-pipeline --features movie-radio-pipeline/high-quality-resample
 
   # ───────────────────────────────────────────────────
   coverage:

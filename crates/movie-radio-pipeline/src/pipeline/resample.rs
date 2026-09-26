@@ -104,4 +104,46 @@ mod tests {
         assert!((output[0] - 0.0).abs() < 1e-6);
         assert!((output[2] - 1.0).abs() < 1e-6);
     }
+
+    /// The whole point of the `high-quality-resample` feature: the sinc path
+    /// must differ measurably from linear interpolation for an in-band tone
+    /// (linear interpolation error is O((2πf/fs)²)). Guards against the
+    /// feature silently degrading to the linear fallback.
+    #[cfg(feature = "high-quality-resample")]
+    #[test]
+    fn resample_sinc_differs_from_linear_for_inband_tone() {
+        // 3 kHz tone at 48 kHz, downsampled to 16 kHz (3 kHz < 8 kHz Nyquist).
+        let input: Vec<f32> = (0..4800)
+            .map(|i| (i as f32 / 48_000.0 * 3_000.0 * std::f32::consts::TAU).sin())
+            .collect();
+        let sinc = resample(&input, 48_000, 16_000).unwrap();
+
+        // Local linear-interpolation reference (the cfg-gated helper is not
+        // compiled under this feature).
+        let ratio = 16_000_f64 / 48_000_f64;
+        let out_len = (input.len() as f64 * ratio).round() as usize;
+        let linear: Vec<f32> = (0..out_len)
+            .map(|i| {
+                let src_pos = i as f64 / ratio;
+                let idx = src_pos.floor() as usize;
+                let frac = (src_pos - idx as f64) as f32;
+                let a = input[idx];
+                let b = input.get(idx + 1).copied().unwrap_or(a);
+                a + (b - a) * frac
+            })
+            .collect();
+
+        let n = sinc.len().min(linear.len());
+        assert!(n > 1000, "suspiciously short output: {n}");
+        let max_diff = sinc[..n]
+            .iter()
+            .zip(&linear[..n])
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0_f32, f32::max);
+        assert!(
+            max_diff > 1e-4,
+            "sinc output identical to linear interpolation (max diff {max_diff})"
+        );
+        assert!(sinc.iter().all(|s| s.is_finite()));
+    }
 }

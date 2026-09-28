@@ -21,7 +21,9 @@ pub mod emotion;
 pub mod kokoro;
 pub mod modal;
 pub mod openai;
+#[cfg(feature = "orpheus")]
 pub mod orpheus;
+#[cfg(feature = "qwen3")]
 pub mod qwen3;
 
 #[async_trait]
@@ -181,13 +183,30 @@ impl SynthesisOrchestrator {
                 Box::new(kokoro::KokoroProvider::new(c)),
             );
         }
+        #[cfg(feature = "qwen3")]
         if let Some(c) = config.providers.qwen3 {
             providers.insert("qwen3".to_string(), Box::new(qwen3::Qwen3Provider::new(c)));
         }
+        #[cfg(feature = "orpheus")]
         if let Some(c) = config.providers.orpheus {
             providers.insert(
                 "orpheus".to_string(),
                 Box::new(orpheus::OrpheusProvider::new(c)),
+            );
+        }
+        // A provider can be configured while this build compiled it out.
+        // Silently omitting it would surface later as an unexplained fallback
+        // through the rest of the chain, so say so explicitly.
+        #[cfg(not(feature = "qwen3"))]
+        if config.providers.qwen3.is_some() {
+            tracing::warn!(
+                "qwen3 is configured but this build has the `qwen3` feature disabled; skipping"
+            );
+        }
+        #[cfg(not(feature = "orpheus"))]
+        if config.providers.orpheus.is_some() {
+            tracing::warn!(
+                "orpheus is configured but this build has the `orpheus` feature disabled; skipping"
             );
         }
         if let Some(c) = config.providers.elevenlabs {

@@ -200,13 +200,18 @@ fn compute_time_domain_features(samples: &[f32]) -> (f32, f32) {
         return (0.0, 0.0);
     }
 
-    // Optimization: Calculate sum of squares via SIMD auto-vectorizable iterator map/sum.
-    let sum_sq: f32 = samples.iter().map(|&s| s * s).sum();
+    // Optimization: Single-pass fusion of sum-of-squares (RMS) and branchless zero-crossing tracking (ZCR)
+    // to reduce memory bandwidth and slice iteration overhead.
+    let mut sum_sq = samples[0] * samples[0];
+    let mut zero_crosses = 0u32;
+    let mut prev_is_nonneg = samples[0] >= 0.0;
 
-    // Optimization: Calculate zero-crossings via branchless window comparison across adjacent samples.
-    let zero_crosses = samples.windows(2).fold(0u32, |acc, w| {
-        acc + (((w[0] >= 0.0) != (w[1] >= 0.0)) as u32)
-    });
+    for &s in &samples[1..] {
+        sum_sq += s * s;
+        let is_nonneg = s >= 0.0;
+        zero_crosses += (is_nonneg != prev_is_nonneg) as u32;
+        prev_is_nonneg = is_nonneg;
+    }
 
     (
         (sum_sq / samples.len() as f32).sqrt(),

@@ -1,31 +1,23 @@
 # do-movie-radio-play
 
-Extracts non-voice timeline segments from movie audio to assist in radio play adaptation.
+`do-movie-radio-play` extracts non-voice timeline segments from movie audio and produces radio play audio adaptations.
 
 ## What It Does
 
-The tool analyzes input audio files to detect regions without speech, such as music, sound effects, and ambience.
-It calculates RMS energy and spectral features per frame, applies Voice Activity Detection (VAD), and clusters audio
-frames into non-voice segments suitable for production workflows.
+The tool processes movie audio to detect non-voice gaps (music, sound effects, ambience), generates scene descriptions
+for audio description, synthesizes narrator voice tracks, and mixes final radio play master audio files.
 
 ## Prerequisites
 
-- Rust 1.98.1 (the workspace MSRV is 1.88), including `rustfmt` and `clippy`
-- FFmpeg (required when processing non-WAV media containers or encoded audio streams)
-- ALSA development headers for local audio output
+- Rust 1.88 or higher (`rustc`, `cargo`, `rustfmt`, `clippy`)
+- FFmpeg (required when processing non-WAV media containers)
+- ALSA development libraries (`libasound2-dev` on Linux) when built with system playback support
 
-On a fresh Ubuntu-based development environment, provision the required Rust
-toolchain and native dependencies with:
+Development setup script:
 
 ```bash
-bash scripts/setup-dev.sh
+bash scripts/setup-dev-env.sh
 ```
-
-The setup script installs [Mise](https://mise.jdx.dev/) when necessary, then
-installs the repository-pinned Rust toolchain and configures Bash activation for
-future shells. It needs internet access and `apt-get` privileges for native
-packages. Restart your shell (or run `source ~/.bashrc`) after setup before
-using `cargo` directly.
 
 ## Build
 
@@ -33,52 +25,37 @@ using `cargo` directly.
 cargo build --workspace --release
 ```
 
-The compiled executable is placed at `target/release/timeline`.
+The compiled binary is placed at `target/release/timeline`.
 
 ## Commands
 
-- `extract <INPUT> --output <JSON>`: Run non-voice extraction pipeline on media file.
+- `extract <INPUT> --output <JSON>`: Extract non-voice timeline segments from media file.
 - `tag <INPUT_MEDIA> --input <JSON> --output <JSON>`: Assign acoustic classification tags (music, ambience) to segments.
-- `prompt <INPUT_JSON> --output <JSON>`: Generate text prompts for identified non-voice segments.
-- `review <INPUT_MEDIA> --input <JSON> --output <HTML>`: Generate interactive HTML review player.
-- `calibrate <CORRECTIONS_DIR> --profile <NAME>`: Produce calibration report from corrected timeline files.
-- `apply-calibration --report <JSON>`: Apply calibration report parameters to active profile.
-- `bench <INPUT_MEDIA> --output <JSON>`: Benchmark pipeline processing speed and stage timing metrics.
-- `gen-fixtures`: Generate synthetic test WAV fixtures for pipeline validation.
-- `validate` (alias `eval`) `<INPUT_MEDIA> --output <JSON>`: Evaluate segment classification against exactly one of `--truth-json`, `--subtitles`, or `--dataset-manifest`.
-- `ai-voice-extract <INPUT_JSON> --output <JSON>`: Extract speech segments for AI voice replacement workflows.
-- `verify-timeline <MEDIA> --timeline <JSON> --output <JSON>`: Validate segment spectral statistics against bounds.
+- `prompt <INPUT_JSON> --output <JSON>`: Generate AI narration prompts for tagged non-voice segments.
+- `review <INPUT_MEDIA> --input <JSON> [--output <HTML>]`: Generate interactive HTML review player.
+- `calibrate <CORRECTIONS_DIR> [--profile <NAME>]`: Generate calibration report from manual correction files.
+- `apply-calibration [--report <JSON>]`: Apply calibration parameters to active profile.
+- `bench <INPUT_MEDIA> [--output <JSON>]`: Benchmark processing speed and stage timing metrics.
+- `gen-fixtures [--output-dir <DIR>]`: Generate synthetic test WAV files for validation.
+- `validate` (alias `eval`) `<INPUT_MEDIA> [--output <JSON>]`: Evaluate accuracy against ground truth annotations.
+- `ai-voice-extract <INPUT_JSON> --output <JSON>`: Extract speech segments for voice replacement workflows.
+- `verify-timeline <MEDIA> --timeline <JSON> [--output <JSON>]`: Validate segment spectral statistics against bounds.
 - `update-thresholds`: Recalculate adaptive VAD thresholds using stored learning database runs.
-- `learning-stats [--radio-play]`: Display summary statistics from the local SQLite learning database.
-- `learning-log [--last N]`: Show recent learning rows.
-- `reset-learnings --confirm`: Reset learned adaptations (run history survives per ADR-122).
-- `export-learnings --output <JSON>`: Export the learning database to JSON.
+- `learning-stats [--radio-play]`: Display summary statistics from local SQLite learning database.
+- `learning-log [--last N]`: Show recent learning database records.
+- `reset-learnings --confirm`: Reset learned threshold adaptations (run history is preserved).
+- `export-learnings [--output <JSON>]`: Export learning database to JSON file.
 - `learning-experiments`: List calibration runs, applied profile versions, and experiment records.
-- `merge-timeline <INPUT> --output <JSON>`: Merge adjacent segments using gap duration thresholds.
-- `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Export timeline to external formats (JSON, EDL, VTT).
-- `radio-play <MOVIE>`: Run the radio-play pipeline via the GOAP orchestrator (gap → narrate → TTS → assemble → output). `--analyze-only` requires `--timeline` and emits gap analysis only. Generated narration describes the gap's actual detected content (grounded in tags/context) per German audio-description conventions — never content-free filler; see [ADR-128](plans/adr/0128-audio-description-standards.md).
-- `preview --input <WAV>`: Stream audio playback to system speakers for QA verification (requires the `playback` feature; `--skip`/`--duration` select a window).
-- `config validate [--config <TOML>]`: Validate the layered app config (defaults to `config/default.toml`).
-- `voice samples --character <NAME> --input <MOVIE>`: Extract per-character voice candidates.
-- `voice list`: Inventory stored voice references.
-- `voice test --character <NAME> --text <TEXT>`: Synthesize text with a stored voice reference.
-- `narrate [--dry-run] [--template <MD>]`: Render the narrator prompt template with example scene context; without `--dry-run` it calls the configured LLM backend (`openai` | `ollama_local` | `anthropic`).
-- `produce --input <MEDIA> [--resume <CHECKPOINT>] [--dry-run]`: Run the 12-stage production pipeline with checkpoint/resume. `ExtractAudio`, `VoiceActivityDetect`, `AudioMix`, and `Export` do real audio work; the remaining stages currently write placeholder JSON (see issue #336).
-
-## End-to-End Workflow
-
-```bash
-timeline extract movie.mp4 --output analysis/timeline.json
-timeline tag movie.mp4 --input analysis/timeline.json --output analysis/tagged.json
-timeline prompt --input-json analysis/tagged.json --output analysis/prompts.json
-timeline review movie.mp4 --input analysis/tagged.json --output reports/nonvoice-review.html
-timeline radio-play movie.mp4 --timeline analysis/tagged.json --analyze-only --output analysis/gaps.json
-```
-
-For the fixed anti-regression order (assets → fixtures → quality gate →
-benchmarks → regression check), run `bash scripts/run_standard_workflow.sh`.
-Contributor gates are defined in `plans/040-validation/ACCEPTANCE.md`, and the
-current app-usage reference is `plans/150-app-usage/PHASE-07-app-usage.md`.
+- `merge-timeline <INPUT> --output <JSON>`: Merge adjacent non-voice segments using gap duration thresholds.
+- `export <INPUT> --output <FILE> --format <json|edl|vtt>`: Export timeline to JSON, EDL, or VTT format.
+- `radio-play <MOVIE>`: Execute GOAP-driven radio play production (gap identification, narration, TTS, assembly).
+- `preview --input <WAV>`: Stream audio file playback to system speakers (requires `playback` feature).
+- `config validate [--config <TOML>]`: Validate application configuration format and values.
+- `voice samples --character <NAME> --input <MOVIE>`: Extract per-character voice sample candidates.
+- `voice list`: Display inventory of stored voice references.
+- `voice test --character <NAME> --text <TEXT>`: Synthesize speech using a stored character voice reference.
+- `narrate [--scene <N>] [--dry-run]`: Render narrator prompt template or request narration text from LLM backend.
+- `produce --input <MEDIA>`: Run 12-stage production pipeline with checkpoint persistence and resumption.
 
 ## Configuration
 
@@ -89,7 +66,7 @@ Configuration profiles are stored in `config/profiles/` (e.g., `modern-optimized
 - `sample_rate_hz`: Audio sample rate in Hz (default: 16000).
 - `frame_ms`: Analysis window duration in milliseconds (default: 20).
 - `speech_hangover_ms`: Post-speech hangover duration in milliseconds (default: 300).
-- `merge_gap_ms`: Gap threshold in milliseconds for merging adjacent segments (default: 250).
+- `merge_gap_ms`: Gap threshold for merging adjacent segments in milliseconds (default: 250).
 - `min_speech_ms`: Minimum speech segment duration in milliseconds (default: 120).
 - `min_non_voice_ms`: Minimum non-voice segment duration in milliseconds (default: 10000).
 - `max_non_voice_ms`: Optional maximum non-voice segment duration in milliseconds (default: null).
@@ -97,66 +74,53 @@ Configuration profiles are stored in `config/profiles/` (e.g., `modern-optimized
 - `vad_threshold_delta`: Delta added to baseline energy threshold (default: 0.0).
 - `prompt_min_duration_ms`: Minimum segment duration for prompt generation in milliseconds (default: 2500).
 - `prompt_min_confidence`: Minimum confidence threshold for prompt generation (default: 0.65).
-- `vad_engine`: Classification engine ("energy", "spectral", "hybrid", "webrtc", or "silero", default: "energy"). `webrtc` needs `timeline --features webrtc-vad`; `silero` is reserved and reports its status via ADR-127.
-
-### Narrator Voice Configuration (audio.cpp & GPU Cloud)
-
-The application supports `audio.cpp` runtime inference in `auto`, `local`, or `remote` mode. Local execution supports
-`audiocpp_cli` or local HTTP server. Remote execution connects to single or multi-endpoint GPU pools (free/credit
-and paid) with budget safeguards (`allow_paid`, `max_cost_per_job`, `max_cost_per_day`).
-For details, see [audio.cpp upstream docs](https://github.com/0xShug0/audio.cpp).
+- `vad_engine`: Classification engine ("energy", "spectral", "hybrid", "webrtc", "silero", default: "energy").
 - `parallel_features`: Enable multi-threaded feature extraction (default: true).
 - `merge_options`: Optional merge strategy configuration object (`min_gap_to_merge`, `merge_strategy`, etc.).
 - `spectral_flatness_max`: Upper bound threshold for spectral flatness (default: null).
 - `spectral_entropy_min`: Lower bound threshold for spectral entropy (default: null).
 - `spectral_centroid_min`: Lower bound threshold for spectral centroid in Hz (default: null).
 - `spectral_centroid_max`: Upper bound threshold for spectral centroid in Hz (default: null).
+- `voice_synthesis`: Configuration object for TTS providers and fallback chains (default: null).
 - `chunk_duration_sec`: Duration in seconds for chunked parallel processing (default: null).
 - `profile_id`: Profile identifier string (default: null).
 - `version`: Integer profile version number (default: null).
 - `experiment_tags`: Array of string tags for tracking experiment parameters.
+- `sound_effects`: Configuration object for SFX indexing, local paths, and API backends (default: null).
 
-### Sound Effects Engine (Provider & Compute Agnostic)
-
-SFX engine supports local library (`SFX_LOCAL_ROOT`), Freesound API (`FREESOUND_API_KEY` with HTTPS + license filtering `cc0`/`cc-by`), and AI generation endpoints (`SFX_AI_ENDPOINT`, `SFX_AI_MODE=auto|local|remote`) with free/paid GPU pool routing (`prefer_free`, `allow_paid`, `max_cost_per_job/day`), timeout and prompt/audio size bounds, and fade/normalization mixing.
-
-### Segment JSON Schema
+### Segment Output Schema
 
 - `start_ms`: Segment start timestamp in milliseconds.
 - `end_ms`: Segment end timestamp in milliseconds.
-- `kind`: Segment classification type ("Speech" or "NonVoice").
-- `confidence`: Classification confidence value between 0.0 and 1.0.
+- `kind`: Segment classification ("speech" or "non_voice").
+- `confidence`: Classification confidence score between 0.0 and 1.0.
 - `tags`: Array of acoustic tags (e.g., ["music"], ["ambience"]).
-- `prompt`: String prompt text or null.
-- `sfx_trigger`: Optional SFX trigger (`None`, `AutoSelect{tags,mood}`, `Specific{sfx_id}`, `AiGenerate{prompt,duration_secs}`).
+- `prompt`: Optional generated narration prompt string.
+- `sfx_trigger`: Optional SFX trigger (`none`, `auto_select`, `specific`, `ai_generate`).
 
 ## Validation Workflow
 
-Execute the verification steps to validate pipeline behavior:
+Run validation scripts and quality checks:
 
-1. Run validation suite across dataset: `python3 scripts/run_validation_manifest.py`
-2. Generate readiness report: `python3 scripts/build_radio_play_readiness_report.py`
-3. Perform workspace quality check: `bash scripts/quality_gate.sh`
-
-### Spectral VAD Performance Gate
-
-The quality gate in `scripts/quality_gate.sh` checks spectral VAD performance on `testdata/perf-manifest.json`:
-- `vad_ms` & `spectral_vad_ms` < 30ms (classification duration)
-- `frame_ms` < 150ms (framing and feature extraction duration)
-- `total_ms` < 500ms (total execution duration)
+```bash
+python3 scripts/run_validation_manifest.py
+python3 scripts/build_radio_play_readiness_report.py
+RUSTUP_TOOLCHAIN=stable-x86_64-unknown-linux-gnu bash scripts/quality_gate.sh
+```
 
 ## Export
 
-- `json`: Internal timeline structure with timestamps, confidence scores, tags, and prompts.
-- `edl`: CMX 3600 Edit Decision List for NLE audio software integration.
-- `vtt`: WebVTT format for subtitle and caption displays.
+Supported export formats:
+
+- `json`: Native timeline structure containing timestamps, confidence scores, tags, and prompts.
+- `edl`: CMX 3600 Edit Decision List for video and audio editing applications.
+- `vtt`: WebVTT format for subtitle timing.
 
 ## Known Limitations
 
-- Direct audio decoding without FFmpeg supports 16-bit PCM, 24-bit PCM, and 32-bit float WAV containers (MP3/FLAC/OGG via symphonia; other containers fall back to FFmpeg).
-- Spectral feature processing increases CPU usage relative to standard energy VAD.
-- HTML review player generation uses streaming output (`BufWriter`) to maintain constant memory overhead.
+- Direct audio decoding without FFmpeg is limited to 16-bit, 24-bit PCM, and 32-bit float WAV containers.
+- Local neural TTS providers (Kokoro, Orpheus, Qwen3) require optional feature flags and model weights.
 
 ## Development Workflow
 
-For details on contributor workflows, agent policies, and repository guidelines, see [AGENTS.md](AGENTS.md).
+For contributor guidelines and agent instructions, see [AGENTS.md](AGENTS.md).

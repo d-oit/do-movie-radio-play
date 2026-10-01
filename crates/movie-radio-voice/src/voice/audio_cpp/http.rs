@@ -24,6 +24,13 @@ fn resolve_remote_voice_ref(request: &SynthesisRequest, config: &AudioCppConfig)
         .as_deref()
         .filter(|p| !p.as_os_str().is_empty())
     {
+        if path
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
+        {
+            anyhow::bail!("reference audio path must not contain ..");
+        }
+
         // Enforce the offline boundary: remote upload happens only when the
         // request carries an explicit clip (ADR-0125: log when audio leaves
         // the local machine).
@@ -436,6 +443,21 @@ mod tests {
             resolved,
             base64::engine::general_purpose::STANDARD.encode(b"configured-bytes")
         );
+    }
+
+    #[test]
+    fn test_remote_voice_ref_rejects_parent_dir_traversal() {
+        let config = AudioCppConfig::default();
+        let request = SynthesisRequest {
+            reference_audio: Some(std::path::PathBuf::from("../secret/clip.wav")),
+            ..SynthesisRequest::default()
+        };
+        let res = resolve_remote_voice_ref(&request, &config);
+        assert!(res.is_err());
+        let err = res.err().unwrap();
+        assert!(err
+            .to_string()
+            .contains("reference audio path must not contain .."));
     }
 
     #[test]

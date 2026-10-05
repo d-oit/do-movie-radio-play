@@ -26,12 +26,10 @@ LANGS = {"de", "en", "es", "fr", "it", "pt", "pl", "tr", "ru", "nl", "cs", "ar",
 
 
 def ref_to_path(ref: str) -> str:
-    if ref and os.path.isfile(ref):
-        return ref
     try:
         raw = base64.b64decode(ref, validate=True)
     except Exception as exc:
-        raise HTTPException(400, "voice_ref must be a file path or base64 WAV") from exc
+        raise HTTPException(400, "voice_ref must be base64 WAV data") from exc
     path = os.path.join(tempfile.gettempdir(), hashlib.sha256(raw).hexdigest()[:16] + ".wav")
     with open(path, "wb") as fh:
         fh.write(raw)
@@ -51,7 +49,7 @@ def speech(body: dict):
     if language not in LANGS:
         raise HTTPException(400, f"unsupported language {language}")
     if not body.get("voice_ref"):
-        raise HTTPException(400, "voice_ref required: narration must use a film voice")
+        raise HTTPException(400, "voice_ref required: narration must use base64 WAV data")
     wav = tts.tts(
         text=text,
         speaker_wav=ref_to_path(body["voice_ref"]),

@@ -73,6 +73,8 @@ pub struct PipelineContext {
     pub run_id: Option<String>,
     /// Optional voice clone reference audio file path.
     pub voice_reference: Option<PathBuf>,
+    /// Overrides the gap confidence threshold (lower = more narrated gaps).
+    pub gap_confidence: Option<f32>,
 }
 
 impl PipelineContext {
@@ -99,6 +101,7 @@ impl PipelineContext {
             no_learn: false,
             run_id: None,
             voice_reference: None,
+            gap_confidence: None,
         }
     }
 }

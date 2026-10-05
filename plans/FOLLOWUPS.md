@@ -9,8 +9,8 @@ Each entry includes file path, description, priority, and suggested approach.
 
 | Path | Description | Priority |
 |------|-------------|----------|
-| `crates/movie-radio-goap/src/gaps/mod.rs` | 2026-10-05 three-film run (Elephants Dream, Sintel, Tears of Steel): gap threshold 0.8 yields only 5 / 1 / 8 narrations per ~11-15 min film, so output is mostly the original mix. Needs a coverage knob or visual input. | High |
-| `crates/movie-radio-render/src/sfx/` | SfxManager has an empty local library, so autofilled SFX triggers all warn "no SFX candidates found". Should source effects from the film's own non-voice segments. | High |
+| `crates/movie-radio-goap/src/gaps/mod.rs` | `--gap-confidence` added (Sintel 1→4 at 0.5), but coverage is capped by the detector marking few non-voice segments (#362). Needs the second detection axis or visual input. | High |
+| `crates/movie-radio-render/src/sfx/` | No local SFX library by default (warning demoted to debug); the film's own effects pass through the original track. Optional: layer extra clips from `assets/sfx/<tag>/`. | Low |
 | `crates/movie-radio-voice` | llama-cpp-2 0.1.158 (PR #373) renames `AddBos`/`str_to_token`/`is_eog_token`; `orpheus.rs` needs migration before bumping. | Low |
 
 ## Resolved

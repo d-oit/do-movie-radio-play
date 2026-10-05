@@ -132,7 +132,10 @@ impl Action for IdentifyVisualGaps {
             .transpose()?;
 
         info!("Identifying visual gaps");
-        let identifier = GapIdentifier::new();
+        let mut identifier = GapIdentifier::new();
+        if let Some(threshold) = ctx.gap_confidence {
+            identifier.high_confidence_threshold = threshold.clamp(0.0, 1.0);
+        }
         let gap_analysis = identifier.identify_gaps(timeline, srt_content.as_deref())?;
         info!(gaps = gap_analysis.gaps.len(), "Gaps identified");
         ctx.gap_analysis = Some(gap_analysis);

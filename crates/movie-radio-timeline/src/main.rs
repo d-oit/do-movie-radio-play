@@ -164,6 +164,7 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             voice_reference,
             character,
             language,
+            gap_confidence,
         } => handlers::handle_radio_play(
             movie,
             handlers::RadioPlayOptions {
@@ -179,6 +180,7 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
                 voice_reference,
                 character,
                 language,
+                gap_confidence,
             },
         ),
         Commands::Calibrate {

@@ -284,6 +284,9 @@ pub enum Commands {
         /// Narration language (text and TTS): `de` (default) or `en`.
         #[arg(long)]
         language: Option<String>,
+        /// Gap confidence threshold (default 0.8; lower narrates more gaps).
+        #[arg(long)]
+        gap_confidence: Option<f32>,
     },
     /// Preview a WAV file by streaming to system audio output.
     /// Useful for quick QA without writing intermediate files.

@@ -53,6 +53,7 @@ Use a **two-stage cascade**:
 Status update:
 - ✅ holdout-first scoring script added: `scripts/check_radio_play_readiness.py`
 - ✅ validation sweep CI now enforces holdout KPI gate
+- ✅ ratchet mode (#363): `check_radio_play_readiness.py --floors testdata/validation/readiness-floors.json` blocks regressions per holdout entry; `--update-floors` only raises floors, and only while the gate is green. The 0.95 targets stay the documented long-term ceiling (needs #362 and #364).
 - ✅ Wilson LB95 gate added: `scripts/check_radio_play_lb95.py`
 - ✅ content-type/cohort failure breakdown added: `scripts/build_radio_play_failure_breakdown.py`
 - ✅ consolidated readiness report added: `scripts/build_radio_play_readiness_report.py`

@@ -284,13 +284,16 @@ fn test_self_tags_take_precedence_over_neighbour_tags() {
 
 #[test]
 fn test_reject_banned_filler_substitutes_safe_fallback() {
-    for filler in BANNED_FILLER_ONLY {
-        assert_eq!(reject_banned_filler(filler.to_string()), SAFE_FALLBACK);
+    for filler in lang::phrases("de").banned_filler {
+        assert_eq!(
+            reject_banned_filler(filler.to_string()),
+            lang::phrases("de").fallback
+        );
     }
     // Padding whitespace must not evade the guardrail.
     assert_eq!(
         reject_banned_filler("  Stille.  ".to_string()),
-        SAFE_FALLBACK
+        lang::phrases("de").fallback
     );
 }
 
@@ -302,4 +305,26 @@ fn test_reject_banned_filler_leaves_real_content_untouched() {
     // positive: the guardrail only matches the *entire* trimmed text.
     let compound = "Nach der Stille ertönt ein Aufprall.".to_string();
     assert_eq!(reject_banned_filler(compound.clone()), compound);
+}
+
+#[test]
+fn test_english_narration_is_grounded_and_deterministic() {
+    let gen = NarrationGenerator::default().with_language("en");
+    let context = GapContext {
+        self_tags: vec!["impact_heavy".to_string()],
+        gap_duration_ms: 4000,
+        ..GapContext::default()
+    };
+    let a = gen.generate_text(&context, 20);
+    assert_eq!(a, "A heavy impact rings out.");
+    assert_eq!(a, gen.generate_text(&context, 20));
+    assert_eq!(
+        reject_banned_filler_for("Silence.".to_string(), lang::phrases("en")),
+        "The action continues without dialogue."
+    );
+    assert_eq!(
+        lang::phrases("EN-us").fallback,
+        lang::phrases("en").fallback
+    );
+    assert_eq!(lang::phrases("fr").fallback, lang::phrases("de").fallback);
 }

@@ -22,6 +22,7 @@ pub struct RadioPlayOptions {
     pub no_learn: bool,
     pub voice_reference: Option<PathBuf>,
     pub character: Option<String>,
+    pub language: Option<String>,
 }
 
 pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
@@ -71,6 +72,9 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
 
     let cfg = crate::app_config_loader::load_app_config(None).ok();
     let mut voice_cfg = VoiceSynthesisConfig::from_env();
+    if let Some(language) = opts.language.filter(|l| !l.trim().is_empty()) {
+        voice_cfg.language = language;
+    }
 
     if ctx.voice_reference.is_some() {
         let audio_cpp = if let Some(ref cfg) = cfg {

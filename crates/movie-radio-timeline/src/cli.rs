@@ -281,6 +281,9 @@ pub enum Commands {
         voice_reference: Option<PathBuf>,
         #[arg(long)]
         character: Option<String>,
+        /// Narration language (text and TTS): `de` (default) or `en`.
+        #[arg(long)]
+        language: Option<String>,
     },
     /// Preview a WAV file by streaming to system audio output.
     /// Useful for quick QA without writing intermediate files.

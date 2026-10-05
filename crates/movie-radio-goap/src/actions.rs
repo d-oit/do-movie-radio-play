@@ -12,6 +12,7 @@ use crate::gaps::GapIdentifier;
 use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
+use movie_radio_pipeline::pipeline::tags::add_tags_from_samples;
 use movie_radio_pipeline::pipeline::{extract_timeline, extract_timeline_from_samples_with_path};
 
 #[derive(Debug, Default)]
@@ -83,7 +84,12 @@ impl Action for ExtractTimeline {
         }
         info!("Extracting audio timeline");
         let timeline = if let Some(ref original) = ctx.original_audio {
-            extract_timeline_from_samples_with_path(original, &ctx.movie_path, &ctx.config)?
+            let mut timeline =
+                extract_timeline_from_samples_with_path(original, &ctx.movie_path, &ctx.config)?;
+            // Untagged segments never clear the gap-confidence threshold, so
+            // without this the narrator silently emits nothing.
+            add_tags_from_samples(original, ctx.sample_rate, &mut timeline, None);
+            timeline
         } else {
             extract_timeline(&ctx.movie_path, &ctx.config)?
         };
@@ -167,7 +173,11 @@ impl Action for GenerateNarration {
             .gaps;
 
         info!("Generating narration scripts");
-        let generator = NarrationGenerator::default();
+        let language = ctx.voice_config.as_ref().map_or_else(
+            || movie_radio_voice::config::VoiceSynthesisConfig::from_env().language,
+            |cfg| cfg.language.clone(),
+        );
+        let generator = NarrationGenerator::default().with_language(&language);
         let scripts = generator.generate(timeline, gaps)?;
         info!(scripts = scripts.len(), "Narration scripts generated");
         ctx.scripts = Some(scripts);

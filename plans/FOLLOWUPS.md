@@ -7,7 +7,11 @@ Each entry includes file path, description, priority, and suggested approach.
 **Updated:** 2026-08-25 — Added findings from workspace-wide improvement analysis (`plans/130-improvement-analysis-2026-08-25.md`)
 ## Open
 
-None — all triaged followups resolved.
+| Path | Description | Priority |
+|------|-------------|----------|
+| `crates/movie-radio-goap/src/gaps/mod.rs` | 2026-10-05 three-film run (Elephants Dream, Sintel, Tears of Steel): gap threshold 0.8 yields only 5 / 1 / 8 narrations per ~11-15 min film, so output is mostly the original mix. Needs a coverage knob or visual input. | High |
+| `crates/movie-radio-render/src/sfx/` | SfxManager has an empty local library, so autofilled SFX triggers all warn "no SFX candidates found". Should source effects from the film's own non-voice segments. | High |
+| `crates/movie-radio-voice` | llama-cpp-2 0.1.158 (PR #373) renames `AddBos`/`str_to_token`/`is_eog_token`; `orpheus.rs` needs migration before bumping. | Low |
 
 ## Resolved
 

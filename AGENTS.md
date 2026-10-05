@@ -37,7 +37,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | Dev Env Setup | `bash scripts/setup-dev-env.sh` |
 | Build | `cargo build --workspace` |
 | Test | `cargo test --workspace` |
-| Quality Gate | `bash scripts/quality_gate.sh` |
+| Quality Gate | `RUSTUP_TOOLCHAIN=stable-x86_64-unknown-linux-gnu bash scripts/quality_gate.sh` |
 | Docs Update | `bash scripts/update-all-docs.sh` |
 | Commit | `bash scripts/ai-commit.sh` |
 
@@ -53,6 +53,11 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - **Pre-existing issues**: Address pre-existing warnings or document in `plans/FOLLOWUPS.md`.
 - **Narration content**: Any code generating narration/gap-filling text must describe actual detected content (grounded in segment tags/context) — never content-free filler (e.g. bare "Stille."/"Pause."). See [ADR-128](plans/adr/0128-audio-description-standards.md) and [`.agents/skills/audio-description-writer/SKILL.md`](.agents/skills/audio-description-writer/SKILL.md).
 
+## Skill Activation Policy
+- Non-voice segmentation: Load [`.agents/skills/nonvoice-segmentation/SKILL.md`](.agents/skills/nonvoice-segmentation/SKILL.md)
+- CPU VAD parameters: Load [`.agents/skills/audio-vad-cpu/SKILL.md`](.agents/skills/audio-vad-cpu/SKILL.md)
+- Self-learning calibration: Load [`.agents/skills/self-learning-calibration/SKILL.md`](.agents/skills/self-learning-calibration/SKILL.md)
+
 ## Agent Coordination References
 - [.agents/ORCHESTRATION.md](.agents/ORCHESTRATION.md)
 - [.agents/skills/agent-coordination/SKILL.md](.agents/skills/agent-coordination/SKILL.md)
@@ -60,16 +65,13 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 
 ## Standard Workflow Loop
 All human and agent-driven development must follow this standard "plan → execute → review" loop:
-1. **Plan**: Propose/select an issue before editing code using GitHub issue templates:
-   - Use `🛠️ Coding Change` template for bug fixes, features, or architectural tasks (labels: `coding`, `radio-play`).
-   - Use `⚡ Performance Change` template for profiling, optimization, or database improvements (labels: `perf`, `learning`).
-   - Use `🤖 Agent/Harness Change` template for updates to agent skills, plans, or harness settings (labels: `agent`, `harness`).
-2. **Execute**: Create/update the plan (e.g. `plans/GOAP_STATE.md`), then write code in minimal, atomic commits using `scripts/ai-commit.sh`.
-3. **Review**: Ensure general correctness and verify code by running `scripts/quality_gate.sh` and workspace tests before submission.
+1. **Plan**: Propose/select an issue before editing code using GitHub issue templates.
+2. **Execute**: Create/update the plan, then write code in minimal, atomic commits using `scripts/ai-commit.sh`.
+3. **Review**: Ensure general correctness and verify code by running `scripts/quality_gate.sh` and workspace tests.
 
 ## Active Learning & Calibration Loop
 For any calibration/VAD verification task:
-- Always check priority review candidates first using the active learning filters.
+- Always check priority review candidates first using active learning filters.
 - Ensure profile changes are registered as experiments with unique `profile_id` and incremented `version` fields.
 
 ## Triage
@@ -78,12 +80,11 @@ Maintain zero open issues/PRs. A weekly reminder workflow (`.github/workflows/tr
 ## Template Sync
 | Pattern | Status | Notes |
 | --------- | ------ | ----- |
-| Gitleaks Scan | Adopted | `.gitleaks.toml` present |
+| Secret Scanning Enforcement | Adopted | `.gitleaks.toml` present |
 | Named Constants | Adopted | `bash readonly` block above |
-| Single Source Version | Adopted | `VERSION` file is the single source of truth |
-| `MAX_LINES_AGENTS_MD` | Adopted | Enforced at 150 lines (currently <= 100) |
-| Skill Frontmatter | Adopted | Verified in all `.agents/skills/*/SKILL.md` |
-| `ai-commit.sh` | Adopted | Available in `scripts/ai-commit.sh` |
-| `update-all-docs.sh` | Adopted | Available in `scripts/update-all-docs.sh` |
+| `./scripts/ai-commit.sh` Helper | Adopted | Available in `scripts/ai-commit.sh` |
+| `agents-docs/VERSION.md` Single-Source | Adopted | Root `VERSION` file is single source of truth |
+| `MAX_LINES_AGENTS_MD=150` Guard | Adopted | Enforced at 150 lines (currently <= 110) |
+| Skill Frontmatter Rule | Adopted | Verified in all `.agents/skills/*/SKILL.md` |
 | Agent Config Dirs | Adopted | `.jules/`, `.opencode/`, `.qwen/` present |
-| `VERSION` policy | Gap | `agents-docs/VERSION.md` missing (root `VERSION` used instead) |
+| `update-all-docs.sh` | Adopted | Available in `scripts/update-all-docs.sh` |

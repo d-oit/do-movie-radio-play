@@ -334,3 +334,19 @@ fn test_english_narration_is_grounded_and_deterministic() {
     );
     assert_eq!(lang::phrases("fr").fallback, lang::phrases("de").fallback);
 }
+
+#[test]
+fn test_tagged_window_text_is_only_its_own_content() {
+    let gen = NarrationGenerator::default();
+    let context = GapContext {
+        self_tags: vec!["music_bed".to_string()],
+        gap_reason: "Ambiguous SFX needing description; Audio environment change detected"
+            .to_string(),
+        gap_duration_ms: 15_000,
+        ..GapContext::default()
+    };
+    assert_eq!(
+        gen.generate_text(&context, 40),
+        "Musik untermalt die Szene."
+    );
+}

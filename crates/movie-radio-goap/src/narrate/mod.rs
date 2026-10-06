@@ -210,10 +210,14 @@ impl NarrationGenerator {
         if let Some(clause) = Self::content_clause(context, p) {
             chunks.push(clause);
         }
-        if let Some(clause) = Self::reason_clause(context, p) {
-            chunks.push(clause);
+        // Window tags already describe this stretch; the gap-level reason was
+        // derived from the whole segment and would repeat on every window.
+        if context.self_tags.is_empty() || chunks.is_empty() {
+            if let Some(clause) = Self::reason_clause(context, p) {
+                chunks.push(clause);
+            }
         }
-        if context.gap_duration_ms > 8000 {
+        if context.gap_duration_ms > 20_000 {
             chunks.push(p.long_passage);
         }
         if chunks.is_empty() {

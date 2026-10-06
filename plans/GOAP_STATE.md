@@ -63,3 +63,9 @@
 - Cues are a hard veto in `subtract_cues` (+300 ms pad), so only timings matter; the transcriber auto-detects the film's language (`--language` is the *narration* language).
 - Measured on the two truth films (narratable non-voice time that is truly dialogue, Silero detector): none → whisper-base cues → real subtitles = Tears of Steel 8.3% → 6.4% → 0.0%; Elephants Dream 9.1% → 4.4% → 0.0%. Whisper `small` gave no gain over `base` (6.5%). Whisper cue recall of dialogue time 0.61 (ToS) / 0.78 (ED) at +0.3 s pad.
 - Conclusion: auto cues remove roughly 25–50% of the leakage; they are not a substitute for real subtitles. Residual risk for unsubtitled films is 5–6% of narratable time. Next lever: ensemble (union) of Silero and whisper speech, or narrate only windows where both agree on non-speech.
+
+### Update: tuned speech-to-text cues (2026-10-06)
+- Correction: "union of Silero + whisper" was already how it worked (gaps = Silero non-voice minus cues), so the 6% residual was the combined result. The Silero threshold (0.05-0.3) and a wider pad alone barely moved it.
+- Cause of the misses: 1-3 s shouted lines over loud action ("Cut!", "Abort!", "Nooooo!") that whisper's built-in VAD pre-filter discards. `transcribe_cues.py` now runs with the filter off by default (`--vad` restores it): ~3 min per 12 min film on CPU instead of ~30 s.
+- Derived cues are rougher than authored ones, so they get an 800 ms pad (`DERIVED_CUE_PAD_MS`) vs 300 ms for real subtitles; derived cues cache to `<output>.cues.stt.srt`, embedded-track cues to `<output>.cues.srt`.
+- Result (narratable non-voice time that is truly dialogue / narratable seconds): Tears of Steel 8.3% -> 0.9% (563 -> 448 s); Elephants Dream 9.1% -> 2.4% (469 -> 388 s); real subtitles 0.0%. Dialogue-time recall of the cues at +0.8 s: 0.97 (ToS). Cost: 12-20% less narratable time from cues over music (precision ~0.5).

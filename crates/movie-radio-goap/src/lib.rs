@@ -75,6 +75,8 @@ pub struct PipelineContext {
     pub voice_reference: Option<PathBuf>,
     /// Overrides the gap confidence threshold (lower = more narrated gaps).
     pub gap_confidence: Option<f32>,
+    /// Cues came from speech-to-text, so gap clipping uses a wider safety pad.
+    pub subtitles_derived: bool,
 }
 
 impl PipelineContext {
@@ -102,6 +104,7 @@ impl PipelineContext {
             run_id: None,
             voice_reference: None,
             gap_confidence: None,
+            subtitles_derived: false,
         }
     }
 }

@@ -1,6 +1,9 @@
 //! Finds timed dialogue cues for a film, so narration can be vetoed against
 //! real speech even when the user supplies no subtitles.
 //!
+//! Exact sources (subtitles, embedded track) and derived speech-to-text cues are
+//! distinguished because derived timings are rougher and need a wider pad.
+//!
 //! Order: explicit `--subtitles`, sidecar `.srt`, embedded subtitle track,
 //! speech-to-text (`scripts/transcribe_cues.py`). Each fallback is best-effort:
 //! a failure logs why and the run continues on the detector alone.
@@ -62,39 +65,65 @@ fn transcribe(movie: &Path, out: &Path) -> bool {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Cues {
+    pub path: PathBuf,
+    /// True when timings come from speech-to-text rather than authored subtitles.
+    pub derived: bool,
+}
+
+fn exact(path: PathBuf) -> Option<Cues> {
+    Some(Cues {
+        path,
+        derived: false,
+    })
+}
+
 /// Returns the cue file to use, or `None` when the film has none and none
-/// could be derived. `cache` is where derived cues are written and reused.
+/// could be derived. `cache` is where embedded-track cues are written; speech-
+/// to-text cues go to the sibling `.stt.srt` so exact and derived never mix.
 pub(crate) fn resolve_cues(
     movie: &Path,
     explicit: Option<PathBuf>,
     language: Option<&str>,
     cache: &Path,
     auto: bool,
-) -> Option<PathBuf> {
-    if explicit.is_some() {
-        return explicit;
+) -> Option<Cues> {
+    if let Some(path) = explicit {
+        return exact(path);
     }
     if let Some(found) = sidecar_candidates(movie, language)
         .into_iter()
         .find(|p| has_cues(p))
     {
         info!(path = %found.display(), "using sidecar subtitles as dialogue cues");
-        return Some(found);
+        return exact(found);
     }
     if !auto {
         return None;
     }
     if has_cues(cache) {
-        info!(path = %cache.display(), "reusing derived dialogue cues");
-        return Some(cache.to_path_buf());
+        info!(path = %cache.display(), "reusing embedded-track dialogue cues");
+        return exact(cache.to_path_buf());
     }
     if extract_embedded(movie, cache) {
         info!("using embedded subtitle track as dialogue cues");
-        return Some(cache.to_path_buf());
+        return exact(cache.to_path_buf());
     }
-    if transcribe(movie, cache) {
-        info!(path = %cache.display(), "derived dialogue cues by speech-to-text");
-        return Some(cache.to_path_buf());
+    let stt = cache.with_extension("stt.srt");
+    if has_cues(&stt) {
+        info!(path = %stt.display(), "reusing speech-to-text dialogue cues");
+        return Some(Cues {
+            path: stt,
+            derived: true,
+        });
+    }
+    if transcribe(movie, &stt) {
+        info!(path = %stt.display(), "derived dialogue cues by speech-to-text");
+        return Some(Cues {
+            path: stt,
+            derived: true,
+        });
     }
     warn!("no dialogue cues available: narration relies on the VAD alone and may overlap speech");
     None
@@ -120,37 +149,52 @@ mod tests {
         );
     }
 
+    const CUE: &str = "1\n00:00:01,000 --> 00:00:02,000\n[speech]\n";
+
+    fn exact_cues(path: PathBuf) -> Option<Cues> {
+        Some(Cues {
+            path,
+            derived: false,
+        })
+    }
+
     #[test]
     fn explicit_wins_and_sidecar_is_found() {
         let dir = tempfile::tempdir().unwrap();
         let movie = dir.path().join("film.mp4");
-        std::fs::write(
-            dir.path().join("film.srt"),
-            "1\n00:00:01,000 --> 00:00:02,000\nx\n",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("film.srt"), CUE).unwrap();
         let cache = dir.path().join("cache.srt");
-        let explicit = Some(PathBuf::from("/x.srt"));
+        let explicit = PathBuf::from("/x.srt");
         assert_eq!(
-            resolve_cues(&movie, explicit.clone(), None, &cache, true),
-            explicit
+            resolve_cues(&movie, Some(explicit.clone()), None, &cache, true),
+            exact_cues(explicit)
         );
         assert_eq!(
             resolve_cues(&movie, None, None, &cache, false),
-            Some(dir.path().join("film.srt"))
+            exact_cues(dir.path().join("film.srt"))
         );
     }
 
     #[test]
-    fn nothing_found_when_auto_disabled_and_cache_reused_when_valid() {
+    fn caches_are_reused_and_speech_to_text_is_marked_derived() {
         let dir = tempfile::tempdir().unwrap();
         let movie = dir.path().join("film.mp4");
         let cache = dir.path().join("film.cues.srt");
         assert_eq!(resolve_cues(&movie, None, None, &cache, false), None);
-        std::fs::write(&cache, "1\n00:00:01,000 --> 00:00:02,000\n[speech]\n").unwrap();
+        std::fs::write(&cache, CUE).unwrap();
         assert_eq!(
             resolve_cues(&movie, None, None, &cache, true),
-            Some(cache.clone())
+            exact_cues(cache.clone())
+        );
+        std::fs::remove_file(&cache).unwrap();
+        let stt = dir.path().join("film.cues.stt.srt");
+        std::fs::write(&stt, CUE).unwrap();
+        assert_eq!(
+            resolve_cues(&movie, None, None, &cache, true),
+            Some(Cues {
+                path: stt,
+                derived: true
+            })
         );
         assert!(!has_cues(&dir.path().join("missing.srt")));
     }

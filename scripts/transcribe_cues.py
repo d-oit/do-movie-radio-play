@@ -6,7 +6,7 @@ Speech-to-text over the film's own audio gives exact dialogue spans that
 Needs: pip install faster-whisper. Text is discarded by the pipeline; only the
 timings matter, so a small model is enough.
 
-Usage: transcribe_cues.py MEDIA OUT.srt [--model base] [--language de]
+Usage: transcribe_cues.py MEDIA OUT.srt [--model base] [--language de] [--vad]
 """
 import argparse
 import sys
@@ -28,13 +28,17 @@ def main() -> int:
     ap.add_argument("out")
     ap.add_argument("--model", default="base")
     ap.add_argument("--language", default=None)
+    ap.add_argument("--vad", action=argparse.BooleanOptionalAction, default=False,
+                    help="whisper's VAD pre-filter: ~6x faster but drops short shouts over loud action "
+                    "(measured: dialogue leak 6.4%% vs 3.1%% on Tears of Steel)")
+    ap.add_argument("--vad-threshold", type=float, default=0.15)
     args = ap.parse_args()
     model = WhisperModel(args.model, device="cpu", compute_type="int8")
     segments, _ = model.transcribe(
         args.media,
         language=args.language,
-        vad_filter=True,
-        vad_parameters={"min_silence_duration_ms": 400},
+        vad_filter=args.vad,
+        vad_parameters={"min_silence_duration_ms": 400, "threshold": args.vad_threshold},
         word_timestamps=True,
         condition_on_previous_text=False,
     )

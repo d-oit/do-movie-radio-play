@@ -101,6 +101,8 @@ impl Action for ExtractTimeline {
 
 /// Safety margin around each subtitle cue, and the shortest stretch worth narrating.
 const SUBTITLE_PAD_MS: u64 = 300;
+/// Speech-to-text timings are rougher than authored subtitles.
+const DERIVED_CUE_PAD_MS: u64 = 800;
 const MIN_WINDOW_MS: u64 = 1_000;
 
 /// Re-derives each window's tags from its own audio so a long scene is
@@ -175,13 +177,18 @@ impl Action for IdentifyVisualGaps {
             identifier.high_confidence_threshold = threshold.clamp(0.0, 1.0);
         }
         let gap_analysis = identifier.identify_gaps(timeline, srt_content.as_deref())?;
+        let pad_ms = if ctx.subtitles_derived {
+            DERIVED_CUE_PAD_MS
+        } else {
+            SUBTITLE_PAD_MS
+        };
         let clear_gaps = match srt_content.as_deref() {
             Some(srt) => {
                 let cues: Vec<(u64, u64)> = movie_radio_validation::srt::parse_srt_segments(srt)?
                     .iter()
                     .map(|c| (c.start_ms, c.end_ms))
                     .collect();
-                let kept = subtract_cues(&gap_analysis.gaps, &cues, SUBTITLE_PAD_MS, MIN_WINDOW_MS);
+                let kept = subtract_cues(&gap_analysis.gaps, &cues, pad_ms, MIN_WINDOW_MS);
                 info!(
                     cues = cues.len(),
                     before = gap_analysis.gaps.len(),

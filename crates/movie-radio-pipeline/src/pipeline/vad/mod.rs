@@ -1,6 +1,8 @@
 mod energy;
 mod engine;
 mod hybrid;
+#[cfg(feature = "silero-vad")]
+mod silero;
 mod spectral;
 #[cfg(feature = "webrtc-vad")]
 mod webrtc;
@@ -75,7 +77,7 @@ pub fn create_engine(
         "silero" => {
             #[cfg(feature = "silero-vad")]
             {
-                bail!("VAD engine 'silero' is deferred (blocked on ort 2.x unification and model vendoring, see ADR-127 and MILESTONE-C-DECISION.md)");
+                Ok(Box::new(silero::SileroVad::new(_sample_rate_hz)?))
             }
             #[cfg(not(feature = "silero-vad"))]
             {

@@ -27,12 +27,13 @@ reqwest.workspace = true
 tokio.workspace = true
 async-trait.workspace = true
 webrtc-vad = { workspace = true, optional = true }
+ort = { workspace = true, optional = true }
 
 [features]
 default = []
 high-quality-resample = ["dep:rubato"]
 webrtc-vad = ["dep:webrtc-vad"]
-silero-vad = []
+silero-vad = ["dep:ort"]
 
 [dev-dependencies]
 rand.workspace = true

@@ -24,6 +24,7 @@ pub struct RadioPlayOptions {
     pub character: Option<String>,
     pub language: Option<String>,
     pub gap_confidence: Option<f32>,
+    pub vad_engine: Option<String>,
 }
 
 pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
@@ -43,6 +44,9 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     ctx.learning_db_path = opts.learning_db;
     ctx.no_learn = opts.no_learn;
     ctx.gap_confidence = opts.gap_confidence;
+    if let Some(engine) = opts.vad_engine {
+        ctx.config.vad_engine = engine;
+    }
 
     // Resolve voice_reference if requested via --voice-reference or --character
     ctx.voice_reference = match (opts.voice_reference, opts.character) {

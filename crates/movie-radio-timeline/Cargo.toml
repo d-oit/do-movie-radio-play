@@ -13,6 +13,7 @@ path = "src/main.rs"
 [features]
 playback = ["movie-radio-io/playback"]
 webrtc-vad = ["movie-radio-pipeline/webrtc-vad"]
+silero-vad = ["movie-radio-pipeline/silero-vad"]
 
 [dependencies]
 movie-radio-types.workspace = true

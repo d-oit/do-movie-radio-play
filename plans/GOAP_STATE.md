@@ -57,3 +57,9 @@
 
 - Default threshold 0.3 chosen on the dev film (curve flat 0.1–0.4), then confirmed on the holdout. Silero beats energy on all four metrics on both films, so the second-axis claim of #362 holds on two films. Still opt-in (needs model + ORT dylib).
 - Caveat: SRT cues include pauses, so absolute values are approximate. `timeline validate` speech metrics are vacuous (0/0=1.0) because predicted timelines contain only non-voice segments; the time-domain script is the real measure until that is fixed.
+
+## Films without subtitles — dialogue cues (2026-10-06)
+- `radio-play` now resolves dialogue cues itself (`handlers/cues.rs`): explicit `--subtitles` → sidecar `film[.lang].srt` → embedded subtitle track (ffmpeg) → speech-to-text (`scripts/transcribe_cues.py`, faster-whisper `base`, CPU, ~40 s per 12 min film). Derived cues are cached as `<output>.cues.srt`; `--no-auto-cues` disables. Any failure warns and falls back to the VAD alone. Sintel's MKV had embedded tracks all along (26 cues).
+- Cues are a hard veto in `subtract_cues` (+300 ms pad), so only timings matter; the transcriber auto-detects the film's language (`--language` is the *narration* language).
+- Measured on the two truth films (narratable non-voice time that is truly dialogue, Silero detector): none → whisper-base cues → real subtitles = Tears of Steel 8.3% → 6.4% → 0.0%; Elephants Dream 9.1% → 4.4% → 0.0%. Whisper `small` gave no gain over `base` (6.5%). Whisper cue recall of dialogue time 0.61 (ToS) / 0.78 (ED) at +0.3 s pad.
+- Conclusion: auto cues remove roughly 25–50% of the leakage; they are not a substitute for real subtitles. Residual risk for unsubtitled films is 5–6% of narratable time. Next lever: ensemble (union) of Silero and whisper speech, or narrate only windows where both agree on non-speech.

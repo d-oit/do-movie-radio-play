@@ -25,6 +25,7 @@ pub struct RadioPlayOptions {
     pub language: Option<String>,
     pub gap_confidence: Option<f32>,
     pub vad_engine: Option<String>,
+    pub no_auto_cues: bool,
 }
 
 fn silero_model_path() -> PathBuf {
@@ -53,7 +54,18 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     // Unique run id up front: same-movie runs started in the same second
     // must not share the run_traces primary key.
     ctx.run_id = Some(movie_radio_goap::fallback_run_id(&ctx.movie_path));
-    ctx.subtitles_path = opts.subtitles;
+    ctx.subtitles_path = if opts.analyze_only {
+        opts.subtitles
+    } else {
+        let cache = ctx.output_path.with_extension("cues.srt");
+        super::cues::resolve_cues(
+            &ctx.movie_path,
+            opts.subtitles,
+            opts.language.as_deref(),
+            &cache,
+            !opts.no_auto_cues,
+        )
+    };
     ctx.voice_config = Some(VoiceSynthesisConfig::from_env());
     ctx.learning_state_path = opts.learning_state;
     ctx.learning_db_path = opts.learning_db;

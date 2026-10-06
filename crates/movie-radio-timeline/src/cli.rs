@@ -290,6 +290,9 @@ pub enum Commands {
         /// VAD engine for extraction (energy, spectral, hybrid, webrtc, silero).
         #[arg(long)]
         vad_engine: Option<String>,
+        /// Do not derive dialogue cues (embedded track / speech-to-text) when no subtitles are given.
+        #[arg(long)]
+        no_auto_cues: bool,
     },
     /// Preview a WAV file by streaming to system audio output.
     /// Useful for quick QA without writing intermediate files.

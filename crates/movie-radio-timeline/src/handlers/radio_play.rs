@@ -27,6 +27,21 @@ pub struct RadioPlayOptions {
     pub vad_engine: Option<String>,
 }
 
+fn silero_model_path() -> PathBuf {
+    std::env::var_os("SILERO_VAD_MODEL")
+        .map_or_else(|| PathBuf::from("models/silero_vad.onnx"), PathBuf::from)
+}
+
+/// Prefer the neural VAD (best measured detector, see plans/GOAP_STATE.md)
+/// only when everything it needs is present; otherwise keep the configured one.
+fn default_vad_engine(
+    feature_built: bool,
+    model: &std::path::Path,
+    ort_found: bool,
+) -> Option<&'static str> {
+    (feature_built && ort_found && model.is_file()).then_some("silero")
+}
+
 pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     let output_path = opts.output.clone().unwrap_or_else(|| {
         let mut out = movie.clone();
@@ -44,8 +59,24 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     ctx.learning_db_path = opts.learning_db;
     ctx.no_learn = opts.no_learn;
     ctx.gap_confidence = opts.gap_confidence;
-    if let Some(engine) = opts.vad_engine {
-        ctx.config.vad_engine = engine;
+    match opts.vad_engine {
+        Some(engine) => ctx.config.vad_engine = engine,
+        None => {
+            if let Some(engine) = default_vad_engine(
+                cfg!(feature = "silero-vad"),
+                &silero_model_path(),
+                std::env::var_os("ORT_DYLIB_PATH").is_some(),
+            ) {
+                info!(engine, "using neural VAD (model and ONNX Runtime found)");
+                ctx.config.vad_engine = engine.to_string();
+            } else if cfg!(feature = "silero-vad") {
+                tracing::warn!(
+                    "silero VAD unavailable (need the model file and ORT_DYLIB_PATH); \
+                     falling back to '{}'. See scripts/fetch_silero_vad.sh",
+                    ctx.config.vad_engine
+                );
+            }
+        }
     }
 
     // Resolve voice_reference if requested via --voice-reference or --character
@@ -199,6 +230,19 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn default_engine_needs_feature_model_and_runtime() {
+        let model = tempfile::NamedTempFile::new().unwrap();
+        let missing = std::path::Path::new("/nonexistent/silero.onnx");
+        assert_eq!(
+            super::default_vad_engine(true, model.path(), true),
+            Some("silero")
+        );
+        assert_eq!(super::default_vad_engine(false, model.path(), true), None);
+        assert_eq!(super::default_vad_engine(true, model.path(), false), None);
+        assert_eq!(super::default_vad_engine(true, missing, true), None);
+    }
+
     use super::*;
     use movie_radio_types::{Segment, SegmentKind, TimelineOutput};
     use tempfile::tempdir;

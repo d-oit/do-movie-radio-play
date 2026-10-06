@@ -4,7 +4,13 @@ use movie_radio_types::{Segment, SegmentKind};
 
 pub fn parse_srt_segments(input: &str) -> Result<Vec<Segment>> {
     let mut speech = Vec::new();
-    for block in input.split("\n\n") {
+    // CRLF files (common for downloaded subtitles) and a UTF-8 BOM would
+    // otherwise collapse every cue into one block.
+    let normalized = input
+        .trim_start_matches('\u{feff}')
+        .replace("\r\n", "\n")
+        .replace('\r', "\n");
+    for block in normalized.split("\n\n") {
         let mut lines = block.lines().filter(|l| !l.trim().is_empty());
         let Some(first) = lines.next() else { continue };
         let time_line = if first.contains("-->") {
@@ -44,7 +50,7 @@ fn parse_stamp(stamp: &str) -> Option<u64> {
     let h: u64 = parts.next()?.parse().ok()?;
     let m: u64 = parts.next()?.parse().ok()?;
     let s_ms = parts.next()?;
-    let mut sec_parts = s_ms.split(',');
+    let mut sec_parts = s_ms.split([',', '.']);
     let s: u64 = sec_parts.next()?.parse().ok()?;
     let ms: u64 = sec_parts.next()?.parse().ok()?;
     Some((((h * 60 + m) * 60 + s) * 1000) + ms)
@@ -61,5 +67,19 @@ mod tests {
         let segs = parse_srt_segments(srt).unwrap_or_default();
         assert_eq!(segs.len(), 2);
         assert_eq!(segs[1].start_ms, 2000);
+    }
+
+    #[test]
+    fn parses_crlf_and_bom() {
+        let srt = "\u{feff}1\r\n00:00:00,000 --> 00:00:01,000\r\nHello\r\n\r\n2\r\n00:00:02,500 --> 00:00:03,000\r\nWorld\r\n";
+        let segs = parse_srt_segments(srt).unwrap_or_default();
+        assert_eq!(segs.len(), 2);
+        assert_eq!(segs[1].start_ms, 2500);
+    }
+
+    #[test]
+    fn accepts_dot_millisecond_separator() {
+        let segs = parse_srt_segments("1\n00:00:01.250 --> 00:00:02.000\nHi\n").unwrap_or_default();
+        assert_eq!((segs.len(), segs[0].start_ms), (1, 1250));
     }
 }

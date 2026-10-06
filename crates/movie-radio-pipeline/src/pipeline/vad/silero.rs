@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 const ENV_MODEL: &str = "SILERO_VAD_MODEL";
 const ENV_THRESHOLD: &str = "SILERO_VAD_THRESHOLD";
 const DEFAULT_MODEL: &str = "models/silero_vad.onnx";
-const DEFAULT_THRESHOLD: f32 = 0.5;
+const DEFAULT_THRESHOLD: f32 = 0.3;
 const WINDOW: usize = 512;
 const CONTEXT: usize = 64;
 const STATE_LEN: usize = 2 * 128;
@@ -19,7 +19,7 @@ const STATE_LEN: usize = 2 * 128;
 /// see `scripts/fetch_silero_vad.sh`) and an ONNX Runtime shared library
 /// (`ORT_DYLIB_PATH`). The pipeline `threshold` is tuned for energy RMS and is
 /// meaningless for a probability, so the cut-off comes from
-/// `SILERO_VAD_THRESHOLD` (default 0.5). Each call starts from a zero state,
+/// `SILERO_VAD_THRESHOLD` (default 0.3). Each call starts from a zero state,
 /// so identical input yields identical output.
 pub struct SileroVad {
     session: Session,
@@ -97,6 +97,17 @@ fn load_session(model: &Path) -> Result<Session> {
         })
 }
 
+/// Piecewise-linear remap so `threshold` lands on 0.5, the middle of the
+/// tri-state ambiguous band; the threshold then steers the downstream decision.
+fn recentre(p: f32, threshold: f32) -> f32 {
+    let t = threshold.clamp(1e-3, 1.0 - 1e-3);
+    if p <= t {
+        0.5 * p / t
+    } else {
+        0.5 + 0.5 * (p - t) / (1.0 - t)
+    }
+}
+
 /// Map per-window probabilities onto pipeline frames by frame-centre time.
 fn frames_from_windows(
     probs: &[f32],
@@ -116,7 +127,7 @@ fn frames_from_windows(
             .copied()
             .unwrap_or(0.0);
         decisions.push(p >= threshold);
-        likelihoods.push(p);
+        likelihoods.push(recentre(p, threshold));
     }
     VadResult::new(decisions, likelihoods)
 }
@@ -165,6 +176,13 @@ mod tests {
         assert_eq!(r.decisions.len(), (3 * WINDOW).div_ceil(320));
         // Frame centres (160, 480, 800, 1120, 1440) fall in windows 0, 0, 1, 2, 2.
         assert_eq!(r.decisions, vec![false, false, true, false, false]);
+    }
+
+    #[test]
+    fn recentre_maps_threshold_to_half_and_keeps_order() {
+        assert!((recentre(0.8, 0.8) - 0.5).abs() < 1e-6);
+        assert_eq!((recentre(0.0, 0.3), recentre(1.0, 0.3)), (0.0, 1.0));
+        assert!(recentre(0.2, 0.3) < recentre(0.4, 0.3));
     }
 
     #[test]

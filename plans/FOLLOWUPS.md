@@ -11,6 +11,8 @@ Each entry includes file path, description, priority, and suggested approach.
 |------|-------------|----------|
 | `crates/movie-radio-goap/src/narrate/lang.rs` | 3-4 grounded variants per tag now rotate by narration index (no adjacent repeats; ToS 47 lines, top line ~11x). Still tag-level only: a richer description needs visual input or an LLM backend (ADR-126) fed the window's tags. | Medium |
 | `crates/movie-radio-render/src/sfx/` | No local SFX library by default (warning demoted to debug); the film's own effects pass through the original track. Optional: layer extra clips from `assets/sfx/<tag>/`. | Low |
+| `crates/movie-radio-validation/src/compare.rs` | `timeline validate` reports speech P/R as 1.0 (0/0) because the predicted timeline has no speech segments; derive speech time from the complement of non-voice over `--total-ms`. Blocks a real speech gate (#363). | High |
+| `config/profiles/modern-optimized.json` | Predicts one whole-film gap on Tears of Steel (see GOAP_STATE). Re-fit on both films, with Silero as the engine, before it is trusted as a shipping profile. | High |
 | `crates/movie-radio-voice` | llama-cpp-2 0.1.158 (PR #373) renames `AddBos`/`str_to_token`/`is_eog_token`; `orpheus.rs` needs migration before bumping. | Low |
 
 ## Resolved

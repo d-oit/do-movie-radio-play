@@ -218,8 +218,9 @@ fn vad_stage(mono: &[f32], frames: &[Frame], cfg: &AnalysisConfig, eff_thresh: f
 #[rustfmt::skip]
 fn smoothing_stage(speech: &[bool], frames: &[Frame], frame_likelihoods: &[f32], cfg: &AnalysisConfig, stage_ms: &mut StageDurations) -> Vec<bool> {
     let smoothed = timed_stage!(stage_ms, smooth_ms, {
-        tri_state::resolve_speech_with_ambiguity(
+        tri_state::resolve_speech(
             speech, frames, frame_likelihoods, cfg.frame_ms, cfg.speech_hangover_ms,
+            tri_state::engine_trusts_likelihood(&cfg.vad_engine),
         )
     });
     info!(stage = "smooth", ms = stage_ms.smooth_ms, "stage complete");

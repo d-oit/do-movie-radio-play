@@ -40,3 +40,20 @@
 - 2026-10-06: `--features silero-vad` (ort, load-dynamic) adds the `silero` engine; `radio-play --vad-engine silero`. Needs `scripts/fetch_silero_vad.sh` (model → `models/`, git-ignored) and `ORT_DYLIB_PATH`. Threshold via `SILERO_VAD_THRESHOLD` (default 0.5; results were identical at 0.3/0.5/0.7 on Elephants Dream).
 - Elephants Dream vs German SRT (`scripts/research/score_timeline_vs_srt.py`), energy → silero: non-voice P 0.779→0.807, non-voice R 0.628→0.856, speech P 0.341→0.439, speech R 0.518→0.355. Raw Silero (python, no smoothing) reaches non-voice R 0.955.
 - It improves both non-voice precision and recall, so it is an independent axis. It did **not** raise narration counts (gaps energy→silero: ED 5→4, Sintel 1→1, ToS 8→4): coverage is bounded by gap scoring in `gaps/mod.rs`, not only by detection. SRT spans include pauses, so absolute numbers are approximate. Default engine unchanged; flipping it needs the sweep re-fit (#363/#364).
+
+## Second film + Silero tri-state fix (#364, #362) — 2026-10-06
+- Second film: Tears of Steel (CC-BY). Timed `TOS-en.srt`/`TOS-de.srt` fetched with pinned SHA-256 by `scripts/fetch_test_assets.sh` (film itself behind `FETCH_SECOND_FILM=1`, 372 MB). Manifest: `testdata/validation/second-film-manifest.json` (tier C, a film no profile was fitted on); `check_validation_coverage.py --tier C` passes. en/de are one audio track, so this adds one film, not two.
+- **Parser bug found by this**: `srt::parse_srt_segments` split on `"\n\n"`, so CRLF/BOM subtitle files yielded one cue (TOS-en is CRLF). Fixed + tests; the same parser feeds gap scoring.
+- **Dev-fit profile does not generalise**: `modern-optimized` on ToS predicts one non-voice segment for the whole film (non-voice P 0.814 / R 1.000 = trivial "everything is a gap" baseline). This is the quantified cost of the one-film corpus. The 16-candidate sweep was **not** re-run.
+- **Tri-state bug**: the music/noise spectral vetoes ran before the engine likelihood and the engine threshold was never used, so a neural speech call was overruled by hand-built rules. `tri_state::resolve_speech(.., trust_likelihood)` now lets confident likelihoods win for `silero` only; Silero likelihoods are re-centred so `SILERO_VAD_THRESHOLD` maps to the ambiguity midpoint. Other engines unchanged.
+- Time-domain scores vs timed SRT (`scripts/research/score_timeline_vs_srt.py`), default config:
+
+| film | engine | speech P/R | non-voice P/R |
+|---|---|---|---|
+| Elephants Dream (dev) | energy | 0.341/0.518 | 0.779/0.628 |
+| Elephants Dream (dev) | silero 0.3 | 0.530/0.753 | 0.910/0.788 |
+| Tears of Steel (holdout) | energy | 0.188/0.580 | 0.847/0.482 |
+| Tears of Steel (holdout) | silero 0.3 | 0.412/0.651 | 0.918/0.808 |
+
+- Default threshold 0.3 chosen on the dev film (curve flat 0.1–0.4), then confirmed on the holdout. Silero beats energy on all four metrics on both films, so the second-axis claim of #362 holds on two films. Still opt-in (needs model + ORT dylib).
+- Caveat: SRT cues include pauses, so absolute values are approximate. `timeline validate` speech metrics are vacuous (0/0=1.0) because predicted timelines contain only non-voice segments; the time-domain script is the real measure until that is fixed.

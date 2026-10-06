@@ -163,9 +163,8 @@ mod tests {
         // 3 windows (96 ms): silence, speech, silence; 20 ms frames.
         let r = frames_from_windows(&[0.1, 0.9, 0.2], 3 * WINDOW, 16_000, 20, 0.5);
         assert_eq!(r.decisions.len(), (3 * WINDOW).div_ceil(320));
-        assert!(!r.decisions[0]);
-        assert!(r.decisions[2] && r.decisions[3]);
-        assert!(!r.decisions[r.decisions.len() - 1]);
+        // Frame centres (160, 480, 800, 1120, 1440) fall in windows 0, 0, 1, 2, 2.
+        assert_eq!(r.decisions, vec![false, false, true, false, false]);
     }
 
     #[test]

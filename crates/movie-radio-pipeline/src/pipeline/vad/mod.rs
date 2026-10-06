@@ -233,9 +233,10 @@ mod tests {
 
     #[test]
     #[cfg(feature = "silero-vad")]
-    fn silero_with_feature_reports_deferred_status() {
+    fn silero_with_feature_needs_model_file() {
+        std::env::set_var("SILERO_VAD_MODEL", "/nonexistent/silero_vad.onnx");
         let err = engine_error("silero", 0.5);
-        assert!(err.contains("deferred"), "got: {err}");
+        assert!(err.contains("fetch_silero_vad.sh"), "got: {err}");
     }
 
     #[test]

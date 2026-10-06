@@ -153,6 +153,7 @@ fn gap_context(tags: &[&str]) -> GapContext {
         after_kind: None,
         gap_duration_ms: 2_000,
         gap_reason: String::new(),
+        variant: 0,
     }
 }
 
@@ -349,4 +350,27 @@ fn test_tagged_window_text_is_only_its_own_content() {
         gen.generate_text(&context, 40),
         "Musik untermalt die Szene."
     );
+}
+
+#[test]
+fn test_variants_rotate_deterministically_and_stay_grounded() {
+    let gen = NarrationGenerator::default();
+    let text_for = |variant: usize| {
+        let context = GapContext {
+            self_tags: vec!["impact_heavy".to_string()],
+            gap_duration_ms: 15_000,
+            variant,
+            ..GapContext::default()
+        };
+        gen.generate_text(&context, 40)
+    };
+    let all: Vec<String> = (0..4).map(text_for).collect();
+    for pair in all.windows(2) {
+        assert_ne!(pair[0], pair[1], "adjacent variants must differ");
+    }
+    assert_eq!(text_for(4), all[0]);
+    assert_eq!(text_for(2), text_for(2));
+    for text in &all {
+        assert!(!lang::phrases("de").banned_filler.contains(&text.as_str()));
+    }
 }

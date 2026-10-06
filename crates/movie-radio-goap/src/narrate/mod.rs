@@ -72,7 +72,8 @@ impl NarrationGenerator {
                 continue;
             }
 
-            let context = self.extract_context(timeline, gap);
+            let mut context = self.extract_context(timeline, gap);
+            context.variant = scripts.len();
             let emotion = self.infer_emotion(&context);
             let text = reject_banned_filler_for(self.generate_text(&context, max_words), phrases);
 
@@ -233,11 +234,12 @@ impl NarrationGenerator {
     /// when the gap itself carries no known tag, so a loud neighbour can
     /// never drown out what the gap actually contains.
     fn content_clause(context: &GapContext, p: &Phrases) -> Option<&'static str> {
+        let variant = context.variant;
         let first_clause_for = |tags: &[&str]| -> Option<&'static str> {
             p.tag_clauses
                 .iter()
                 .find(|(tag, _)| tags.iter().any(|t| t == tag))
-                .map(|(_, clause)| *clause)
+                .and_then(|(_, clauses)| clauses.get(variant % clauses.len().max(1)).copied())
         };
 
         let own: Vec<&str> = context.self_tags.iter().map(String::as_str).collect();
@@ -334,6 +336,8 @@ struct GapContext {
     after_kind: Option<SegmentKind>,
     gap_duration_ms: u64,
     gap_reason: String,
+    /// Rotates among equivalent clauses so consecutive narrations differ.
+    variant: usize,
 }
 
 #[cfg(test)]

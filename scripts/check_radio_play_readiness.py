@@ -24,7 +24,13 @@ def metric_value(metrics: dict, key: str) -> float:
     return float(value)
 
 
-METRICS = ("non_voice_precision", "non_voice_recall", "overlap_ratio")
+METRICS = (
+    "non_voice_precision",
+    "non_voice_recall",
+    "overlap_ratio",
+    "speech_time_precision",
+    "speech_time_recall",
+)
 
 
 def load_floors(path: Path) -> dict:
@@ -108,6 +114,8 @@ def main() -> int:
         precision = metric_value(metrics, "non_voice_precision")
         recall = metric_value(metrics, "non_voice_recall")
         overlap = metric_value(metrics, "overlap_ratio")
+        speech_p = metric_value(metrics, "speech_time_precision")
+        speech_r = metric_value(metrics, "speech_time_recall")
         entry_id = result.get("id", "unknown")
 
         checks.append(
@@ -116,6 +124,8 @@ def main() -> int:
                 "non_voice_precision": precision,
                 "non_voice_recall": recall,
                 "overlap_ratio": overlap,
+                "speech_time_precision": speech_p,
+                "speech_time_recall": speech_r,
             }
         )
 

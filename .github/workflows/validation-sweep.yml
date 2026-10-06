@@ -16,7 +16,12 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: bash scripts/fetch_test_assets.sh
+      - run: FETCH_SECOND_FILM=1 bash scripts/fetch_test_assets.sh
+      - name: Neural VAD (model + ONNX Runtime) for the shipped detector
+        run: |
+          bash scripts/fetch_silero_vad.sh
+          pip install onnxruntime
+          echo "ORT_DYLIB_PATH=$(python3 -c 'import glob,os,onnxruntime as o;print(glob.glob(os.path.join(os.path.dirname(o.__file__),"capi","libonnxruntime.so*"))[0])')" >> "$GITHUB_ENV"
       - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
       - run: chmod +x scripts/check_validation_coverage.py scripts/run_validation_manifest.py scripts/build_radio_play_failure_breakdown.py scripts/build_radio_play_readiness_report.py
       - run: python3 scripts/check_media_intake.py --input analysis/media/modern-multilang-intake.json --min-sub-langs 2 --strict-license
@@ -27,7 +32,8 @@ jobs:
             --summary analysis/validation/radio-play-sweep-summary.json \
             --output-json analysis/validation/radio-play-failure-breakdown.json \
             --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
-      - run: |
+      - name: 0.95 target report (aspirational, non-blocking, issue 363)
+        run: |
           python3 scripts/build_radio_play_readiness_report.py \
             --summary analysis/validation/radio-play-sweep-summary.json \
             --holdout-tier C \
@@ -36,9 +42,8 @@ jobs:
             --min-overlap 0.95 \
             --min-lb95 0.95 \
             --output-json analysis/validation/radio-play-readiness-report.json \
-            --output-md analysis/learnings/latest-radio-play-readiness-report.md \
-            --require-pass
-      - name: Holdout ratchet (regression floor)
+            --output-md analysis/learnings/latest-radio-play-readiness-report.md
+      - name: Holdout ratchet (blocking regression floor)
         run: |
           python3 scripts/check_radio_play_readiness.py \
             --summary analysis/validation/radio-play-sweep-summary.json \

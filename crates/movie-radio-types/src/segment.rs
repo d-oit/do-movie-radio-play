@@ -35,6 +35,9 @@ pub struct VisualGap {
     pub confidence: f32,
     pub reason: String,
     pub priority: u32,
+    /// Acoustic tags of this exact span; empty when unknown.
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

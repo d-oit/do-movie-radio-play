@@ -8,7 +8,7 @@ mod verify;
 pub use assemble_action::AssembleRadioPlay;
 pub use verify::{ApplyLearnings, VerifyQuality};
 
-use crate::gaps::GapIdentifier;
+use crate::gaps::{split_gap_windows, GapIdentifier, MAX_NARRATION_WINDOW_MS};
 use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
@@ -99,6 +99,40 @@ impl Action for ExtractTimeline {
     }
 }
 
+/// Re-derives each window's tags from its own audio so a long scene is
+/// described by what is audible in that stretch, not by the whole segment.
+fn retag_windows(
+    windows: &mut [movie_radio_types::VisualGap],
+    samples: &[f32],
+    sr: u32,
+    file: &str,
+) {
+    use movie_radio_types::{Segment, SegmentKind, TimelineOutput};
+    let mut tl = TimelineOutput {
+        file: file.to_string(),
+        analysis_sample_rate: sr,
+        frame_ms: 20,
+        segments: windows
+            .iter()
+            .map(|w| Segment {
+                start_ms: w.start_ms,
+                end_ms: w.end_ms,
+                kind: SegmentKind::NonVoice,
+                confidence: w.confidence,
+                tags: Vec::new(),
+                prompt: None,
+                sfx_trigger: None,
+            })
+            .collect(),
+    };
+    add_tags_from_samples(samples, sr, &mut tl, None);
+    for (w, seg) in windows.iter_mut().zip(tl.segments) {
+        if !seg.tags.is_empty() {
+            w.tags = seg.tags;
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct IdentifyVisualGaps;
 
@@ -137,6 +171,14 @@ impl Action for IdentifyVisualGaps {
             identifier.high_confidence_threshold = threshold.clamp(0.0, 1.0);
         }
         let gap_analysis = identifier.identify_gaps(timeline, srt_content.as_deref())?;
+        let mut windows = split_gap_windows(&gap_analysis.gaps, MAX_NARRATION_WINDOW_MS);
+        if let Some(samples) = ctx.original_audio.as_deref() {
+            retag_windows(&mut windows, samples, ctx.sample_rate, &timeline.file);
+        }
+        let gap_analysis = movie_radio_types::GapAnalysisOutput {
+            gaps: windows,
+            ..gap_analysis
+        };
         info!(gaps = gap_analysis.gaps.len(), "Gaps identified");
         ctx.gap_analysis = Some(gap_analysis);
         Ok(())

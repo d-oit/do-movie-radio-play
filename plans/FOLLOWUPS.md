@@ -9,7 +9,7 @@ Each entry includes file path, description, priority, and suggested approach.
 
 | Path | Description | Priority |
 |------|-------------|----------|
-| `crates/movie-radio-goap/src/gaps/mod.rs` | `--gap-confidence` added (Sintel 1→4 at 0.5), but coverage is capped by the detector marking few non-voice segments (#362). Needs the second detection axis or visual input. | High |
+| `crates/movie-radio-goap/src/gaps/` | Gaps are now split into <=15 s windows with per-window tags (narrations: Sintel 1→25, ED 5→13, ToS 8→13). Remaining: narration text vocabulary is small (9 tag clauses), so long scenes repeat similar lines. | Medium |
 | `crates/movie-radio-render/src/sfx/` | No local SFX library by default (warning demoted to debug); the film's own effects pass through the original track. Optional: layer extra clips from `assets/sfx/<tag>/`. | Low |
 | `crates/movie-radio-voice` | llama-cpp-2 0.1.158 (PR #373) renames `AddBos`/`str_to_token`/`is_eog_token`; `orpheus.rs` needs migration before bumping. | Low |
 

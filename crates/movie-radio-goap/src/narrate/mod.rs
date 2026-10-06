@@ -52,10 +52,12 @@ impl NarrationGenerator {
         timeline: &TimelineOutput,
         gaps: &[VisualGap],
     ) -> Result<Vec<NarrationScript>> {
-        let mut scripts = Vec::new();
+        let mut scripts: Vec<NarrationScript> = Vec::new();
         let phrases = lang::phrases(&self.language);
 
-        for gap in gaps {
+        let mut ordered: Vec<&VisualGap> = gaps.iter().collect();
+        ordered.sort_by_key(|g| g.start_ms);
+        for gap in ordered {
             if gap.confidence < 0.4 {
                 continue;
             }
@@ -80,6 +82,14 @@ impl NarrationGenerator {
                     max_words,
                     "gap too short for any whole narration clause; leaving unnarrated"
                 );
+                continue;
+            }
+
+            // Repeating the same line for the next window adds nothing to a listener.
+            if scripts
+                .last()
+                .is_some_and(|prev| prev.gap_end_ms == gap.start_ms && prev.text == text)
+            {
                 continue;
             }
 
@@ -121,7 +131,9 @@ impl NarrationGenerator {
         // before/after segments, so it skips the segment overlapping the
         // gap itself — without this explicit lookup its tags would never
         // be seen.
-        if let Some(seg) = timeline
+        if !gap.tags.is_empty() {
+            context.self_tags = gap.tags.clone();
+        } else if let Some(seg) = timeline
             .segments
             .iter()
             .find(|seg| seg.start_ms == gap.start_ms && seg.end_ms == gap.end_ms)

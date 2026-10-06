@@ -68,6 +68,7 @@ fn test_generate_skips_gap_too_short_for_any_whole_clause() {
         confidence: 0.9,
         reason: "Short pause".to_string(),
         priority: 1,
+        tags: Vec::new(),
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
@@ -117,6 +118,7 @@ fn test_generate_with_gap() {
         confidence: 0.8,
         reason: "Extended ambience".to_string(),
         priority: 5,
+        tags: Vec::new(),
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
@@ -135,6 +137,7 @@ fn test_low_confidence_gap_skipped() {
         confidence: 0.2,
         reason: "weak".to_string(),
         priority: 1,
+        tags: Vec::new(),
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
@@ -198,6 +201,7 @@ fn test_generate_text_is_grounded_not_filler() {
         confidence: 0.9,
         reason: "Duration (12000ms) > 3000ms; Ambiguous SFX needing description".to_string(),
         priority: 5,
+        tags: Vec::new(),
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
@@ -231,6 +235,7 @@ fn test_generate_text_is_deterministic() {
         confidence: 0.9,
         reason: "Extended ambience".to_string(),
         priority: 3,
+        tags: Vec::new(),
     }];
 
     let first = gen.generate(&timeline, &gaps).unwrap();
@@ -272,6 +277,7 @@ fn test_self_tags_take_precedence_over_neighbour_tags() {
         confidence: 0.9,
         reason: "Audio environment change detected".to_string(),
         priority: 4,
+        tags: Vec::new(),
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();

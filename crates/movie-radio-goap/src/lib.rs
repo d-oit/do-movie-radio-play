@@ -476,3 +476,5 @@ mod trace_quality_tests {
 
 #[cfg(test)]
 mod lib_tests;
+#[cfg(test)]
+mod placement_tests;

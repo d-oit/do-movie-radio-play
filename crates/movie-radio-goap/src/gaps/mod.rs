@@ -1,5 +1,5 @@
 mod split;
-pub use split::{split_gap_windows, MAX_NARRATION_WINDOW_MS};
+pub use split::{split_gap_windows, subtract_cues, MAX_NARRATION_WINDOW_MS};
 
 use anyhow::Result;
 use movie_radio_types::{GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap};

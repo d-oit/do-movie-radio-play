@@ -8,7 +8,7 @@ mod verify;
 pub use assemble_action::AssembleRadioPlay;
 pub use verify::{ApplyLearnings, VerifyQuality};
 
-use crate::gaps::{split_gap_windows, GapIdentifier, MAX_NARRATION_WINDOW_MS};
+use crate::gaps::{split_gap_windows, subtract_cues, GapIdentifier, MAX_NARRATION_WINDOW_MS};
 use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
@@ -99,6 +99,10 @@ impl Action for ExtractTimeline {
     }
 }
 
+/// Safety margin around each subtitle cue, and the shortest stretch worth narrating.
+const SUBTITLE_PAD_MS: u64 = 300;
+const MIN_WINDOW_MS: u64 = 1_000;
+
 /// Re-derives each window's tags from its own audio so a long scene is
 /// described by what is audible in that stretch, not by the whole segment.
 fn retag_windows(
@@ -171,7 +175,24 @@ impl Action for IdentifyVisualGaps {
             identifier.high_confidence_threshold = threshold.clamp(0.0, 1.0);
         }
         let gap_analysis = identifier.identify_gaps(timeline, srt_content.as_deref())?;
-        let mut windows = split_gap_windows(&gap_analysis.gaps, MAX_NARRATION_WINDOW_MS);
+        let clear_gaps = match srt_content.as_deref() {
+            Some(srt) => {
+                let cues: Vec<(u64, u64)> = movie_radio_validation::srt::parse_srt_segments(srt)?
+                    .iter()
+                    .map(|c| (c.start_ms, c.end_ms))
+                    .collect();
+                let kept = subtract_cues(&gap_analysis.gaps, &cues, SUBTITLE_PAD_MS, MIN_WINDOW_MS);
+                info!(
+                    cues = cues.len(),
+                    before = gap_analysis.gaps.len(),
+                    after = kept.len(),
+                    "gaps clipped against subtitle cues"
+                );
+                kept
+            }
+            None => gap_analysis.gaps.clone(),
+        };
+        let mut windows = split_gap_windows(&clear_gaps, MAX_NARRATION_WINDOW_MS);
         if let Some(samples) = ctx.original_audio.as_deref() {
             retag_windows(&mut windows, samples, ctx.sample_rate, &timeline.file);
         }

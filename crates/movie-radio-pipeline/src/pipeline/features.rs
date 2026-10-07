@@ -381,11 +381,12 @@ fn compute_frame_features_impl(
         0.0
     };
 
-    let mut i_f32 = 0.0f32;
     if let Some(prev) = prev_mags {
         let limit = half_bins.min(mags.len()).min(prev.len());
-        for (&m, &p) in mags[..limit].iter().zip(&prev[..limit]) {
-            weighted_bin_sum += i_f32 * m;
+        let m_slice = &mags[..limit];
+        let p_slice = &prev[..limit];
+        for (i, (&m, &p)) in m_slice.iter().zip(p_slice.iter()).enumerate() {
+            weighted_bin_sum += (i as f32) * m;
             mag_sum += m;
 
             if m > 1e-10 {
@@ -397,12 +398,12 @@ fn compute_frame_features_impl(
             }
 
             flux_acc += (m - p).max(0.0);
-            i_f32 += 1.0;
         }
     } else {
         let limit = half_bins.min(mags.len());
-        for &m in &mags[..limit] {
-            weighted_bin_sum += i_f32 * m;
+        let m_slice = &mags[..limit];
+        for (i, &m) in m_slice.iter().enumerate() {
+            weighted_bin_sum += (i as f32) * m;
             mag_sum += m;
 
             if m > 1e-10 {
@@ -412,7 +413,6 @@ fn compute_frame_features_impl(
                 valid_mag_count += 1;
                 sum_m_ln_m += m * ln_m;
             }
-            i_f32 += 1.0;
         }
     }
 

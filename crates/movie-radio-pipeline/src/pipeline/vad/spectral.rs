@@ -41,14 +41,20 @@ impl VadEngine for SpectralVad {
     fn classify(&self, frames: &[Frame]) -> VadResult {
         let mut decisions = Vec::with_capacity(frames.len());
         let mut likelihoods = Vec::with_capacity(frames.len());
+        let threshold = self.threshold.max(0.0001);
+        let relaxed_min = (self.centroid_min - 120.0).max(0.0);
+        let relaxed_max = self.centroid_max + 300.0;
+
         for frame in frames {
             let likelihood = classify_spectral(
                 frame,
-                self.threshold,
+                threshold,
                 self.flatness_max,
                 self.entropy_min,
                 self.centroid_min,
                 self.centroid_max,
+                relaxed_min,
+                relaxed_max,
             );
             likelihoods.push(likelihood);
             decisions.push(likelihood >= 0.5);
@@ -68,13 +74,10 @@ fn classify_spectral(
     entropy_min: f32,
     centroid_min: f32,
     centroid_max: f32,
+    relaxed_min: f32,
+    relaxed_max: f32,
 ) -> f32 {
-    let threshold = threshold.max(0.0001);
-
     let energy_term = ((frame.rms - threshold) / threshold).clamp(-2.0, 2.0) * 0.25;
-
-    let relaxed_min = (centroid_min - 120.0).max(0.0);
-    let relaxed_max = centroid_max + 300.0;
     let centroid_term = if (centroid_min..=centroid_max).contains(&frame.centroid_hz) {
         0.14
     } else if (relaxed_min..=relaxed_max).contains(&frame.centroid_hz) {

@@ -7,7 +7,13 @@ Each entry includes file path, description, priority, and suggested approach.
 **Updated:** 2026-08-25 — Added findings from workspace-wide improvement analysis (`plans/130-improvement-analysis-2026-08-25.md`)
 ## Open
 
-None — all triaged followups resolved.
+| Path | Description | Priority |
+|------|-------------|----------|
+| `crates/movie-radio-goap/src/narrate/lang.rs` | 3-4 grounded variants per tag now rotate by narration index (no adjacent repeats; ToS 47 lines, top line ~11x). Still tag-level only: a richer description needs visual input or an LLM backend (ADR-126) fed the window's tags. | Medium |
+| `crates/movie-radio-render/src/sfx/` | No local SFX library by default (warning demoted to debug); the film's own effects pass through the original track. Optional: layer extra clips from `assets/sfx/<tag>/`. | Low |
+| `config/profiles/*.json` | `radio-play` ships the default analysis config + Silero; the fitted profiles (`modern-optimized`, `radio-play`) are not used by it and collapse to one whole-film gap (energy) or trade speech recall for non-voice recall (Silero: speech R 0.57/0.37 vs 0.75/0.65 for the default). Re-fit on both films or retire them. | Medium |
+| `scripts/transcribe_cues.py` | Residual leak without subtitles is 0.9-2.4% of narratable time and 12-20% of narratable time is given up to false cues over music. A music-aware filter (drop cues with no word-level speech probability) could win some back. | Low |
+| `crates/movie-radio-voice` | llama-cpp-2 0.1.158 (PR #373) renames `AddBos`/`str_to_token`/`is_eog_token`; `orpheus.rs` needs migration before bumping. | Low |
 
 ## Resolved
 

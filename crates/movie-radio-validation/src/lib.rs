@@ -41,7 +41,24 @@ pub fn validate_against_timeline(
     profile: &str,
     tolerance_ms: u64,
 ) -> ValidationReport {
-    let metrics = compare::score_segments(&predicted.segments, &truth.segments, tolerance_ms);
+    validate_against_timeline_with_total(predicted, truth, profile, tolerance_ms, None)
+}
+
+/// As [`validate_against_timeline`], deriving speech metrics from the film
+/// length when both timelines carry only non-voice segments.
+pub fn validate_against_timeline_with_total(
+    predicted: &TimelineOutput,
+    truth: &TimelineOutput,
+    profile: &str,
+    tolerance_ms: u64,
+    total_ms: Option<u64>,
+) -> ValidationReport {
+    let metrics = compare::score_segments_with_total(
+        &predicted.segments,
+        &truth.segments,
+        tolerance_ms,
+        total_ms,
+    );
     ValidationReport {
         profile: profile.to_string(),
         tolerance_ms,

@@ -61,6 +61,25 @@ extract_first_mp4_from_zip "testdata/raw/elephantsdream_teaser.mp4.zip" "testdat
 fetch "https://download.blender.org/demo/movies/caminandes_gran_dillama.mp4.zip" "testdata/raw/caminandes_gran_dillama.mp4.zip"
 extract_first_mp4_from_zip "testdata/raw/caminandes_gran_dillama.mp4.zip" "testdata/raw/caminandes_gran_dillama.mp4"
 
+# Tears of Steel (2012, CC-BY) - second validation film with timed dialogue truth (#364).
+# Subtitles are small and always fetched; the 372 MB film only with FETCH_SECOND_FILM=1.
+fetch "https://download.blender.org/demo/movies/ToS/subtitles/TOS-en.srt" "testdata/raw/tears_of_steel_2012.en.srt"
+fetch "https://download.blender.org/demo/movies/ToS/subtitles/TOS-de.srt" "testdata/raw/tears_of_steel_2012.de.srt"
+verify_sha256(){
+  local file="$1"; local want="$2"
+  [[ -s "$file" ]] || return 0
+  local got; got="$(sha256sum "$file" | awk '{print $1}')"
+  if [[ "$got" != "$want" ]]; then
+    echo "WARN: checksum mismatch for $file (got $got)"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+}
+verify_sha256 "testdata/raw/tears_of_steel_2012.en.srt" "ce9578f6fe098a5821045a38884b229160f9e7ba27890448a92f5be330c6e6fe"
+verify_sha256 "testdata/raw/tears_of_steel_2012.de.srt" "666685daa9064a5a59144e47bddd2d570bbdda199df6e4e39f3273e479ab1f4b"
+if [[ "${FETCH_SECOND_FILM:-0}" == "1" ]]; then
+  fetch "https://download.blender.org/demo/movies/ToS/tears_of_steel_720p.mov" "testdata/raw/tears_of_steel_2012.mov"
+fi
+
 CRITICAL_ASSETS="testdata/raw/elephants_dream_2006.mp4 testdata/raw/sintel_trailer_2010.mp4"
 ALL_ASSETS="testdata/raw/elephants_dream_2006.mp4 testdata/raw/elephants_dream_2006.es.srt testdata/raw/elephants_dream_2006.de.srt testdata/raw/big_buck_bunny_trailer_2008.mov testdata/raw/sintel_trailer_2010.mp4 testdata/raw/elephantsdream_teaser.mp4 testdata/raw/caminandes_gran_dillama.mp4"
 

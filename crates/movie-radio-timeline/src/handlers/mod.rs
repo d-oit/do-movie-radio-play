@@ -9,6 +9,7 @@ use movie_radio_learning::calibrator::{apply_calibration_report, run_calibration
 use movie_radio_learning::profiles::CalibrationProfile;
 use movie_radio_pipeline::pipeline::tags::TagRules;
 
+mod cues;
 pub mod extract;
 pub mod learning;
 pub mod radio_play;

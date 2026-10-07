@@ -22,6 +22,25 @@ pub struct RadioPlayOptions {
     pub no_learn: bool,
     pub voice_reference: Option<PathBuf>,
     pub character: Option<String>,
+    pub language: Option<String>,
+    pub gap_confidence: Option<f32>,
+    pub vad_engine: Option<String>,
+    pub no_auto_cues: bool,
+}
+
+fn silero_model_path() -> PathBuf {
+    std::env::var_os("SILERO_VAD_MODEL")
+        .map_or_else(|| PathBuf::from("models/silero_vad.onnx"), PathBuf::from)
+}
+
+/// Prefer the neural VAD (best measured detector, see plans/GOAP_STATE.md)
+/// only when everything it needs is present; otherwise keep the configured one.
+fn default_vad_engine(
+    feature_built: bool,
+    model: &std::path::Path,
+    ort_found: bool,
+) -> Option<&'static str> {
+    (feature_built && ort_found && model.is_file()).then_some("silero")
 }
 
 pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
@@ -35,11 +54,44 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     // Unique run id up front: same-movie runs started in the same second
     // must not share the run_traces primary key.
     ctx.run_id = Some(movie_radio_goap::fallback_run_id(&ctx.movie_path));
-    ctx.subtitles_path = opts.subtitles;
+    if opts.analyze_only {
+        ctx.subtitles_path = opts.subtitles;
+    } else {
+        let cache = ctx.output_path.with_extension("cues.srt");
+        let found = super::cues::resolve_cues(
+            &ctx.movie_path,
+            opts.subtitles,
+            opts.language.as_deref(),
+            &cache,
+            !opts.no_auto_cues,
+        );
+        ctx.subtitles_derived = found.as_ref().is_some_and(|c| c.derived);
+        ctx.subtitles_path = found.map(|c| c.path);
+    }
     ctx.voice_config = Some(VoiceSynthesisConfig::from_env());
     ctx.learning_state_path = opts.learning_state;
     ctx.learning_db_path = opts.learning_db;
     ctx.no_learn = opts.no_learn;
+    ctx.gap_confidence = opts.gap_confidence;
+    match opts.vad_engine {
+        Some(engine) => ctx.config.vad_engine = engine,
+        None => {
+            if let Some(engine) = default_vad_engine(
+                cfg!(feature = "silero-vad"),
+                &silero_model_path(),
+                std::env::var_os("ORT_DYLIB_PATH").is_some(),
+            ) {
+                info!(engine, "using neural VAD (model and ONNX Runtime found)");
+                ctx.config.vad_engine = engine.to_string();
+            } else if cfg!(feature = "silero-vad") {
+                tracing::warn!(
+                    "silero VAD unavailable (need the model file and ORT_DYLIB_PATH); \
+                     falling back to '{}'. See scripts/fetch_silero_vad.sh",
+                    ctx.config.vad_engine
+                );
+            }
+        }
+    }
 
     // Resolve voice_reference if requested via --voice-reference or --character
     ctx.voice_reference = match (opts.voice_reference, opts.character) {
@@ -71,6 +123,9 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
 
     let cfg = crate::app_config_loader::load_app_config(None).ok();
     let mut voice_cfg = VoiceSynthesisConfig::from_env();
+    if let Some(language) = opts.language.filter(|l| !l.trim().is_empty()) {
+        voice_cfg.language = language;
+    }
 
     if ctx.voice_reference.is_some() {
         let audio_cpp = if let Some(ref cfg) = cfg {
@@ -189,6 +244,19 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn default_engine_needs_feature_model_and_runtime() {
+        let model = tempfile::NamedTempFile::new().unwrap();
+        let missing = std::path::Path::new("/nonexistent/silero.onnx");
+        assert_eq!(
+            super::default_vad_engine(true, model.path(), true),
+            Some("silero")
+        );
+        assert_eq!(super::default_vad_engine(false, model.path(), true), None);
+        assert_eq!(super::default_vad_engine(true, model.path(), false), None);
+        assert_eq!(super::default_vad_engine(true, missing, true), None);
+    }
+
     use super::*;
     use movie_radio_types::{Segment, SegmentKind, TimelineOutput};
     use tempfile::tempdir;

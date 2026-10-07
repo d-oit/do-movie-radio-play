@@ -40,7 +40,9 @@ impl Action for AssembleRadioPlay {
             .context("Original audio not decoded")?;
         let scripts = ctx.scripts.as_ref().context("Scripts not generated")?;
 
-        let assembler = RadioPlayAssembler::new(ctx.sample_rate, 50, 0.3);
+        let assembler = RadioPlayAssembler::new(ctx.sample_rate, 50, 0.3)
+            .with_time_stretch(true, 0)
+            .with_dialogue_safety(250, 1.25);
         let narration_segments = assembler.build_narration_segments(scripts, &ctx.narration_audio);
 
         let mut sfx_segments = Vec::new();

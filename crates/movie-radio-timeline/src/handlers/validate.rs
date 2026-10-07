@@ -83,11 +83,12 @@ pub fn handle_validate(
                 cfg.frame_ms,
             );
             let predicted = extract_timeline(&input_media, &cfg)?;
-            let report = movie_radio_validation::validate_against_timeline(
+            let report = movie_radio_validation::validate_against_timeline_with_total(
                 &predicted,
                 &truth,
                 &profile,
                 util::tolerance_for_profile(&profile),
+                Some(total),
             );
             write_json_pretty(&output, &report)?;
         }
@@ -102,11 +103,12 @@ pub fn handle_validate(
                 cfg.frame_ms,
             )?;
             let predicted = extract_timeline(&input_media, &cfg)?;
-            let report = movie_radio_validation::validate_against_timeline(
+            let report = movie_radio_validation::validate_against_timeline_with_total(
                 &predicted,
                 &truth,
                 &profile,
                 util::tolerance_for_profile(&profile),
+                Some(total),
             );
             write_json_pretty(&output, &report)?;
         }

@@ -1,3 +1,6 @@
+mod split;
+pub use split::{split_gap_windows, subtract_cues, MAX_NARRATION_WINDOW_MS};
+
 use anyhow::Result;
 use movie_radio_types::{GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap};
 use movie_radio_validation::srt;
@@ -103,6 +106,7 @@ impl GapIdentifier {
                     confidence: confidence.min(1.0),
                     reason: reasons.join("; "),
                     priority,
+                    tags: seg.tags.clone(),
                 });
             }
         }

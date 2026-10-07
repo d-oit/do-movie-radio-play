@@ -132,7 +132,9 @@ impl SfxManager {
                 Ok(Some(samples))
             }
             Err(e) => {
-                tracing::warn!("Failed to fetch SFX for trigger {:?}: {e}", trigger);
+                // Expected with an empty library: the film's own effects already
+                // play through the original track.
+                tracing::debug!("No SFX for trigger {:?}: {e}", trigger);
                 Ok(None)
             }
         }

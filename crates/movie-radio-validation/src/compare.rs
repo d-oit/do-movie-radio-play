@@ -29,6 +29,72 @@ struct DurationMetrics {
 }
 
 pub fn score_segments(pred: &[Segment], truth: &[Segment], tolerance_ms: u64) -> CompareMetrics {
+    score_segments_with_total(pred, truth, tolerance_ms, None)
+}
+
+/// Extraction timelines hold only non-voice segments, which made every speech
+/// metric a vacuous 0/0 = 1.0. With the film length known and no speech
+/// segments on either side, speech is the complement of non-voice over
+/// `[0, total_ms)`. `overlap_ratio` and `boundary_error_ms` are unchanged.
+pub fn score_segments_with_total(
+    pred: &[Segment],
+    truth: &[Segment],
+    tolerance_ms: u64,
+    total_ms: Option<u64>,
+) -> CompareMetrics {
+    let mut metrics = score_all(pred, truth, tolerance_ms);
+    let has_speech = |s: &[Segment]| s.iter().any(|x| x.kind == SegmentKind::Speech);
+    if let Some(total) = total_ms.filter(|_| !has_speech(pred) && !has_speech(truth)) {
+        let pred_speech = complement_speech(pred, total);
+        let truth_speech = complement_speech(truth, total);
+        let (precision, recall) = precision_recall(
+            &pred_speech,
+            &truth_speech,
+            SegmentKind::Speech,
+            tolerance_ms,
+        );
+        let duration = duration_metrics(&pred_speech, &truth_speech, &SegmentKind::Speech);
+        metrics.speech_precision = precision;
+        metrics.speech_recall = recall;
+        metrics.speech_time_precision = duration.precision;
+        metrics.speech_time_recall = duration.recall;
+        metrics.speech_overlap_ms = duration.overlap_ms;
+        metrics.speech_predicted_ms = duration.predicted_ms;
+        metrics.speech_expected_ms = duration.expected_ms;
+    }
+    metrics
+}
+
+fn complement_speech(segments: &[Segment], total_ms: u64) -> Vec<Segment> {
+    let non_voice = merged_intervals_for_kind(segments, &SegmentKind::NonVoice);
+    let mut out = Vec::new();
+    let mut cursor = 0u64;
+    for (start, end) in non_voice {
+        let start = start.min(total_ms);
+        if start > cursor {
+            out.push(speech_between(cursor, start));
+        }
+        cursor = cursor.max(end.min(total_ms));
+    }
+    if cursor < total_ms {
+        out.push(speech_between(cursor, total_ms));
+    }
+    out
+}
+
+fn speech_between(start_ms: u64, end_ms: u64) -> Segment {
+    Segment {
+        start_ms,
+        end_ms,
+        kind: SegmentKind::Speech,
+        confidence: 1.0,
+        tags: vec![],
+        prompt: None,
+        sfx_trigger: None,
+    }
+}
+
+fn score_all(pred: &[Segment], truth: &[Segment], tolerance_ms: u64) -> CompareMetrics {
     let overlap_ratio = overlap_ratio(pred, truth);
     let boundary_error_ms = boundary_error(pred, truth);
     let (speech_precision, speech_recall) =
@@ -272,5 +338,44 @@ mod tests {
         assert_eq!(m.non_voice_recall, 0.0);
         assert_eq!(m.non_voice_time_precision, 1.0);
         assert_eq!(m.non_voice_time_recall, 1.0);
+    }
+
+    #[test]
+    fn speech_is_the_complement_of_non_voice_when_total_is_known() {
+        // Truth: speech 0-2000 and 6000-10000. Prediction: speech 0-3000 and 7000-10000.
+        let truth = vec![seg(2_000, 6_000, SegmentKind::NonVoice)];
+        let pred = vec![seg(3_000, 7_000, SegmentKind::NonVoice)];
+        let vacuous = score_segments(&pred, &truth, 100);
+        assert_eq!(vacuous.speech_time_precision, 1.0);
+        assert_eq!(vacuous.speech_expected_ms, 0);
+
+        let m = score_segments_with_total(&pred, &truth, 100, Some(10_000));
+        assert_eq!(m.speech_expected_ms, 6_000);
+        assert_eq!(m.speech_predicted_ms, 6_000);
+        assert_eq!(m.speech_overlap_ms, 5_000);
+        assert!((m.speech_time_precision - 5.0 / 6.0).abs() < 1e-6);
+        assert!((m.speech_time_recall - 5.0 / 6.0).abs() < 1e-6);
+        // Non-voice figures and overlap_ratio are untouched.
+        assert_eq!(m.overlap_ratio, vacuous.overlap_ratio);
+        assert_eq!(m.non_voice_time_recall, vacuous.non_voice_time_recall);
+    }
+
+    #[test]
+    fn everything_is_a_gap_is_no_longer_a_perfect_speech_score() {
+        let truth = vec![seg(2_000, 6_000, SegmentKind::NonVoice)];
+        let pred = vec![seg(0, 10_000, SegmentKind::NonVoice)];
+        let m = score_segments_with_total(&pred, &truth, 100, Some(10_000));
+        assert_eq!(m.speech_predicted_ms, 0);
+        assert_eq!(m.speech_time_recall, 0.0);
+    }
+
+    #[test]
+    fn explicit_speech_segments_disable_the_complement() {
+        let both = vec![
+            seg(0, 1_000, SegmentKind::Speech),
+            seg(1_000, 3_000, SegmentKind::NonVoice),
+        ];
+        let a = score_segments_with_total(&both, &both, 100, Some(9_000));
+        assert_eq!(a.speech_expected_ms, 1_000);
     }
 }

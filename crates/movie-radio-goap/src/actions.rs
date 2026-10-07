@@ -8,10 +8,11 @@ mod verify;
 pub use assemble_action::AssembleRadioPlay;
 pub use verify::{ApplyLearnings, VerifyQuality};
 
-use crate::gaps::GapIdentifier;
+use crate::gaps::{split_gap_windows, subtract_cues, GapIdentifier, MAX_NARRATION_WINDOW_MS};
 use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
+use movie_radio_pipeline::pipeline::tags::add_tags_from_samples;
 use movie_radio_pipeline::pipeline::{extract_timeline, extract_timeline_from_samples_with_path};
 
 #[derive(Debug, Default)]
@@ -83,13 +84,58 @@ impl Action for ExtractTimeline {
         }
         info!("Extracting audio timeline");
         let timeline = if let Some(ref original) = ctx.original_audio {
-            extract_timeline_from_samples_with_path(original, &ctx.movie_path, &ctx.config)?
+            let mut timeline =
+                extract_timeline_from_samples_with_path(original, &ctx.movie_path, &ctx.config)?;
+            // Untagged segments never clear the gap-confidence threshold, so
+            // without this the narrator silently emits nothing.
+            add_tags_from_samples(original, ctx.sample_rate, &mut timeline, None);
+            timeline
         } else {
             extract_timeline(&ctx.movie_path, &ctx.config)?
         };
         info!(segments = timeline.segments.len(), "Timeline extracted");
         ctx.timeline = Some(timeline);
         Ok(())
+    }
+}
+
+/// Safety margin around each subtitle cue, and the shortest stretch worth narrating.
+const SUBTITLE_PAD_MS: u64 = 300;
+/// Speech-to-text timings are rougher than authored subtitles.
+const DERIVED_CUE_PAD_MS: u64 = 800;
+const MIN_WINDOW_MS: u64 = 1_000;
+
+/// Re-derives each window's tags from its own audio so a long scene is
+/// described by what is audible in that stretch, not by the whole segment.
+fn retag_windows(
+    windows: &mut [movie_radio_types::VisualGap],
+    samples: &[f32],
+    sr: u32,
+    file: &str,
+) {
+    use movie_radio_types::{Segment, SegmentKind, TimelineOutput};
+    let mut tl = TimelineOutput {
+        file: file.to_string(),
+        analysis_sample_rate: sr,
+        frame_ms: 20,
+        segments: windows
+            .iter()
+            .map(|w| Segment {
+                start_ms: w.start_ms,
+                end_ms: w.end_ms,
+                kind: SegmentKind::NonVoice,
+                confidence: w.confidence,
+                tags: Vec::new(),
+                prompt: None,
+                sfx_trigger: None,
+            })
+            .collect(),
+    };
+    add_tags_from_samples(samples, sr, &mut tl, None);
+    for (w, seg) in windows.iter_mut().zip(tl.segments) {
+        if !seg.tags.is_empty() {
+            w.tags = seg.tags;
+        }
     }
 }
 
@@ -126,8 +172,41 @@ impl Action for IdentifyVisualGaps {
             .transpose()?;
 
         info!("Identifying visual gaps");
-        let identifier = GapIdentifier::new();
+        let mut identifier = GapIdentifier::new();
+        if let Some(threshold) = ctx.gap_confidence {
+            identifier.high_confidence_threshold = threshold.clamp(0.0, 1.0);
+        }
         let gap_analysis = identifier.identify_gaps(timeline, srt_content.as_deref())?;
+        let pad_ms = if ctx.subtitles_derived {
+            DERIVED_CUE_PAD_MS
+        } else {
+            SUBTITLE_PAD_MS
+        };
+        let clear_gaps = match srt_content.as_deref() {
+            Some(srt) => {
+                let cues: Vec<(u64, u64)> = movie_radio_validation::srt::parse_srt_segments(srt)?
+                    .iter()
+                    .map(|c| (c.start_ms, c.end_ms))
+                    .collect();
+                let kept = subtract_cues(&gap_analysis.gaps, &cues, pad_ms, MIN_WINDOW_MS);
+                info!(
+                    cues = cues.len(),
+                    before = gap_analysis.gaps.len(),
+                    after = kept.len(),
+                    "gaps clipped against subtitle cues"
+                );
+                kept
+            }
+            None => gap_analysis.gaps.clone(),
+        };
+        let mut windows = split_gap_windows(&clear_gaps, MAX_NARRATION_WINDOW_MS);
+        if let Some(samples) = ctx.original_audio.as_deref() {
+            retag_windows(&mut windows, samples, ctx.sample_rate, &timeline.file);
+        }
+        let gap_analysis = movie_radio_types::GapAnalysisOutput {
+            gaps: windows,
+            ..gap_analysis
+        };
         info!(gaps = gap_analysis.gaps.len(), "Gaps identified");
         ctx.gap_analysis = Some(gap_analysis);
         Ok(())
@@ -167,7 +246,11 @@ impl Action for GenerateNarration {
             .gaps;
 
         info!("Generating narration scripts");
-        let generator = NarrationGenerator::default();
+        let language = ctx.voice_config.as_ref().map_or_else(
+            || movie_radio_voice::config::VoiceSynthesisConfig::from_env().language,
+            |cfg| cfg.language.clone(),
+        );
+        let generator = NarrationGenerator::default().with_language(&language);
         let scripts = generator.generate(timeline, gaps)?;
         info!(scripts = scripts.len(), "Narration scripts generated");
         ctx.scripts = Some(scripts);

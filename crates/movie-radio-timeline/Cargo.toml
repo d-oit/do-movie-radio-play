@@ -11,8 +11,10 @@ name = "timeline"
 path = "src/main.rs"
 
 [features]
+default = ["silero-vad"]
 playback = ["movie-radio-io/playback"]
 webrtc-vad = ["movie-radio-pipeline/webrtc-vad"]
+silero-vad = ["movie-radio-pipeline/silero-vad"]
 
 [dependencies]
 movie-radio-types.workspace = true

@@ -2245,6 +2245,7 @@ dependencies = [
  "movie-radio-learning",
  "movie-radio-types",
  "movie-radio-verification",
+ "ort",
  "rand 0.10.3",
  "rayon",
  "realfft",

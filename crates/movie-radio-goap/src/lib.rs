@@ -73,6 +73,10 @@ pub struct PipelineContext {
     pub run_id: Option<String>,
     /// Optional voice clone reference audio file path.
     pub voice_reference: Option<PathBuf>,
+    /// Overrides the gap confidence threshold (lower = more narrated gaps).
+    pub gap_confidence: Option<f32>,
+    /// Cues came from speech-to-text, so gap clipping uses a wider safety pad.
+    pub subtitles_derived: bool,
 }
 
 impl PipelineContext {
@@ -99,6 +103,8 @@ impl PipelineContext {
             no_learn: false,
             run_id: None,
             voice_reference: None,
+            gap_confidence: None,
+            subtitles_derived: false,
         }
     }
 }
@@ -473,3 +479,5 @@ mod trace_quality_tests {
 
 #[cfg(test)]
 mod lib_tests;
+#[cfg(test)]
+mod placement_tests;

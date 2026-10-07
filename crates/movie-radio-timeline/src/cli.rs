@@ -281,6 +281,18 @@ pub enum Commands {
         voice_reference: Option<PathBuf>,
         #[arg(long)]
         character: Option<String>,
+        /// Narration language (text and TTS): `de` (default) or `en`.
+        #[arg(long)]
+        language: Option<String>,
+        /// Gap confidence threshold (default 0.8; lower narrates more gaps).
+        #[arg(long)]
+        gap_confidence: Option<f32>,
+        /// VAD engine for extraction (energy, spectral, hybrid, webrtc, silero).
+        #[arg(long)]
+        vad_engine: Option<String>,
+        /// Do not derive dialogue cues (embedded track / speech-to-text) when no subtitles are given.
+        #[arg(long)]
+        no_auto_cues: bool,
     },
     /// Preview a WAV file by streaming to system audio output.
     /// Useful for quick QA without writing intermediate files.

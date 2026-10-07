@@ -1,0 +1,11 @@
+{
+  "floors": {
+    "tos-en-holdout": {
+      "non_voice_precision": 0.9178,
+      "non_voice_recall": 0.889,
+      "overlap_ratio": 0.9032,
+      "speech_time_precision": 0.5718,
+      "speech_time_recall": 0.6508
+    }
+  }
+}

@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 use movie_radio_types::{SegmentKind, TimelineOutput, VisualGap};
 use movie_radio_voice::Emotion;
 
+mod lang;
+use lang::Phrases;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NarrationScript {
     pub gap_start_ms: u64,
@@ -17,6 +20,7 @@ pub struct NarrationScript {
 pub struct NarrationGenerator {
     pub words_per_minute: f64,
     pub density: f64,
+    pub language: String,
 }
 
 impl Default for NarrationGenerator {
@@ -24,6 +28,7 @@ impl Default for NarrationGenerator {
         Self {
             words_per_minute: 150.0,
             density: 0.5,
+            language: "de".to_string(),
         }
     }
 }
@@ -36,14 +41,23 @@ impl NarrationGenerator {
         }
     }
 
+    /// Selects the narration language (`de` default, `en`).
+    pub fn with_language(mut self, language: &str) -> Self {
+        self.language = language.to_string();
+        self
+    }
+
     pub fn generate(
         &self,
         timeline: &TimelineOutput,
         gaps: &[VisualGap],
     ) -> Result<Vec<NarrationScript>> {
-        let mut scripts = Vec::new();
+        let mut scripts: Vec<NarrationScript> = Vec::new();
+        let phrases = lang::phrases(&self.language);
 
-        for gap in gaps {
+        let mut ordered: Vec<&VisualGap> = gaps.iter().collect();
+        ordered.sort_by_key(|g| g.start_ms);
+        for gap in ordered {
             if gap.confidence < 0.4 {
                 continue;
             }
@@ -58,9 +72,10 @@ impl NarrationGenerator {
                 continue;
             }
 
-            let context = self.extract_context(timeline, gap);
+            let mut context = self.extract_context(timeline, gap);
+            context.variant = scripts.len();
             let emotion = self.infer_emotion(&context);
-            let text = reject_banned_filler(self.generate_text(&context, max_words));
+            let text = reject_banned_filler_for(self.generate_text(&context, max_words), phrases);
 
             if text.is_empty() {
                 tracing::debug!(
@@ -68,6 +83,14 @@ impl NarrationGenerator {
                     max_words,
                     "gap too short for any whole narration clause; leaving unnarrated"
                 );
+                continue;
+            }
+
+            // Repeating the same line for the next window adds nothing to a listener.
+            if scripts
+                .last()
+                .is_some_and(|prev| prev.gap_end_ms == gap.start_ms && prev.text == text)
+            {
                 continue;
             }
 
@@ -109,7 +132,9 @@ impl NarrationGenerator {
         // before/after segments, so it skips the segment overlapping the
         // gap itself — without this explicit lookup its tags would never
         // be seen.
-        if let Some(seg) = timeline
+        if !gap.tags.is_empty() {
+            context.self_tags = gap.tags.clone();
+        } else if let Some(seg) = timeline
             .segments
             .iter()
             .find(|seg| seg.start_ms == gap.start_ms && seg.end_ms == gap.end_ms)
@@ -177,23 +202,27 @@ impl NarrationGenerator {
     /// mid-sentence; the description must stand on its own whether or not
     /// a sound effect ends up mixed in underneath it.
     fn generate_text(&self, context: &GapContext, max_words: usize) -> String {
-        let chunks = Self::build_chunks(context);
+        let chunks = Self::build_chunks(context, lang::phrases(&self.language));
         self.fit_chunks_to_budget(&chunks, max_words)
     }
 
-    fn build_chunks(context: &GapContext) -> Vec<&'static str> {
+    fn build_chunks(context: &GapContext, p: &Phrases) -> Vec<&'static str> {
         let mut chunks = Vec::new();
-        if let Some(clause) = Self::content_clause(context) {
+        if let Some(clause) = Self::content_clause(context, p) {
             chunks.push(clause);
         }
-        if let Some(clause) = Self::reason_clause(context) {
-            chunks.push(clause);
+        // Window tags already describe this stretch; the gap-level reason was
+        // derived from the whole segment and would repeat on every window.
+        if context.self_tags.is_empty() || chunks.is_empty() {
+            if let Some(clause) = Self::reason_clause(context, p) {
+                chunks.push(clause);
+            }
         }
-        if context.gap_duration_ms > 8000 {
-            chunks.push("Die Passage dauert einige Sekunden.");
+        if context.gap_duration_ms > 20_000 {
+            chunks.push(p.long_passage);
         }
         if chunks.is_empty() {
-            chunks.push("Die Handlung läuft ohne Dialog weiter.");
+            chunks.push(p.fallback);
         }
         chunks
     }
@@ -204,28 +233,14 @@ impl NarrationGenerator {
     /// matched first; neighbouring segments' tags are only a fallback
     /// when the gap itself carries no known tag, so a loud neighbour can
     /// never drown out what the gap actually contains.
-    fn content_clause(context: &GapContext) -> Option<&'static str> {
-        const TAG_CLAUSES: &[(&str, &str)] = &[
-            ("impact_heavy", "Ein kräftiger Aufprall ertönt."),
-            ("crowd_like", "Eine Menschenmenge murmelt im Hintergrund."),
-            ("nature_like", "Naturgeräusche sind zu hören."),
-            ("tonal", "Melodische Klänge erfüllen den Raum."),
-            ("music_like", "Melodische Klänge erfüllen den Raum."),
-            (
-                "machinery_like",
-                "Ein gleichmäßiges Maschinengeräusch läuft mit.",
-            ),
-            ("music_bed", "Musik untermalt die Szene."),
-            ("ambience", "Eine ruhige Klangkulisse liegt darüber."),
-            ("speech_like", "Gedämpfte Stimmen sind zu hören."),
-        ];
-
-        fn first_clause_for(tags: &[&str]) -> Option<&'static str> {
-            TAG_CLAUSES
+    fn content_clause(context: &GapContext, p: &Phrases) -> Option<&'static str> {
+        let variant = context.variant;
+        let first_clause_for = |tags: &[&str]| -> Option<&'static str> {
+            p.tag_clauses
                 .iter()
                 .find(|(tag, _)| tags.iter().any(|t| t == tag))
-                .map(|(_, clause)| *clause)
-        }
+                .and_then(|(_, clauses)| clauses.get(variant % clauses.len().max(1)).copied())
+        };
 
         let own: Vec<&str> = context.self_tags.iter().map(String::as_str).collect();
         if let Some(clause) = first_clause_for(&own) {
@@ -242,14 +257,14 @@ impl NarrationGenerator {
 
     /// Secondary clause from the structural gap reason, added only when it
     /// conveys information the content clause doesn't already cover.
-    fn reason_clause(context: &GapContext) -> Option<&'static str> {
+    fn reason_clause(context: &GapContext, p: &Phrases) -> Option<&'static str> {
         let reason = context.gap_reason.as_str();
         if reason.contains("environment change") {
-            Some("Der Klang wechselt merklich.")
+            Some(p.environment_change)
         } else if reason.contains("Ambiguous SFX") {
-            Some("Ein auffälliges Geräusch tritt hervor.")
+            Some(p.ambiguous_sfx)
         } else if reason.contains("dialogue blocks") {
-            Some("Das Gespräch pausiert kurz.")
+            Some(p.dialogue_pause)
         } else {
             None
         }
@@ -296,21 +311,18 @@ impl NarrationGenerator {
 /// regression structurally unrepeatable: even a future template, backend,
 /// or hand-edit that reintroduces a bare filler phrase gets substituted
 /// for the safe, still-grounded fallback clause instead of shipping.
-const BANNED_FILLER_ONLY: &[&str] = &["Stille.", "Pause.", "Schnitt.", "Atmosphäre."];
-
-/// Fallback used when generated text collapses to a banned filler phrase.
-/// Deliberately vague (no tag data available at this call site) but still
-/// content-bearing: it states that the scene continues, not that nothing
-/// is happening.
-const SAFE_FALLBACK: &str = "Die Handlung läuft ohne Dialog weiter.";
-
+#[cfg(test)]
 fn reject_banned_filler(text: String) -> String {
-    if BANNED_FILLER_ONLY.contains(&text.trim()) {
+    reject_banned_filler_for(text, lang::phrases("de"))
+}
+
+fn reject_banned_filler_for(text: String, p: &Phrases) -> String {
+    if p.banned_filler.contains(&text.trim()) {
         tracing::warn!(
             rejected = %text,
             "narration text collapsed to banned filler; see ADR-128 (plans/adr/0128-audio-description-standards.md)"
         );
-        return SAFE_FALLBACK.to_string();
+        return p.fallback.to_string();
     }
     text
 }
@@ -324,6 +336,8 @@ struct GapContext {
     after_kind: Option<SegmentKind>,
     gap_duration_ms: u64,
     gap_reason: String,
+    /// Rotates among equivalent clauses so consecutive narrations differ.
+    variant: usize,
 }
 
 #[cfg(test)]

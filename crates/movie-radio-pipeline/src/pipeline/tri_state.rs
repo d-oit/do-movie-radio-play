@@ -19,7 +19,34 @@ pub fn resolve_speech_with_ambiguity(
     frame_ms: u32,
     hangover_ms: u32,
 ) -> Vec<bool> {
-    let states = classify_frame_states(speech, frames, frame_likelihoods);
+    resolve_speech(
+        speech,
+        frames,
+        frame_likelihoods,
+        frame_ms,
+        hangover_ms,
+        false,
+    )
+}
+
+/// Engines whose likelihood is a calibrated speech probability (neural VAD)
+/// should not be overruled by hand-built spectral vetoes on confident frames.
+pub fn engine_trusts_likelihood(engine_name: &str) -> bool {
+    engine_name == "silero"
+}
+
+/// Like [`resolve_speech_with_ambiguity`], with `trust_likelihood` letting
+/// confident likelihoods win and the music/noise vetoes arbitrate only the
+/// uncertain band.
+pub fn resolve_speech(
+    speech: &[bool],
+    frames: &[Frame],
+    frame_likelihoods: &[f32],
+    frame_ms: u32,
+    hangover_ms: u32,
+    trust_likelihood: bool,
+) -> Vec<bool> {
+    let states = classify_frame_states(speech, frames, frame_likelihoods, trust_likelihood);
     smooth_states(&states, frame_ms, hangover_ms)
 }
 
@@ -27,6 +54,7 @@ fn classify_frame_states(
     speech: &[bool],
     frames: &[Frame],
     frame_likelihoods: &[f32],
+    trust_likelihood: bool,
 ) -> Vec<FrameState> {
     speech
         .iter()
@@ -39,7 +67,8 @@ fn classify_frame_states(
                     .copied()
                     .unwrap_or(if is_speech { 1.0 } else { 0.0 });
 
-            if let Some(frame) = frame {
+            let confident = likelihood >= AMBIGUOUS_HIGH || likelihood <= AMBIGUOUS_LOW;
+            if let Some(frame) = frame.filter(|_| !(trust_likelihood && confident)) {
                 if is_music_like(frame) {
                     return FrameState::MusicLike;
                 }
@@ -171,5 +200,17 @@ mod tests {
             low_band_ratio: low,
             high_band_ratio: high,
         }
+    }
+
+    #[test]
+    fn trusted_likelihood_beats_music_veto_only_when_confident() {
+        let speech = vec![true, true];
+        let music = frame(0.03, 0.2, 4.2, 400.0, 0.6, 0.05);
+        let frames = vec![music.clone(), music];
+        let likelihoods = vec![0.95, 0.5];
+        let plain = resolve_speech(&speech, &frames, &likelihoods, 20, 0, false);
+        let trusted = resolve_speech(&speech, &frames, &likelihoods, 20, 0, true);
+        assert_eq!(plain, vec![false, false]);
+        assert_eq!(trusted, vec![true, false]);
     }
 }

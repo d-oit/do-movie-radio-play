@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import math
 from pathlib import Path
 
 
@@ -21,6 +22,31 @@ def metric_value(metrics: dict, key: str) -> float:
     if value is None:
         return 0.0
     return float(value)
+
+
+METRICS = (
+    "non_voice_precision",
+    "non_voice_recall",
+    "overlap_ratio",
+    "speech_time_precision",
+    "speech_time_recall",
+)
+
+
+def load_floors(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8")).get("floors", {})
+
+
+def raise_floors(floors: dict, checks: list) -> dict:
+    """Ratchet: floors only move up; unseen entries start at their measured value."""
+    out = {k: dict(v) for k, v in floors.items()}
+    for check in checks:
+        entry = out.setdefault(check["id"], {})
+        for key in METRICS:
+            entry[key] = math.floor(max(entry.get(key, 0.0), check[key]) * 1e4) / 1e4
+    return out
 
 
 def main() -> int:
@@ -55,6 +81,16 @@ def main() -> int:
         default=0.95,
         help="Minimum required overlap_ratio on holdout entries",
     )
+    parser.add_argument(
+        "--floors",
+        help="Ratchet mode: per-entry metric floors JSON replacing the 0.95 targets "
+        "(which stay the documented long-term ceiling)",
+    )
+    parser.add_argument(
+        "--update-floors",
+        action="store_true",
+        help="With --floors, raise floors to current values (never lowers them)",
+    )
     args = parser.parse_args()
 
     summary_path = Path(args.summary)
@@ -72,11 +108,14 @@ def main() -> int:
 
     failures = []
     checks = []
+    floors = load_floors(Path(args.floors)) if args.floors else {}
     for result in holdout_results:
         metrics = result.get("metrics", {})
         precision = metric_value(metrics, "non_voice_precision")
         recall = metric_value(metrics, "non_voice_recall")
         overlap = metric_value(metrics, "overlap_ratio")
+        speech_p = metric_value(metrics, "speech_time_precision")
+        speech_r = metric_value(metrics, "speech_time_recall")
         entry_id = result.get("id", "unknown")
 
         checks.append(
@@ -85,9 +124,23 @@ def main() -> int:
                 "non_voice_precision": precision,
                 "non_voice_recall": recall,
                 "overlap_ratio": overlap,
+                "speech_time_precision": speech_p,
+                "speech_time_recall": speech_r,
             }
         )
 
+        if args.floors:
+            floor = floors.get(entry_id)
+            if floor is None:
+                failures.append(f"{entry_id}: no floor recorded (run with --update-floors)")
+            else:
+                for key in METRICS:
+                    value = checks[-1][key]
+                    if value < floor.get(key, 0.0):
+                        failures.append(
+                            f"{entry_id}: {key}={value:.4f} < floor {floor.get(key, 0.0):.4f}"
+                        )
+            continue
         if precision < args.min_non_voice_precision:
             failures.append(
                 f"{entry_id}: non_voice_precision={precision:.4f} < {args.min_non_voice_precision:.4f}"
@@ -101,6 +154,17 @@ def main() -> int:
                 f"{entry_id}: overlap_ratio={overlap:.4f} < {args.min_overlap:.4f}"
             )
 
+    if args.floors and args.update_floors:
+        # Only ratchet up when the gate currently holds, so a regression cannot lower the bar.
+        if failures and floors:
+            print("refusing to update floors while gate is red", file=__import__("sys").stderr)
+        else:
+            Path(args.floors).write_text(
+                json.dumps({"floors": raise_floors(floors, checks)}, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            failures = []
+
     report = {
         "summary": str(summary_path),
         "holdout_tier": holdout_tier,
@@ -109,6 +173,7 @@ def main() -> int:
             "min_non_voice_recall": args.min_non_voice_recall,
             "min_overlap": args.min_overlap,
         },
+        "mode": "ratchet" if args.floors else "target",
         "checks": checks,
         "passed": len(failures) == 0,
         "failures": failures,

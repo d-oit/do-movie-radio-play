@@ -85,12 +85,13 @@ pub fn extract_timeline_chunked(
             let speech = vad_output.decisions;
             combined_likelihoods.extend_from_slice(&vad_output.likelihoods);
 
-            let smoothed = tri_state::resolve_speech_with_ambiguity(
+            let smoothed = tri_state::resolve_speech(
                 &speech,
                 &combined_frames,
                 &combined_likelihoods,
                 frame_ms,
                 hangover_ms,
+                tri_state::engine_trusts_likelihood(&cfg.vad_engine),
             );
 
             let warmup_count = prev_frames.len();

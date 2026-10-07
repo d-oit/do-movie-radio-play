@@ -46,6 +46,10 @@ def run_entry(entry: dict) -> Optional[dict]:
     ]
     if config_path is not None:
         cmd.extend(["--config", str(config_path)])
+    # Entries score what ships: `radio-play` uses the default analysis config
+    # with the neural VAD, not a fitted profile (see plans/GOAP_STATE.md).
+    if entry.get("vad_engine"):
+        cmd.extend(["--vad-engine", str(entry["vad_engine"])])
 
     total_ms = entry.get("total_ms")
     if truth_type in {"subtitles", "dataset_manifest"}:

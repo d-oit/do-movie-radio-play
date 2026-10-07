@@ -18,9 +18,9 @@
       "truth_type": "subtitles",
       "truth_path": "testdata/raw/elephants_dream_2006.de.srt",
       "total_ms": 653791,
-      "profile": "modern-optimized",
-      "config_path": "config/profiles/modern-optimized.json",
-      "output_report": "testdata/validation/elephants_dream_2006_de_radio_validation.json"
+      "profile": "radio-play-default",
+      "output_report": "testdata/validation/elephants_dream_2006_de_radio_validation.json",
+      "vad_engine": "silero"
     },
     {
       "id": "elephants_dream_2006_es_radio",
@@ -29,20 +29,20 @@
       "truth_type": "subtitles",
       "truth_path": "testdata/raw/elephants_dream_2006.es.srt",
       "total_ms": 653791,
-      "profile": "modern-optimized",
-      "config_path": "config/profiles/modern-optimized.json",
-      "output_report": "testdata/validation/elephants_dream_2006_es_radio_validation.json"
+      "profile": "radio-play-default",
+      "output_report": "testdata/validation/elephants_dream_2006_es_radio_validation.json",
+      "vad_engine": "silero"
     },
     {
-      "id": "sintel_trailer_2010_radio",
+      "id": "tos-en-holdout",
       "tier": "C",
-      "input_media": "testdata/raw/sintel_trailer_2010.mp4",
+      "input_media": "testdata/raw/tears_of_steel_2012.mov",
       "truth_type": "subtitles",
-      "truth_path": "testdata/raw/sintel_trailer_2010.srt",
-      "total_ms": 52000,
-      "profile": "modern-optimized",
-      "config_path": "config/profiles/modern-optimized.json",
-      "output_report": "testdata/validation/sintel_trailer_2010_radio_validation.json"
+      "truth_path": "testdata/raw/tears_of_steel_2012.en.srt",
+      "total_ms": 734167,
+      "profile": "radio-play-default",
+      "output_report": "testdata/validation/tos_en_validation.json",
+      "vad_engine": "silero"
     }
   ]
 }

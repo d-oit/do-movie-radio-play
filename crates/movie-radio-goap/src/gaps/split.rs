@@ -85,6 +85,7 @@ mod tests {
             reason: "r".into(),
             priority: 3,
             tags: vec!["ambience".into()],
+            trend: None,
         }
     }
 

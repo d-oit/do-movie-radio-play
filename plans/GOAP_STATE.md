@@ -90,3 +90,8 @@
 - Seeded floors, Sintel: non-voice P/R 0.963/0.941, speech P/R 0.494/0.615, overlap 0.952. A hand-degraded Sintel speech recall turns the ratchet red.
 - `check_radio_play_readiness.py --update-floors` now seeds floors for entries that have none (it used to refuse, which made adding a film impossible without hand-editing).
 - Sweep not yet run in CI (weekly/dispatch only); the local run is `run_validation_manifest.py` over the 5 entries.
+
+## Measured loudness trend in narration (2026-10-08)
+- Each narration window now carries `GapTrend::{Rising,Falling}` measured from its own samples (`gaps/trend.rs`: RMS of the first vs last third, >= 4 dB change, span >= 3 s, audible), and `narrate` adds one clause for it ("Der Klang schwillt an." / "The sound fades away.") after the tag clause, only when the word budget allows. No model, no key, deterministic, grounded in the audio (ADR-128).
+- Dry run (distinct lines / lines per film, subtitles supplied): Elephants Dream 13 / 14, Tears of Steel 20 / 37, Sintel 26 / 41; most repeated line ~4 of 37 on Tears of Steel (was 11 of 47 before variants+trend). 43-51% of windows get a trend clause.
+- Still tag/level-only: it cannot say what happens, who is speaking or where. That needs a language model or visual input.

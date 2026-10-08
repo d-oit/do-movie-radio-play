@@ -33,7 +33,7 @@ pub use metrics::{BenchmarkResult, StageDurations};
 pub use narrator_types::{parse_narrator_style, NarratorParams, NarratorStyle, RenderedPrompt};
 pub use provider_registry::{ProviderEntry, ProviderRegistry};
 pub use segment::{
-    AiVoiceOutput, GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap,
+    AiVoiceOutput, GapAnalysisOutput, GapTrend, Segment, SegmentKind, TimelineOutput, VisualGap,
 };
 pub use sfx_types::{
     AiGenerateConfig, FreesoundConfig, LocalSfxConfig, SfxCandidate, SfxLicense,

@@ -8,7 +8,9 @@ mod verify;
 pub use assemble_action::AssembleRadioPlay;
 pub use verify::{ApplyLearnings, VerifyQuality};
 
-use crate::gaps::{split_gap_windows, subtract_cues, GapIdentifier, MAX_NARRATION_WINDOW_MS};
+use crate::gaps::{
+    energy_trend, split_gap_windows, subtract_cues, GapIdentifier, MAX_NARRATION_WINDOW_MS,
+};
 use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
@@ -136,6 +138,7 @@ fn retag_windows(
         if !seg.tags.is_empty() {
             w.tags = seg.tags;
         }
+        w.trend = energy_trend(samples, sr, w.start_ms, w.end_ms);
     }
 }
 

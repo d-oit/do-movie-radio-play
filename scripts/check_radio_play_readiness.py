@@ -132,7 +132,9 @@ def main() -> int:
         if args.floors:
             floor = floors.get(entry_id)
             if floor is None:
-                failures.append(f"{entry_id}: no floor recorded (run with --update-floors)")
+                # A new entry has nothing to regress from; --update-floors seeds it.
+                if not args.update_floors:
+                    failures.append(f"{entry_id}: no floor recorded (run with --update-floors)")
             else:
                 for key in METRICS:
                     value = checks[-1][key]

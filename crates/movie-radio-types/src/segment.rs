@@ -28,6 +28,14 @@ pub struct TimelineOutput {
     pub segments: Vec<Segment>,
 }
 
+/// How a span's loudness develops, measured from its own samples.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GapTrend {
+    Rising,
+    Falling,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VisualGap {
     pub start_ms: u64,
@@ -38,6 +46,9 @@ pub struct VisualGap {
     /// Acoustic tags of this exact span; empty when unknown.
     #[serde(default)]
     pub tags: Vec<String>,
+    /// Loudness development across the span; `None` when steady or inaudible.
+    #[serde(default)]
+    pub trend: Option<GapTrend>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use movie_radio_types::{SegmentKind, TimelineOutput, VisualGap};
+use movie_radio_types::{GapTrend, SegmentKind, TimelineOutput, VisualGap};
 use movie_radio_voice::Emotion;
 
 mod lang;
@@ -153,6 +153,7 @@ impl NarrationGenerator {
             }
         }
 
+        context.trend = gap.trend;
         context.gap_duration_ms = gap.end_ms.saturating_sub(gap.start_ms);
         context.gap_reason.clone_from(&gap.reason);
 
@@ -210,6 +211,18 @@ impl NarrationGenerator {
         let mut chunks = Vec::new();
         if let Some(clause) = Self::content_clause(context, p) {
             chunks.push(clause);
+        }
+        // Measured loudness development of this exact window; a second,
+        // independent fact that keeps equal-tag windows from reading alike.
+        let trend_clauses = match context.trend {
+            Some(GapTrend::Rising) => p.trend_rising,
+            Some(GapTrend::Falling) => p.trend_falling,
+            None => &[],
+        };
+        if !chunks.is_empty() {
+            if let Some(clause) = trend_clauses.get(context.variant % trend_clauses.len().max(1)) {
+                chunks.push(clause);
+            }
         }
         // Window tags already describe this stretch; the gap-level reason was
         // derived from the whole segment and would repeat on every window.
@@ -338,6 +351,7 @@ struct GapContext {
     gap_reason: String,
     /// Rotates among equivalent clauses so consecutive narrations differ.
     variant: usize,
+    trend: Option<GapTrend>,
 }
 
 #[cfg(test)]

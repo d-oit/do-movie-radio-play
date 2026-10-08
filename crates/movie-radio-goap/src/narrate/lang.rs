@@ -8,6 +8,8 @@ pub(super) struct Phrases {
     pub ambiguous_sfx: &'static str,
     pub dialogue_pause: &'static str,
     pub long_passage: &'static str,
+    pub trend_rising: &'static [&'static str],
+    pub trend_falling: &'static [&'static str],
     pub fallback: &'static str,
     pub banned_filler: &'static [&'static str],
 }
@@ -92,6 +94,16 @@ const DE: Phrases = Phrases {
     ambiguous_sfx: "Ein auffälliges Geräusch tritt hervor.",
     dialogue_pause: "Das Gespräch pausiert kurz.",
     long_passage: "Die Passage dauert einige Sekunden.",
+    trend_rising: &[
+        "Der Klang schwillt an.",
+        "Die Lautstärke nimmt zu.",
+        "Es wird allmählich lauter.",
+    ],
+    trend_falling: &[
+        "Der Klang ebbt ab.",
+        "Die Lautstärke nimmt ab.",
+        "Es wird allmählich leiser.",
+    ],
     fallback: "Die Handlung läuft ohne Dialog weiter.",
     banned_filler: &["Stille.", "Pause.", "Schnitt.", "Atmosphäre."],
 };
@@ -176,6 +188,16 @@ const EN: Phrases = Phrases {
     ambiguous_sfx: "A distinct noise stands out.",
     dialogue_pause: "The conversation pauses briefly.",
     long_passage: "The passage lasts several seconds.",
+    trend_rising: &[
+        "The sound swells.",
+        "The volume builds.",
+        "It gradually grows louder.",
+    ],
+    trend_falling: &[
+        "The sound fades away.",
+        "The volume drops.",
+        "It gradually grows quieter.",
+    ],
     fallback: "The action continues without dialogue.",
     banned_filler: &["Silence.", "Pause.", "Cut.", "Atmosphere."],
 };

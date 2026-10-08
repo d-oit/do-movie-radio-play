@@ -78,6 +78,21 @@ verify_sha256 "testdata/raw/tears_of_steel_2012.en.srt" "ce9578f6fe098a5821045a3
 verify_sha256 "testdata/raw/tears_of_steel_2012.de.srt" "666685daa9064a5a59144e47bddd2d570bbdda199df6e4e39f3273e479ab1f4b"
 if [[ "${FETCH_SECOND_FILM:-0}" == "1" ]]; then
   fetch "https://download.blender.org/demo/movies/ToS/tears_of_steel_720p.mov" "testdata/raw/tears_of_steel_2012.mov"
+
+  # Sintel (2010, CC-BY) - third film, never used for tuning. Its dialogue truth is
+  # the English subtitle track embedded in the MKV (26 cues); 681 MB zip.
+  fetch "https://download.blender.org/durian/movies/Sintel.2010.720p.mkv.zip" "testdata/raw/sintel_720p.zip"
+  if [[ ! -s "testdata/raw/Sintel.2010.720p.mkv" && -s "testdata/raw/sintel_720p.zip" ]]; then
+    python3 -c "import zipfile; zipfile.ZipFile('testdata/raw/sintel_720p.zip').extract('Sintel.2010.720p.mkv', 'testdata/raw')"
+  fi
+  if [[ ! -s "testdata/raw/sintel_2010.en.srt" && -s "testdata/raw/Sintel.2010.720p.mkv" ]]; then
+    ffmpeg -v error -y -i testdata/raw/Sintel.2010.720p.mkv -map 0:s:m:language:eng -f srt testdata/raw/sintel_2010.en.srt || true
+  fi
+  cues="$(grep -c -- '-->' testdata/raw/sintel_2010.en.srt 2>/dev/null || true)"
+  if [[ "${cues:-0}" != "26" ]]; then
+    echo "WARN: sintel_2010.en.srt has ${cues:-0} cues, expected 26"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
 fi
 
 CRITICAL_ASSETS="testdata/raw/elephants_dream_2006.mp4 testdata/raw/sintel_trailer_2010.mp4"

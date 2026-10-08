@@ -84,3 +84,9 @@
 - **Whisper's own confidences do not help** (no_speech_prob, avg_logprob, word probability): every setting traded narratable time for leak along the same line.
 - **Fix: Silero evidence gate** (`--min-vad-evidence`, default 0.1): keep a cue only if the Silero model bundled with faster-whisper reaches that peak speech probability inside it. Result (narratable s / leak): ED 384/2.1%, ToS 516/3.7%, Sintel 770/3.5%; mean narratable 405 -> 557 s (+37%) for leak 2.5% -> 3.1%; flat for 0.1-0.3. Versus no cues: leak 9.1/8.3/3.7% -> 2.1/3.7/3.5%.
 - Caveat: floor and pad were chosen on these same three films; no fourth unseen film exists locally. Real subtitles remain the reliable path (0% leak).
+
+### Sintel as second sweep holdout (2026-10-08)
+- Manifest tier C now has two entries (Tears of Steel, Sintel); `fetch_test_assets.sh` (with `FETCH_SECOND_FILM=1`) downloads Sintel's 681 MB zip, extracts the MKV and its English subtitle track (`-map 0:s:m:language:eng`, 26 cues, asserted). Only the weekly sweep pays the download.
+- Seeded floors, Sintel: non-voice P/R 0.963/0.941, speech P/R 0.494/0.615, overlap 0.952. A hand-degraded Sintel speech recall turns the ratchet red.
+- `check_radio_play_readiness.py --update-floors` now seeds floors for entries that have none (it used to refuse, which made adding a film impossible without hand-editing).
+- Sweep not yet run in CI (weekly/dispatch only); the local run is `run_validation_manifest.py` over the 5 entries.

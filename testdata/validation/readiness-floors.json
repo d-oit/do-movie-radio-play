@@ -6,6 +6,13 @@
       "overlap_ratio": 0.9032,
       "speech_time_precision": 0.5718,
       "speech_time_recall": 0.6508
+    },
+    "sintelholdoutentry": {
+      "non_voice_precision": 0.9631,
+      "non_voice_recall": 0.9412,
+      "overlap_ratio": 0.952,
+      "speech_time_precision": 0.4943,
+      "speech_time_recall": 0.6148
     }
   }
 }

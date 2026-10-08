@@ -463,17 +463,15 @@ mod tests {
             std::path::PathBuf::from("movie.mp4"),
             std::path::PathBuf::from("out.wav"),
         );
-        let voice_cfg = movie_radio_voice::VoiceSynthesisConfig {
+        ctx.voice_config = Some(movie_radio_voice::VoiceSynthesisConfig {
             language: "en".to_string(),
             voice_id: Some("narrator-custom".to_string()),
             fallback_chain: vec!["modal".to_string()],
             ..movie_radio_voice::VoiceSynthesisConfig::default()
-        };
-        ctx.voice_config = Some(voice_cfg);
+        });
         ctx.scripts = Some(vec![script(100)]);
 
-        const MODAL_TTS_ENDPOINT_ENV: &str = "MODAL_TTS_ENDPOINT";
-        std::env::remove_var(MODAL_TTS_ENDPOINT_ENV);
+        std::env::remove_var("MODAL_TTS_ENDPOINT");
         let result = SynthesizeNarrator.execute(&mut ctx).await;
         let err = result.expect_err("synthesis failure expected without endpoint");
         assert!(err.to_string().contains("all 1 narration syntheses failed"));
@@ -489,8 +487,7 @@ mod tests {
         ctx.voice_reference = Some(ref_path.clone());
         ctx.scripts = Some(vec![script(100)]);
 
-        const MODAL_TTS_ENDPOINT_ENV: &str = "MODAL_TTS_ENDPOINT";
-        std::env::remove_var(MODAL_TTS_ENDPOINT_ENV);
+        std::env::remove_var("MODAL_TTS_ENDPOINT");
         let result = SynthesizeNarrator.execute(&mut ctx).await;
         let err = result.expect_err("synthesis failure expected without endpoint");
         assert!(err.to_string().contains("all 1 narration syntheses failed"));

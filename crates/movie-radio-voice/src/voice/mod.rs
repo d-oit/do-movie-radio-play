@@ -69,6 +69,8 @@ pub enum SynthesisValidationError {
     InvalidVoiceId,
     #[error("language tag contains invalid characters or exceeds maximum length of {MAX_LANGUAGE_CHARS}")]
     InvalidLanguage,
+    #[error("reference_audio path contains parent directory traversal components (..)")]
+    InvalidReferenceAudio,
 }
 
 fn is_valid_voice_id_char(c: char) -> bool {
@@ -115,6 +117,14 @@ impl SynthesisRequest {
         }
         if !is_valid_language(&self.language) {
             return Err(SynthesisValidationError::InvalidLanguage);
+        }
+        if let Some(ref ref_path) = self.reference_audio {
+            if ref_path
+                .components()
+                .any(|c| c == std::path::Component::ParentDir)
+            {
+                return Err(SynthesisValidationError::InvalidReferenceAudio);
+            }
         }
         Ok(())
     }
@@ -448,6 +458,26 @@ mod tests {
             assert_eq!(
                 req.validate(),
                 Err(SynthesisValidationError::InvalidLanguage)
+            );
+        }
+    }
+
+    #[test]
+    fn test_reference_audio_validation() {
+        let valid_req = SynthesisRequest {
+            reference_audio: Some(PathBuf::from("voice_samples/alice.wav")),
+            ..Default::default()
+        };
+        assert_eq!(valid_req.validate(), Ok(()));
+
+        for invalid_path in ["../secret.wav", "voice_samples/../../etc/passwd"] {
+            let invalid_req = SynthesisRequest {
+                reference_audio: Some(PathBuf::from(invalid_path)),
+                ..Default::default()
+            };
+            assert_eq!(
+                invalid_req.validate(),
+                Err(SynthesisValidationError::InvalidReferenceAudio)
             );
         }
     }

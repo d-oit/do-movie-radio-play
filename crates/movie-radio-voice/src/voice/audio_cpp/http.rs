@@ -24,32 +24,28 @@ fn resolve_remote_voice_ref(request: &SynthesisRequest, config: &AudioCppConfig)
         .as_deref()
         .filter(|p| !p.as_os_str().is_empty())
     {
-        // Enforce the offline boundary: remote upload happens only when the
-        // request carries an explicit clip (ADR-0125: log when audio leaves
-        // the local machine).
+        if path
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
+        {
+            anyhow::bail!(
+                "reference audio path contains parent directory traversal components (..)"
+            );
+        }
         const MAX_VOICE_REF_BYTES: u64 = 5 * 1024 * 1024;
         let meta = std::fs::metadata(path)
             .with_context(|| format!("failed to read reference audio {}", path.display()))?;
-        // Regular files only: FIFOs/sockets/devices would block a sync open
-        // or stream forever, and the size cap cannot bound them.
         if !meta.file_type().is_file() {
             anyhow::bail!("reference audio must be a regular file");
         }
         if meta.len() > MAX_VOICE_REF_BYTES {
             anyhow::bail!("reference audio exceeds 5 MiB voice_ref limit");
         }
-        // Capped blocking read: the caller is async, so block_in_place lets
-        // the runtime schedule replacement work while this closure runs on
-        // the calling worker thread. The metadata pre-check above rejects
-        // obvious non-files; the opened handle is revalidated below and the
-        // cap re-checked to cover swaps or growth between check and read.
         let owned = path.to_path_buf();
         let bytes = tokio::task::block_in_place(|| {
             use std::io::Read as _;
             let mut file = std::fs::File::open(&owned)
                 .with_context(|| format!("failed to read reference audio {}", owned.display()))?;
-            // Revalidate the opened file, not the pathname: the path may
-            // have been swapped (e.g. for a FIFO) after the pre-check.
             let opened = file
                 .metadata()
                 .with_context(|| format!("failed to read reference audio {}", owned.display()))?;
@@ -66,18 +62,19 @@ fn resolve_remote_voice_ref(request: &SynthesisRequest, config: &AudioCppConfig)
         if bytes.len() as u64 > MAX_VOICE_REF_BYTES {
             anyhow::bail!("reference audio exceeds 5 MiB voice_ref limit");
         }
-        tracing::info!(
-            path = %path.display(),
-            bytes = bytes.len(),
-            "uploading reference audio to remote audio.cpp endpoint"
-        );
+        tracing::info!(path = %path.display(), bytes = bytes.len(), "uploading reference audio to remote audio.cpp endpoint");
         return Ok(base64::engine::general_purpose::STANDARD.encode(&bytes));
     }
-    // A configured local clip is a path, not remote payload: the server
-    // cannot read our filesystem, so encode it the same way. Missing
-    // files keep the legacy passthrough (e.g. a server-side voice name).
     if let Some(local) = config.voice_ref.as_deref().filter(|s| !s.is_empty()) {
         let path = std::path::Path::new(local);
+        if path
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
+        {
+            anyhow::bail!(
+                "reference audio path contains parent directory traversal components (..)"
+            );
+        }
         if path.exists() {
             let nested = SynthesisRequest {
                 reference_audio: Some(path.to_path_buf()),
@@ -463,5 +460,32 @@ mod tests {
         };
         let resolved = resolve_remote_voice_ref(&request, &config).expect("resolve");
         assert_eq!(resolved, "configured-ref");
+    }
+
+    #[test]
+    fn test_remote_voice_ref_rejects_parent_dir_traversal() {
+        let config = AudioCppConfig::default();
+        let request = SynthesisRequest {
+            reference_audio: Some(std::path::PathBuf::from("../etc/passwd")),
+            ..SynthesisRequest::default()
+        };
+        let res = resolve_remote_voice_ref(&request, &config);
+        assert!(res.is_err());
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("parent directory traversal components"));
+
+        let config_traversal = AudioCppConfig {
+            voice_ref: Some("../secret.wav".to_string()),
+            ..AudioCppConfig::default()
+        };
+        let empty_req = SynthesisRequest::default();
+        let res_config = resolve_remote_voice_ref(&empty_req, &config_traversal);
+        assert!(res_config.is_err());
+        assert!(res_config
+            .unwrap_err()
+            .to_string()
+            .contains("parent directory traversal components"));
     }
 }

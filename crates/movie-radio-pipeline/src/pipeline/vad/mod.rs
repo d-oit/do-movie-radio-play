@@ -30,6 +30,34 @@ pub struct SpectralThresholds {
     pub centroid_max: f32,
 }
 
+/// Neural VAD is the best measured detector (plans/GOAP_STATE.md); it is
+/// preferred only when everything it needs is present. Shared by `radio-play`
+/// and voice-reference selection so both see the same speech.
+pub fn preferred_engine(
+    feature_built: bool,
+    model: &std::path::Path,
+    ort_found: bool,
+) -> Option<&'static str> {
+    (feature_built && ort_found && model.is_file()).then_some("silero")
+}
+
+/// Model path used by the Silero engine: `SILERO_VAD_MODEL` or `models/silero_vad.onnx`.
+pub fn silero_model_path() -> std::path::PathBuf {
+    std::env::var_os("SILERO_VAD_MODEL").map_or_else(
+        || std::path::PathBuf::from("models/silero_vad.onnx"),
+        std::path::PathBuf::from,
+    )
+}
+
+/// [`preferred_engine`] evaluated against this build and environment.
+pub fn preferred_engine_from_env() -> Option<&'static str> {
+    preferred_engine(
+        cfg!(feature = "silero-vad"),
+        &silero_model_path(),
+        std::env::var_os("ORT_DYLIB_PATH").is_some(),
+    )
+}
+
 pub fn create_engine(
     name: &str,
     threshold: f32,

@@ -69,7 +69,13 @@ pub fn extract_candidates(
     // only clamp to that valid range instead of the historical 2s floor.
     let min_ms =
         ((f64::from(cfg.voice_clone.min_sample_seconds) * 1000.0).round() as u64).max(1000);
-    let timeline = crate::pipeline::extract_timeline(input, &AnalysisConfig::default()).ok();
+    // Reference clips must contain speech: the default energy engine finds none
+    // on some films (Sintel), which cloned music and ambience instead of a voice.
+    let mut analysis = AnalysisConfig::default();
+    if let Some(engine) = crate::pipeline::vad::preferred_engine_from_env() {
+        analysis.vad_engine = engine.to_string();
+    }
+    let timeline = crate::pipeline::extract_timeline(input, &analysis).ok();
     if let Some(timeline) = timeline.as_ref() {
         // The timeline carries non-voice segments; the gaps between them are
         // the speech/dialogue regions eligible as clone candidates.

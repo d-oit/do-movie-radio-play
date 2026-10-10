@@ -1,5 +1,5 @@
 {
-  "summary": "analysis/validation/full-sweep-summary.json",
+  "summary": "analysis/validation/radio-play-sweep-summary.json",
   "holdout_tier": "C",
   "thresholds": {
     "min_non_voice_precision": 0.95,
@@ -11,18 +11,27 @@
   "threshold_gate_pass": false,
   "lb95_gate_pass": false,
   "threshold_failures": [
-    "HOLDING_TIER_C: missing (all entries skipped or manifest empty)"
+    "tos-en-holdout: non_voice_precision=0.9179 < 0.9500",
+    "tos-en-holdout: non_voice_recall=0.8890 < 0.9500",
+    "tos-en-holdout: overlap_ratio=0.9032 < 0.9500",
+    "sintelholdoutentry: non_voice_recall=0.9412 < 0.9500"
   ],
-  "lb95_failures": [],
+  "lb95_failures": [
+    "tos-en-holdout: precision_lb95=0.9105 < 0.9500",
+    "tos-en-holdout: recall_lb95=0.8808 < 0.9500",
+    "tos-en-holdout: overlap_lb95=0.8955 < 0.9500",
+    "sintelholdoutentry: recall_lb95=0.9359 < 0.9500",
+    "sintelholdoutentry: overlap_lb95=0.9472 < 0.9500"
+  ],
   "cohort_summary": {
     "modern": {
-      "count": 0,
-      "avg_overlap_ratio": 0.0,
-      "avg_non_voice_precision": 0.0,
-      "avg_non_voice_recall": 0.0,
-      "avg_overlap_ratio_lb95": 0.0,
-      "avg_non_voice_precision_lb95": 0.0,
-      "avg_non_voice_recall_lb95": 0.0
+      "count": 2,
+      "avg_overlap_ratio": 0.92764556,
+      "avg_non_voice_precision": 0.94052085,
+      "avg_non_voice_recall": 0.9151270499999999,
+      "avg_overlap_ratio_lb95": 0.9213361307959542,
+      "avg_non_voice_precision_lb95": 0.9346584173404142,
+      "avg_non_voice_recall_lb95": 0.9083570951314617
     },
     "legacy": {
       "count": 0,
@@ -34,5 +43,38 @@
       "avg_non_voice_recall_lb95": 0.0
     }
   },
-  "failing_entries": []
+  "failing_entries": [
+    {
+      "id": "tos-en-holdout",
+      "media": "testdata/raw/tears_of_steel_2012.mov",
+      "tier": "C",
+      "cohort": "modern",
+      "non_voice_precision": 0.9178811,
+      "non_voice_recall": 0.8890123,
+      "overlap_ratio": 0.90321606,
+      "non_voice_precision_lb95": 0.9105297748858814,
+      "non_voice_recall_lb95": 0.8807989519648537,
+      "overlap_ratio_lb95": 0.8954606466201199,
+      "expected_segments": 68,
+      "predicted_segments": 10,
+      "expected_non_voice_samples": 5979,
+      "predicted_non_voice_samples": 5791
+    },
+    {
+      "id": "sintelholdoutentry",
+      "media": "testdata/raw/Sintel.2010.720p.mkv",
+      "tier": "C",
+      "cohort": "modern",
+      "non_voice_precision": 0.9631606,
+      "non_voice_recall": 0.9412418,
+      "overlap_ratio": 0.95207506,
+      "non_voice_precision_lb95": 0.958787059794947,
+      "non_voice_recall_lb95": 0.9359152382980698,
+      "overlap_ratio_lb95": 0.9472116149717886,
+      "expected_segments": 27,
+      "predicted_segments": 6,
+      "expected_non_voice_samples": 8121,
+      "predicted_non_voice_samples": 7936
+    }
+  ]
 }

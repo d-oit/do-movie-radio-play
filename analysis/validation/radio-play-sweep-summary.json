@@ -6,7 +6,7 @@
     "C"
   ],
   "entry_count": 5,
-  "elapsed_ms": 84855,
+  "elapsed_ms": 38054,
   "results": [
     {
       "id": "synthetic_alternating",
@@ -17,7 +17,7 @@
       "profile": "synthetic",
       "config_path": "config/profiles/all-gaps.json",
       "output_report": "testdata/validation/validate_against_synthetic.json",
-      "elapsed_ms": 22740,
+      "elapsed_ms": 486,
       "metrics": {
         "overlap_ratio": 1.0,
         "boundary_error_ms": 2000.0,
@@ -48,7 +48,7 @@
       "profile": "radio-play-default",
       "config_path": null,
       "output_report": "testdata/validation/elephants_dream_2006_de_radio_validation.json",
-      "elapsed_ms": 15139,
+      "elapsed_ms": 7818,
       "metrics": {
         "overlap_ratio": 0.8975233,
         "boundary_error_ms": 11972.9375,
@@ -79,7 +79,7 @@
       "profile": "radio-play-default",
       "config_path": null,
       "output_report": "testdata/validation/elephants_dream_2006_es_radio_validation.json",
-      "elapsed_ms": 12489,
+      "elapsed_ms": 7897,
       "metrics": {
         "overlap_ratio": 0.8975233,
         "boundary_error_ms": 11972.9375,
@@ -110,7 +110,7 @@
       "profile": "radio-play-default",
       "config_path": null,
       "output_report": "testdata/validation/tos_en_validation.json",
-      "elapsed_ms": 14319,
+      "elapsed_ms": 9055,
       "metrics": {
         "overlap_ratio": 0.90321606,
         "boundary_error_ms": 11491.35,
@@ -141,7 +141,7 @@
       "profile": "radio-play-default",
       "config_path": null,
       "output_report": "testdata/validation/sintel_en_validation.json",
-      "elapsed_ms": 20162,
+      "elapsed_ms": 12794,
       "metrics": {
         "overlap_ratio": 0.95207506,
         "boundary_error_ms": 77164.164,

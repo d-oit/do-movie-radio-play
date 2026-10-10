@@ -28,19 +28,12 @@ pub struct RadioPlayOptions {
     pub no_auto_cues: bool,
 }
 
-fn silero_model_path() -> PathBuf {
-    std::env::var_os("SILERO_VAD_MODEL")
-        .map_or_else(|| PathBuf::from("models/silero_vad.onnx"), PathBuf::from)
-}
-
-/// Prefer the neural VAD (best measured detector, see plans/GOAP_STATE.md)
-/// only when everything it needs is present; otherwise keep the configured one.
 fn default_vad_engine(
     feature_built: bool,
     model: &std::path::Path,
     ort_found: bool,
 ) -> Option<&'static str> {
-    (feature_built && ort_found && model.is_file()).then_some("silero")
+    movie_radio_pipeline::pipeline::vad::preferred_engine(feature_built, model, ort_found)
 }
 
 pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
@@ -78,7 +71,7 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
         None => {
             if let Some(engine) = default_vad_engine(
                 cfg!(feature = "silero-vad"),
-                &silero_model_path(),
+                &movie_radio_pipeline::pipeline::vad::silero_model_path(),
                 std::env::var_os("ORT_DYLIB_PATH").is_some(),
             ) {
                 info!(engine, "using neural VAD (model and ONNX Runtime found)");

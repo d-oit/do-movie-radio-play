@@ -1,5 +1,7 @@
 mod split;
+mod trend;
 pub use split::{split_gap_windows, subtract_cues, MAX_NARRATION_WINDOW_MS};
+pub use trend::energy_trend;
 
 use anyhow::Result;
 use movie_radio_types::{GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap};
@@ -107,6 +109,7 @@ impl GapIdentifier {
                     reason: reasons.join("; "),
                     priority,
                     tags: seg.tags.clone(),
+                    trend: None,
                 });
             }
         }

@@ -5,8 +5,8 @@
     "B",
     "C"
   ],
-  "entry_count": 4,
-  "elapsed_ms": 24265,
+  "entry_count": 5,
+  "elapsed_ms": 84855,
   "results": [
     {
       "id": "synthetic_alternating",
@@ -17,7 +17,7 @@
       "profile": "synthetic",
       "config_path": "config/profiles/all-gaps.json",
       "output_report": "testdata/validation/validate_against_synthetic.json",
-      "elapsed_ms": 692,
+      "elapsed_ms": 22740,
       "metrics": {
         "overlap_ratio": 1.0,
         "boundary_error_ms": 2000.0,
@@ -48,7 +48,7 @@
       "profile": "radio-play-default",
       "config_path": null,
       "output_report": "testdata/validation/elephants_dream_2006_de_radio_validation.json",
-      "elapsed_ms": 7499,
+      "elapsed_ms": 15139,
       "metrics": {
         "overlap_ratio": 0.8975233,
         "boundary_error_ms": 11972.9375,
@@ -79,7 +79,7 @@
       "profile": "radio-play-default",
       "config_path": null,
       "output_report": "testdata/validation/elephants_dream_2006_es_radio_validation.json",
-      "elapsed_ms": 7353,
+      "elapsed_ms": 12489,
       "metrics": {
         "overlap_ratio": 0.8975233,
         "boundary_error_ms": 11972.9375,
@@ -110,7 +110,7 @@
       "profile": "radio-play-default",
       "config_path": null,
       "output_report": "testdata/validation/tos_en_validation.json",
-      "elapsed_ms": 8719,
+      "elapsed_ms": 14319,
       "metrics": {
         "overlap_ratio": 0.90321606,
         "boundary_error_ms": 11491.35,
@@ -130,6 +130,37 @@
         "non_voice_expected_ms": 597967,
         "expected_segments": 68,
         "predicted_segments": 10
+      }
+    },
+    {
+      "id": "sintelholdoutentry",
+      "tier": "C",
+      "input_media": "testdata/raw/Sintel.2010.720p.mkv",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/sintel_2010.en.srt",
+      "profile": "radio-play-default",
+      "config_path": null,
+      "output_report": "testdata/validation/sintel_en_validation.json",
+      "elapsed_ms": 20162,
+      "metrics": {
+        "overlap_ratio": 0.95207506,
+        "boundary_error_ms": 77164.164,
+        "speech_precision": 0.0,
+        "speech_recall": 0.0,
+        "non_voice_precision": 0.16666667,
+        "non_voice_recall": 0.037037037,
+        "speech_time_precision": 0.4943844,
+        "speech_time_recall": 0.6148373,
+        "non_voice_time_precision": 0.9631606,
+        "non_voice_time_recall": 0.9412418,
+        "speech_overlap_ms": 46660,
+        "speech_predicted_ms": 94380,
+        "speech_expected_ms": 75890,
+        "non_voice_overlap_ms": 764422,
+        "non_voice_predicted_ms": 793660,
+        "non_voice_expected_ms": 812142,
+        "expected_segments": 27,
+        "predicted_segments": 6
       }
     }
   ]

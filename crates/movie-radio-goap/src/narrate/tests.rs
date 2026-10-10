@@ -69,6 +69,7 @@ fn test_generate_skips_gap_too_short_for_any_whole_clause() {
         reason: "Short pause".to_string(),
         priority: 1,
         tags: Vec::new(),
+        trend: None,
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
@@ -119,6 +120,7 @@ fn test_generate_with_gap() {
         reason: "Extended ambience".to_string(),
         priority: 5,
         tags: Vec::new(),
+        trend: None,
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
@@ -138,6 +140,7 @@ fn test_low_confidence_gap_skipped() {
         reason: "weak".to_string(),
         priority: 1,
         tags: Vec::new(),
+        trend: None,
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
@@ -154,6 +157,7 @@ fn gap_context(tags: &[&str]) -> GapContext {
         gap_duration_ms: 2_000,
         gap_reason: String::new(),
         variant: 0,
+        trend: None,
     }
 }
 
@@ -203,6 +207,7 @@ fn test_generate_text_is_grounded_not_filler() {
         reason: "Duration (12000ms) > 3000ms; Ambiguous SFX needing description".to_string(),
         priority: 5,
         tags: Vec::new(),
+        trend: None,
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
@@ -237,6 +242,7 @@ fn test_generate_text_is_deterministic() {
         reason: "Extended ambience".to_string(),
         priority: 3,
         tags: Vec::new(),
+        trend: None,
     }];
 
     let first = gen.generate(&timeline, &gaps).unwrap();
@@ -279,6 +285,7 @@ fn test_self_tags_take_precedence_over_neighbour_tags() {
         reason: "Audio environment change detected".to_string(),
         priority: 4,
         tags: Vec::new(),
+        trend: None,
     }];
 
     let scripts = gen.generate(&timeline, &gaps).unwrap();
@@ -372,5 +379,42 @@ fn test_variants_rotate_deterministically_and_stay_grounded() {
     assert_eq!(text_for(2), text_for(2));
     for text in &all {
         assert!(!lang::phrases("de").banned_filler.contains(&text.as_str()));
+    }
+}
+
+#[test]
+fn test_trend_adds_a_measured_clause_within_budget() {
+    let gen = NarrationGenerator::default();
+    let ctx = |trend, variant| GapContext {
+        self_tags: vec!["music_bed".to_string()],
+        gap_duration_ms: 15_000,
+        variant,
+        trend,
+        ..GapContext::default()
+    };
+    let rising = gen.generate_text(&ctx(Some(GapTrend::Rising), 0), 40);
+    assert_eq!(rising, "Musik untermalt die Szene. Der Klang schwillt an.");
+    let falling = gen.generate_text(&ctx(Some(GapTrend::Falling), 1), 40);
+    assert!(
+        falling.contains("leiser") || falling.contains("ab"),
+        "{falling}"
+    );
+    // Without a measured trend the text is unchanged.
+    assert_eq!(
+        gen.generate_text(&ctx(None, 0), 40),
+        "Musik untermalt die Szene."
+    );
+    // The trend clause is dropped, never the content clause, when the budget is tight.
+    assert_eq!(
+        gen.generate_text(&ctx(Some(GapTrend::Rising), 0), 4),
+        "Musik untermalt die Szene."
+    );
+}
+
+#[test]
+fn test_english_trend_clauses_exist_and_are_not_filler() {
+    let en = lang::phrases("en");
+    for clause in en.trend_rising.iter().chain(en.trend_falling) {
+        assert!(clause.split_whitespace().count() >= 3, "{clause}");
     }
 }

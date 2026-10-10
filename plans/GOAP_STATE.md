@@ -76,3 +76,22 @@
 - `radio-play` does not use a fitted profile: it runs the default `AnalysisConfig` with Silero. The sweep manifest now scores exactly that (`vad_engine: silero`, no `config_path`, profile label `radio-play-default`); tier C is Tears of Steel (the weekly sweep had been failing since before this branch because tier C pointed at a nonexistent `sintel_trailer_2010.srt`).
 - Holdout (Tears of Steel) floors, now meaningful: non-voice P/R 0.918/0.889, speech P/R 0.572/0.651, overlap 0.903 (`testdata/validation/readiness-floors.json`). The ratchet is the blocking gate; the 0.95 report is non-blocking and aspirational.
 - `scripts/fetch_silero_vad.sh` now pins v6.2.3 with a SHA-256 check (the first version pinned v5.1.2, a different model than every measurement here).
+
+## Third film (Sintel) and deterministic, gated speech-to-text cues (2026-10-08)
+- **Sintel as unseen film**: embedded EN/DE subtitle tracks give 26 timed cues (`ffmpeg -map 0:s:N`); Sintel was never used to tune the detector. Default config, Silero (`timeline validate`): non-voice P/R 0.963/0.941, speech P/R 0.494/0.615, overlap 0.952. The **energy engine finds no speech at all** on Sintel (speech P/R 0/0), so Silero as default is not a tuning artefact of the two earlier films.
+- **Correction**: the "leak 8.3% -> 0.9%" for speech-to-text cues (previous section) was a lucky draw. faster-whisper's temperature fallback samples randomly, so the same film gave 70, 74 and 99 cues across runs, violating the repo's deterministic-output rule. `transcribe_cues.py` now decodes greedily (`temperature=0.0`); two runs are byte-identical.
+- **Honest numbers with deterministic cues** (pad 0.8 s; narratable seconds / dialogue leak): Elephants Dream 469 s/9.1% -> 276 s/1.5%; Tears of Steel 579 s/8.3% -> 431 s/2.3%; Sintel 794 s/3.7% -> 508 s/3.7% (no gain, 36% of narration lost: only 14% of whisper's cue time on Sintel is real speech, it hallucinates over score).
+- **Whisper's own confidences do not help** (no_speech_prob, avg_logprob, word probability): every setting traded narratable time for leak along the same line.
+- **Fix: Silero evidence gate** (`--min-vad-evidence`, default 0.1): keep a cue only if the Silero model bundled with faster-whisper reaches that peak speech probability inside it. Result (narratable s / leak): ED 384/2.1%, ToS 516/3.7%, Sintel 770/3.5%; mean narratable 405 -> 557 s (+37%) for leak 2.5% -> 3.1%; flat for 0.1-0.3. Versus no cues: leak 9.1/8.3/3.7% -> 2.1/3.7/3.5%.
+- Caveat: floor and pad were chosen on these same three films; no fourth unseen film exists locally. Real subtitles remain the reliable path (0% leak).
+
+### Sintel as second sweep holdout (2026-10-08)
+- Manifest tier C now has two entries (Tears of Steel, Sintel); `fetch_test_assets.sh` (with `FETCH_SECOND_FILM=1`) downloads Sintel's 681 MB zip, extracts the MKV and its English subtitle track (`-map 0:s:m:language:eng`, 26 cues, asserted). Only the weekly sweep pays the download.
+- Seeded floors, Sintel: non-voice P/R 0.963/0.941, speech P/R 0.494/0.615, overlap 0.952. A hand-degraded Sintel speech recall turns the ratchet red.
+- `check_radio_play_readiness.py --update-floors` now seeds floors for entries that have none (it used to refuse, which made adding a film impossible without hand-editing).
+- Sweep not yet run in CI (weekly/dispatch only); the local run is `run_validation_manifest.py` over the 5 entries.
+
+## Measured loudness trend in narration (2026-10-08)
+- Each narration window now carries `GapTrend::{Rising,Falling}` measured from its own samples (`gaps/trend.rs`: RMS of the first vs last third, >= 4 dB change, span >= 3 s, audible), and `narrate` adds one clause for it ("Der Klang schwillt an." / "The sound fades away.") after the tag clause, only when the word budget allows. No model, no key, deterministic, grounded in the audio (ADR-128).
+- Dry run (distinct lines / lines per film, subtitles supplied): Elephants Dream 13 / 14, Tears of Steel 20 / 37, Sintel 26 / 41; most repeated line ~4 of 37 on Tears of Steel (was 11 of 47 before variants+trend). 43-51% of windows get a trend clause.
+- Still tag/level-only: it cannot say what happens, who is speaking or where. That needs a language model or visual input.

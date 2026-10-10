@@ -43,6 +43,17 @@
       "profile": "radio-play-default",
       "output_report": "testdata/validation/tos_en_validation.json",
       "vad_engine": "silero"
+    },
+    {
+      "id": "sintelholdoutentry",
+      "tier": "C",
+      "input_media": "testdata/raw/Sintel.2010.720p.mkv",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/sintel_2010.en.srt",
+      "total_ms": 888032,
+      "profile": "radio-play-default",
+      "vad_engine": "silero",
+      "output_report": "testdata/validation/sintel_en_validation.json"
     }
   ]
 }

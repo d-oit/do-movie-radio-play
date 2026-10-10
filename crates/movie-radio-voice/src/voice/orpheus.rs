@@ -301,9 +301,13 @@ impl VoiceSynthesizer for OrpheusProvider {
         let tagged_text = self.wrap_with_emotion_tags(&request.text, &request.emotion);
 
         // 1. Tokenize input
-        let tokens_list = model
-            .str_to_token(&tagged_text, llama_cpp_2::model::AddBos::Always)
-            .map_err(|e| anyhow::anyhow!("Tokenization failed: {:?}", e))?;
+        // `add_special` adds BOS (the old `AddBos::Always`); `parse_special` keeps the
+        // `<tag>` emotion markers as control tokens rather than plain text.
+        let vocab = model.vocab();
+        let tokens_list = vocab.tokenize(tagged_text.as_bytes(), true, true);
+        if tokens_list.is_empty() {
+            anyhow::bail!("Tokenization produced no tokens for Orpheus prompt");
+        }
 
         let backend_guard = Self::get_backend()?
             .lock()
@@ -338,7 +342,7 @@ impl VoiceSynthesizer for OrpheusProvider {
             let token = sampler.sample(&ctx, batch.n_tokens() - 1);
 
             // Check for end-of-audio or end-of-generation
-            if model.is_eog_token(token) {
+            if vocab.is_eog(token) {
                 break;
             }
 

@@ -24,7 +24,7 @@ pub fn handle_validate(
     min_speech_ms: Option<u32>,
     min_silence_ms: Option<u32>,
     max_non_voice_ms: Option<u32>,
-    vad_engine: String,
+    vad_engine: Option<String>,
     calibration_profile: Option<PathBuf>,
     truth_json: Option<PathBuf>,
     subtitles: Option<PathBuf>,

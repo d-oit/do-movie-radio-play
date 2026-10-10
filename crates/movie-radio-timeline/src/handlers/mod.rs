@@ -35,7 +35,7 @@ pub(crate) fn load_analysis_config(
     min_speech_override: Option<u32>,
     min_silence_override: Option<u32>,
     max_non_voice_override: Option<u32>,
-    vad_engine: String,
+    vad_engine: Option<String>,
     calibration_profile: Option<PathBuf>,
     parallel_features: Option<bool>,
 ) -> Result<config::AnalysisConfig> {
@@ -46,7 +46,7 @@ pub(crate) fn load_analysis_config(
         min_speech_override,
         min_silence_override,
         max_non_voice_override,
-        Some(vad_engine),
+        vad_engine,
         threshold_delta,
         parallel_features,
     )
@@ -129,4 +129,49 @@ pub(crate) fn handle_apply_calibration(
         "applied calibration report"
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod engine_selection_tests {
+    use super::load_analysis_config;
+
+    fn config_file(engine: &str) -> tempfile::NamedTempFile {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let json = serde_json::json!({
+            "sample_rate_hz": 16000, "frame_ms": 20, "speech_hangover_ms": 300, "merge_gap_ms": 250,
+            "min_speech_ms": 120, "min_non_voice_ms": 10000, "max_non_voice_ms": null,
+            "energy_threshold": 0.015, "vad_threshold_delta": 0.0, "prompt_min_duration_ms": 2500,
+            "prompt_min_confidence": 0.65, "vad_engine": engine
+        });
+        std::fs::write(file.path(), json.to_string()).unwrap();
+        file
+    }
+
+    fn engine(config: Option<&tempfile::NamedTempFile>, flag: Option<&str>) -> String {
+        load_analysis_config(
+            config.map(|f| f.path().to_path_buf()),
+            None,
+            None,
+            None,
+            None,
+            flag.map(str::to_string),
+            None,
+            None,
+        )
+        .unwrap()
+        .vad_engine
+    }
+
+    #[test]
+    fn config_engine_is_used_when_no_flag_is_given() {
+        let cfg = config_file("spectral");
+        assert_eq!(engine(Some(&cfg), None), "spectral");
+    }
+
+    #[test]
+    fn explicit_flag_overrides_the_config_and_default_is_energy() {
+        let cfg = config_file("spectral");
+        assert_eq!(engine(Some(&cfg), Some("hybrid")), "hybrid");
+        assert_eq!(engine(None, None), "energy");
+    }
 }

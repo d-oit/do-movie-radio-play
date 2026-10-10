@@ -95,3 +95,19 @@
 - Each narration window now carries `GapTrend::{Rising,Falling}` measured from its own samples (`gaps/trend.rs`: RMS of the first vs last third, >= 4 dB change, span >= 3 s, audible), and `narrate` adds one clause for it ("Der Klang schwillt an." / "The sound fades away.") after the tag clause, only when the word budget allows. No model, no key, deterministic, grounded in the audio (ADR-128).
 - Dry run (distinct lines / lines per film, subtitles supplied): Elephants Dream 13 / 14, Tears of Steel 20 / 37, Sintel 26 / 41; most repeated line ~4 of 37 on Tears of Steel (was 11 of 47 before variants+trend). 43-51% of windows get a trend clause.
 - Still tag/level-only: it cannot say what happens, who is speaking or where. That needs a language model or visual input.
+
+## Status 2026-10-10: issue validation, PR triage, profile sweep
+**Open issues vs what is on `main`** (#374, #376, #377, #379 merged):
+
+| Issue | Verdict | Evidence |
+|---|---|---|
+| #362 second detection axis | **Delivered, close** | F0 harmonicity measured and rejected (Youden J ~0.13); Silero added instead. Against timed subtitles it improves non-voice recall *and* speech recall together (Elephants Dream speech R 0.52 -> 0.75, non-voice R 0.61 -> 0.89), i.e. a dominating, independent axis; replicated on Tears of Steel and Sintel (energy finds no speech there at all). |
+| #363 unreachable 0.95 gate | **Delivered, close** | Per-entry ratchet (`--floors`) is the blocking step of the weekly sweep; the 0.95 report is non-blocking. Local dry run of every sweep step passes; a hand-degraded metric turns the ratchet red. |
+| #364 second validation film | **Delivered, close** (see caveat) | Tears of Steel + Sintel with pinned/asserted truth in the manifest; coverage check passes. Step 3 now done (below). Caveat: one dev film, two holdouts (the issue asked for two + two), and the weekly CI sweep has not run on the new manifest yet (dispatch is not permitted from this workspace; first scheduled run Mon 2026-10-12). Reopen if it fails. |
+
+**#364 step 3 — 16-candidate sweep on the three-film corpus** (`scripts/research/profile_sweep.py`; score = harmonic mean of speech-time recall, non-voice precision, non-voice recall; dev = Elephants Dream, holdout = mean of Tears of Steel and Sintel): the dev winner is also the holdout winner (rank 1/16), so the old dev-to-holdout reversal does **not** reproduce, but only because the grid is degenerate. The energy threshold is inert from 0.0005 to 0.4 on real film audio and every energy candidate calls (almost) everything a gap (speech recall <= 0.02, scores 0.000-0.026). The shipped detector scores **0.844 dev / 0.802 holdout** (gap 0.04, vs ~0.15 reported for the old profile). Engine choice, not knob tuning, is what matters; fitted energy profiles are retired in `FOLLOWUPS.md`.
+
+**Open PRs**
+- #378 (`..` check on reference paths): **closed, no impact.** The producer (`voice_clone.rs`) already rejects `..`; the consumer check is bypassed by absolute paths/symlinks; it deleted ~20 lines of rationale comments. Useful form (canonical allowed root) needs a stated threat first.
+- #373 (llama-cpp-2 0.1.158): **superseded** by the migration branch (Orpheus moved to the `vocab()` API; lockfile identical to Dependabot's 4/-5). `clippy` and `test` with `--features local-tts` pass locally against 0.1.158.
+- Merge order: the migration PR is the only remaining change; no other PR depends on it. It must land after #376 (already merged) and needs a human merge (the workspace refuses `gh pr merge`).

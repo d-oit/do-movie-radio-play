@@ -54,7 +54,7 @@ The original audit found a functionally rich workspace with clean marker hygiene
 ### A7. Accepted-but-ignored CLI flags
 - `crates/movie-radio-timeline/src/handlers/preview.rs:14-19` — `--skip` / `--duration` log "not yet implemented", play from start / full file.
 
-### A8. Silero VAD (deliberate, documented deferral)
+### A8. Silero VAD (RESOLVED 2026-10-10: implemented, see ADR-127 update)
 - `crates/movie-radio-pipeline/src/pipeline/vad/mod.rs:78` — `silero` name accepted by CLI and `create_engine`, errors "not yet implemented (blocked on ort unification, see ADR-127)". Intentional per Milestone-C decision; WebRTC behind `webrtc-vad` is implemented.
 
 ### A9. Review player (doc-reported, current paths unverified)

@@ -1,19 +1,19 @@
 {
   "summary": "analysis/validation/radio-play-sweep-summary.json",
-  "entry_count": 4,
-  "failure_count": 3,
+  "entry_count": 5,
+  "failure_count": 5,
   "cohort_summary": {
     "modern": {
-      "count": 3,
-      "avg_overlap_ratio": 0.89892856,
-      "avg_non_voice_precision": 0.7023150066666667,
-      "avg_non_voice_recall": 0.9998740666666667
+      "count": 5,
+      "avg_overlap_ratio": 0.9300675439999999,
+      "avg_non_voice_precision": 0.8667293600000001,
+      "avg_non_voice_recall": 0.92034246
     },
     "legacy": {
-      "count": 1,
-      "avg_overlap_ratio": 0.9993875,
-      "avg_non_voice_precision": 0.9987758,
-      "avg_non_voice_recall": 1.0
+      "count": 0,
+      "avg_overlap_ratio": 0.0,
+      "avg_non_voice_precision": 0.0,
+      "avg_non_voice_recall": 0.0
     }
   },
   "failures": [
@@ -31,18 +31,36 @@
       "tier": "A",
       "media": "testdata/raw/elephants_dream_2006.mp4",
       "cohort": "modern",
-      "overlap_ratio": 0.84839284,
-      "non_voice_precision": 0.73680586,
-      "non_voice_recall": 0.9998111
+      "overlap_ratio": 0.8975233,
+      "non_voice_precision": 0.9096359,
+      "non_voice_recall": 0.8857291
     },
     {
       "id": "elephants_dream_2006_es_radio",
       "tier": "B",
       "media": "testdata/raw/elephants_dream_2006.mp4",
       "cohort": "modern",
-      "overlap_ratio": 0.84839284,
-      "non_voice_precision": 0.73680586,
-      "non_voice_recall": 0.9998111
+      "overlap_ratio": 0.8975233,
+      "non_voice_precision": 0.9096359,
+      "non_voice_recall": 0.8857291
+    },
+    {
+      "id": "tos-en-holdout",
+      "tier": "C",
+      "media": "testdata/raw/tears_of_steel_2012.mov",
+      "cohort": "modern",
+      "overlap_ratio": 0.90321606,
+      "non_voice_precision": 0.9178811,
+      "non_voice_recall": 0.8890123
+    },
+    {
+      "id": "sintelholdoutentry",
+      "tier": "C",
+      "media": "testdata/raw/Sintel.2010.720p.mkv",
+      "cohort": "modern",
+      "overlap_ratio": 0.95207506,
+      "non_voice_precision": 0.9631606,
+      "non_voice_recall": 0.9412418
     }
   ]
 }

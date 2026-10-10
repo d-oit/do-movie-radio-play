@@ -111,8 +111,8 @@ precision plateaued at ~0.7368 vs the 0.95 gate).
    while decoding instead of handing off `Vec<f32>` boundaries.
 3. **WAV format extension** (§6.5) — direct 24-bit/32-bit-float decode; small win.
 4. **Validation/reporting UX** (§6.6); benchmark baselines covered by C above.
-5. **Silero/WebRTC VAD** (§6.2) — stays deferred per `MILESTONE-C-DECISION.md`;
-   revisit after engine-level DSP improvements plateau.
+5. **Silero/WebRTC VAD** (§6.2) — **done 2026-10-10**: both engines implemented; Silero is the shipped
+   default when its model and ONNX Runtime are present (ADR-127 update, `plans/GOAP_STATE.md`).
 
 ## Priority Matrix
 

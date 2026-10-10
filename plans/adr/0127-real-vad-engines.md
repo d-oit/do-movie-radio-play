@@ -3,6 +3,10 @@
 **Status**: Accepted
 **Date**: 2026-09-04
 **Issues**: #253 (Phase 6.2)
+**Update 2026-10-10**: the Silero engine is implemented (PR #374/#376): `ort` with `load-dynamic`,
+model pinned to v6.2.3 by SHA-256 in `scripts/fetch_silero_vad.sh`, `silero-vad` is a default feature of
+the timeline binary, and `radio-play` prefers it when the model file and `ORT_DYLIB_PATH` exist (warning +
+energy fallback otherwise). Measured benefit and caveats: `plans/GOAP_STATE.md`.
 
 ## Context
 

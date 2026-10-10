@@ -4,21 +4,23 @@ Pre-existing issues encountered during implementation runs that could not be fix
 Each entry includes file path, description, priority, and suggested approach.
 
 **Created:** 2026-06-23
-**Updated:** 2026-08-25 — Added findings from workspace-wide improvement analysis (`plans/130-improvement-analysis-2026-08-25.md`)
+**Updated:** 2026-10-10 — radio-play validation, voice-reference and llama-cpp work (`plans/GOAP_STATE.md`)
 ## Open
 
 | Path | Description | Priority |
 |------|-------------|----------|
-| `crates/movie-radio-goap/src/narrate/lang.rs` | 3-4 grounded variants per tag now rotate by narration index (no adjacent repeats; ToS 47 lines, top line ~11x). Still tag-level only: a richer description needs visual input or an LLM backend (ADR-126) fed the window's tags. | Medium |
+| `crates/movie-radio-goap/src/narrate/` | Narration is tag clauses (3-4 variants each) plus a measured loudness-trend clause. It cannot say what happens, who speaks or where; that needs a language model (ADR-126 backends, needs a key or an approved local model) or visual input. | Medium |
 | `crates/movie-radio-render/src/sfx/` | No local SFX library by default (warning demoted to debug); the film's own effects pass through the original track. Optional: layer extra clips from `assets/sfx/<tag>/`. | Low |
-| `config/profiles/*.json` | `radio-play` ships the default analysis config + Silero; the fitted profiles (`modern-optimized`, `radio-play`) are not used by it and collapse to one whole-film gap (energy) or trade speech recall for non-voice recall (Silero: speech R 0.57/0.37 vs 0.75/0.65 for the default). Re-fit on both films or retire them. | Medium |
+| `config/profiles/*.json` | Not used by `radio-play` (it runs the default config + Silero). 16-candidate energy sweep (2026-10-10, `scripts/research/profile_sweep.py`): the energy threshold is inert from 0.0005 to 0.4 and every energy candidate collapses to "everything is a gap" (speech recall <= 0.02); the shipped detector scores 0.84 dev / 0.80 holdout vs <= 0.03. Retire the fitted profiles or re-fit with Silero as the engine. | Low |
 | `scripts/transcribe_cues.py` | Gated cues leave 2-4% of narratable time on dialogue (real subtitles: 0%); floor/pad tuned on 3 films only. Validate on a fourth film (Sintel is now a second sweep holdout but was also used to pick the gate floor). | Medium |
-| `crates/movie-radio-voice` | llama-cpp-2 0.1.158 (PR #373) renames `AddBos`/`str_to_token`/`is_eog_token`; `orpheus.rs` needs migration before bumping. | Low |
 
 ## Resolved
 
 | File/Path | Description | Resolution |
 |-----------|-------------|------------|
+| `crates/movie-radio-voice/src/voice/orpheus.rs` | llama-cpp-2 0.1.158 (PR #373) removed `model.str_to_token`/`AddBos`/`is_eog_token`, failing Clippy and Local TTS CI | Migrated to `model.vocab().tokenize(.., add_special=true, parse_special=true)` and `vocab.is_eog`; flags verified against 0.1.157; `clippy` + `test --features local-tts` pass (2026-10-10) |
+| `crates/movie-radio-pipeline/src/voice_clone.rs` | Reference clips were picked with the energy engine, which finds no speech on Sintel: 0% speech references, runaway XTTS takes, 12/41 narrations dropped | Candidate extraction uses the preferred (Silero) detector; XTTS shim trims references to speech and bounds/reseeds takes (PR #379) |
+| `crates/movie-radio-validation/src/compare.rs` | `timeline validate` speech metrics were vacuous (0/0 = 1.0) | Speech derived from the film length when neither side has speech segments (PR #374) |
 | `crates/movie-radio-pipeline/src/pipeline/speech_evidence.rs:43-47` | Slice-index panic when a segment timestamp exceeds the decoded frame count: `end_idx` became `start_idx + 1 > frames.len()` before slicing | Clamped like twin impl in `pipeline/segmenter/confidence.rs:53-58`; regression tests added (PR #223, 3efca37). Briefly reverted by stale-base direct push; re-restored in #229 |
 | `crates/movie-radio-voice/src/voice/openai.rs:91` | Sole library-code `.expect()` in the workspace (`last_err.expect("retry loop runs at least once")`) | Match on `last_err`: `Some(err)` chains transport error with endpoint context; `None` arm bails typed (PR #228) |
 | `crates/movie-radio-voice/src/voice/modal.rs:54-63` | Response parsed as WAV via blind 44-byte header skip; no container validation | RIFF chunk-table parser: magic + fmt (PCM/mono/16-bit) validation, bounds-checked data chunk, padding tolerance; malformed responses fall through provider chain (PR #228) |

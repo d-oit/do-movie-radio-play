@@ -109,6 +109,9 @@ Status update:
 
 ## Acceptance Criteria
 
-- Holdout radio-play success >= 95%. ✅ (`legacy` holdout now passes threshold and LB95 gates)
+- Holdout radio-play success >= 95%. ✅ **(superseded, see #363)** — that pass came from a single synthetic/one-film
+  holdout and a vacuous speech metric. The blocking gate is now the per-entry ratchet
+  (`testdata/validation/readiness-floors.json`); 0.95 stays the documented, non-blocking ceiling. On the real
+  holdouts (Tears of Steel, Sintel) the shipped detector scores non-voice P/R 0.92/0.89 and 0.96/0.94.
 - No FP-risk regression vs previous accepted baseline.
 - Full quality gate and optimization drift guard pass.

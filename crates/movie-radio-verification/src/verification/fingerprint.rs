@@ -35,16 +35,22 @@ fn compute_spectrogram(samples: &[f32], window_size: usize, hop_size: usize) -> 
     let mut input = fft.make_input_vec();
     let mut output = fft.make_output_vec();
 
+    // Optimization: Pre-compute the Hann window array to eliminate redundant trigonometric
+    // cosine calculations inside the per-frame sample window loop.
+    let hann_window: Vec<f32> = (0..window_size)
+        .map(|j| {
+            0.5 * (1.0 - (2.0 * std::f32::consts::PI * j as f32 / (window_size - 1) as f32).cos())
+        })
+        .collect();
+
     let mut spectrogram = Vec::new();
 
     for i in (0..=samples.len().saturating_sub(window_size)).step_by(hop_size) {
         let window = &samples[i..i + window_size];
         input.copy_from_slice(window);
 
-        // Apply Hann window
-        for (j, val) in input.iter_mut().enumerate() {
-            let multiplier = 0.5
-                * (1.0 - (2.0 * std::f32::consts::PI * j as f32 / (window_size - 1) as f32).cos());
+        // Apply precomputed Hann window
+        for (val, &multiplier) in input.iter_mut().zip(&hann_window) {
             *val *= multiplier;
         }
 
@@ -69,14 +75,14 @@ fn find_peaks(spectrogram: &[Vec<f32>], sample_rate: f32, fft_size: usize) -> Ve
     let bin_width = sample_rate / fft_size as f32;
     let ms_per_hop = (HOP_SIZE as f32 / sample_rate * 1000.0) as u32;
 
+    // Optimization: Hoist frame-invariant bin boundary calculation outside the frame loop.
+    let max_bin = (4000.0 / bin_width) as usize;
+    let end_bin = num_bins.min(max_bin).saturating_sub(1);
+
     let mut peaks = Vec::new();
 
     // Simple local maxima detection in 3x3 neighborhood
     for t in 1..num_frames - 1 {
-        // Only consider bins up to 4kHz for stability in 10-bit quantization
-        let max_bin = (4000.0 / bin_width) as usize;
-        let end_bin = num_bins.min(max_bin).saturating_sub(1);
-
         for f in 1..end_bin {
             let val = spectrogram[t][f];
             if val > 0.01 && // Minimum magnitude threshold

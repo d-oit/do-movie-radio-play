@@ -324,9 +324,7 @@ impl Action for SynthesizeNarrator {
                 voice_id: voice_id.clone(),
                 reference_audio: ctx.voice_reference.clone(),
                 language: language.clone(),
-                // Base speed only: providers resolve `emotion` into their
-                // own speed/stability levers, so pre-scaling here would
-                // square the tempo factor.
+                // Base speed only: providers resolve `emotion` into their own speed/stability levers.
                 speed: 1.0,
                 sample_rate_hz: ctx.sample_rate,
             };
@@ -449,11 +447,9 @@ mod tests {
         ctx.scripts = Some(vec![script(500), script(6_000)]);
 
         let result = SynthesizeNarrator.execute(&mut ctx).await;
-
         let err = result.expect_err("total synthesis failure must not pass silently");
         assert!(err.to_string().contains("all 2 narration syntheses failed"));
-        // The failed attempt rolls its partial entries back so a retry cannot
-        // leave stale Nones that would misalign assemble's zip.
+        // Failed attempt rolls partial entries back so retry cannot leave stale Nones.
         assert!(
             ctx.narration_audio.is_empty(),
             "failed synthesis must roll back its partial entries"
@@ -491,7 +487,6 @@ mod tests {
         let ref_path = std::path::PathBuf::from("voice_samples/alice.wav");
         ctx.voice_reference = Some(ref_path.clone());
         ctx.scripts = Some(vec![script(100)]);
-
         const MODAL_TTS_ENDPOINT_ENV: &str = "MODAL_TTS_ENDPOINT";
         std::env::remove_var(MODAL_TTS_ENDPOINT_ENV);
         let result = SynthesizeNarrator.execute(&mut ctx).await;

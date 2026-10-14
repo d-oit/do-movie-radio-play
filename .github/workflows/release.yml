@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Rust Toolchain
-        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
 
       - name: Cache Cargo Dependencies
         uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c

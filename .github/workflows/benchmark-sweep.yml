@@ -13,9 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # stable
-      - uses: Swatinem/rust-cache@49a0bdc70d2e1b713ca9e2869b211fcce03d3c1c # v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg libasound2-dev
       - run: bash scripts/fetch_test_assets.sh
       - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
@@ -28,7 +28,7 @@ jobs:
             --candidate analysis/benchmarks/latest-candidate.json
       - name: Run criterion benchmark suite
         run: cargo bench -p benchmarks --bench pipeline_bench -- --noplot
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: benchmark-sweep-results
           path: analysis/benchmarks/

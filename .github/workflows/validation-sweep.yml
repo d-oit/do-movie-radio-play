@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: FETCH_SECOND_FILM=1 bash scripts/fetch_test_assets.sh
       - name: Neural VAD (model + ONNX Runtime) for the shipped detector
@@ -48,21 +48,21 @@ jobs:
           python3 scripts/check_radio_play_readiness.py \
             --summary analysis/validation/radio-play-sweep-summary.json \
             --floors testdata/validation/readiness-floors.json
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: validation-sweep-summary
           path: analysis/validation/radio-play-sweep-summary.json
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: validation-reports
           path: testdata/validation/*.json
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: radio-play-failure-breakdown
           path: |
             analysis/validation/radio-play-failure-breakdown.json
             analysis/learnings/latest-radio-play-failure-breakdown.md
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: radio-play-readiness-report
           path: |

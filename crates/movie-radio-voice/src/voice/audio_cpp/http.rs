@@ -24,6 +24,12 @@ fn resolve_remote_voice_ref(request: &SynthesisRequest, config: &AudioCppConfig)
         .as_deref()
         .filter(|p| !p.as_os_str().is_empty())
     {
+        if path
+            .components()
+            .any(|c| c == std::path::Component::ParentDir)
+        {
+            anyhow::bail!("reference audio path must not contain parent directory traversal");
+        }
         // Enforce the offline boundary: remote upload happens only when the
         // request carries an explicit clip (ADR-0125: log when audio leaves
         // the local machine).
@@ -449,6 +455,21 @@ mod tests {
             ..SynthesisRequest::default()
         };
         assert!(resolve_remote_voice_ref(&request, &config).is_err());
+    }
+
+    #[test]
+    fn test_remote_voice_ref_rejects_path_traversal() {
+        let config = AudioCppConfig::default();
+        let request = SynthesisRequest {
+            reference_audio: Some(std::path::PathBuf::from("../etc/passwd")),
+            ..SynthesisRequest::default()
+        };
+        let res = resolve_remote_voice_ref(&request, &config);
+        assert!(res.is_err());
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("parent directory traversal"));
     }
 
     #[test]

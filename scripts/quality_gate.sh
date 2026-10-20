@@ -3,6 +3,11 @@
 # Full quality gate with auto-detection for multiple languages.
 # Usage: ./scripts/quality_gate.sh [--fix]
 # Exit 0 = success, Exit 1 = errors.
+# Note on --fix: --fix attempts repair commands first and then runs non-mutating checks
+# to verify that repair succeeded. It does not assume repair succeeded.
+# Feature scope: standard workspace target default features. Heavy or optional feature combinations
+# (e.g. local-tts, high-quality-resample) are intentionally excluded from local quality gate
+# for speed and are verified in separate CI matrix jobs.
 set +e
 set -uo pipefail
 
@@ -101,8 +106,15 @@ printf "\n"
 # ============================================================
 info "Running format check..."
 if $FIX; then
-  cargo fmt --all
-  pass "Format: auto-fixed"
+  if ! OUTPUT=$(cargo fmt --all 2>&1); then
+    fail "Format: auto-fix failed"
+    printf "%s\n" "$OUTPUT" >&2
+  elif ! OUTPUT=$(cargo fmt --all -- --check 2>&1); then
+    fail "Format: post-fix check failed"
+    printf "%s\n" "$OUTPUT" >&2
+  else
+    pass "Format: auto-fixed and verified"
+  fi
 else
   if ! OUTPUT=$(cargo fmt --all -- --check 2>&1); then
     fail "Format: run 'cargo fmt --all' to fix"
@@ -118,8 +130,15 @@ printf "\n"
 # ============================================================
 info "Running clippy..."
 if $FIX; then
-  cargo clippy --fix --allow-dirty --allow-staged --all-targets 2>/dev/null
-  pass "Clippy: auto-fixed"
+  if ! OUTPUT=$(cargo clippy --fix --allow-dirty --allow-staged --workspace --all-targets 2>&1); then
+    fail "Clippy: auto-fix failed"
+    printf "%s\n" "$OUTPUT" >&2
+  elif ! OUTPUT=$(cargo clippy --workspace --all-targets -- -D warnings 2>&1); then
+    fail "Clippy: post-fix check failed"
+    printf "%s\n" "$OUTPUT" >&2
+  else
+    pass "Clippy: auto-fixed and verified"
+  fi
 else
   if ! OUTPUT=$(cargo clippy --workspace --all-targets -- -D warnings 2>&1); then
     fail "Clippy: fix lint errors above"

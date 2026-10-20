@@ -109,6 +109,8 @@ jobs:
         with:
           scandir: './scripts'
           severity: warning
+      - name: Test Quality Gate Fix Runner
+        run: bash scripts/test-quality-gate-fix.sh
 
   gitleaks:
     name: Secret Scan (Gitleaks)

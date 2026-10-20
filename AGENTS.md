@@ -37,9 +37,17 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | Dev Env Setup | `bash scripts/setup-dev-env.sh` |
 | Build | `cargo build --workspace` |
 | Test | `cargo test --workspace` |
+| Fast Feedback Loop | `bash scripts/harness-check.sh feedback` |
+| Verification Loop | `bash scripts/harness-check.sh verification` |
+| Release Preflight | `bash scripts/harness-check.sh release` |
 | Quality Gate | `RUSTUP_TOOLCHAIN=stable-x86_64-unknown-linux-gnu bash scripts/quality_gate.sh` |
 | Docs Update | `bash scripts/update-all-docs.sh` |
 | Commit | `bash scripts/ai-commit.sh` |
+
+## Harness Sensors (`do-harness.toml`)
+- **Setup**: `do-harness.toml` defines repo sensor mappings for `feedback`, `verification`, `release`, `benchmarks`, and `audio_integration`.
+- **Agent Loop**: Use `scripts/harness-check.sh <signal_set>` (`feedback`, `verification`, `release`) for fast, structured feedback.
+- **Recovery**: If a sensor fails or reports missing prerequisites, check fix hints or run `bash scripts/doctor.sh`. CI remains the merge-blocking source of truth.
 
 ## Rules
 - **Verification**: `bash scripts/quality_gate.sh` must pass with zero warnings.

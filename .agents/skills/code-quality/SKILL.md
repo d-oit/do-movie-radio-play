@@ -114,7 +114,12 @@ if timeout > TIMEOUT_MS { /* ... */ }
 |----------|--------|-----------|------|
 | Python | ruff | black | pytest |
 | TypeScript | eslint | prettier | jest |
-| Rust | clippy | rustfmt | cargo test |
+| Rust | clippy | rustfmt | cargo test / do-harness |
+
+## Harness Sensor Setup & Recovery (`do-harness.toml`)
+- **Setup**: `do-harness.toml` maps changed files to fast feedback (`feedback`), full checks (`verification`), and preflight checks (`release`).
+- **Feedback Loop**: Run `bash scripts/harness-check.sh feedback` or `bash scripts/harness-check.sh verification`.
+- **Recovery**: Missing prerequisites print `⚠️ HARNESS SKIPPED` with instructions. Run `bash scripts/doctor.sh` to diagnose missing dependencies. CI remains merge-blocking truth.
 | Go | golangci-lint | gofmt | go test |
 
 ## References

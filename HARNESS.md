@@ -24,6 +24,7 @@ And two modes:
 | Agent contract | `AGENTS.md` | Root coding conventions, change workflow, quality gates |
 | Skills index | `.agents/SKILLS.md` | Available executable task knowledge |
 | Harness overview | `HARNESS.md` (this file) | How guides and sensors connect |
+| Harness sensors config | `do-harness.toml` | Rust sensor model path-to-sensor mappings |
 | Clippy intent | `.clippy.toml` | Linting philosophy and allowed exceptions |
 | Dependency rules | `deny.toml` | Supply chain security and license policy |
 | Architecture | `plans/` | Architecture Decision Records and roadmaps |
@@ -80,17 +81,36 @@ When a computational sensor fires:
 4. Re-run the specific sensor: `cargo clippy`, `cargo test`, etc.
 5. Only commit when the sensor is green
 
-## Agent-Optimised Error Output
+## Harness Configuration (`do-harness.toml`) & Agent-Optimised Sensor Execution
 
-The `scripts/harness-check.sh` wrapper runs each sensor and emits structured error output with `HARNESS VIOLATION` prefix and agent-parseable fix hints. Use it for richer feedback than raw sensor output:
+The repository configures sensors and signal sets in `do-harness.toml`. Signal sets organize feedback loops based on changed paths:
+
+- **`feedback`**: Fast feedback cycle (`cargo fmt --check`, `cargo check --workspace`).
+- **`verification`**: Comprehensive verification (`cargo clippy`, workspace unit/integration tests, MSRV audit, script and skill validators, do-harness selection tests).
+- **`release`**: Release preflight checks (version consistency, `cargo deny`, `cargo audit`, secret scanning).
+- **`benchmarks`**: Opt-in heavy benchmarks (`render_bench`, `pipeline_bench`). Slower checks that do not run on every edit.
+- **`audio_integration`**: Opt-in environment-dependent audio, codec, and local model tests (`local-tts`, sinc resample, tier A fixtures).
+
+Run sensors via `scripts/harness-check.sh`:
 
 ```bash
-bash scripts/harness-check.sh <fmt| clippy | deny | test | arch |all>
-
-
+# Run a specific signal set or sensor:
+bash scripts/harness-check.sh feedback
+bash scripts/harness-check.sh verification
+bash scripts/harness-check.sh release
+bash scripts/harness-check.sh benchmarks
+bash scripts/harness-check.sh audio_integration
 ```
 
-See `scripts/harness-check.sh` for the full sensor → hint mapping.
+### Prerequisite Handling & Recovery Protocol
+
+If an optional prerequisite tool (e.g. `cargo-deny`, `cargo-audit`, `shellcheck`, `ffmpeg`) is missing, `scripts/harness-check.sh` emits a clear `⚠️ HARNESS SKIPPED` warning with instructions rather than failing unexpectedly or making false claims of full verification.
+
+To recover from missing prerequisites or sensor failures:
+1. Run `bash scripts/doctor.sh` to check installed toolchain components and optional tools.
+2. Read the `AGENT FIX HINT` emitted by `scripts/harness-check.sh`.
+3. Re-run `bash scripts/harness-check.sh <signal_set>` once resolved.
+4. Note that CI (`.github/workflows/ci.yml`) remains the merge-blocking source of truth and executes full verification independently.
 
 ## Active Learning & Experimentation Guidelines
 

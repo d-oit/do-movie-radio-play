@@ -200,6 +200,12 @@ See `references/failure-recovery.md` for:
 
 Self-hosted CI/CD configuration using Forgejo/Gitea Actions.
 
+## Harness Sensors & Recovery (`do-harness.toml`)
+
+- **Developer / Agent Loop**: `do-harness.toml` triggers feedback, verification, release, benchmark, and audio integration sensor sets.
+- **CI Independence**: CI workflows run independently as merge-blocking source of truth without requiring do-harness installed.
+- **Prerequisite Recovery**: Missing local dependencies (e.g. `cargo-deny`, `shellcheck`, `cargo-audit`) produce explicit `⚠️ HARNESS SKIPPED` warnings rather than false claims or unexpected errors. Run `bash scripts/doctor.sh` to troubleshoot.
+
 ## Quality Checklist
 
 - [ ] Pipeline triggered on push/PR

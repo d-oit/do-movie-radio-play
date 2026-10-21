@@ -37,9 +37,16 @@ impl SpectralAnalyzer {
 
     /// Optimized analysis that computes magnitudes into the internal buffer.
     pub fn analyze(&mut self, samples: &[f32]) -> &[f32] {
-        let n = samples.len().min(self.fft_len);
-        for ((b, &s), &h) in self.input_buf[..n].iter_mut().zip(samples).zip(&self.hann) {
-            *b = s * h;
+        let n = samples
+            .len()
+            .min(self.fft_len)
+            .min(self.input_buf.len())
+            .min(self.hann.len());
+        let (in_buf, samp, h_win) = (&mut self.input_buf[..n], &samples[..n], &self.hann[..n]);
+
+        // Direct indexed loop allows LLVM to prove slice bounds and auto-vectorize windowing.
+        for i in 0..n {
+            in_buf[i] = samp[i] * h_win[i];
         }
         self.input_buf[n..].fill(0.0);
 
@@ -52,17 +59,29 @@ impl SpectralAnalyzer {
             return &self.mag_buf;
         }
 
-        for (c, m) in self.output_buf.iter().zip(self.mag_buf.iter_mut()) {
-            *m = (c.re * c.re + c.im * c.im).sqrt();
+        let limit = self.mag_buf.len().min(self.output_buf.len());
+        let (out_buf, complex_buf) = (&mut self.mag_buf[..limit], &self.output_buf[..limit]);
+
+        // Direct indexed loop allows LLVM SIMD auto-vectorization for magnitude calculations.
+        for i in 0..limit {
+            let c = complex_buf[i];
+            out_buf[i] = (c.re * c.re + c.im * c.im).sqrt();
         }
         &self.mag_buf
     }
 
-    /// Optimized analysis that computes magnitudes directly into a provided destination buffer.
+    /// Optimized analysis that computes magnitudes directly into a destination buffer.
     pub fn analyze_into(&mut self, samples: &[f32], out_mag: &mut [f32]) {
-        let n = samples.len().min(self.fft_len);
-        for ((b, &s), &h) in self.input_buf[..n].iter_mut().zip(samples).zip(&self.hann) {
-            *b = s * h;
+        let n = samples
+            .len()
+            .min(self.fft_len)
+            .min(self.input_buf.len())
+            .min(self.hann.len());
+        let (in_buf, samp, h_win) = (&mut self.input_buf[..n], &samples[..n], &self.hann[..n]);
+
+        // Direct indexed loop allows LLVM to prove slice bounds and auto-vectorize windowing.
+        for i in 0..n {
+            in_buf[i] = samp[i] * h_win[i];
         }
         self.input_buf[n..].fill(0.0);
 
@@ -75,10 +94,16 @@ impl SpectralAnalyzer {
             return;
         }
 
-        let half_bins = self.fft_len / 2;
-        let limit = out_mag.len().min(half_bins).min(self.output_buf.len());
-        for (c, m) in self.output_buf.iter().zip(out_mag.iter_mut()).take(limit) {
-            *m = (c.re * c.re + c.im * c.im).sqrt();
+        let limit = out_mag
+            .len()
+            .min(self.fft_len / 2)
+            .min(self.output_buf.len());
+        let (out_buf, complex_buf) = (&mut out_mag[..limit], &self.output_buf[..limit]);
+
+        // Direct indexed loop allows LLVM SIMD auto-vectorization for magnitude calculations.
+        for i in 0..limit {
+            let c = complex_buf[i];
+            out_buf[i] = (c.re * c.re + c.im * c.im).sqrt();
         }
     }
 }
@@ -131,12 +156,11 @@ impl FeatureExtractor {
     pub fn extract_frame(
         &mut self,
         samples: &[f32],
-        sample_rate: u32,
-        prev_mags: Option<&[f32]>,
+        sr: u32,
+        prev: Option<&[f32]>,
     ) -> (FeatureSet, &[f32]) {
         let mags = self.analyzer.analyze(samples);
-        let features =
-            compute_frame_features_impl(samples, mags, prev_mags, sample_rate, self.fft_len);
+        let features = compute_frame_features_impl(samples, mags, prev, sr, self.fft_len);
         (features, mags)
     }
 }
@@ -200,8 +224,6 @@ fn compute_time_domain_features(samples: &[f32]) -> (f32, f32) {
         return (0.0, 0.0);
     }
 
-    // Optimization: Single-pass fusion of sum-of-squares (RMS) and branchless zero-crossing tracking (ZCR)
-    // to reduce memory bandwidth and slice iteration overhead.
     let mut sum_sq = samples[0] * samples[0];
     let mut zero_crosses = 0u32;
     let mut prev_is_nonneg = samples[0] >= 0.0;
@@ -263,9 +285,7 @@ impl SpectralAccumulator {
     }
 
     fn accumulate_chunk(&mut self, mags: &[f32], prev_mags: &[f32]) {
-        let mut chunk_mag_sum = 0.0f32;
-        let mut chunk_sum_m_ln_m = 0.0f32;
-
+        let (mut chunk_mag_sum, mut chunk_sum_m_ln_m) = (0.0f32, 0.0f32);
         let low_limit = self.low_bin.min(self.half_bins).min(mags.len());
         self.low += mags[..low_limit].iter().sum::<f32>();
         let high_start = self.high_bin.min(self.half_bins).min(mags.len());
@@ -278,7 +298,6 @@ impl SpectralAccumulator {
             chunk_mag_sum += m;
             self.weighted_bin_sum += i as f32 * m;
             self.mag_sum += m;
-
             if m > 1e-10 {
                 let ln_m = m.ln();
                 self.log_mag_sum += ln_m;
@@ -286,10 +305,8 @@ impl SpectralAccumulator {
                 self.valid_mag_count += 1;
                 chunk_sum_m_ln_m += m * ln_m;
             }
-
             if self.has_prev {
-                let diff = m - prev_mags[i];
-                self.flux_acc += diff.max(0.0);
+                self.flux_acc += (m - prev_mags[i]).max(0.0);
             }
         }
 
@@ -299,7 +316,6 @@ impl SpectralAccumulator {
             self.entropy_acc += chunk_entropy.max(0.0);
             self.entropy_count += 1;
         }
-
         self.has_prev = true;
     }
 
@@ -309,7 +325,6 @@ impl SpectralAccumulator {
         } else {
             0.0
         };
-
         let spectral_flatness = if self.valid_mag_count > 0 && self.arithmetic_mean > 0.0 {
             let am = self.arithmetic_mean / self.valid_mag_count as f32;
             ((self.log_mag_sum * self.inv_half_bins) - am.ln())
@@ -317,6 +332,11 @@ impl SpectralAccumulator {
                 .exp()
         } else {
             0.0
+        };
+        let (low_ratio, high_ratio) = if self.mag_sum > 0.0 {
+            (self.low / self.mag_sum, self.high / self.mag_sum)
+        } else {
+            (0.0, 0.0)
         };
 
         FeatureSet {
@@ -330,16 +350,8 @@ impl SpectralAccumulator {
             } else {
                 0.0
             },
-            low_band_ratio: if self.mag_sum > 0.0 {
-                self.low / self.mag_sum
-            } else {
-                0.0
-            },
-            high_band_ratio: if self.mag_sum > 0.0 {
-                self.high / self.mag_sum
-            } else {
-                0.0
-            },
+            low_band_ratio: low_ratio,
+            high_band_ratio: high_ratio,
         }
     }
 }
@@ -356,10 +368,8 @@ fn compute_frame_features_impl(
     let bin_width = sample_rate as f32 / fft_len as f32;
     let half_bins = fft_len / 2;
     let inv_half_bins = 1.0 / half_bins.max(1) as f32;
-    let low_bin = (300.0 / bin_width).round() as usize;
-    let high_bin = (2000.0 / bin_width).round() as usize;
-    let low_bin = low_bin.min(half_bins);
-    let high_bin = high_bin.min(half_bins);
+    let low_bin = ((300.0 / bin_width).round() as usize).min(half_bins);
+    let high_bin = ((2000.0 / bin_width).round() as usize).min(half_bins);
 
     let mut weighted_bin_sum = 0.0;
     let mut mag_sum = 0.0;
@@ -369,8 +379,6 @@ fn compute_frame_features_impl(
     let mut flux_acc = 0.0f32;
     let mut sum_m_ln_m = 0.0f32;
 
-    // Optimization: Compute low and high subslice sums using vectorized iterators to remove inner-loop branch checks.
-    // Safe slicing guarantees no out-of-bounds index panics if the analyzed buffer is smaller.
     let low_limit = (low_bin + 1).min(half_bins).min(mags.len());
     let low: f32 = mags[..low_limit].iter().sum();
     let high_start = high_bin.min(half_bins).min(mags.len());
@@ -381,14 +389,17 @@ fn compute_frame_features_impl(
         0.0
     };
 
+    let limit = half_bins.min(mags.len());
+    let m_slice = &mags[..limit];
     if let Some(prev) = prev_mags {
-        let limit = half_bins.min(mags.len()).min(prev.len());
-        let m_slice = &mags[..limit];
-        let p_slice = &prev[..limit];
-        for (i, (&m, &p)) in m_slice.iter().zip(p_slice.iter()).enumerate() {
+        let p_limit = limit.min(prev.len());
+        for (i, (&m, &p)) in m_slice[..p_limit]
+            .iter()
+            .zip(prev[..p_limit].iter())
+            .enumerate()
+        {
             weighted_bin_sum += (i as f32) * m;
             mag_sum += m;
-
             if m > 1e-10 {
                 let ln_m = m.ln();
                 log_mag_sum += ln_m;
@@ -396,16 +407,12 @@ fn compute_frame_features_impl(
                 valid_mag_count += 1;
                 sum_m_ln_m += m * ln_m;
             }
-
             flux_acc += (m - p).max(0.0);
         }
     } else {
-        let limit = half_bins.min(mags.len());
-        let m_slice = &mags[..limit];
         for (i, &m) in m_slice.iter().enumerate() {
             weighted_bin_sum += (i as f32) * m;
             mag_sum += m;
-
             if m > 1e-10 {
                 let ln_m = m.ln();
                 log_mag_sum += ln_m;
@@ -429,17 +436,18 @@ fn compute_frame_features_impl(
         0.0
     };
 
+    let centroid_hz = if mag_sum > 0.0 {
+        (weighted_bin_sum * bin_width) / mag_sum
+    } else {
+        0.0
+    };
     FeatureSet {
         rms,
         zcr,
         spectral_flux: flux_acc * inv_half_bins,
         spectral_flatness,
         spectral_entropy,
-        centroid_hz: if mag_sum > 0.0 {
-            (weighted_bin_sum * bin_width) / mag_sum
-        } else {
-            0.0
-        },
+        centroid_hz,
         low_band_ratio: if mag_sum > 0.0 { low / mag_sum } else { 0.0 },
         high_band_ratio: if mag_sum > 0.0 { high / mag_sum } else { 0.0 },
     }

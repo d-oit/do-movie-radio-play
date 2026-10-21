@@ -1,0 +1,195 @@
+[harness]
+name = "do-movie-radio-play"
+version = "0.1.0"
+language = "rust"
+description = "Repository harness sensor configuration for the Rust radio-play pipeline"
+
+[signal_sets.feedback]
+description = "Fast feedback: formatting and workspace check"
+sensors = ["format", "check"]
+paths = [
+  "crates/**/*.rs",
+  "benchmarks/**/*.rs",
+  "Cargo.toml",
+  "Cargo.lock",
+  "rust-toolchain.toml",
+]
+
+[signal_sets.verification]
+description = "Standard verification: clippy, workspace tests, script and skill checks"
+sensors = [
+  "clippy",
+  "test_workspace",
+  "audit_msrv",
+  "validate_skills",
+  "validate_agents",
+  "validate_workflows",
+  "shellcheck",
+  "test_do_harness",
+]
+paths = [
+  "crates/**",
+  "benchmarks/**",
+  "scripts/**",
+  ".agents/**",
+  ".github/workflows/**",
+  "Cargo.toml",
+  "Cargo.lock",
+  "rust-toolchain.toml",
+  "VERSION",
+]
+
+[signal_sets.release]
+description = "Release signal set: full verification plus release preflight checks"
+sensors = [
+  "version_check",
+  "cargo_deny",
+  "cargo_audit",
+  "secret_scan",
+  "audit_msrv",
+]
+paths = [
+  "crates/**",
+  "benchmarks/**",
+  "scripts/**",
+  "Cargo.toml",
+  "Cargo.lock",
+  "VERSION",
+]
+
+[signal_sets.benchmarks]
+description = "Opt-in / heavy benchmarks and performance regression checks"
+opt_in = true
+sensors = [
+  "render_benchmarks",
+  "pipeline_benchmarks",
+]
+paths = [
+  "crates/movie-radio-render/**",
+  "crates/movie-radio-pipeline/**",
+  "benchmarks/**",
+]
+
+[signal_sets.audio_integration]
+description = "Opt-in / environment-dependent audio, codec, and local model checks"
+opt_in = true
+sensors = [
+  "test_local_tts",
+  "test_resample_sinc",
+  "validate_audio_fixtures",
+]
+paths = [
+  "crates/movie-radio-voice/**",
+  "crates/movie-radio-pipeline/**",
+  "crates/movie-radio-render/**",
+  "testdata/**",
+]
+
+# Shared crate dependency propagation mappings
+[workspace_dependencies]
+"crates/movie-radio-types" = [
+  "crates/movie-radio-pipeline",
+  "crates/movie-radio-voice",
+  "crates/movie-radio-goap",
+  "crates/movie-radio-learning",
+  "crates/movie-radio-verification",
+  "crates/movie-radio-render",
+  "crates/movie-radio-io",
+  "crates/movie-radio-validation",
+  "crates/movie-radio-timeline",
+]
+"crates/movie-radio-pipeline" = [
+  "crates/movie-radio-goap",
+  "crates/movie-radio-learning",
+  "crates/movie-radio-verification",
+  "crates/movie-radio-render",
+  "crates/movie-radio-validation",
+  "crates/movie-radio-timeline",
+]
+"crates/movie-radio-io" = [
+  "crates/movie-radio-goap",
+  "crates/movie-radio-timeline",
+  "crates/movie-radio-validation",
+]
+
+[sensors.format]
+description = "Cargo code formatting check"
+command = "cargo fmt --all -- --check"
+fix_command = "cargo fmt --all"
+
+[sensors.check]
+description = "Workspace compilation check"
+command = "cargo check --workspace --all-targets"
+
+[sensors.clippy]
+description = "Clippy lints across all workspace targets"
+command = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
+fix_command = "cargo clippy --fix --allow-dirty --allow-staged --workspace --all-targets"
+
+[sensors.test_workspace]
+description = "Workspace unit and integration tests"
+command = "cargo test --workspace"
+
+[sensors.audit_msrv]
+description = "MSRV compliance check"
+command = "bash scripts/audit-msrv.sh"
+
+[sensors.validate_skills]
+description = "Skills format and frontmatter validation"
+command = "bash scripts/validate-skills.sh"
+
+[sensors.validate_agents]
+description = "Agent entrypoints validation"
+command = "bash scripts/validate-agent-entrypoints.sh"
+
+[sensors.validate_workflows]
+description = "GitHub Actions workflow structure validation"
+command = "bash scripts/validate-workflows.sh"
+
+[sensors.shellcheck]
+description = "Shell script static analysis"
+command = "shellcheck scripts/*.sh"
+prerequisites = ["shellcheck"]
+
+[sensors.test_do_harness]
+description = "Harness sensor selection and mapping test"
+command = "python3 scripts/test-do-harness.py"
+
+[sensors.version_check]
+description = "Version consistency check across VERSION and Cargo.toml"
+command = "bash scripts/check_version.sh"
+
+[sensors.cargo_deny]
+description = "Dependency policy and licensing check"
+command = "cargo deny check"
+prerequisites = ["cargo-deny"]
+
+[sensors.cargo_audit]
+description = "Dependency vulnerability audit"
+command = "cargo audit"
+prerequisites = ["cargo-audit"]
+
+[sensors.secret_scan]
+description = "Secret and credential pattern scan"
+command = "bash scripts/harness-check.sh secret_scan"
+
+[sensors.render_benchmarks]
+description = "Render performance and regression benchmark"
+command = "cargo bench -p benchmarks --bench render_bench -- --quick"
+
+[sensors.pipeline_benchmarks]
+description = "Pipeline throughput benchmark"
+command = "cargo bench -p benchmarks --bench pipeline_bench -- --noplot"
+
+[sensors.test_local_tts]
+description = "Local TTS feature compilation and tests"
+command = "cargo test -p movie-radio-voice --features local-tts"
+
+[sensors.test_resample_sinc]
+description = "Sinc resampling feature test"
+command = "cargo test -p movie-radio-pipeline --features movie-radio-pipeline/high-quality-resample"
+
+[sensors.validate_audio_fixtures]
+description = "Validation media intake and coverage tier check"
+command = "python3 scripts/check_validation_coverage.py --tier A --strict-files"
+prerequisites = ["python3"]

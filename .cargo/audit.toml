@@ -6,4 +6,5 @@ ignore = [
   "RUSTSEC-2026-0367",  # zip transitive dep
   "RUSTSEC-2026-0368",  # zip transitive dep
   "RUSTSEC-2026-0369",  # zip transitive dep
+  "RUSTSEC-2026-0381",  # webpki-roots 0.26.11 transitive dep of ureq 2 (hf-hub)
 ]

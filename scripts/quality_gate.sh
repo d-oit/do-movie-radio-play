@@ -275,7 +275,22 @@ fi
 printf "\n"
 
 # ============================================================
-# 14. RENDER PERFORMANCE & REGRESSION
+# 14. HARNESS SELECTION TEST
+# ============================================================
+info "Testing do-harness sensor selection..."
+if [[ -f "./scripts/test-do-harness.py" ]]; then
+  if python3 ./scripts/test-do-harness.py >/dev/null 2>&1; then
+    pass "do-harness: sensor selection valid"
+  else
+    fail "do-harness: sensor selection test failed"
+  fi
+else
+  warn "test-do-harness.py not found"
+fi
+printf "\n"
+
+# ============================================================
+# 15. RENDER PERFORMANCE & REGRESSION
 # ============================================================
 parse_to_ms() {
   local line="$1"

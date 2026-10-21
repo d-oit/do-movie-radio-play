@@ -189,6 +189,14 @@ class UserFactory(factory.Factory):
 
 See `references/test-maintenance.md` for coverage tracking and test health metrics.
 
+## Harness Sensor Integration (`do-harness.toml`)
+
+The repo includes `do-harness.toml` using the Rust sensor model:
+- **Fast Feedback Loop**: `bash scripts/harness-check.sh feedback` (fmt + check)
+- **Verification Loop**: `bash scripts/harness-check.sh verification` (clippy, workspace tests, MSRV, skills, workflows, selection tests)
+- **Opt-in Slower Signals**: `bash scripts/harness-check.sh benchmarks` or `bash scripts/harness-check.sh audio_integration`
+- **Recovery Instructions**: If optional prerequisite tools are missing, sensors skip gracefully with `⚠️ HARNESS SKIPPED` fix hints. Run `bash scripts/doctor.sh` to inspect local tool health.
+
 ## CI/CD Integration
 
 ```yaml

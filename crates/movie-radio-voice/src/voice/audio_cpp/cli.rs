@@ -61,6 +61,12 @@ pub(crate) async fn synthesize_local_cli(
         .or_else(|| config.voice_ref.clone().map(std::ffi::OsString::from));
     if let Some(ref v_ref) = effective_voice_ref {
         if !v_ref.is_empty() {
+            if std::path::Path::new(v_ref)
+                .components()
+                .any(|c| c == std::path::Component::ParentDir)
+            {
+                return Err(SynthesisValidationError::InvalidReferenceAudio.into());
+            }
             cmd.arg("--voice-ref").arg(v_ref);
         }
     }
@@ -129,6 +135,54 @@ mod tests {
         assert_eq!(
             err.downcast::<SynthesisValidationError>().unwrap(),
             SynthesisValidationError::InvalidVoiceId
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cli_rejects_reference_audio_path_traversal() {
+        let config = AudioCppConfig::default();
+        let request = SynthesisRequest {
+            reference_audio: Some(std::path::PathBuf::from("../etc/passwd")),
+            ..SynthesisRequest::default()
+        };
+        let params = ModelParams {
+            family: "bark",
+            model: "bark-small",
+            backend: "cpu",
+            default_language: "de",
+        };
+
+        let res = synthesize_local_cli(&config, &request, &params, Duration::from_secs(5)).await;
+
+        assert!(res.is_err());
+        let err = res.err().unwrap();
+        assert_eq!(
+            err.downcast::<SynthesisValidationError>().unwrap(),
+            SynthesisValidationError::InvalidReferenceAudio
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cli_rejects_configured_voice_ref_path_traversal() {
+        let config = AudioCppConfig {
+            voice_ref: Some("../etc/passwd".to_string()),
+            ..AudioCppConfig::default()
+        };
+        let request = SynthesisRequest::default();
+        let params = ModelParams {
+            family: "bark",
+            model: "bark-small",
+            backend: "cpu",
+            default_language: "de",
+        };
+
+        let res = synthesize_local_cli(&config, &request, &params, Duration::from_secs(5)).await;
+
+        assert!(res.is_err());
+        let err = res.err().unwrap();
+        assert_eq!(
+            err.downcast::<SynthesisValidationError>().unwrap(),
+            SynthesisValidationError::InvalidReferenceAudio
         );
     }
 }

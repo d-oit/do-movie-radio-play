@@ -118,13 +118,17 @@ fn compute_rms_and_zcr(samples: &[f32]) -> (f32, f32) {
         return (0.0, 0.0);
     }
 
-    // Optimization: Compute sum of squares via SIMD auto-vectorizable map/sum.
-    let sum_squares: f32 = samples.iter().map(|&s| s * s).sum();
+    // Optimization: Fused single-pass loop reduces memory bandwidth and slice iteration overhead.
+    let mut sum_squares = samples[0] * samples[0];
+    let mut crossings = 0usize;
+    let mut prev_is_nonneg = samples[0] >= 0.0;
 
-    // Optimization: Compute zero crossings via branchless window comparison across adjacent samples.
-    let crossings = samples.windows(2).fold(0usize, |acc, w| {
-        acc + (((w[0] >= 0.0) != (w[1] >= 0.0)) as usize)
-    });
+    for &s in &samples[1..] {
+        sum_squares += s * s;
+        let is_nonneg = s >= 0.0;
+        crossings += (is_nonneg != prev_is_nonneg) as usize;
+        prev_is_nonneg = is_nonneg;
+    }
 
     let rms = (sum_squares / samples.len() as f32).sqrt();
     let zcr = if samples.len() > 1 {
@@ -137,22 +141,25 @@ fn compute_rms_and_zcr(samples: &[f32]) -> (f32, f32) {
 
 /// Fills `mags` with the magnitude spectrum computed from the FFT `output`.
 fn fill_magnitudes(output: &[Complex<f32>], mags: &mut [f32]) {
-    for (c, m) in output.iter().zip(mags.iter_mut()) {
-        *m = (c.re * c.re + c.im * c.im).sqrt();
+    // Direct indexed slice bounds allow LLVM to prove slice lengths and SIMD auto-vectorize magnitude calculations.
+    let limit = output.len().min(mags.len());
+    let (c_slice, m_slice) = (&output[..limit], &mut mags[..limit]);
+    for i in 0..limit {
+        let c = c_slice[i];
+        m_slice[i] = (c.re * c.re + c.im * c.im).sqrt();
     }
 }
 
-/// Single-pass spectral moments over the magnitude spectrum using a running float index.
+/// Single-pass spectral moments over the magnitude spectrum using indexed slice loop for SIMD optimization.
 fn spectral_stats(mags: &[f32]) -> (f32, f32, f32, f32, usize) {
     let mut weighted_sum = 0.0f32;
     let mut total_mag = 0.0f32;
     let mut log_mag_sum = 0.0f32;
     let mut mag_log_mag_sum = 0.0f32;
     let mut pos_count = 0usize;
-    let mut i_f32 = 0.0f32;
 
-    for &mag in mags {
-        weighted_sum += i_f32 * mag;
+    for (i, &mag) in mags.iter().enumerate() {
+        weighted_sum += (i as f32) * mag;
         total_mag += mag;
 
         if mag > 1e-10 {
@@ -161,7 +168,6 @@ fn spectral_stats(mags: &[f32]) -> (f32, f32, f32, f32, usize) {
             mag_log_mag_sum += mag * ln_mag;
             pos_count += 1;
         }
-        i_f32 += 1.0;
     }
 
     (
@@ -300,15 +306,21 @@ fn compute_spectral_flux(samples: &[f32]) -> f32 {
             let output_slice = &cache_ptr.output[..output_size];
 
             if has_prev {
-                // Compute magnitude, store in current spectrum buffer, and accumulate positive flux diff against previous frame
+                // Compute magnitude, store in current spectrum buffer, and accumulate positive flux diff against previous frame.
+                // Direct indexed slice loop eliminates nested zip iterators for SIMD auto-vectorization.
+                let limit = output_size
+                    .min(output_slice.len())
+                    .min(curr_spec.len())
+                    .min(prev_spec.len());
+                let c_slice = &output_slice[..limit];
+                let m_slice = &mut curr_spec[..limit];
+                let p_slice = &prev_spec[..limit];
                 let mut diff_sum = 0.0f32;
-                for (c, (m, &p)) in output_slice
-                    .iter()
-                    .zip(curr_spec.iter_mut().zip(prev_spec.iter()))
-                {
+                for i in 0..limit {
+                    let c = c_slice[i];
                     let mag = (c.re * c.re + c.im * c.im).sqrt();
-                    *m = mag;
-                    diff_sum += (mag - p).max(0.0);
+                    m_slice[i] = mag;
+                    diff_sum += (mag - p_slice[i]).max(0.0);
                 }
                 flux += diff_sum;
                 count += 1;

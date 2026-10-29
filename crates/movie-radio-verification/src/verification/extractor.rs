@@ -4,11 +4,23 @@ use std::path::Path;
 use std::process::Command;
 use tracing::info;
 
+fn reject_traversal(path: &Path, field: &str) -> Result<()> {
+    if path
+        .components()
+        .any(|c| c == std::path::Component::ParentDir)
+    {
+        bail!("{field} must not contain ..");
+    }
+    Ok(())
+}
+
 pub fn extract_segment_audio(
     media_path: &Path,
     segment: &Segment,
     output_path: &Path,
 ) -> Result<()> {
+    reject_traversal(media_path, "media path")?;
+    reject_traversal(output_path, "output path")?;
     let start_sec = segment.start_ms as f64 / 1000.0;
     let duration_ms = segment.end_ms.saturating_sub(segment.start_ms);
     let duration_sec = duration_ms as f64 / 1000.0;
@@ -125,5 +137,28 @@ mod tests {
         let temp_path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
         let result = extract_segment_audio(Path::new("nonexistent.mp4"), &segment, &temp_path);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn path_traversal_validation() {
+        let segment = Segment {
+            start_ms: 0,
+            end_ms: 1000,
+            kind: movie_radio_types::SegmentKind::NonVoice,
+            confidence: 1.0,
+            tags: vec![],
+            prompt: None,
+            sfx_trigger: None,
+        };
+
+        let temp_path = tempfile::NamedTempFile::new().unwrap().into_temp_path();
+
+        let res1 = extract_segment_audio(Path::new("../secret.mp4"), &segment, &temp_path);
+        assert!(res1.is_err());
+        assert!(res1.unwrap_err().to_string().contains("media path must not contain .."));
+
+        let res2 = extract_segment_audio(Path::new("movie.mp4"), &segment, Path::new("../out.wav"));
+        assert!(res2.is_err());
+        assert!(res2.unwrap_err().to_string().contains("output path must not contain .."));
     }
 }

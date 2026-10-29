@@ -155,10 +155,16 @@ mod tests {
 
         let res1 = extract_segment_audio(Path::new("../secret.mp4"), &segment, &temp_path);
         assert!(res1.is_err());
-        assert!(res1.unwrap_err().to_string().contains("media path must not contain .."));
+        assert!(res1
+            .unwrap_err()
+            .to_string()
+            .contains("media path must not contain .."));
 
         let res2 = extract_segment_audio(Path::new("movie.mp4"), &segment, Path::new("../out.wav"));
         assert!(res2.is_err());
-        assert!(res2.unwrap_err().to_string().contains("output path must not contain .."));
+        assert!(res2
+            .unwrap_err()
+            .to_string()
+            .contains("output path must not contain .."));
     }
 }

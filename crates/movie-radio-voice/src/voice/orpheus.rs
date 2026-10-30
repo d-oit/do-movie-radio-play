@@ -239,50 +239,65 @@ impl OrpheusProvider {
         Ok(data.to_vec())
     }
 
+    fn validate_audio_output(samples: &[f32], sample_rate_hz: u32) -> Result<()> {
+        if !super::SAMPLE_RATE_RANGE_HZ.contains(&sample_rate_hz) {
+            anyhow::bail!("Sample rate {sample_rate_hz} Hz out of valid range");
+        }
+        if samples.is_empty() {
+            anyhow::bail!("Orpheus SNAC vocoder returned empty audio samples");
+        }
+        if samples.iter().any(|sample| !sample.is_finite()) {
+            anyhow::bail!("Orpheus SNAC vocoder returned invalid non-finite audio samples");
+        }
+        if !samples.iter().any(|sample| *sample != 0.0) {
+            anyhow::bail!("Orpheus SNAC vocoder returned silent audio samples");
+        }
+        let duration_sec = samples.len() as f64 / sample_rate_hz as f64;
+        if duration_sec < 0.001 || duration_sec > 600.0 {
+            anyhow::bail!("Orpheus SNAC vocoder returned implausible audio duration ({duration_sec:.2}s)");
+        }
+        Ok(())
+    }
+
     /// Decodes Orpheus-3B speech tokens into PCM samples.
     ///
-    /// If an ONNX SNAC vocoder model is configured via `vocoder_path` in `OrpheusConfig`,
-    /// this function decodes the multi-level SNAC tokens into real speech audio.
-    /// Otherwise, it logs a warning documenting the missing dependency (`hubertsiuzdak/snac_24khz`
-    /// / ONNX vocoder) and falls back to synthetic tone generation.
-    fn decode_snac_tokens(&self, tokens: &[LlamaToken]) -> Vec<f32> {
+    /// Requires an ONNX SNAC vocoder model configured via `vocoder_path` in `OrpheusConfig`.
+    /// Returns a typed provider error if the vocoder is missing, invalid, empty, or fails inference.
+    fn decode_snac_tokens(&self, tokens: &[LlamaToken]) -> Result<Vec<f32>> {
         if tokens.is_empty() {
-            return Vec::new();
+            return Ok(Vec::new());
         }
 
-        if let Some(session) = self.ensure_vocoder() {
-            match self.decode_snac_onnx(&session, tokens) {
-                Ok(samples) if !samples.is_empty() => {
-                    info!(
-                        sample_count = samples.len(),
-                        token_count = tokens.len(),
-                        "Decoded SNAC tokens to speech PCM using ONNX vocoder"
-                    );
-                    return samples;
-                }
-                Ok(_) => {
-                    warn!("SNAC ONNX vocoder returned empty audio samples");
-                }
-                Err(e) => {
-                    warn!(
-                        error = %e,
-                        "SNAC ONNX vocoder inference failed, falling back to synthetic audio"
-                    );
-                }
-            }
+        let session = self.ensure_vocoder().context(
+            "Orpheus SNAC decode failed: no valid ONNX vocoder model loaded \
+             (configure `vocoder_path` with e.g. `snac_24khz.onnx` from `hubertsiuzdak/snac_24khz`)",
+        )?;
+
+        let samples = self
+            .decode_snac_onnx(&session, tokens)
+            .context("SNAC ONNX vocoder inference failed")?;
+
+        if samples.is_empty() {
+            anyhow::bail!("SNAC ONNX vocoder returned empty audio samples");
         }
 
-        warn!(
+        info!(
+            sample_count = samples.len(),
             token_count = tokens.len(),
-            "Orpheus SNAC decode: no valid ONNX vocoder model loaded (configure `vocoder_path` with e.g. `snac_24khz.onnx` from `hubertsiuzdak/snac_24khz`); using synthetic fallback"
+            "Decoded SNAC tokens to speech PCM using ONNX vocoder"
         );
 
-        let samples_per_token = 320; // 20ms at 16kHz for Orpheus-3B
-        let mut samples = Vec::with_capacity(tokens.len() * samples_per_token);
+        Ok(samples)
+    }
 
+    /// Diagnostic test helper that generates synthetic sine tones from token IDs.
+    /// Exposed exclusively for tests/benchmarks and cannot be registered as a production provider.
+    #[cfg(test)]
+    pub fn generate_synthetic_tokens_for_testing(tokens: &[LlamaToken]) -> Vec<f32> {
+        let samples_per_token = 320;
+        let mut samples = Vec::with_capacity(tokens.len() * samples_per_token);
         for token in tokens {
             let token_id = token.0;
-            // Simulated SNAC reconstruction:
             for i in 0..samples_per_token {
                 let t = (i as f32) / (samples_per_token as f32);
                 let freq = 100.0 + (token_id % 1000) as f32;
@@ -364,14 +379,12 @@ impl VoiceSynthesizer for OrpheusProvider {
         }
 
         if speech_tokens.is_empty() {
-            warn!(
-                "Orpheus-3B generated no speech tokens for text: {}",
-                request.text
-            );
+            anyhow::bail!("Orpheus-3B generated no speech tokens for text: {}", request.text);
         }
 
         // 4. SNAC Decoding to PCM
-        let samples = self.decode_snac_tokens(&speech_tokens);
+        let samples = self.decode_snac_tokens(&speech_tokens)?;
+        Self::validate_audio_output(&samples, request.sample_rate_hz)?;
 
         Ok(AudioOutput {
             samples,
@@ -454,7 +467,7 @@ mod tests {
     }
 
     #[test]
-    fn test_decode_snac_tokens_fallback() {
+    fn test_decode_snac_tokens_missing_vocoder_fails() {
         let config = OrpheusConfig {
             model_path: "dummy.gguf".into(),
             device: "cpu".into(),
@@ -463,10 +476,26 @@ mod tests {
         let provider = OrpheusProvider::new(config);
 
         let tokens: Vec<LlamaToken> = (0..7).map(LlamaToken).collect();
-        let samples = provider.decode_snac_tokens(&tokens);
+        let result = provider.decode_snac_tokens(&tokens);
 
-        // Should return synthetic samples when vocoder model file is missing
-        assert_eq!(samples.len(), 7 * 320);
+        // Missing vocoder must fail rather than returning synthetic tones
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("no valid ONNX vocoder model loaded") || err_msg.contains("SNAC decode failed"), "Unexpected error message: {err_msg}");
+    }
+
+    #[test]
+    fn test_decode_snac_tokens_unconfigured_vocoder_fails() {
+        let config = OrpheusConfig {
+            model_path: "dummy.gguf".into(),
+            device: "cpu".into(),
+            vocoder_path: None,
+        };
+        let provider = OrpheusProvider::new(config);
+
+        let tokens: Vec<LlamaToken> = (0..7).map(LlamaToken).collect();
+        let result = provider.decode_snac_tokens(&tokens);
+        assert!(result.is_err());
     }
 
     #[test]
@@ -478,7 +507,14 @@ mod tests {
         };
         let provider = OrpheusProvider::new(config);
 
-        let samples = provider.decode_snac_tokens(&[]);
+        let samples = provider.decode_snac_tokens(&[]).unwrap();
         assert!(samples.is_empty());
+    }
+
+    #[test]
+    fn test_generate_synthetic_tokens_for_testing() {
+        let tokens: Vec<LlamaToken> = (0..7).map(LlamaToken).collect();
+        let samples = OrpheusProvider::generate_synthetic_tokens_for_testing(&tokens);
+        assert_eq!(samples.len(), 7 * 320);
     }
 }

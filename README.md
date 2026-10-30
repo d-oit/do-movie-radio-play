@@ -121,4 +121,4 @@ Supported export formats:
 ## Known Limitations
 
 - Direct audio decoding without FFmpeg is limited to 16-bit, 24-bit PCM, and 32-bit float WAV containers.
-- Local neural TTS providers (Kokoro, Orpheus, Qwen3) require optional feature flags and model weights.
+- Local neural TTS providers (Kokoro, Orpheus, Qwen3) require optional feature flags and model weights. Orpheus synthesis strictly requires a valid SNAC ONNX vocoder model configured via `vocoder_path` (e.g. `snac_24khz.onnx`); missing or invalid vocoder models trigger provider fallback.

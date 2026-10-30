@@ -1,5 +1,5 @@
 {
-  "summary": "analysis/validation/radio-play-sweep-summary.json",
+  "summary": "analysis/validation/full-sweep-summary.json",
   "holdout_tier": "C",
   "thresholds": {
     "min_non_voice_precision": 0.95,
@@ -11,27 +11,23 @@
   "threshold_gate_pass": false,
   "lb95_gate_pass": false,
   "threshold_failures": [
-    "tos-en-holdout: non_voice_precision=0.9179 < 0.9500",
-    "tos-en-holdout: non_voice_recall=0.8890 < 0.9500",
-    "tos-en-holdout: overlap_ratio=0.9032 < 0.9500",
-    "sintelholdoutentry: non_voice_recall=0.9412 < 0.9500"
+    "sintel_trailer_2010_subtitles: non_voice_precision=0.8115 < 0.9500",
+    "sintel_trailer_2010_subtitles: overlap_ratio=0.8767 < 0.9500"
   ],
   "lb95_failures": [
-    "tos-en-holdout: precision_lb95=0.9105 < 0.9500",
-    "tos-en-holdout: recall_lb95=0.8808 < 0.9500",
-    "tos-en-holdout: overlap_lb95=0.8955 < 0.9500",
-    "sintelholdoutentry: recall_lb95=0.9359 < 0.9500",
-    "sintelholdoutentry: overlap_lb95=0.9472 < 0.9500"
+    "sintel_trailer_2010_subtitles: precision_lb95=0.7746 < 0.9500",
+    "sintel_trailer_2010_subtitles: recall_lb95=0.9287 < 0.9500",
+    "sintel_trailer_2010_subtitles: overlap_lb95=0.8418 < 0.9500"
   ],
   "cohort_summary": {
     "modern": {
-      "count": 2,
-      "avg_overlap_ratio": 0.92764556,
-      "avg_non_voice_precision": 0.94052085,
-      "avg_non_voice_recall": 0.9151270499999999,
-      "avg_overlap_ratio_lb95": 0.9213361307959542,
-      "avg_non_voice_precision_lb95": 0.9346584173404142,
-      "avg_non_voice_recall_lb95": 0.9083570951314617
+      "count": 1,
+      "avg_overlap_ratio": 0.8767243,
+      "avg_non_voice_precision": 0.81151193,
+      "avg_non_voice_recall": 0.9533333,
+      "avg_overlap_ratio_lb95": 0.8418254818308658,
+      "avg_non_voice_precision_lb95": 0.7746287214936127,
+      "avg_non_voice_recall_lb95": 0.9287275616352838
     },
     "legacy": {
       "count": 0,
@@ -45,36 +41,20 @@
   },
   "failing_entries": [
     {
-      "id": "tos-en-holdout",
-      "media": "testdata/raw/tears_of_steel_2012.mov",
+      "id": "sintel_trailer_2010_subtitles",
+      "media": "testdata/raw/sintel_trailer_2010.mp4",
       "tier": "C",
       "cohort": "modern",
-      "non_voice_precision": 0.9178811,
-      "non_voice_recall": 0.8890123,
-      "overlap_ratio": 0.90321606,
-      "non_voice_precision_lb95": 0.9105297748858814,
-      "non_voice_recall_lb95": 0.8807989519648537,
-      "overlap_ratio_lb95": 0.8954606466201199,
-      "expected_segments": 68,
-      "predicted_segments": 10,
-      "expected_non_voice_samples": 5979,
-      "predicted_non_voice_samples": 5791
-    },
-    {
-      "id": "sintelholdoutentry",
-      "media": "testdata/raw/Sintel.2010.720p.mkv",
-      "tier": "C",
-      "cohort": "modern",
-      "non_voice_precision": 0.9631606,
-      "non_voice_recall": 0.9412418,
-      "overlap_ratio": 0.95207506,
-      "non_voice_precision_lb95": 0.958787059794947,
-      "non_voice_recall_lb95": 0.9359152382980698,
-      "overlap_ratio_lb95": 0.9472116149717886,
-      "expected_segments": 27,
-      "predicted_segments": 6,
-      "expected_non_voice_samples": 8121,
-      "predicted_non_voice_samples": 7936
+      "non_voice_precision": 0.81151193,
+      "non_voice_recall": 0.9533333,
+      "overlap_ratio": 0.8767243,
+      "non_voice_precision_lb95": 0.7746287214936127,
+      "non_voice_recall_lb95": 0.9287275616352838,
+      "overlap_ratio_lb95": 0.8418254818308658,
+      "expected_segments": 5,
+      "predicted_segments": 3,
+      "expected_non_voice_samples": 420,
+      "predicted_non_voice_samples": 493
     }
   ]
 }

@@ -8,6 +8,15 @@ MAX_SOURCE_FILE_LOC=500
 MAX_LINES_AGENTS_MD=150
 ```
 
+## Domain Concepts
+- **Timeline Segment**: Identified audio interval classified as speech or non-voice (gap) with confidence scores and acoustic tags.
+- **GOAP Pipeline**: Goal-Oriented Action Planning for automated radio play production (gap detection, narration generation, TTS synthesis, audio mixing).
+- **Active Learning**: SQLite-backed threshold adaptation and profile calibration from user review feedback.
+
+## Architecture Decisions
+- **Workspace Crates**: Modular Rust workspace separating types, pipeline, TTS voice providers, GOAP planner, learning, verification, render, I/O, validation, and timeline CLI.
+- **Single Source of Truth**: Profile configurations drive threshold parameters; `VERSION` file drives versioning.
+
 ## Secret Scanning Policy
 Gitleaks secret scanning is enforced via `.gitleaks.toml`. Never commit secrets or credentials.
 
@@ -92,7 +101,7 @@ Maintain zero open issues/PRs. A weekly reminder workflow (`.github/workflows/tr
 | Named Constants | Adopted | `bash readonly` block above |
 | `./scripts/ai-commit.sh` Helper | Adopted | Available in `scripts/ai-commit.sh` |
 | `agents-docs/VERSION.md` Single-Source | Adopted | Root `VERSION` file is single source of truth |
-| `MAX_LINES_AGENTS_MD=150` Guard | Adopted | Enforced at 150 lines (currently <= 110) |
+| `MAX_LINES_AGENTS_MD=150` Guard | Adopted | Enforced at 150 lines (currently <= 115) |
 | Skill Frontmatter Rule | Adopted | Verified in all `.agents/skills/*/SKILL.md` |
 | Agent Config Dirs | Adopted | `.jules/`, `.opencode/`, `.qwen/` present |
 | `update-all-docs.sh` | Adopted | Available in `scripts/update-all-docs.sh` |

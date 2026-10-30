@@ -143,3 +143,32 @@ async fn test_errors_when_no_provider_cap_fits() {
         .expect_err("no provider can fit the text");
     assert!(err.to_string().contains("cap of"), "{}", err);
 }
+
+#[tokio::test]
+async fn test_falls_back_when_first_provider_fails() {
+    let orchestrator = orchestrator_with(
+        vec![
+            (
+                "failing",
+                FakeProvider {
+                    cap: 100,
+                    fail: true,
+                },
+            ),
+            (
+                "backup",
+                FakeProvider {
+                    cap: 100,
+                    fail: false,
+                },
+            ),
+        ],
+        &["failing", "backup"],
+    );
+    let (output, provider) = orchestrator
+        .synthesize_with_provider(&request("hello", 1.0, 16_000))
+        .await
+        .expect("backup provider must serve request when first provider fails");
+    assert_eq!(output.sample_rate_hz, 16_000);
+    assert_eq!(provider, "backup");
+}

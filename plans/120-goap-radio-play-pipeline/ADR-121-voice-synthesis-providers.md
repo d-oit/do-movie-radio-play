@@ -99,6 +99,7 @@ pub struct ProviderCapabilities {
       },
       "orpheus": {
         "model_path": "models/orpheus-3b-german-q8.gguf",
+        "vocoder_path": "models/snac_24khz.onnx",
         "device": "auto"
       },
       "elevenlabs": {
@@ -197,6 +198,7 @@ Models stored in `$XDG_DATA_HOME/do-movie-radio-play/models/` (Linux) or user-co
 
 ### Phase 7.3.3: Orpheus Provider (3 days)
 - GGUF loading via `llama-cpp-2` crate
+- SNAC ONNX vocoder (`vocoder_path`) decoding for real speech PCM output (missing/invalid vocoders trigger provider fallback)
 - Inline emotion tag injection
 - German language support (important for this project's test corpus)
 

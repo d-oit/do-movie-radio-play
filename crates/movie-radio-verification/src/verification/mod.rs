@@ -8,6 +8,7 @@ pub mod analysis;
 pub mod extractor;
 pub mod fingerprint;
 pub mod preservation;
+pub mod preservation_types;
 pub mod scoring;
 
 #[cfg(test)]

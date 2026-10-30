@@ -22,18 +22,15 @@ pub fn export_edl(timeline: &TimelineOutput, verified: Option<&HashSet<(u64, u64
         let start_tc = ms_to_timecode(segment.start_ms);
         let end_tc = ms_to_timecode(segment.end_ms);
         let duration = (segment.end_ms - segment.start_ms) as f64 / 1000.0;
+        let formatted_dur = format_duration(duration);
+        let status_str = if is_verified {
+            "VERIFIED"
+        } else {
+            "UNVERIFIED"
+        };
 
         output.push_str(&format!(
-            "{:03}  001      V     C        {} {} {} EVENT {}\n",
-            event_num,
-            start_tc,
-            end_tc,
-            format_duration(duration),
-            if is_verified {
-                "VERIFIED"
-            } else {
-                "UNVERIFIED"
-            }
+            "{event_num:03}  001      V     C        {start_tc} {end_tc} {formatted_dur} EVENT {status_str}\n"
         ));
         output.push_str("* FROM CLIP NAME: Non-voice segment\n");
         output.push('\n');

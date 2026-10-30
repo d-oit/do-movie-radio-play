@@ -321,6 +321,82 @@ impl RadioPlayAssembler {
 
         segments
     }
+
+    pub fn build_track_map(
+        &self,
+        original_len: usize,
+        narration_segments: &[NarrationSegment],
+        sfx_segments: &[SfxSegment],
+    ) -> movie_radio_verification::TrackMap {
+        use movie_radio_types::SfxLicense;
+        use movie_radio_verification::{
+            ContentProvenance, GainDuckingOperation, TrackMap, TrackMapEntry, TrackType,
+        };
+
+        let sample_rate = self.sample_rate.max(1);
+        let duration_ms = (original_len as u64 * 1000) / sample_rate as u64;
+
+        let mut entries = Vec::new();
+
+        entries.push(TrackMapEntry {
+            id: "source_film_main".to_string(),
+            track_type: TrackType::SourceFilm,
+            source_start_ms: 0,
+            source_end_ms: duration_ms,
+            output_start_ms: 0,
+            output_end_ms: duration_ms,
+            operation: GainDuckingOperation::None,
+            provenance: ContentProvenance {
+                asset_id: "source_film".to_string(),
+                source: "source_film".to_string(),
+                license: SfxLicense::Cc0,
+                prompt: None,
+            },
+        });
+
+        for (i, seg) in narration_segments.iter().enumerate() {
+            let start_ms = (seg.start_sample as u64 * 1000) / sample_rate as u64;
+            let end_ms = (seg.end_sample as u64 * 1000) / sample_rate as u64;
+            entries.push(TrackMapEntry {
+                id: format!("narration_seg_{i}"),
+                track_type: TrackType::Narration,
+                source_start_ms: start_ms,
+                source_end_ms: end_ms,
+                output_start_ms: start_ms,
+                output_end_ms: end_ms,
+                operation: GainDuckingOperation::Gain { db: 0.0 },
+                provenance: ContentProvenance {
+                    asset_id: format!("narr_asset_{i}"),
+                    source: "synthesized".to_string(),
+                    license: SfxLicense::Cc0,
+                    prompt: None,
+                },
+            });
+        }
+
+        for (i, sfx) in sfx_segments.iter().enumerate() {
+            let start_ms = (sfx.start_sample as u64 * 1000) / sample_rate as u64;
+            let sfx_len_samples = sfx.samples.len();
+            let end_ms = ((sfx.start_sample + sfx_len_samples) as u64 * 1000) / sample_rate as u64;
+            entries.push(TrackMapEntry {
+                id: format!("sfx_seg_{i}"),
+                track_type: TrackType::Sfx,
+                source_start_ms: start_ms,
+                source_end_ms: end_ms,
+                output_start_ms: start_ms,
+                output_end_ms: end_ms,
+                operation: GainDuckingOperation::Gain { db: 0.0 },
+                provenance: ContentProvenance {
+                    asset_id: format!("sfx_asset_{i}"),
+                    source: "sfx_manager".to_string(),
+                    license: SfxLicense::Cc0,
+                    prompt: None,
+                },
+            });
+        }
+
+        TrackMap { entries }
+    }
 }
 
 #[cfg(test)]

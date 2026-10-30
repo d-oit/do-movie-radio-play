@@ -9,7 +9,10 @@ use movie_radio_learning::adaptive_thresholds::{
 };
 use movie_radio_learning::database::LearningDb;
 use movie_radio_pipeline::pipeline::decode::decode_audio;
-use movie_radio_verification::verify_timeline;
+use movie_radio_types::SegmentKind;
+use movie_radio_verification::{
+    verify_audio_preservation_samples, verify_timeline, PreservationConfig, TimeRange,
+};
 
 /// Six optional spectral thresholds passed to `verify_timeline`.
 type ThresholdOptions = (
@@ -121,12 +124,71 @@ impl Action for VerifyQuality {
             );
         }
         self.check_assembled_output(ctx)?;
+        self.verify_preservation_and_placement(ctx)?;
         ctx.verification = Some(report);
         Ok(())
     }
 }
 
 impl VerifyQuality {
+    fn verify_preservation_and_placement(&self, ctx: &mut PipelineContext) -> Result<()> {
+        let (original, assembled) = match (&ctx.original_audio, &ctx.assembled_audio) {
+            (Some(orig), Some(asm)) => (orig.as_slice(), asm.as_slice()),
+            _ => return Ok(()),
+        };
+
+        let dialogue_regions: Vec<TimeRange> = ctx
+            .timeline
+            .as_ref()
+            .map(|tl| {
+                tl.segments
+                    .iter()
+                    .filter(|s| s.kind == SegmentKind::Speech)
+                    .map(|s| TimeRange::new(s.start_ms, s.end_ms))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let track_map = ctx.track_map.clone().unwrap_or_else(|| {
+            crate::assemble::RadioPlayAssembler::new(ctx.sample_rate, 50, 0.3).build_track_map(
+                original.len(),
+                &[],
+                &[],
+            )
+        });
+
+        let config = PreservationConfig::default();
+        let pres_report = verify_audio_preservation_samples(
+            original,
+            assembled,
+            ctx.sample_rate,
+            1,
+            &dialogue_regions,
+            &track_map,
+            &config,
+        );
+
+        let report_path = ctx.output_path.with_extension("preservation-report.json");
+        if let Ok(json) = serde_json::to_string_pretty(&pres_report) {
+            let _ = std::fs::write(&report_path, json);
+        }
+
+        if !pres_report.overall_passed {
+            anyhow::bail!(
+                "Preservation & placement verification failed: {} failed window(s), {} failed license(s)",
+                pres_report.summary.failed_windows,
+                pres_report.summary.failed_licenses
+            );
+        }
+
+        tracing::info!(
+            windows = pres_report.summary.total_windows,
+            "Audio preservation and narration placement verified"
+        );
+        ctx.preservation_report = Some(pres_report);
+        Ok(())
+    }
+
     /// Verify the assembled radio play file itself: it must exist, decode
     /// cleanly, and (when the original audio is in context) stay within the
     /// roadmap's 10% duration tolerance of the original.

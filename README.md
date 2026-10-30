@@ -108,6 +108,8 @@ python3 scripts/build_radio_play_readiness_report.py
 RUSTUP_TOOLCHAIN=stable-x86_64-unknown-linux-gnu bash scripts/quality_gate.sh
 ```
 
+For agent/contributor workflow instructions, see [AGENTS.md](AGENTS.md).
+
 ## Export
 
 Supported export formats:
@@ -120,12 +122,3 @@ Supported export formats:
 
 - Direct audio decoding without FFmpeg is limited to 16-bit, 24-bit PCM, and 32-bit float WAV containers.
 - Local neural TTS providers (Kokoro, Orpheus, Qwen3) require optional feature flags and model weights.
-
-## Security & Supply Chain
-
-For security policy, vulnerability reporting, and artifact verification instructions (provenance, SBOM, checksums),
-see [SECURITY.md](SECURITY.md).
-
-## Development Workflow
-
-For contributor guidelines and agent instructions, see [AGENTS.md](AGENTS.md).

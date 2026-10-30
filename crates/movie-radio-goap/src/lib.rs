@@ -67,6 +67,10 @@ pub struct PipelineContext {
     pub learning_db_path: Option<PathBuf>,
     /// Assembled radio play PCM samples after `assemble_radio_play` action.
     pub assembled_audio: Option<Vec<f32>>,
+    /// Track and segment mapping artifact produced during assembly.
+    pub track_map: Option<movie_radio_verification::TrackMap>,
+    /// Preservation and narration-placement report produced during verification.
+    pub preservation_report: Option<movie_radio_verification::PreservationReport>,
     /// Skip trace recording and learning adaptations when true (`--no-learn`).
     pub no_learn: bool,
     /// Unique identifier for this pipeline run.
@@ -100,6 +104,8 @@ impl PipelineContext {
             learning_state_path: None,
             learning_db_path: None,
             assembled_audio: None,
+            track_map: None,
+            preservation_report: None,
             no_learn: false,
             run_id: None,
             voice_reference: None,

@@ -76,6 +76,9 @@ impl Action for AssembleRadioPlay {
 
         let radio_play =
             assembler.assemble_with_sfx(original, &narration_segments, &sfx_segments)?;
+        let track_map =
+            assembler.build_track_map(original.len(), &narration_segments, &sfx_segments);
+        ctx.track_map = Some(track_map);
 
         if let Some(parent) = ctx.output_path.parent() {
             if !parent.as_os_str().is_empty() {

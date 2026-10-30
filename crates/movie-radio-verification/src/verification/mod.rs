@@ -7,6 +7,7 @@ use tracing::{info, warn};
 pub mod analysis;
 pub mod extractor;
 pub mod fingerprint;
+pub mod preservation;
 pub mod scoring;
 
 #[cfg(test)]
@@ -14,6 +15,12 @@ mod tests;
 
 pub use analysis::{analyze_audio_features, SegmentAnalysis, SpectralFeatures, VerificationStatus};
 pub use extractor::extract_segment_audio;
+pub use preservation::{
+    verify_audio_preservation_files, verify_audio_preservation_samples, ContentProvenance,
+    FileIntegrityResult, GainDuckingOperation, LicenseProvenanceVerdict, PreservationConfig,
+    PreservationReport, PreservationSummary, TimeRange, TrackMap, TrackMapEntry, TrackType,
+    WindowType, WindowVerificationVerdict,
+};
 pub use scoring::AppliedThresholds;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

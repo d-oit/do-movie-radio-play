@@ -21,18 +21,17 @@ pub fn export_vtt(timeline: &TimelineOutput, verified: Option<&HashSet<(u64, u64
         let start_ts = ms_to_vtt_timestamp(segment.start_ms);
         let end_ts = ms_to_vtt_timestamp(segment.end_ms);
         let duration_ms = segment.end_ms - segment.start_ms;
+        let idx = i + 1;
+        let conf = segment.confidence;
+        let status_str = if is_verified {
+            "[VERIFIED]"
+        } else {
+            "[UNVERIFIED]"
+        };
 
         output.push_str(&format!("{start_ts} --> {end_ts}\n"));
         output.push_str(&format!(
-            "Non-voice segment #{} ({}ms, confidence: {:.2}) {}\n\n",
-            i + 1,
-            duration_ms,
-            segment.confidence,
-            if is_verified {
-                "[VERIFIED]"
-            } else {
-                "[UNVERIFIED]"
-            }
+            "Non-voice segment #{idx} ({duration_ms}ms, confidence: {conf:.2}) {status_str}\n\n"
         ));
     }
 

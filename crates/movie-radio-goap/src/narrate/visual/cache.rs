@@ -40,7 +40,9 @@ impl FrameAnalysisCache {
         &self.dir
     }
 
-    /// User cache directory, honouring `XDG_CACHE_HOME` and `HOME`.
+    /// User cache directory, honouring `XDG_CACHE_HOME` and `HOME`; without
+    /// either it falls back to a repository-relative `.cache` directory
+    /// rather than a shared temporary directory.
     pub fn default_dir() -> PathBuf {
         if let Some(dir) = std::env::var_os("XDG_CACHE_HOME") {
             return PathBuf::from(dir).join("do-movie-radio-play/vision");
@@ -48,7 +50,7 @@ impl FrameAnalysisCache {
         if let Some(home) = std::env::var_os("HOME") {
             return PathBuf::from(home).join(".cache/do-movie-radio-play/vision");
         }
-        std::env::temp_dir().join("do-movie-radio-play-vision")
+        PathBuf::from(".cache/do-movie-radio-play/vision")
     }
 
     pub fn frame_dir(&self, key: &str) -> PathBuf {

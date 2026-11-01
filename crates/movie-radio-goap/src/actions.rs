@@ -13,7 +13,7 @@ pub use verify::{ApplyLearnings, VerifyQuality};
 use crate::gaps::{
     energy_trend, split_gap_windows, subtract_cues, GapIdentifier, MAX_NARRATION_WINDOW_MS,
 };
-use crate::narrate::NarrationGenerator;
+use crate::narrate::{NarrationEvidence, NarrationGenerator};
 use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_pipeline::pipeline::tags::add_tags_from_samples;
@@ -243,24 +243,79 @@ impl Action for GenerateNarration {
     }
 
     async fn execute(&self, ctx: &mut PipelineContext) -> Result<()> {
-        let timeline = ctx.timeline.as_ref().context("Timeline not extracted")?;
-        let gaps = &ctx
-            .gap_analysis
-            .as_ref()
-            .context("Gaps not identified")?
-            .gaps;
-
         info!("Generating narration scripts");
         let language = ctx.voice_config.as_ref().map_or_else(
             || movie_radio_voice::config::VoiceSynthesisConfig::from_env().language,
             |cfg| cfg.language.clone(),
         );
         let generator = NarrationGenerator::default().with_language(&language);
-        let scripts = generator.generate(timeline, gaps)?;
+        let narrator_config = ctx.visual.narrator_config.clone().unwrap_or_default();
+        let visual_config = narrator_config.visual;
+        let (scripts, report) = {
+            let timeline = ctx.timeline.as_ref().context("Timeline not extracted")?;
+            let gaps = &ctx
+                .gap_analysis
+                .as_ref()
+                .context("Gaps not identified")?
+                .gaps;
+            if visual_config.provider == "none" {
+                (generator.generate(timeline, gaps)?, None)
+            } else {
+                let narrator =
+                    crate::narrate::visual::VisualNarrator::new(visual_config, &generator.language)
+                        .with_known_characters(ctx.visual.known_characters.clone());
+                match narrator.generate(&ctx.movie_path, timeline, gaps).await {
+                    Ok(outcome) => {
+                        let path = visual_report_path(&ctx.output_path);
+                        write_visual_report(&path, &outcome.report)?;
+                        info!(
+                            path = %path.display(),
+                            visual = outcome.report.visual_windows,
+                            audio_only = outcome.report.audio_only_windows,
+                            "Visual narration review written"
+                        );
+                        (outcome.scripts, Some(outcome.report))
+                    }
+                    Err(error) => {
+                        tracing::warn!(
+                            error = %error,
+                            "visual narration stage failed; using labelled acoustic fallback"
+                        );
+                        let reason = format!("visual stage failed: {error}");
+                        let mut scripts = generator.generate(timeline, gaps)?;
+                        for script in &mut scripts {
+                            script.evidence = NarrationEvidence::AudioOnly {
+                                reason: reason.clone(),
+                            };
+                        }
+                        (scripts, None)
+                    }
+                }
+            }
+        };
         info!(scripts = scripts.len(), "Narration scripts generated");
         ctx.scripts = Some(scripts);
+        ctx.visual.report = report;
         Ok(())
     }
+}
+
+fn visual_report_path(output: &std::path::Path) -> std::path::PathBuf {
+    let mut path = output.as_os_str().to_os_string();
+    path.push(".visual-review.json");
+    std::path::PathBuf::from(path)
+}
+
+fn write_visual_report(
+    path: &std::path::Path,
+    report: &crate::narrate::visual::VisualNarrationReport,
+) -> Result<()> {
+    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("cannot create {}", parent.display()))?;
+    }
+    let json = serde_json::to_vec_pretty(report).context("serialize visual narration report")?;
+    std::fs::write(path, json).with_context(|| format!("cannot write {}", path.display()))
 }
 
 pub fn get_all_actions() -> Vec<Box<dyn Action>> {
@@ -299,6 +354,7 @@ mod tests {
             emotion: Emotion::Neutral,
             word_count: 2,
             duration_ms: 1_000,
+            evidence: NarrationEvidence::default(),
         }
     }
 
@@ -324,6 +380,59 @@ mod tests {
         // Second surviving segment must pair with script 2 (3_000 ms -> 48_000).
         assert_eq!(segments[1].start_sample, 48_000);
         assert_eq!(segments[1].samples.len(), 1_600);
+    }
+
+    #[tokio::test]
+    async fn test_generate_narration_without_vision_keeps_audio_only_evidence() {
+        use movie_radio_types::{
+            GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap,
+        };
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let output = dir.path().join("out.wav");
+        let mut ctx =
+            crate::PipelineContext::new(std::path::PathBuf::from("movie.mkv"), output.clone());
+        ctx.timeline = Some(TimelineOutput {
+            file: "movie.mkv".to_string(),
+            analysis_sample_rate: 16_000,
+            frame_ms: 20,
+            segments: vec![Segment {
+                start_ms: 0,
+                end_ms: 6_000,
+                kind: SegmentKind::NonVoice,
+                confidence: 0.9,
+                tags: vec!["ambience".to_string()],
+                prompt: None,
+                sfx_trigger: None,
+            }],
+        });
+        ctx.gap_analysis = Some(GapAnalysisOutput {
+            file: "movie.mkv".to_string(),
+            gaps: vec![VisualGap {
+                start_ms: 0,
+                end_ms: 6_000,
+                confidence: 0.9,
+                reason: "long pause".to_string(),
+                priority: 1,
+                tags: vec!["ambience".to_string()],
+                trend: None,
+            }],
+        });
+
+        GenerateNarration
+            .execute(&mut ctx)
+            .await
+            .expect("audio-only narration");
+
+        let scripts = ctx.scripts.as_ref().expect("scripts");
+        assert!(!scripts.is_empty());
+        assert!(scripts.iter().all(|s| matches!(
+            &s.evidence,
+            crate::narrate::NarrationEvidence::AudioOnly { .. }
+        )));
+        assert!(ctx.visual.report.is_none());
+        let report = std::path::PathBuf::from(format!("{}.visual-review.json", output.display()));
+        assert!(!report.exists());
     }
 
     #[tokio::test]

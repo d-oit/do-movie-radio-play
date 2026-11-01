@@ -25,6 +25,8 @@ const ENV_GPU_MAX_JOB: &str = "MRPLAY_GPU_MAX_COST_PER_JOB";
 const ENV_GPU_MAX_DAY: &str = "MRPLAY_GPU_MAX_COST_PER_DAY";
 const ENV_NARRATOR_BACKEND: &str = "MRPLAY_NARRATOR_BACKEND";
 const ENV_NARRATOR_LANGUAGE: &str = "MRPLAY_NARRATOR_LANGUAGE";
+const ENV_VISION_PROVIDER: &str = "MRPLAY_VISION_PROVIDER";
+const ENV_VISION_MODEL: &str = "MRPLAY_VISION_MODEL";
 
 fn read_env(primary: &str, legacy: &str) -> Option<String> {
     env::var(primary).or_else(|_| env::var(legacy)).ok()
@@ -168,6 +170,12 @@ fn apply_env_overrides(mut cfg: AppConfig) -> AppConfig {
     }
     if let Ok(v) = env::var(ENV_NARRATOR_LANGUAGE) {
         cfg.narrator.language.clone_from(&v);
+    }
+    if let Ok(v) = env::var(ENV_VISION_PROVIDER) {
+        cfg.narrator.visual.provider.clone_from(&v);
+    }
+    if let Ok(v) = env::var(ENV_VISION_MODEL) {
+        cfg.narrator.visual.model.clone_from(&v);
     }
     cfg
 }

@@ -122,6 +122,8 @@ pub struct NarratorConfig {
     pub ollama_local: NarratorOllamaConfig,
     #[serde(default)]
     pub anthropic: NarratorAnthropicConfig,
+    #[serde(default)]
+    pub visual: VisualConfig,
 }
 
 impl Default for NarratorConfig {
@@ -136,6 +138,58 @@ impl Default for NarratorConfig {
             openai: NarratorOpenAiConfig::default(),
             ollama_local: NarratorOllamaConfig::default(),
             anthropic: NarratorAnthropicConfig::default(),
+            visual: VisualConfig::default(),
+        }
+    }
+}
+
+/// Optional visual scene understanding for audio description (#409).
+///
+/// `provider = "none"` keeps the pure acoustic narration path; `openai` talks
+/// to any OpenAI-compatible vision endpoint and `ollama` to a local vision
+/// model, so the stage works online and offline. Credentials are only ever
+/// read from the environment variable named by `api_key_env`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VisualConfig {
+    #[serde(default = "default_vision_provider")]
+    pub provider: String,
+    #[serde(default = "default_vision_model")]
+    pub model: String,
+    #[serde(default = "default_openai_base_url")]
+    pub base_url: String,
+    #[serde(default = "default_openai_api_env")]
+    pub api_key_env: String,
+    #[serde(default = "default_vision_timeout_secs")]
+    pub timeout_secs: u64,
+    #[serde(default = "default_vision_max_frames_per_window")]
+    pub max_frames_per_window: u32,
+    #[serde(default = "default_vision_max_total_frames")]
+    pub max_total_frames: u32,
+    #[serde(default = "default_vision_scene_threshold")]
+    pub scene_change_threshold: f32,
+    #[serde(default = "default_vision_frame_width")]
+    pub frame_width: u32,
+    #[serde(default = "default_vision_min_confidence")]
+    pub min_confidence: f32,
+    /// Frame/analysis cache directory; defaults to the user cache directory.
+    #[serde(default)]
+    pub cache_dir: Option<String>,
+}
+
+impl Default for VisualConfig {
+    fn default() -> Self {
+        Self {
+            provider: default_vision_provider(),
+            model: default_vision_model(),
+            base_url: default_openai_base_url(),
+            api_key_env: default_openai_api_env(),
+            timeout_secs: default_vision_timeout_secs(),
+            max_frames_per_window: default_vision_max_frames_per_window(),
+            max_total_frames: default_vision_max_total_frames(),
+            scene_change_threshold: default_vision_scene_threshold(),
+            frame_width: default_vision_frame_width(),
+            min_confidence: default_vision_min_confidence(),
+            cache_dir: None,
         }
     }
 }
@@ -290,6 +344,30 @@ fn default_anthropic_api_env() -> String {
 fn default_anthropic_model() -> String {
     "claude-3-5-haiku-20241022".to_string()
 }
+fn default_vision_provider() -> String {
+    "none".to_string()
+}
+fn default_vision_model() -> String {
+    "gpt-4o-mini".to_string()
+}
+fn default_vision_timeout_secs() -> u64 {
+    30
+}
+fn default_vision_max_frames_per_window() -> u32 {
+    3
+}
+fn default_vision_max_total_frames() -> u32 {
+    60
+}
+fn default_vision_scene_threshold() -> f32 {
+    0.35
+}
+fn default_vision_frame_width() -> u32 {
+    640
+}
+fn default_vision_min_confidence() -> f32 {
+    0.45
+}
 fn default_output_dir() -> String {
     "output".to_string()
 }
@@ -307,5 +385,14 @@ mod tests {
         let s = serde_json::to_string(&cfg).expect("serialize");
         let v: AppConfig = serde_json::from_str(&s).expect("deserialize");
         assert_eq!(v.voice_clone.runtime, "audio_cpp");
+    }
+
+    #[test]
+    fn narrator_config_without_visual_section_defaults_to_none() {
+        let json = r#"{"backend":"openai","language":"de","style":"radio_drama",
+            "max_tokens":200,"temperature":0.7,"prompt_template":"templates/narrator_prompt.md"}"#;
+        let narrator: NarratorConfig = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(narrator.visual.provider, "none");
+        assert_eq!(narrator.visual.max_frames_per_window, 3);
     }
 }

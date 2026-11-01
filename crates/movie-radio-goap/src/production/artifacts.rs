@@ -24,6 +24,7 @@ const DECODED_AUDIO: &str = "decoded.wav";
 const TIMELINE_JSON: &str = "timeline.json";
 const GAPS_JSON: &str = "gaps.json";
 const SCRIPTS_JSON: &str = "scripts.json";
+const VISUAL_REVIEW_JSON: &str = "visual-review.json";
 const NARRATION_INDEX_JSON: &str = "narration.json";
 const VERIFICATION_JSON: &str = "verification.json";
 
@@ -68,6 +69,11 @@ pub fn persist_stage_artifacts(
             let path = dir.join(SCRIPTS_JSON);
             commit_json(&path, scripts)?;
             artifacts.insert("scripts".to_string(), path_string(&path));
+            if let Some(report) = ctx.visual.report.as_ref() {
+                let report_path = dir.join(VISUAL_REVIEW_JSON);
+                commit_json(&report_path, report)?;
+                artifacts.insert("visual_review".to_string(), path_string(&report_path));
+            }
         }
         "synthesize_narration" => {
             persist_narration(ctx, dir, &mut artifacts)?;
@@ -122,6 +128,9 @@ pub fn restore_stage_artifacts(
         }
         "plan_narration" => {
             ctx.scripts = Some(read_json(artifact_path(artifacts, "scripts")?)?);
+            if let Some(path) = artifacts.get("visual_review") {
+                ctx.visual.report = serde_json::from_str(&std::fs::read_to_string(path)?).ok();
+            }
         }
         "synthesize_narration" => {
             restore_narration(ctx, artifacts)?;

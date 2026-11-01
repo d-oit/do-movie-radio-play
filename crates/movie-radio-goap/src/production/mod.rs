@@ -135,11 +135,15 @@ pub const STAGES: &[ProductionStage] = &[
     ProductionStage {
         name: "plan_narration",
         action: "generate_narration",
-        version: 1,
+        version: 2,
         flag: StageFlag::NarrationScriptsGenerated,
-        inputs: &[input_class::GAPS, input_class::NARRATION],
+        inputs: &[
+            input_class::SOURCE,
+            input_class::GAPS,
+            input_class::NARRATION,
+        ],
         produces: "scripts.json",
-        requirements: "local templates (ADR-128); no network",
+        requirements: "local templates (ADR-128); optional vision provider when configured",
         optional_for: None,
     },
     ProductionStage {

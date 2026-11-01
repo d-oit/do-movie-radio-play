@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- feat(narration): optional visual scene understanding with bounded frame sampling, provider-agnostic vision, grounded evidence and a labelled audio-only fallback (#409).
 - feat(voice): configurable OpenAI-compatible TTS endpoint — `base_url` + optional auth enables local German sidecars (audio.cpp/PocketTTS) with OpenAI as default (#212).
 - fix(voice): harden `SynthesisRequest` validation and percent-encode the ElevenLabs voice endpoint; validate effective voice_id including config fallback (#231).
 - fix(voice): validate `SynthesisRequest` parameters (sample-rate bounds, finite speed, text cap) before TTS dispatch; typed validation errors (#209).

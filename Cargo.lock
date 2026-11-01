@@ -2165,6 +2165,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "base64 0.23.1",
  "hound",
  "movie-radio-learning",
  "movie-radio-pipeline",
@@ -2173,6 +2174,7 @@ dependencies = [
  "movie-radio-validation",
  "movie-radio-verification",
  "movie-radio-voice",
+ "reqwest 0.13.5",
  "serde",
  "serde_json",
  "tempfile",

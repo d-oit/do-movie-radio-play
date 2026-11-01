@@ -56,6 +56,7 @@ fn test_time_stretch_fits_natively() {
         emotion: movie_radio_voice::Emotion::Neutral,
         word_count: 1,
         duration_ms: 1000,
+        evidence: crate::narrate::NarrationEvidence::default(),
     };
     let audio_samples = vec![0.2; 16000]; // 1000 ms audio = 16000 samples
     let segment = assembler.narration_to_segment(&script, &audio_samples);
@@ -74,6 +75,7 @@ fn test_time_stretch_expands_overlong_narration() {
         emotion: movie_radio_voice::Emotion::Neutral,
         word_count: 3,
         duration_ms: 3000,
+        evidence: crate::narrate::NarrationEvidence::default(),
     };
     let audio_samples = vec![0.2; 48000]; // 3000 ms audio = 48000 samples
     let segment = assembler.narration_to_segment(&script, &audio_samples);
@@ -97,6 +99,7 @@ fn test_time_stretch_bounded_by_next_gap_start() {
             emotion: movie_radio_voice::Emotion::Neutral,
             word_count: 1,
             duration_ms: 2000,
+            evidence: crate::narrate::NarrationEvidence::default(),
         },
         NarrationScript {
             gap_start_ms: 2200, // Gap 2 starts at 35200 samples
@@ -105,6 +108,7 @@ fn test_time_stretch_bounded_by_next_gap_start() {
             emotion: movie_radio_voice::Emotion::Neutral,
             word_count: 1,
             duration_ms: 800,
+            evidence: crate::narrate::NarrationEvidence::default(),
         },
     ];
     let narration_audio = vec![
@@ -143,6 +147,7 @@ fn test_time_stretch_disabled() {
         emotion: movie_radio_voice::Emotion::Neutral,
         word_count: 1,
         duration_ms: 3000,
+        evidence: crate::narrate::NarrationEvidence::default(),
     };
     let audio_samples = vec![0.2; 48000]; // 3000 ms audio = 48000 samples
     let segment = assembler.narration_to_segment(&script, &audio_samples);
@@ -160,6 +165,7 @@ fn test_time_stretch_with_out_of_order_scripts() {
             emotion: movie_radio_voice::Emotion::Neutral,
             word_count: 1,
             duration_ms: 800,
+            evidence: crate::narrate::NarrationEvidence::default(),
         },
         NarrationScript {
             gap_start_ms: 1000,
@@ -168,6 +174,7 @@ fn test_time_stretch_with_out_of_order_scripts() {
             emotion: movie_radio_voice::Emotion::Neutral,
             word_count: 1,
             duration_ms: 2000,
+            evidence: crate::narrate::NarrationEvidence::default(),
         },
     ];
     let narration_audio = vec![

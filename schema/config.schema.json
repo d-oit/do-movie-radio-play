@@ -96,7 +96,23 @@
         "style": { "type": "string" },
         "max_tokens": { "type": "integer", "minimum": 1 },
         "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
-        "prompt_template": { "type": "string" }
+        "prompt_template": { "type": "string" },
+        "visual": {
+          "type": "object",
+          "properties": {
+            "provider": { "type": "string", "enum": ["none", "openai", "ollama"] },
+            "model": { "type": "string" },
+            "base_url": { "type": "string" },
+            "api_key_env": { "type": "string" },
+            "timeout_secs": { "type": "integer", "minimum": 1, "maximum": 300 },
+            "max_frames_per_window": { "type": "integer", "minimum": 1, "maximum": 8 },
+            "max_total_frames": { "type": "integer", "minimum": 1 },
+            "scene_change_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+            "frame_width": { "type": "integer", "minimum": 64, "maximum": 1920 },
+            "min_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "cache_dir": { "type": ["string", "null"] }
+          }
+        }
       }
     }
   }

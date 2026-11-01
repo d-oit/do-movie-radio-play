@@ -2,8 +2,7 @@ use anyhow::{bail, Context, Result};
 use std::path::PathBuf;
 use tracing::info;
 
-use movie_radio_goap::actions::get_all_actions;
-use movie_radio_goap::orchestrator::Orchestrator;
+use movie_radio_goap::production;
 use movie_radio_goap::{PipelineContext, WorldState};
 use movie_radio_io::json::{read_timeline, write_json_pretty};
 use movie_radio_types::voice_clone::load_reference_audio;
@@ -197,9 +196,13 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
             ..WorldState::default()
         };
 
-        let mut orchestrator = Orchestrator::new(start_state, goal_state, get_all_actions());
         let runtime = tokio::runtime::Runtime::new()?;
-        runtime.block_on(orchestrator.run(&mut ctx))?;
+        runtime.block_on(production::run_contract(
+            &mut ctx,
+            start_state,
+            goal_state,
+            None,
+        ))?;
 
         let gap_analysis = ctx
             .gap_analysis
@@ -223,9 +226,13 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
         ..WorldState::default()
     };
 
-    let mut orchestrator = Orchestrator::new(start_state, goal_state, get_all_actions());
     let runtime = tokio::runtime::Runtime::new()?;
-    runtime.block_on(orchestrator.run(&mut ctx))?;
+    runtime.block_on(production::run_contract(
+        &mut ctx,
+        start_state,
+        goal_state,
+        None,
+    ))?;
 
     info!(
         output = %ctx.output_path.display(),

@@ -55,7 +55,9 @@ The compiled binary is placed at `target/release/timeline`.
 - `voice list`: Display inventory of stored voice references.
 - `voice test --character <NAME> --text <TEXT>`: Synthesize speech using a stored character voice reference.
 - `narrate [--scene <N>] [--dry-run]`: Render narrator prompt template or request narration text from LLM backend.
-- `produce --input <MEDIA>`: Run 12-stage production pipeline with checkpoint persistence and resumption.
+- `produce --input <MEDIA> [--output <FILE>] [--resume <CHECKPOINT>] [--dry-run]`: Produce the complete radio-play deliverable (decode → speech analysis → gap identification → narration planning → voice synthesis → assembly, plus `--verify-quality` when requested). Every stage commits its artifacts before its checkpoint entry, so `--resume` re-runs only the stages whose inputs, configuration or artifacts changed. `--dry-run` prints the real stage graph, input fingerprints, voice chain and the provider credentials each stage needs.
+
+`produce` and `radio-play` execute the same production-stage contract. Use `radio-play --timeline <JSON> --analyze-only` for analysis only (gap analysis output); use `produce` when you want a checkpointed, resumable run whose deliverable is the assembled radio play rather than the source audio.
 
 ## Configuration
 

@@ -47,7 +47,7 @@ behavior fixes for `produce`/validation signals belong to #336.
 | `voice list` | Inventory stored voice references; warns on unreadable files. |
 | `voice test` | Synthesize `--text` with a stored reference; fails loudly without one. |
 | `narrate` | Render narrator template with example scene context; `--dry-run` prints the prompt, otherwise calls the configured LLM backend (`openai` \| `ollama_local` \| `anthropic`). |
-| `produce` | 12-stage orchestrated run with checkpoint/resume. `ExtractAudio`, `VoiceActivityDetect`, `AudioMix`, `Export` do real audio work; the remaining stages currently write empty placeholder JSON and are tracked by #336. |
+| `produce` | Complete radio-play production (decode → speech analysis → gap identification → narration planning → TTS → assembly, plus `--verify-quality`). Executes the same stage contract as `radio-play`, commits per-stage artifacts, and resumes from `checkpoint.json`. |
 
 ## 7.2 End-to-end workflow
 
@@ -70,12 +70,22 @@ Contributor gates live in `plans/040-validation/ACCEPTANCE.md`.
 - `--analyze-only` requires `--timeline` and writes/prints gap analysis only.
 - `--verify-quality` / `--apply-learnings` toggle the corresponding GOAP goals.
 
-## 7.4 `produce` / `narrate` caveats (pending #336)
+## 7.4 `produce` behaviour (#408 delivered)
 
-- `produce --dry-run` lists the 12 stages with provider/compute routing.
-- Real runs persist `checkpoint.json`; `--resume` skips completed stages.
-- Placeholder JSON stages must not be read as completed production work;
-  behavior fix belongs to #336. This phase only documents current behavior.
+- `produce` and `radio-play` share one stage contract
+  (`crates/movie-radio-goap/src/production/`); both execute the GOAP actions.
+- `produce --dry-run` prints the real execution graph: stage order, GOAP
+  action, input fingerprints, artifact per stage, voice chain and the
+  provider credentials each stage needs.
+- Real runs persist `checkpoint.json` and one artifact set per stage. A stage
+  is recorded only after its artifacts are atomically committed and readable.
+- `--resume` reuses a stage only while the input classes it reads, its stage
+  version and its artifacts are unchanged; a changed source invalidates every
+  stage, a changed voice chain re-runs synthesis and assembly only.
+- Failed stages are recorded as failures, are never marked completed, and the
+  command exits non-zero with the checkpoint left in place for recovery.
+- The final artifact is the assembled radio play, and the run reports the gap,
+  script and synthesized-clip counts it actually produced.
 - `narrate` uses example scene data (`narrator.rs`); pipeline-context
   narration is future work, not claimed here.
 

@@ -8,6 +8,22 @@ use tracing::{info, warn};
 /// on plans that can never succeed (ADR-120).
 const MAX_REPLANS: usize = 3;
 
+/// Hook invoked around each executed action so resumable runners can commit a
+/// stage's artifacts before the next one starts, and record failures without
+/// pretending the stage never ran.
+pub trait StageObserver: Send {
+    fn action_completed(&mut self, action: &str, ctx: &mut PipelineContext) -> Result<()>;
+
+    fn action_failed(
+        &mut self,
+        _action: &str,
+        _error: &anyhow::Error,
+        _ctx: &mut PipelineContext,
+    ) -> Result<()> {
+        Ok(())
+    }
+}
+
 /// Result of one full plan execution.
 enum PlanOutcome {
     GoalMet,
@@ -30,6 +46,7 @@ pub struct Orchestrator {
     current_state: WorldState,
     goal_state: WorldState,
     actions: Vec<Box<dyn Action>>,
+    observer: Option<Box<dyn StageObserver>>,
 }
 
 impl Orchestrator {
@@ -38,7 +55,13 @@ impl Orchestrator {
             current_state: start,
             goal_state: goal,
             actions,
+            observer: None,
         }
+    }
+
+    pub fn with_observer(mut self, observer: Box<dyn StageObserver>) -> Self {
+        self.observer = Some(observer);
+        self
     }
 
     pub async fn run(&mut self, ctx: &mut PipelineContext) -> Result<()> {
@@ -108,12 +131,14 @@ impl Orchestrator {
             match action.execute(ctx).await {
                 Ok(()) => {
                     self.current_state = action.apply(&self.current_state);
+                    notify_completed(&mut self.observer, action_name, ctx)?;
                     if self.current_state.meets(&self.goal_state) {
                         return Ok(PlanOutcome::GoalMet);
                     }
                 }
                 Err(err) => {
                     warn!(action = action_name, error = %err, "Action failed, replanning...");
+                    notify_failed(&mut self.observer, action_name, &err, ctx);
                     return Ok(PlanOutcome::Failed(err));
                 }
             }
@@ -144,6 +169,30 @@ impl Orchestrator {
             }
         }
         Ok(())
+    }
+}
+
+fn notify_completed(
+    observer: &mut Option<Box<dyn StageObserver>>,
+    action: &str,
+    ctx: &mut PipelineContext,
+) -> Result<()> {
+    match observer.as_mut() {
+        Some(observer) => observer.action_completed(action, ctx),
+        None => Ok(()),
+    }
+}
+
+fn notify_failed(
+    observer: &mut Option<Box<dyn StageObserver>>,
+    action: &str,
+    error: &anyhow::Error,
+    ctx: &mut PipelineContext,
+) {
+    if let Some(observer) = observer.as_mut() {
+        if let Err(record_err) = observer.action_failed(action, error, ctx) {
+            warn!(error = %record_err, "failed to record stage failure");
+        }
     }
 }
 

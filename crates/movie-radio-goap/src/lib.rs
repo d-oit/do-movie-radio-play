@@ -81,6 +81,9 @@ pub struct PipelineContext {
     pub gap_confidence: Option<f32>,
     /// Cues came from speech-to-text, so gap clipping uses a wider safety pad.
     pub subtitles_derived: bool,
+    /// Prebuilt synthesizer chain replacing the one built from
+    /// `voice_config` (deterministic providers for tests and offline runs).
+    pub voice_orchestrator: Option<std::sync::Arc<movie_radio_voice::voice::SynthesisOrchestrator>>,
 }
 
 impl PipelineContext {
@@ -111,6 +114,7 @@ impl PipelineContext {
             voice_reference: None,
             gap_confidence: None,
             subtitles_derived: false,
+            voice_orchestrator: None,
         }
     }
 }
@@ -321,6 +325,7 @@ pub mod gaps;
 pub mod narrate;
 pub mod orchestrator;
 pub mod planner;
+pub mod production;
 
 #[cfg(test)]
 pub(crate) mod test_support {

@@ -6,6 +6,7 @@ const VALID_AUDIO_CPP_MODES: [&str; 3] = ["auto", "local", "remote"];
 const VALID_LOCAL_MODES: [&str; 2] = ["server", "cli"];
 const VALID_BACKENDS: [&str; 6] = ["best", "cpu", "cuda", "vulkan", "metal", "hip"];
 const VALID_NARRATOR_BACKENDS: [&str; 3] = ["openai", "ollama_local", "anthropic"];
+const VALID_VISION_PROVIDERS: [&str; 3] = ["none", "openai", "ollama"];
 
 pub fn validate_app_config(cfg: &AppConfig) -> Result<(), String> {
     validate_audio_cpp(&cfg.voice.audio_cpp)?;
@@ -114,6 +115,47 @@ fn validate_narrator(n: &NarratorConfig) -> Result<(), String> {
                 .to_string(),
         );
     }
+    validate_visual(&n.visual)?;
+    Ok(())
+}
+
+fn validate_visual(v: &crate::app_config::VisualConfig) -> Result<(), String> {
+    if !VALID_VISION_PROVIDERS.contains(&v.provider.as_str()) {
+        return Err(format!("invalid narrator.visual.provider: {}", v.provider));
+    }
+    if !(1..=300).contains(&v.timeout_secs) {
+        return Err(format!(
+            "narrator.visual.timeout_secs out of range: {}",
+            v.timeout_secs
+        ));
+    }
+    if v.max_frames_per_window == 0 || v.max_frames_per_window > 8 {
+        return Err(format!(
+            "narrator.visual.max_frames_per_window out of range: {}",
+            v.max_frames_per_window
+        ));
+    }
+    if v.max_total_frames == 0 {
+        return Err("narrator.visual.max_total_frames must be >0".to_string());
+    }
+    if !(0.0..=1.0).contains(&v.scene_change_threshold) {
+        return Err("narrator.visual.scene_change_threshold must be in [0,1]".to_string());
+    }
+    if !(0.0..=1.0).contains(&v.min_confidence) {
+        return Err("narrator.visual.min_confidence must be in [0,1]".to_string());
+    }
+    if !(64..=1920).contains(&v.frame_width) {
+        return Err(format!(
+            "narrator.visual.frame_width out of range: {}",
+            v.frame_width
+        ));
+    }
+    if v.provider != "none" {
+        if v.model.trim().is_empty() {
+            return Err("narrator.visual.model must not be empty".to_string());
+        }
+        validate_url(&v.base_url, "narrator.visual.base_url")?;
+    }
     Ok(())
 }
 
@@ -164,6 +206,31 @@ mod tests {
         assert!(validate_app_config(&cfg).is_err());
 
         cfg.narrator.prompt_template = "templates/my..prompt.md".to_string();
+        assert!(validate_app_config(&cfg).is_ok());
+    }
+
+    #[test]
+    fn visual_provider_validation() {
+        let mut cfg = AppConfig::default();
+        cfg.narrator.visual.provider = "bogus".to_string();
+        assert!(validate_app_config(&cfg).is_err());
+
+        let mut cfg = AppConfig::default();
+        cfg.narrator.visual.provider = "openai".to_string();
+        cfg.narrator.visual.model.clear();
+        assert!(validate_app_config(&cfg).is_err());
+
+        let mut cfg = AppConfig::default();
+        cfg.narrator.visual.provider = "ollama".to_string();
+        cfg.narrator.visual.base_url = "ftp://localhost".to_string();
+        assert!(validate_app_config(&cfg).is_err());
+
+        let mut cfg = AppConfig::default();
+        cfg.narrator.visual.max_frames_per_window = 0;
+        assert!(validate_app_config(&cfg).is_err());
+
+        let mut cfg = AppConfig::default();
+        cfg.narrator.visual.provider = "ollama".to_string();
         assert!(validate_app_config(&cfg).is_ok());
     }
 }

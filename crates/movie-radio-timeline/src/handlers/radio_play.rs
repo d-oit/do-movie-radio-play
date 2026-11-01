@@ -114,6 +114,10 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     };
 
     let cfg = crate::app_config_loader::load_app_config(None).ok();
+    ctx.visual.narrator_config = cfg.as_ref().map(|c| c.narrator.clone());
+    ctx.visual.known_characters = cfg.as_ref().map_or_else(Vec::new, |c| {
+        c.characters.iter().map(|c| c.name.clone()).collect()
+    });
     let mut voice_cfg = VoiceSynthesisConfig::from_env();
     if let Some(language) = opts.language.filter(|l| !l.trim().is_empty()) {
         voice_cfg.language = language;

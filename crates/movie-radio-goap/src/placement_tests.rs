@@ -12,6 +12,7 @@ fn script(start_ms: u64, end_ms: u64) -> NarrationScript {
         emotion: Emotion::Neutral,
         word_count: 1,
         duration_ms: 1_000,
+        evidence: crate::narrate::NarrationEvidence::default(),
     }
 }
 

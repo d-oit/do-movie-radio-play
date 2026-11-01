@@ -7,6 +7,33 @@ use movie_radio_voice::Emotion;
 mod lang;
 use lang::Phrases;
 
+pub mod visual;
+
+/// Where a narration line's content came from. Serialized into scripts and the
+/// visual review report so an audio-only fallback is never mistaken for a
+/// frame-grounded description (#409).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum NarrationEvidence {
+    AudioOnly {
+        reason: String,
+    },
+    Visual {
+        provider: String,
+        model: String,
+        frame_refs: Vec<String>,
+        confidence: f32,
+    },
+}
+
+impl Default for NarrationEvidence {
+    fn default() -> Self {
+        Self::AudioOnly {
+            reason: "acoustic description".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NarrationScript {
     pub gap_start_ms: u64,
@@ -15,6 +42,8 @@ pub struct NarrationScript {
     pub emotion: Emotion,
     pub word_count: usize,
     pub duration_ms: u64,
+    #[serde(default)]
+    pub evidence: NarrationEvidence,
 }
 
 pub struct NarrationGenerator {
@@ -104,21 +133,31 @@ impl NarrationGenerator {
                 emotion,
                 word_count,
                 duration_ms,
+                evidence: NarrationEvidence::default(),
             });
         }
 
         Ok(scripts)
     }
 
-    fn max_words_for_duration(&self, duration_ms: u64) -> usize {
+    pub(crate) fn max_words_for_duration(&self, duration_ms: u64) -> usize {
         let seconds = duration_ms as f64 / 1000.0;
         let raw_words = (seconds * self.words_per_minute / 60.0) * self.density;
         raw_words.floor() as usize
     }
 
-    fn estimate_duration_ms(&self, word_count: usize) -> u64 {
+    pub(crate) fn estimate_duration_ms(&self, word_count: usize) -> u64 {
         let seconds = word_count as f64 / self.words_per_minute * 60.0;
         (seconds * 1000.0) as u64
+    }
+
+    /// Fits already-grounded, whole sentences into the window's word budget
+    /// and applies the ADR-128 filler guardrail. Returns empty when nothing
+    /// fits, so the caller can keep the acoustic description instead.
+    pub(crate) fn compose_sentences(&self, sentences: &[String], max_words: usize) -> String {
+        let chunks: Vec<&str> = sentences.iter().map(String::as_str).collect();
+        let text = self.fit_chunks_to_budget(&chunks, max_words);
+        reject_banned_filler_for(text, lang::phrases(&self.language))
     }
 
     fn extract_context(&self, timeline: &TimelineOutput, gap: &VisualGap) -> GapContext {

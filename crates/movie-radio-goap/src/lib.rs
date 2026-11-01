@@ -84,6 +84,8 @@ pub struct PipelineContext {
     /// Prebuilt synthesizer chain replacing the one built from
     /// `voice_config` (deterministic providers for tests and offline runs).
     pub voice_orchestrator: Option<std::sync::Arc<movie_radio_voice::voice::SynthesisOrchestrator>>,
+    /// Narrator configuration, known characters and the visual review report.
+    pub visual: crate::narrate::visual::VisualPipelineState,
 }
 
 impl PipelineContext {
@@ -115,6 +117,7 @@ impl PipelineContext {
             gap_confidence: None,
             subtitles_derived: false,
             voice_orchestrator: None,
+            visual: crate::narrate::visual::VisualPipelineState::default(),
         }
     }
 }
@@ -461,6 +464,7 @@ mod trace_quality_tests {
                 emotion: movie_radio_voice::Emotion::Neutral,
                 word_count: 1,
                 duration_ms: 500,
+                evidence: crate::narrate::NarrationEvidence::default(),
             },
             crate::narrate::NarrationScript {
                 gap_start_ms: 2000,
@@ -469,6 +473,7 @@ mod trace_quality_tests {
                 emotion: movie_radio_voice::Emotion::Neutral,
                 word_count: 1,
                 duration_ms: 500,
+                evidence: crate::narrate::NarrationEvidence::default(),
             },
         ]);
         ctx.narration_audio = vec![None, None];

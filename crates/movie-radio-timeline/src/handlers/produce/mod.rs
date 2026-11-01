@@ -257,6 +257,8 @@ fn build_context(
     let mut ctx = PipelineContext::new(opts.input.clone(), deliverable);
     ctx.run_id = Some(movie_radio_goap::fallback_run_id(&ctx.movie_path));
     ctx.voice_config = Some(voice);
+    ctx.visual.narrator_config = Some(cfg.narrator.clone());
+    ctx.visual.known_characters = cfg.characters.iter().map(|c| c.name.clone()).collect();
     ctx.voice_orchestrator = voice_orchestrator;
     ctx.gap_confidence = opts.gap_confidence;
     ctx.no_learn = opts.no_learn;

@@ -19,6 +19,7 @@
 | 125 | Voice Clone Capability | Accepted | `plans/adr/0125-voice-clone-capability.md` | Capability-driven cloning via audio.cpp; no XTTS/RVC impl. Closes #239. |
 | 126 | Narrator Prompt Engine | Accepted | `plans/adr/0126-narrator-prompt-engine.md` | Tera templates, OpenAI/Ollama/Anthropic backends. Closes #240. |
 | 128 | Audio-Description Standards | Accepted | `plans/adr/0128-audio-description-standards.md` | Adopts German ARD/MDR + DCMP/W3C audio-description standards as the normative reference for narration/gap-filling text; runtime + test + review guardrails against content-free filler. Fixes #344. |
+| 129 | Visual Scene Understanding | Accepted | `plans/adr/0129-visual-scene-understanding.md` | Optional bounded frame sampling, provider-agnostic vision, grounding of observed facts and a labelled audio-only fallback with per-window evidence. Fixes #409. |
 
 ## Notes
 

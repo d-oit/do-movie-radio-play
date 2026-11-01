@@ -332,8 +332,12 @@ pub enum Commands {
         #[arg(long)]
         template: Option<PathBuf>,
     },
-    /// Run bounded produce analysis pipeline (ExtractAudio, VoiceActivityDetect, AudioMix, Export).
-    /// Returns an error if an unsupported pipeline stage is requested.
+    /// Produce the complete radio-play deliverable: decode, speech analysis,
+    /// gap identification, narration planning, voice synthesis and assembly,
+    /// plus optional verification. Every stage is checkpointed and resumable.
+    ///
+    /// `produce` and `radio-play` execute the same stage contract; use
+    /// `radio-play --analyze-only` when you only want gap analysis.
     Produce {
         #[arg(long)]
         input: PathBuf,
@@ -343,6 +347,30 @@ pub enum Commands {
         resume: Option<PathBuf>,
         #[arg(long)]
         dry_run: bool,
+        /// Deliverable path (default: `<run dir>/<input stem>.radio-play.wav`).
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Add quality verification (and learning adaptation) stages.
+        #[arg(long)]
+        verify_quality: bool,
+        /// Reuse an existing timeline instead of extracting one.
+        #[arg(long)]
+        timeline: Option<PathBuf>,
+        /// Dialogue cues used to clip narration against speech.
+        #[arg(long)]
+        subtitles: Option<PathBuf>,
+        /// Narration language (text and TTS): `de` (default) or `en`.
+        #[arg(long)]
+        language: Option<String>,
+        /// Gap confidence threshold (default 0.8; lower narrates more gaps).
+        #[arg(long)]
+        gap_confidence: Option<f32>,
+        /// Do not derive dialogue cues when no subtitles are given.
+        #[arg(long)]
+        no_auto_cues: bool,
+        /// Freeze learning adaptations.
+        #[arg(long)]
+        no_learn: bool,
     },
 }
 

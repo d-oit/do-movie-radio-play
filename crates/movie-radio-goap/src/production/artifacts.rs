@@ -1,0 +1,282 @@
+//! Commits and restores the artifacts a production stage produces, so a
+//! checkpointed stage can be reused without re-running its work.
+//!
+//! Every artifact is written to a sibling temp path and renamed into place:
+//! an interrupted stage never leaves a truncated artifact that a later resume
+//! would accept.
+
+use anyhow::{bail, Context, Result};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::Path;
+
+use crate::narrate::NarrationScript;
+use crate::PipelineContext;
+use movie_radio_pipeline::pipeline::decode::decode_audio;
+use movie_radio_types::GapAnalysisOutput;
+use movie_radio_verification::VerificationReport;
+
+use super::checkpoint::part_sibling;
+use super::ProductionStage;
+
+const DECODED_AUDIO: &str = "decoded.wav";
+const TIMELINE_JSON: &str = "timeline.json";
+const GAPS_JSON: &str = "gaps.json";
+const SCRIPTS_JSON: &str = "scripts.json";
+const NARRATION_INDEX_JSON: &str = "narration.json";
+const VERIFICATION_JSON: &str = "verification.json";
+
+/// Persists the stage's artifacts and returns their keys mapped to paths.
+pub fn persist_stage_artifacts(
+    ctx: &PipelineContext,
+    stage: &ProductionStage,
+    dir: &Path,
+) -> Result<BTreeMap<String, String>> {
+    fs::create_dir_all(dir).with_context(|| format!("cannot create {}", dir.display()))?;
+    let mut artifacts = BTreeMap::new();
+    match stage.name {
+        "decode_audio" => {
+            let samples = ctx
+                .original_audio
+                .as_ref()
+                .context("cannot commit decoded audio: no samples in context")?;
+            let path = dir.join(DECODED_AUDIO);
+            commit_wav(&path, samples, ctx.sample_rate)?;
+            artifacts.insert("decoded_audio".to_string(), path_string(&path));
+        }
+        "analyze_speech" => {
+            let timeline = ctx.timeline.as_ref().context("no timeline to commit")?;
+            let path = dir.join(TIMELINE_JSON);
+            commit_json(&path, timeline)?;
+            artifacts.insert("timeline".to_string(), path_string(&path));
+        }
+        "identify_gaps" => {
+            let gaps: &GapAnalysisOutput = ctx
+                .gap_analysis
+                .as_ref()
+                .context("no gap analysis to commit")?;
+            let path = dir.join(GAPS_JSON);
+            commit_json(&path, gaps)?;
+            artifacts.insert("gaps".to_string(), path_string(&path));
+        }
+        "plan_narration" => {
+            let scripts: &Vec<NarrationScript> = ctx
+                .scripts
+                .as_ref()
+                .context("no narration scripts to commit")?;
+            let path = dir.join(SCRIPTS_JSON);
+            commit_json(&path, scripts)?;
+            artifacts.insert("scripts".to_string(), path_string(&path));
+        }
+        "synthesize_narration" => {
+            persist_narration(ctx, dir, &mut artifacts)?;
+        }
+        "assemble_radio_play" => {
+            let deliverable = &ctx.output_path;
+            if !deliverable.exists() {
+                bail!("assembled deliverable missing: {}", deliverable.display());
+            }
+            artifacts.insert("deliverable".to_string(), path_string(deliverable));
+        }
+        "verify_quality" => {
+            let report: &VerificationReport = ctx
+                .verification
+                .as_ref()
+                .context("no verification report to commit")?;
+            let path = dir.join(VERIFICATION_JSON);
+            commit_json(&path, report)?;
+            artifacts.insert("verification".to_string(), path_string(&path));
+        }
+        "apply_learnings" => {
+            let path = ctx
+                .learning_state_path
+                .as_ref()
+                .filter(|p| p.exists())
+                .context("learning state was not persisted; set a writable learning state path")?;
+            artifacts.insert("learning_state".to_string(), path_string(path));
+        }
+        other => bail!("no artifact persistence for production stage '{other}'"),
+    }
+    Ok(artifacts)
+}
+
+/// Restores a checkpointed stage's artifacts into the pipeline context.
+pub fn restore_stage_artifacts(
+    ctx: &mut PipelineContext,
+    stage: &ProductionStage,
+    artifacts: &BTreeMap<String, String>,
+) -> Result<()> {
+    match stage.name {
+        "decode_audio" => {
+            let path = artifact_path(artifacts, "decoded_audio")?;
+            let (samples, sample_rate) = read_wav(path)?;
+            ctx.sample_rate = sample_rate;
+            ctx.original_audio = Some(samples);
+        }
+        "analyze_speech" => {
+            ctx.timeline = Some(read_json(artifact_path(artifacts, "timeline")?)?);
+        }
+        "identify_gaps" => {
+            ctx.gap_analysis = Some(read_json(artifact_path(artifacts, "gaps")?)?);
+        }
+        "plan_narration" => {
+            ctx.scripts = Some(read_json(artifact_path(artifacts, "scripts")?)?);
+        }
+        "synthesize_narration" => {
+            restore_narration(ctx, artifacts)?;
+        }
+        "assemble_radio_play" => {
+            let path = artifact_path(artifacts, "deliverable")?;
+            let (samples, _) = decode_audio(path, ctx.sample_rate)?;
+            ctx.assembled_audio = Some(samples);
+        }
+        "verify_quality" => {
+            ctx.verification = Some(read_json(artifact_path(artifacts, "verification")?)?);
+        }
+        "apply_learnings" => {
+            // The action already wrote the learning state to the recorded path.
+        }
+        other => bail!("no artifact restore for production stage '{other}'"),
+    }
+    Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NarrationIndex {
+    entries: Vec<NarrationEntry>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NarrationEntry {
+    index: usize,
+    file: Option<String>,
+    provider: Option<String>,
+    sample_rate_hz: u32,
+}
+
+fn persist_narration(
+    ctx: &PipelineContext,
+    dir: &Path,
+    artifacts: &mut BTreeMap<String, String>,
+) -> Result<()> {
+    let mut entries = Vec::with_capacity(ctx.narration_audio.len());
+    for (i, audio) in ctx.narration_audio.iter().enumerate() {
+        let provider = ctx.narration_provider.get(i).cloned().flatten();
+        let file = match audio {
+            Some(audio) => {
+                let path = dir.join(format!("narration_{i:04}.wav"));
+                commit_wav(&path, &audio.samples, audio.sample_rate_hz)?;
+                artifacts.insert(format!("narration_{i:04}"), path_string(&path));
+                Some(path_string(&path))
+            }
+            None => None,
+        };
+        entries.push(NarrationEntry {
+            index: i,
+            file,
+            provider,
+            sample_rate_hz: audio.as_ref().map_or(ctx.sample_rate, |a| a.sample_rate_hz),
+        });
+    }
+    let index_path = dir.join(NARRATION_INDEX_JSON);
+    commit_json(&index_path, &NarrationIndex { entries })?;
+    artifacts.insert("narration_index".to_string(), path_string(&index_path));
+    Ok(())
+}
+
+fn restore_narration(
+    ctx: &mut PipelineContext,
+    artifacts: &BTreeMap<String, String>,
+) -> Result<()> {
+    let index: NarrationIndex = read_json(artifact_path(artifacts, "narration_index")?)?;
+    ctx.narration_audio.clear();
+    ctx.narration_provider.clear();
+    for entry in index.entries {
+        match entry.file {
+            Some(file) => {
+                let (samples, sample_rate_hz) = read_wav(Path::new(&file))?;
+                ctx.narration_audio
+                    .push(Some(movie_radio_voice::AudioOutput {
+                        samples,
+                        sample_rate_hz,
+                    }));
+            }
+            None => ctx.narration_audio.push(None),
+        }
+        ctx.narration_provider.push(entry.provider);
+    }
+    Ok(())
+}
+
+fn artifact_path<'a>(artifacts: &'a BTreeMap<String, String>, key: &str) -> Result<&'a Path> {
+    artifacts
+        .get(key)
+        .map(Path::new)
+        .with_context(|| format!("checkpoint is missing artifact '{key}'"))
+}
+
+fn path_string(path: &Path) -> String {
+    path.to_string_lossy().to_string()
+}
+
+fn commit_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
+    let tmp = part_sibling(path);
+    let bytes = serde_json::to_vec_pretty(value)?;
+    fs::write(&tmp, bytes).with_context(|| format!("cannot write {}", tmp.display()))?;
+    commit(&tmp, path)
+}
+
+fn commit_wav(path: &Path, samples: &[f32], sample_rate_hz: u32) -> Result<()> {
+    let tmp = part_sibling(path);
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate: sample_rate_hz,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    {
+        let mut writer = hound::WavWriter::create(&tmp, spec)
+            .with_context(|| format!("cannot write {}", tmp.display()))?;
+        for &sample in samples {
+            writer.write_sample((sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)?;
+        }
+        writer.finalize()?;
+    }
+    commit(&tmp, path)
+}
+
+fn commit(tmp: &Path, path: &Path) -> Result<()> {
+    fs::rename(tmp, path).with_context(|| {
+        format!(
+            "cannot commit artifact {} -> {}",
+            tmp.display(),
+            path.display()
+        )
+    })?;
+    Ok(())
+}
+
+fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
+    let bytes = fs::read(path).with_context(|| format!("cannot read {}", path.display()))?;
+    serde_json::from_slice(&bytes).with_context(|| format!("cannot parse {}", path.display()))
+}
+
+fn read_wav(path: &Path) -> Result<(Vec<f32>, u32)> {
+    let mut reader =
+        hound::WavReader::open(path).with_context(|| format!("cannot open {}", path.display()))?;
+    let spec = reader.spec();
+    let samples: Vec<f32> = match spec.sample_format {
+        hound::SampleFormat::Int => {
+            let scale = (1_i64 << (spec.bits_per_sample - 1)) as f32;
+            reader
+                .samples::<i32>()
+                .map(|s| s.map(|v| v as f32 / scale))
+                .collect::<std::result::Result<_, _>>()?
+        }
+        hound::SampleFormat::Float => reader
+            .samples::<f32>()
+            .collect::<std::result::Result<_, _>>()?,
+    };
+    Ok((samples, spec.sample_rate))
+}

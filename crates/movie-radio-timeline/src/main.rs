@@ -233,9 +233,32 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             config,
             resume,
             dry_run,
+            output,
+            verify_quality,
+            timeline,
+            subtitles,
+            language,
+            gap_confidence,
+            no_auto_cues,
+            no_learn,
         } => {
             let cfg = crate::app_config_loader::load_app_config(config)?;
-            movie_radio_pipeline::orchestrator::handle_produce(input, resume, dry_run, &cfg)
+            handlers::handle_produce(
+                handlers::ProduceOptions {
+                    input,
+                    output,
+                    resume,
+                    dry_run,
+                    verify_quality,
+                    timeline,
+                    subtitles,
+                    language,
+                    gap_confidence,
+                    no_auto_cues,
+                    no_learn,
+                },
+                &cfg,
+            )
         }
         rest => dispatch_verification_and_output(rest),
     }

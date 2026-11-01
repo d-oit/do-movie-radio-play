@@ -45,6 +45,7 @@ url.workspace = true
 assert_cmd = "2"
 predicates = "3"
 tempfile.workspace = true
+async-trait.workspace = true
 
 [lints]
 workspace = true

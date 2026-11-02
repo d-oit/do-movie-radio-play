@@ -118,7 +118,18 @@ The synthetic scenes report 0% leak but **0 s narratable**: Silero classifies th
 - **Leak and coverage are coupled:** lowering the floor keeps more cues, which vetoes more narration: the leak *ratio* falls partly because less is narrated. Reporting a leak number without retained narratable time is therefore misleading, and the earlier "2-4%" figures did exactly that.
 - **"Narrate only where detector and cues agree on non-speech" is already the shipped rule (verified 2026-11-02).** `subtract_cues` in `crates/movie-radio-goap/src/gaps/split.rs` takes `gaps` (detector non-voice) and removes padded cue spans, so narration already requires *both* signals to agree. The 2026-10-06 note above said the same about the union of Silero and Whisper. It is worth re-verifying before proposing it: the idea reads as an unexplored lever but is the current design, and the residual 8.5% is dialogue that both signals missed.
 - **A second, more sensitive Silero pass does not help either.** Re-running the same model at probability 0.1 (via `SILERO_VAD_THRESHOLD`; the engine ignores `--threshold`, which is an energy-RMS knob) and vetoing with its extra speech spans moves Sprite Fright 8.5% -> 8.1% and Tears of Steel 2.5% -> 2.3%, costing 6.2 s and 0.9 s of narration respectively. `scripts/research/double_veto.py` reproduces both rows. Same model, so it cannot recover speech it never heard — consistent with the earlier 36-setting sweep.
-- **What that leaves:** closing the gap needs a genuinely independent signal — a different ASR model, or a dedicated dialogue/music separator — not another operating point of the existing two. Recorded as High in `plans/FOLLOWUPS.md`.
+- **The pad curve reaches the floor, but only by narrating a third less (2026-11-02, `scripts/research/pad_curve.py`).** Leak / retained, shipped path, as the derived-cue pad grows:
+
+| pad | Elephants Dream | Tears of Steel | Sintel | Sprite Fright |
+|---|---|---|---|---|
+| 0.8 s (shipped) | 2.3 / 67% | 2.5 / 76% | 3.1 / 74% | **8.5 / 41%** |
+| 1.6 s | 1.9 / 62% | 2.6 / 70% | 2.3 / 69% | 7.0 / 36% |
+| 2.5 s | 2.1 / 57% | 2.5 / 64% | 1.6 / 65% | 5.9 / 32% |
+| 4.0 s | 1.7 / 48% | 2.4 / 55% | 1.4 / 57% | **4.3 / 26%** |
+
+  A 4 s pad does bring the unseen film under 5%, and barely disturbs the other three. But it costs 15 pp of coverage on Sprite Fright (41% -> 26%) to remove 4.2 pp of leak, and **the only reason to pick 4 s is that it is the smallest pad that passes on the unseen film** — that is fitting on the holdout, which this issue forbids. Recording it as an available lever with its price, not as a recommendation.
+- **Gap-filling does not beat uniform padding.** Merging cues separated by up to 3 s (to cover a missed line sitting between transcribed ones) then padding only 0.3 s outside leaks 2.9-8.7% at 42-80% coverage — worse than the uniform 2.0 s pad on every film at comparable coverage. The missed shouts are not simply sandwiched between transcribed lines, so the mechanism the idea assumed does not hold.
+- **What that leaves:** every dependency-free lever is now measured and exhausted (operating point, second model pass, agreement rule, integer pad, gap-filling). Closing the gap needs a genuinely independent signal — a different ASR model, or a dedicated dialogue/music separator. Recorded as High in `plans/FOLLOWUPS.md`.
 
 ### Sintel as second sweep holdout (2026-10-08)
 - Manifest tier C now has two entries (Tears of Steel, Sintel); `fetch_test_assets.sh` (with `FETCH_SECOND_FILM=1`) downloads Sintel's 681 MB zip, extracts the MKV and its English subtitle track (`-map 0:s:m:language:eng`, 26 cues, asserted). Only the weekly sweep pays the download.

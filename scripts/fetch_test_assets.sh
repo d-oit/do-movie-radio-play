@@ -93,6 +93,17 @@ if [[ "${FETCH_SECOND_FILM:-0}" == "1" ]]; then
     echo "WARN: sintel_2010.en.srt has ${cues:-0} cues, expected 26"
     FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
+
+  # Sprite Fright (2021, CC BY 4.0) - the only real film in the cue evaluation that
+  # never informed any detector, cue, pad or threshold work. Dialogue truth is the
+  # community timed text from Wikimedia Commons (80 cues); 159 MB webm.
+  fetch "https://upload.wikimedia.org/wikipedia/commons/7/76/Sprite_Fright_-_Blender_Open_Movie-full_movie.webm" "testdata/raw/sprite_fright_2021.webm"
+  fetch "https://commons.wikimedia.org/wiki/TimedText:Sprite_Fright_-_Blender_Open_Movie-full_movie.webm.en.srt?action=raw" "testdata/raw/sprite_fright_2021.en.srt"
+  sprite_cues="$(grep -c -- '-->' testdata/raw/sprite_fright_2021.en.srt 2>/dev/null || true)"
+  if [[ "${sprite_cues:-0}" != "80" ]]; then
+    echo "WARN: sprite_fright_2021.en.srt has ${sprite_cues:-0} cues, expected 80"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
 fi
 
 CRITICAL_ASSETS="testdata/raw/elephants_dream_2006.mp4 testdata/raw/sintel_trailer_2010.mp4"

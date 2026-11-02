@@ -448,6 +448,9 @@ def run_sweep(args: argparse.Namespace) -> int:
 
     rows = []
     pending = []
+    cache_dir = Path(args.cue_cache_dir) if args.cue_cache_dir else None
+    if cache_dir is not None:
+        cache_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="cue-eval-") as tmp:
         for entry in entries:
             if entry.get("status", "ready") != "ready":
@@ -488,8 +491,12 @@ def run_sweep(args: argparse.Namespace) -> int:
                     if not args.derive_cues:
                         continue
                     for threshold in thresholds:
-                        out = Path(tmp) / f"{entry['id']}-{threshold}.srt"
-                        if not derive_cues(
+                        name = f"{entry['id']}-{threshold}.srt"
+                        out = (cache_dir or Path(tmp)) / name
+                        # Reuse a cached derivation so an interrupted sweep resumes.
+                        if out.exists() and out.stat().st_size > 0:
+                            print(f"reusing cached cues {out}", file=sys.stderr)
+                        elif not derive_cues(
                             media, out, args.model, args.model_revision, threshold
                         ):
                             continue
@@ -628,6 +635,11 @@ def main() -> int:
         "--cue-details",
         action="store_true",
         help="include per-cue source and veto status in the sweep report",
+    )
+    sweep.add_argument(
+        "--cue-cache-dir",
+        default=None,
+        help="keep derived cues here so an interrupted sweep resumes instead of re-transcribing",
     )
     sweep.set_defaults(func=run_sweep)
 

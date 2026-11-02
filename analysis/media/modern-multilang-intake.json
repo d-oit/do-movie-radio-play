@@ -3,6 +3,28 @@
   "notes": "Track legally usable modern films with multi-language subtitle availability before adding to validation corpus.",
   "candidates": [
     {
+      "title": "Big Buck Bunny (2008)",
+      "source_url": "https://studio.blender.org/films/big-buck-bunny/",
+      "catalog_url": "https://studio.blender.org/films/big-buck-bunny/",
+      "license_status": "cc_by",
+      "rights_notes": "Blender Foundation open movie, CC BY 3.0. Verify the subtitle translation provenance before ingestion.",
+      "subtitle_languages": [
+        "en",
+        "de"
+      ]
+    },
+    {
+      "title": "Cosmos Laundromat (2015)",
+      "source_url": "https://studio.blender.org/films/cosmos-laundromat/",
+      "catalog_url": "https://studio.blender.org/films/cosmos-laundromat/",
+      "license_status": "cc_by",
+      "rights_notes": "Blender Foundation open movie, CC BY 3.0. Verify the subtitle translation provenance before ingestion.",
+      "subtitle_languages": [
+        "en",
+        "fr"
+      ]
+    },
+    {
       "title": "REPLACE_TITLE",
       "source_url": "https://wikiflix.toolforge.org",
       "catalog_url": "https://wikiflix.toolforge.org",

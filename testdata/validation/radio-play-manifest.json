@@ -9,7 +9,19 @@
       "truth_path": "testdata/generated/alternating.truth.json",
       "profile": "synthetic",
       "config_path": "config/profiles/all-gaps.json",
-      "output_report": "testdata/validation/validate_against_synthetic.json"
+      "output_report": "testdata/validation/validate_against_synthetic.json",
+      "provenance": {
+        "source_url": "generated://movie-radio-validation/synthetic",
+        "license": "synthetic",
+        "license_status": "synthetic",
+        "retrieved": "2026-11-02"
+      },
+      "truth_source": "synthetic",
+      "language": "und",
+      "expected_output": {
+        "max_dialogue_leak_ratio": 0.0,
+        "min_narratable_retained_ms": 0
+      }
     },
     {
       "id": "elephants_dream_2006_de_radio",
@@ -20,7 +32,19 @@
       "total_ms": 653791,
       "profile": "radio-play-default",
       "output_report": "testdata/validation/elephants_dream_2006_de_radio_validation.json",
-      "vad_engine": "silero"
+      "vad_engine": "silero",
+      "provenance": {
+        "source_url": "https://studio.blender.org/films/elephants-dream/",
+        "license": "CC BY 3.0",
+        "license_status": "cc_by",
+        "retrieved": "2026-11-02"
+      },
+      "truth_source": "authored_subtitles",
+      "language": "de",
+      "expected_output": {
+        "max_dialogue_leak_ratio": 0.05,
+        "min_narratable_retained_ms": 0
+      }
     },
     {
       "id": "elephants_dream_2006_es_radio",
@@ -31,7 +55,19 @@
       "total_ms": 653791,
       "profile": "radio-play-default",
       "output_report": "testdata/validation/elephants_dream_2006_es_radio_validation.json",
-      "vad_engine": "silero"
+      "vad_engine": "silero",
+      "provenance": {
+        "source_url": "https://studio.blender.org/films/elephants-dream/",
+        "license": "CC BY 3.0",
+        "license_status": "cc_by",
+        "retrieved": "2026-11-02"
+      },
+      "truth_source": "authored_subtitles",
+      "language": "es",
+      "expected_output": {
+        "max_dialogue_leak_ratio": 0.05,
+        "min_narratable_retained_ms": 0
+      }
     },
     {
       "id": "tos-en-holdout",
@@ -42,7 +78,19 @@
       "total_ms": 734167,
       "profile": "radio-play-default",
       "output_report": "testdata/validation/tos_en_validation.json",
-      "vad_engine": "silero"
+      "vad_engine": "silero",
+      "provenance": {
+        "source_url": "https://studio.blender.org/films/tears-of-steel/",
+        "license": "CC BY 3.0",
+        "license_status": "cc_by",
+        "retrieved": "2026-11-02"
+      },
+      "truth_source": "authored_subtitles",
+      "language": "en",
+      "expected_output": {
+        "max_dialogue_leak_ratio": 0.05,
+        "min_narratable_retained_ms": 0
+      }
     },
     {
       "id": "sintelholdoutentry",
@@ -53,7 +101,19 @@
       "total_ms": 888032,
       "profile": "radio-play-default",
       "vad_engine": "silero",
-      "output_report": "testdata/validation/sintel_en_validation.json"
+      "output_report": "testdata/validation/sintel_en_validation.json",
+      "provenance": {
+        "source_url": "https://studio.blender.org/films/sintel/",
+        "license": "CC BY 3.0",
+        "license_status": "cc_by",
+        "retrieved": "2026-11-02"
+      },
+      "truth_source": "embedded_subtitles",
+      "language": "en",
+      "expected_output": {
+        "max_dialogue_leak_ratio": 0.05,
+        "min_narratable_retained_ms": 0
+      }
     }
   ]
 }

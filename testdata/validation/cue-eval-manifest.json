@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "notes": "End-to-end cue-path sweep. Config selection uses only split=dev; split=holdout is reported with the selected config. Entries with status=pending_assets are skipped until their media and truth files are fetched.",
+  "pads_s": [0.0, 0.3, 0.8],
+  "min_vad_evidence": [0.0, 0.1, 0.3],
+  "short_utterance_ms": 1000,
+  "max_dialogue_leak_ratio": 0.05,
+  "entries": [
+    {
+      "id": "elephants_dream_2006_de",
+      "status": "ready",
+      "split": "dev",
+      "media": "testdata/raw/elephants_dream_2006.mp4",
+      "total_ms": 653791,
+      "truth": [
+        {"path": "testdata/raw/elephants_dream_2006.de.srt", "language": "de"}
+      ],
+      "cue_sources": [
+        {"source": "exact_subtitles", "path": "testdata/raw/elephants_dream_2006.de.srt"},
+        {"source": "derived_whisper", "derive": true}
+      ],
+      "provenance": {
+        "source_url": "https://studio.blender.org/films/elephants-dream/",
+        "license": "CC BY 3.0",
+        "license_status": "cc_by"
+      }
+    },
+    {
+      "id": "tears_of_steel_2012_en",
+      "status": "ready",
+      "split": "holdout",
+      "media": "testdata/raw/tears_of_steel_2012.mov",
+      "total_ms": 734167,
+      "truth": [
+        {"path": "testdata/raw/tears_of_steel_2012.en.srt", "language": "en"}
+      ],
+      "cue_sources": [
+        {"source": "exact_subtitles", "path": "testdata/raw/tears_of_steel_2012.en.srt"},
+        {"source": "derived_whisper", "derive": true}
+      ],
+      "provenance": {
+        "source_url": "https://studio.blender.org/films/tears-of-steel/",
+        "license": "CC BY 3.0",
+        "license_status": "cc_by"
+      }
+    },
+    {
+      "id": "sintel_2010_en",
+      "status": "ready",
+      "split": "holdout",
+      "media": "testdata/raw/Sintel.2010.720p.mkv",
+      "total_ms": 888032,
+      "truth": [
+        {"path": "testdata/raw/sintel_2010.en.srt", "language": "en"}
+      ],
+      "cue_sources": [
+        {"source": "embedded_subtitles", "path": "testdata/raw/sintel_2010.en.srt"},
+        {"source": "derived_whisper", "derive": true}
+      ],
+      "provenance": {
+        "source_url": "https://studio.blender.org/films/sintel/",
+        "license": "CC BY 3.0",
+        "license_status": "cc_by"
+      }
+    },
+    {
+      "id": "big_buck_bunny_2008_en",
+      "status": "pending_assets",
+      "split": "holdout",
+      "media": "testdata/raw/big_buck_bunny_2008.mp4",
+      "total_ms": 0,
+      "truth": [
+        {"path": "testdata/raw/big_buck_bunny_2008.en.srt", "language": "en"}
+      ],
+      "cue_sources": [
+        {"source": "exact_subtitles", "path": "testdata/raw/big_buck_bunny_2008.en.srt"},
+        {"source": "derived_whisper", "derive": true}
+      ],
+      "provenance": {
+        "source_url": "https://studio.blender.org/films/big-buck-bunny/",
+        "license": "CC BY 3.0",
+        "license_status": "cc_by"
+      }
+    },
+    {
+      "id": "cosmos_laundromat_2015_en",
+      "status": "pending_assets",
+      "split": "holdout",
+      "media": "testdata/raw/cosmos_laundromat_2015.mp4",
+      "total_ms": 0,
+      "truth": [
+        {"path": "testdata/raw/cosmos_laundromat_2015.en.srt", "language": "en"}
+      ],
+      "cue_sources": [
+        {"source": "exact_subtitles", "path": "testdata/raw/cosmos_laundromat_2015.en.srt"},
+        {"source": "derived_whisper", "derive": true}
+      ],
+      "provenance": {
+        "source_url": "https://studio.blender.org/films/cosmos-laundromat/",
+        "license": "CC BY 3.0",
+        "license_status": "cc_by"
+      }
+    }
+  ]
+}

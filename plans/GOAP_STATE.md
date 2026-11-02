@@ -105,7 +105,7 @@ With the tuned config instead (pad 0.3 s / floor 0.3), the same rows are 3.8% / 
 
 Two consequences worth keeping:
 - **The dev selection moved** from pad 0.8 s to pad 0.3 s once the denominator became the detector's non-voice time, because padding cues now eats into a much smaller narratable base. The pad is not robust across denominators, so any pad quoted without its scoring mode is meaningless.
-- **The unseen film is still the outlier:** three of four real films land at 2.5-3.5%, under the 5% floor, while Sprite Fright is **10.3%** — roughly double the floor — and only 289 s of its 630 s is even narratable to Silero. Derived cues leak about three times as much on unseen material as on the films that informed tuning.
+- **The unseen film is still the outlier:** three of four real films land at 2.3-3.1%, under the 5% floor, while Sprite Fright is **8.5%** on the shipped config (10.3% on the tuned one) — about 1.7x the floor — and only 289 s of its 630 s is even narratable to Silero. Derived cues leak roughly three times as much on unseen material as on the films that informed tuning.
 
 The synthetic scenes report 0% leak but **0 s narratable**: Silero classifies their music, effects and vocalise as speech, so they measure cue coverage but cannot measure retained narration. They are regression fixtures only.
 

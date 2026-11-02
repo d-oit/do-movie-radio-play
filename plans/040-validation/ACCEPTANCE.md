@@ -39,6 +39,10 @@ python3 scripts/check_validation_coverage.py --tier A --strict-files
 
 # Deterministic cue-path regression gate (no media or model)
 python3 scripts/evaluate_cue_path.py fixtures --manifest testdata/cues/fixtures.json --output analysis/validation/cue-path-fixtures.json
+
+# Opt-in end-to-end cue path (espeak-ng + faster-whisper; selects on dev, reports holdout)
+python3 scripts/generate_dialogue_fixtures.py --output-dir testdata/generated/dialogue
+python3 scripts/evaluate_cue_path.py sweep --manifest testdata/validation/cue-eval-manifest.json --output analysis/validation/cue-path-sweep.json --derive-cues
 ```
 
 Required outcome:
@@ -46,6 +50,7 @@ Required outcome:
 - manifest coverage check passes for required tier
 - output report includes stable metrics: `overlap_ratio`, precision/recall, and boundary error
 - cue-path fixtures pass, including the deliberate dropped-cue regression that must fail its gate
+- the opt-in sweep reports per-film, per-source, per-language leakage and retained narratable time, with pad/threshold chosen on `split=dev` only
 - any failure is fixed or documented in `plans/050-status-report/STATUS.md`
 
 ## 4) Benchmark Regression Visibility (must pass)

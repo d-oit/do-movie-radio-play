@@ -82,10 +82,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak-ng
       - run: FETCH_SECOND_FILM=1 bash scripts/fetch_test_assets.sh
+      - name: Build synthetic dialogue holdouts
+        run: python3 scripts/generate_dialogue_fixtures.py --output-dir testdata/generated/dialogue
       - name: Install faster-whisper
-        run: pip install faster-whisper
+        run: |
+          # PyAV >= 15 dropped the `metadata_errors` argument faster-whisper passes,
+          # so the decoder fails at import time without this pin.
+          pip install faster-whisper "av==13.1.0"
       - name: End-to-end cue-path sweep
         run: |
           python3 scripts/evaluate_cue_path.py sweep \

@@ -427,6 +427,14 @@ def select_config(dev_results: list[dict], max_leak: float) -> dict:
     )
 
 
+def select_per_source(dev_rows: list[dict], max_leak: float) -> dict:
+    """Pick one config per cue source: sources are not alternatives to rank."""
+    by_source: dict[str, list[dict]] = {}
+    for row in dev_rows:
+        by_source.setdefault(row["source"], []).append(row)
+    return {source: select_config(rows, max_leak) for source, rows in by_source.items()}
+
+
 def run_sweep(args: argparse.Namespace) -> int:
     manifest = load_json(Path(args.manifest))
     entries = manifest.get("entries")
@@ -452,6 +460,28 @@ def run_sweep(args: argparse.Namespace) -> int:
                 )
                 continue
             media = Path(entry["media"])
+            if not media.exists():
+                pending.append(
+                    {
+                        "id": entry["id"],
+                        "status": "missing_media",
+                        "split": entry.get("split", "dev"),
+                    }
+                )
+                continue
+            missing_truth = [
+                item["path"] for item in entry["truth"] if not Path(item["path"]).exists()
+            ]
+            if missing_truth:
+                pending.append(
+                    {
+                        "id": entry["id"],
+                        "status": "missing_truth",
+                        "split": entry.get("split", "dev"),
+                        "paths": missing_truth,
+                    }
+                )
+                continue
             total_s = entry["total_ms"] / 1000
             for source in entry["cue_sources"]:
                 if source.get("derive"):
@@ -525,33 +555,37 @@ def run_sweep(args: argparse.Namespace) -> int:
     if not dev_rows:
         print("sweep produced no dev rows; cannot select a config", file=sys.stderr)
         return 1
-    chosen = select_config(dev_rows, max_leak)
+    chosen = select_per_source(dev_rows, max_leak)
     holdout = [
         row
         for row in rows
         if row["split"] == "holdout"
-        and row["source"] == chosen["source"]
-        and row["pad_s"] == chosen["pad_s"]
-        and row["min_vad_evidence"] == chosen["min_vad_evidence"]
+        and row["source"] in chosen
+        and row["pad_s"] == chosen[row["source"]]["pad_s"]
+        and row["min_vad_evidence"] == chosen[row["source"]]["min_vad_evidence"]
     ]
     payload = {
         "manifest": str(args.manifest),
         "max_dialogue_leak_ratio": max_leak,
         "selected": {
-            "source": chosen["source"],
-            "pad_s": chosen["pad_s"],
-            "min_vad_evidence": chosen["min_vad_evidence"],
-            "dev_metrics": chosen["metrics"],
+            source: {
+                "pad_s": row["pad_s"],
+                "min_vad_evidence": row["min_vad_evidence"],
+                "dev_film": row["id"],
+                "dev_metrics": row["metrics"],
+            }
+            for source, row in chosen.items()
         },
         "pending": pending,
         "dev": dev_rows,
         "holdout": holdout,
     }
     write_json(Path(args.output), payload)
-    print(
-        f"selected {chosen['source']} pad={chosen['pad_s']} "
-        f"threshold={chosen['min_vad_evidence']} on dev"
-    )
+    for source, row in sorted(chosen.items()):
+        print(
+            f"selected {source} pad={row['pad_s']} "
+            f"threshold={row['min_vad_evidence']} on dev"
+        )
     for row in holdout:
         metrics = row["metrics"]
         print(

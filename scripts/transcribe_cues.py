@@ -18,6 +18,8 @@ import hashlib
 import json
 import sys
 
+from cue_gate import DEFAULT_GATE_MAX_CUE_SECONDS, keep_cue, peak_evidences
+
 try:
     from faster_whisper import WhisperModel
 except ImportError as exc:  # explicit degradation, not a traceback
@@ -41,14 +43,17 @@ def stamp(seconds: float) -> str:
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
 
-def gate_by_vad_evidence(media: str, cues: list, floor: float) -> list:
+def gate_by_vad_evidence(
+    media: str, cues: list, floor: float, max_gated_seconds: float
+) -> list:
     """Drop cues the bundled Silero model is sure contain no speech.
 
     Whisper (no VAD pre-filter, so short shouts survive) also hallucinates speech
-    over score and ambience; on Sintel only 14% of its cue time was real dialogue.
-    A cue is kept when Silero's peak speech probability inside it reaches `floor`.
-    Measured over three films: floor 0.1 keeps ~37% more narratable time than
-    ungated cues for +0.6 pp dialogue leak, and the result is flat for 0.1-0.3.
+    over score and ambience in long sustained passages; on Sintel only 14% of its
+    cue time was real dialogue. Only cues longer than `max_gated_seconds` are
+    gated: a short cue that is wrong costs its own duration, but dropping one can
+    hide a shout. Measured on four films, gating every cue dropped 13 of 34
+    shouts on Sprite Fright; gating only cues over 10 s dropped 4.
     """
     if floor <= 0 or not cues:
         return cues
@@ -64,12 +69,17 @@ def gate_by_vad_evidence(media: str, cues: list, floor: float) -> list:
         print(f"warning: VAD evidence gate unavailable ({exc}); keeping all cues", file=sys.stderr)
         return cues
     step = window / 16000
-    kept = []
-    for start, end in cues:
-        lo = int(start / step)
-        if probs[lo : max(int(end / step), lo + 1)].max(initial=0.0) >= floor:
-            kept.append((start, end))
-    print(f"vad evidence gate kept {len(kept)}/{len(cues)} cues", file=sys.stderr)
+    peaks = peak_evidences(probs, step, cues)
+    kept = [
+        cue
+        for cue, peak in zip(cues, peaks)
+        if keep_cue(cue[0], cue[1], peak, floor, max_gated_seconds)
+    ]
+    print(
+        f"vad evidence gate kept {len(kept)}/{len(cues)} cues "
+        f"(floor {floor}, only cues > {max_gated_seconds}s)",
+        file=sys.stderr,
+    )
     return kept
 
 
@@ -89,6 +99,9 @@ def main() -> int:
     ap.add_argument("--vad-threshold", type=float, default=0.15)
     ap.add_argument("--min-vad-evidence", type=float, default=0.1,
                     help="drop cues whose peak Silero speech probability is below this (0 disables)")
+    ap.add_argument("--gate-max-cue-seconds", type=float,
+                    default=DEFAULT_GATE_MAX_CUE_SECONDS,
+                    help="only gate cues longer than this; short cues are kept so shouts survive")
     ap.add_argument("--meta-out", default=None,
                     help="write decode/model identity metadata here (default: OUT.meta.json)")
     args = ap.parse_args()
@@ -124,7 +137,9 @@ def main() -> int:
                 cur = []
             cur.append(w)
         cues.append((cur[0].start, cur[-1].end))
-    cues = gate_by_vad_evidence(args.media, cues, args.min_vad_evidence)
+    cues = gate_by_vad_evidence(
+        args.media, cues, args.min_vad_evidence, args.gate_max_cue_seconds
+    )
     with open(args.out, "w", encoding="utf-8") as fh:
         for i, (a, b) in enumerate(cues, 1):
             fh.write(f"{i}\n{stamp(a)} --> {stamp(b)}\n[speech]\n\n")
@@ -147,6 +162,7 @@ def main() -> int:
                     "vad_filter": args.vad,
                     "vad_threshold": args.vad_threshold,
                     "min_vad_evidence": args.min_vad_evidence,
+                    "gate_max_cue_seconds": args.gate_max_cue_seconds,
                 },
                 "cue_count": len(cues),
                 "output_sha256": digest,

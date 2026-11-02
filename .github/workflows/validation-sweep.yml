@@ -2,6 +2,11 @@ name: Validation Sweep
 
 on:
   workflow_dispatch:
+    inputs:
+      run_cue_eval:
+        description: "Run the model-based end-to-end cue-path evaluation"
+        type: boolean
+        default: false
   schedule:
     - cron: "0 4 * * 1"
 
@@ -26,7 +31,7 @@ jobs:
       - run: chmod +x scripts/check_validation_coverage.py scripts/run_validation_manifest.py scripts/build_radio_play_failure_breakdown.py scripts/build_radio_play_readiness_report.py
       - run: python3 scripts/check_media_intake.py --input analysis/media/modern-multilang-intake.json --min-sub-langs 2 --strict-license
       - run: python3 scripts/run_validation_manifest.py --manifest testdata/validation/radio-play-manifest.json --tier A --tier B --tier C --summary analysis/validation/radio-play-sweep-summary.json
-      - run: python3 scripts/check_validation_coverage.py --manifest testdata/validation/radio-play-manifest.json --tier A --tier B --tier C
+      - run: python3 scripts/check_validation_coverage.py --manifest testdata/validation/radio-play-manifest.json --tier A --tier B --tier C --require-provenance
       - run: |
           python3 scripts/build_radio_play_failure_breakdown.py \
             --summary analysis/validation/radio-play-sweep-summary.json \
@@ -68,3 +73,29 @@ jobs:
           path: |
             analysis/validation/radio-play-readiness-report.json
             analysis/learnings/latest-radio-play-readiness-report.md
+
+  # Expensive model-based path: opt-in only, never on the weekly schedule.
+  cue_path_eval:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_cue_eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: FETCH_SECOND_FILM=1 bash scripts/fetch_test_assets.sh
+      - name: Install faster-whisper
+        run: pip install faster-whisper
+      - name: End-to-end cue-path sweep
+        run: |
+          python3 scripts/evaluate_cue_path.py sweep \
+            --manifest testdata/validation/cue-eval-manifest.json \
+            --output analysis/validation/cue-path-sweep.json \
+            --derive-cues \
+            --model base \
+            --model-revision ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: cue-path-sweep
+          path: analysis/validation/cue-path-sweep.json

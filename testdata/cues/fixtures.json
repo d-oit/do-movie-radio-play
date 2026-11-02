@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "notes": "Deterministic cue-path regression fixtures. No media or model is required; each case scores truth SRT against cue SRT.",
+  "cases": [
+    {
+      "id": "short_shout",
+      "truth": [{"path": "testdata/cues/short_shout/truth.srt", "language": "en"}],
+      "cues": [{"source": "derived_whisper", "path": "testdata/cues/short_shout/cues.srt"}],
+      "total_ms": 6000,
+      "pad_s": 0.0,
+      "short_utterance_ms": 1000,
+      "expect": {
+        "dialogue_time_recall": {"max": 0.9},
+        "missed_short_utterances": {"min": 1},
+        "missed_shouted_utterances": {"min": 1}
+      }
+    },
+    {
+      "id": "speech_under_music",
+      "truth": [{"path": "testdata/cues/speech_under_music/truth.srt", "language": "en"}],
+      "cues": [{"source": "derived_whisper", "path": "testdata/cues/speech_under_music/cues.srt"}],
+      "total_ms": 6000,
+      "pad_s": 0.0,
+      "expect": {
+        "dialogue_time_recall": {"min": 1.0},
+        "dialogue_leak_ratio": {"max": 0.0}
+      }
+    },
+    {
+      "id": "overlapping_speakers",
+      "truth": [{"path": "testdata/cues/overlapping_speakers/truth.srt", "language": "en"}],
+      "cues": [{"source": "exact_subtitles", "path": "testdata/cues/overlapping_speakers/cues.srt"}],
+      "total_ms": 6000,
+      "pad_s": 0.0,
+      "expect": {
+        "dialogue_time_recall": {"min": 1.0},
+        "dialogue_leak_ratio": {"max": 0.0}
+      }
+    },
+    {
+      "id": "multilingual",
+      "truth": [
+        {"path": "testdata/cues/multilingual/truth.de.srt", "language": "de"},
+        {"path": "testdata/cues/multilingual/truth.en.srt", "language": "en"}
+      ],
+      "cues": [{"source": "embedded_subtitles", "path": "testdata/cues/multilingual/cues.srt"}],
+      "total_ms": 6000,
+      "pad_s": 0.0,
+      "expect": {
+        "dialogue_time_recall": {"min": 1.0},
+        "dialogue_leak_ratio": {"max": 0.0}
+      }
+    },
+    {
+      "id": "singing",
+      "truth": [{"path": "testdata/cues/singing/truth.srt", "language": "en"}],
+      "cues": [{"source": "derived_whisper", "path": "testdata/cues/singing/cues.srt"}],
+      "total_ms": 6000,
+      "pad_s": 0.0,
+      "expect": {
+        "dialogue_time_recall": {"min": 1.0},
+        "dialogue_leak_ratio": {"max": 0.0}
+      }
+    },
+    {
+      "id": "sfx_like_speech",
+      "truth": [{"path": "testdata/cues/sfx_like_speech/truth.srt", "language": "en"}],
+      "cues": [{"source": "derived_whisper", "path": "testdata/cues/sfx_like_speech/cues.srt"}],
+      "total_ms": 6000,
+      "pad_s": 0.0,
+      "expect": {
+        "false_cue_coverage": {"min": 0.99},
+        "dialogue_leak_ratio": {"max": 0.0}
+      }
+    },
+    {
+      "id": "silence",
+      "truth": [{"path": "testdata/cues/silence/truth.srt", "language": "en"}],
+      "cues": [{"source": "derived_whisper", "path": "testdata/cues/silence/cues.srt"}],
+      "total_ms": 6000,
+      "pad_s": 0.0,
+      "expect": {
+        "truth_ms": {"max": 0.0},
+        "cue_ms": {"max": 0.0},
+        "dialogue_leak_ratio": {"max": 0.0}
+      }
+    },
+    {
+      "id": "regression_dropped_cue",
+      "truth": [{"path": "testdata/cues/regression_dropped_cue/truth.srt", "language": "en"}],
+      "cues": [{"source": "derived_whisper", "path": "testdata/cues/regression_dropped_cue/cues.srt"}],
+      "total_ms": 6000,
+      "pad_s": 0.0,
+      "gate": {
+        "min_dialogue_time_recall": 0.9,
+        "max_dialogue_leak_ratio": 0.05
+      },
+      "expect_gate": "fail"
+    }
+  ]
+}

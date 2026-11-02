@@ -36,12 +36,16 @@ timeline validate testdata/raw/sintel_trailer_2010.mp4 --subtitles testdata/raw/
 
 # Coverage + artifact integrity for Tier A production evals
 python3 scripts/check_validation_coverage.py --tier A --strict-files
+
+# Deterministic cue-path regression gate (no media or model)
+python3 scripts/evaluate_cue_path.py fixtures --manifest testdata/cues/fixtures.json --output analysis/validation/cue-path-fixtures.json
 ```
 
 Required outcome:
 - validation command succeeds for each selected source
 - manifest coverage check passes for required tier
 - output report includes stable metrics: `overlap_ratio`, precision/recall, and boundary error
+- cue-path fixtures pass, including the deliberate dropped-cue regression that must fail its gate
 - any failure is fixed or documented in `plans/050-status-report/STATUS.md`
 
 ## 4) Benchmark Regression Visibility (must pass)

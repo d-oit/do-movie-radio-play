@@ -7,11 +7,30 @@ Needs: pip install faster-whisper. Text is discarded by the pipeline; only the
 timings matter, so a small model is enough.
 
 Usage: transcribe_cues.py MEDIA OUT.srt [--model base] [--language de] [--vad]
+
+Decoding is fixed (greedy, beam 5, no previous-text conditioning) so repeated
+runs on the same media and model revision produce byte-identical cues. The
+model revision and cache directory are recorded in a sidecar `.meta.json` so a
+report can name the exact weights that produced it.
 """
 import argparse
+import hashlib
+import json
 import sys
 
-from faster_whisper import WhisperModel
+try:
+    from faster_whisper import WhisperModel
+except ImportError as exc:  # explicit degradation, not a traceback
+    print(
+        "error: faster-whisper is not installed; install it with "
+        "'pip install faster-whisper' or run radio-play with --no-auto-cues "
+        f"to use VAD-only narration ({exc})",
+        file=sys.stderr,
+    )
+    raise SystemExit(3)
+
+# Pinned Systran/faster-whisper-base revision; bump deliberately with a report.
+DEFAULT_MODEL_REVISION = "ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66"
 
 
 def stamp(seconds: float) -> str:
@@ -59,6 +78,10 @@ def main() -> int:
     ap.add_argument("media")
     ap.add_argument("out")
     ap.add_argument("--model", default="base")
+    ap.add_argument("--model-revision", default=DEFAULT_MODEL_REVISION,
+                    help="Hugging Face revision to pin (default: the pinned base revision)")
+    ap.add_argument("--cache-dir", default=None,
+                    help="model download cache; recorded in the metadata sidecar")
     ap.add_argument("--language", default=None)
     ap.add_argument("--vad", action=argparse.BooleanOptionalAction, default=False,
                     help="whisper's VAD pre-filter: ~6x faster but drops short shouts over loud action "
@@ -66,8 +89,16 @@ def main() -> int:
     ap.add_argument("--vad-threshold", type=float, default=0.15)
     ap.add_argument("--min-vad-evidence", type=float, default=0.1,
                     help="drop cues whose peak Silero speech probability is below this (0 disables)")
+    ap.add_argument("--meta-out", default=None,
+                    help="write decode/model identity metadata here (default: OUT.meta.json)")
     args = ap.parse_args()
-    model = WhisperModel(args.model, device="cpu", compute_type="int8")
+    model = WhisperModel(
+        args.model,
+        device="cpu",
+        compute_type="int8",
+        revision=args.model_revision,
+        download_root=args.cache_dir,
+    )
     segments, _ = model.transcribe(
         args.media,
         language=args.language,
@@ -97,6 +128,34 @@ def main() -> int:
     with open(args.out, "w", encoding="utf-8") as fh:
         for i, (a, b) in enumerate(cues, 1):
             fh.write(f"{i}\n{stamp(a)} --> {stamp(b)}\n[speech]\n\n")
+    with open(args.out, "rb") as fh:
+        digest = hashlib.sha256(fh.read()).hexdigest()
+    meta_path = args.meta_out or f"{args.out}.meta.json"
+    with open(meta_path, "w", encoding="utf-8") as fh:
+        json.dump(
+            {
+                "model": args.model,
+                "model_revision": args.model_revision,
+                "cache_dir": args.cache_dir,
+                "device": "cpu",
+                "compute_type": "int8",
+                "decode": {
+                    "temperature": 0.0,
+                    "beam_size": 5,
+                    "condition_on_previous_text": False,
+                    "word_timestamps": True,
+                    "vad_filter": args.vad,
+                    "vad_threshold": args.vad_threshold,
+                    "min_vad_evidence": args.min_vad_evidence,
+                },
+                "cue_count": len(cues),
+                "output_sha256": digest,
+            },
+            fh,
+            indent=2,
+            sort_keys=True,
+        )
+        fh.write("\n")
     print(f"wrote {len(cues)} cues to {args.out}", file=sys.stderr)
     return 0
 

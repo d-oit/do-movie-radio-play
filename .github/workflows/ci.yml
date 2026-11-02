@@ -341,9 +341,31 @@ jobs:
         run: cargo check --workspace --all-targets
 
   # ───────────────────────────────────────────────────
+  cue-path-fixtures:
+    name: Cue Path Fixtures
+    needs: [changes]
+    if: >-
+      github.event_name != 'pull_request' ||
+      needs.changes.outputs.code == 'true' ||
+      needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Deterministic cue-path regression gate
+        run: |
+          python3 scripts/evaluate_cue_path.py fixtures \
+            --manifest testdata/cues/fixtures.json \
+            --output analysis/validation/cue-path-fixtures.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: cue-path-fixtures
+          path: analysis/validation/cue-path-fixtures.json
+
+  # ───────────────────────────────────────────────────
   ci-success:
     name: CI Success
-    needs: [validate-agents, lint, shellcheck, gitleaks, fmt, clippy, msrv, test, test-local-tts, coverage, security, deny, benchmark, version-check]
+    needs: [validate-agents, lint, shellcheck, gitleaks, fmt, clippy, msrv, test, test-local-tts, coverage, security, deny, benchmark, version-check, cue-path-fixtures]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -364,6 +386,7 @@ jobs:
             "${{ needs.deny.result }}"
             "${{ needs.benchmark.result }}"
             "${{ needs.version-check.result }}"
+            "${{ needs.cue-path-fixtures.result }}"
           )
           for res in "${results[@]}"; do
             if [[ "$res" == "failure" || "$res" == "cancelled" ]]; then

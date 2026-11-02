@@ -26,6 +26,7 @@ sensors = [
   "validate_workflows",
   "shellcheck",
   "test_do_harness",
+  "cue_path_fixtures",
 ]
 paths = [
   "crates/**",
@@ -154,6 +155,11 @@ prerequisites = ["shellcheck"]
 [sensors.test_do_harness]
 description = "Harness sensor selection and mapping test"
 command = "python3 scripts/test-do-harness.py"
+
+[sensors.cue_path_fixtures]
+description = "Deterministic dialogue-cue path regression fixtures"
+command = "python3 scripts/evaluate_cue_path.py fixtures --manifest testdata/cues/fixtures.json --output analysis/validation/cue-path-fixtures.json"
+prerequisites = ["python3"]
 
 [sensors.version_check]
 description = "Version consistency check across VERSION and Cargo.toml"

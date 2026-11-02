@@ -5,6 +5,20 @@ import sys
 from pathlib import Path
 
 VALID_TRUTH_TYPES = {"truth_json", "subtitles", "dataset_manifest"}
+VALID_TRUTH_SOURCES = {
+    "synthetic",
+    "authored_subtitles",
+    "embedded_subtitles",
+    "whisper_derived",
+}
+VALID_LICENSE_STATUSES = {
+    "public_domain",
+    "cc_by",
+    "cc_by_sa",
+    "cc0",
+    "other_permissive",
+    "synthetic",
+}
 REQUIRED_REPORT_FIELDS = [
     "profile",
     "tolerance_ms",
@@ -70,6 +84,46 @@ def validate_report(
         )
 
 
+def validate_provenance(entry: dict, entry_id: str, failures: list[str]) -> None:
+    provenance = entry.get("provenance")
+    if not isinstance(provenance, dict):
+        failures.append(f"{entry_id}: missing provenance object")
+        return
+    for field in ("source_url", "license", "license_status", "retrieved"):
+        value = provenance.get(field)
+        if not isinstance(value, str) or not value.strip():
+            failures.append(f"{entry_id}: provenance missing '{field}'")
+    status = provenance.get("license_status")
+    if isinstance(status, str) and status not in VALID_LICENSE_STATUSES:
+        failures.append(
+            f"{entry_id}: provenance license_status '{status}' not in allowed set"
+        )
+
+    truth_source = entry.get("truth_source")
+    if truth_source not in VALID_TRUTH_SOURCES:
+        failures.append(
+            f"{entry_id}: truth_source must be one of {sorted(VALID_TRUTH_SOURCES)}"
+        )
+    language = entry.get("language")
+    if not isinstance(language, str) or not language.strip():
+        failures.append(f"{entry_id}: missing language")
+
+    expected = entry.get("expected_output")
+    if not isinstance(expected, dict):
+        failures.append(f"{entry_id}: missing expected_output object")
+        return
+    leak = expected.get("max_dialogue_leak_ratio")
+    if not isinstance(leak, (int, float)) or not 0 <= leak <= 1:
+        failures.append(
+            f"{entry_id}: expected_output.max_dialogue_leak_ratio must be 0..1"
+        )
+    retained = expected.get("min_narratable_retained_ms")
+    if not isinstance(retained, int) or retained < 0:
+        failures.append(
+            f"{entry_id}: expected_output.min_narratable_retained_ms must be >= 0"
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Validate production-eval manifest coverage and report artifacts"
@@ -89,6 +143,11 @@ def main() -> int:
         "--strict-files",
         action="store_true",
         help="fail if input/truth files are missing for selected entries",
+    )
+    parser.add_argument(
+        "--require-provenance",
+        action="store_true",
+        help="require provenance, truth_source, language and expected_output metadata",
     )
     args = parser.parse_args()
 
@@ -154,6 +213,9 @@ def main() -> int:
                 failures.append(
                     f"{entry_id}: subtitles entries require positive integer total_ms"
                 )
+
+        if args.require_provenance:
+            validate_provenance(entry, entry_id, failures)
 
         if output_report:
             if output_report in seen_outputs:

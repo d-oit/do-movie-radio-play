@@ -1,0 +1,6 @@
+{
+  "text": "Ein leises Rauschen liegt über dem Hof.",
+  "evidence_ids": ["gap.tags"],
+  "uncertainty": "only quiet ambience is audible",
+  "pronunciation": [{ "term": "Rauschen", "hint": "RAU-schen" }]
+}

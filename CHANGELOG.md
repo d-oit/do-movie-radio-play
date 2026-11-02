@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- feat(narration): LLM-backed gap narration with structured evidence ids, timing/language/claim validation, bounded retries and a labelled acoustic fallback (#412).
 - feat(narration): optional visual scene understanding with bounded frame sampling, provider-agnostic vision, grounded evidence and a labelled audio-only fallback (#409).
 - feat(voice): configurable OpenAI-compatible TTS endpoint — `base_url` + optional auth enables local German sidecars (audio.cpp/PocketTTS) with OpenAI as default (#212).
 - fix(voice): harden `SynthesisRequest` validation and percent-encode the ElevenLabs voice endpoint; validate effective voice_id including config fallback (#231).

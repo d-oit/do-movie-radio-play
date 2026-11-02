@@ -97,6 +97,13 @@
         "max_tokens": { "type": "integer", "minimum": 1 },
         "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
         "prompt_template": { "type": "string" },
+        "llm": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "max_attempts": { "type": "integer", "minimum": 1, "maximum": 3 }
+          }
+        },
         "visual": {
           "type": "object",
           "properties": {

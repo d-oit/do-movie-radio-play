@@ -91,6 +91,15 @@ num_ctx = 2048
 api_key_env = "ANTHROPIC_API_KEY"
 model = "claude-3-5-haiku-20241022"
 
+# Optional LLM-backed gap narration (#412). Reuses [narrator] backend/model/
+# temperature/max_tokens through the same provider dispatch as the CLI.
+# Disabled by default: the deterministic tag-based generator remains the
+# default path. Invalid model output is never synthesized; the window is
+# left unnarrated and reported.
+[narrator.llm]
+enabled = false
+max_attempts = 2
+
 # Optional visual scene understanding for grounded audio description (#409).
 # provider: "none" (acoustic narration only), "openai" (any OpenAI-compatible
 # vision endpoint) or "ollama" (local vision model, e.g. llava).

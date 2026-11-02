@@ -518,6 +518,7 @@ def run_sweep(args: argparse.Namespace) -> int:
 
     rows = []
     pending = []
+    ready: list[tuple[dict, list | None, float, Path]] = []
     cache_dir = Path(args.cue_cache_dir) if args.cue_cache_dir else None
     if cache_dir is not None:
         cache_dir.mkdir(parents=True, exist_ok=True)
@@ -570,6 +571,7 @@ def run_sweep(args: argparse.Namespace) -> int:
                     continue
                 detector = load_detector_non_voice(Path(timeline))
             total_s = entry["total_ms"] / 1000
+            ready.append((entry, detector, total_s, media))
             for source in entry["cue_sources"]:
                 if source.get("derive"):
                     if not args.derive_cues:
@@ -642,6 +644,36 @@ def run_sweep(args: argparse.Namespace) -> int:
                             }
                         )
 
+        # The product hardcodes its pad (DERIVED_CUE_PAD_MS) and never passes an
+        # evidence floor, so the dev-selected config is *not* what ships. Report
+        # the shipped configuration explicitly instead of implying tuning lands.
+        shipped_rows = []
+        shipped_cfg = manifest.get("shipped_config")
+        if shipped_cfg and args.derive_cues:
+            shipped_floor = shipped_cfg.get("min_vad_evidence")
+            shipped_pad = shipped_cfg["pad_s"]
+            for entry, detector, total_s, media in ready:
+                out = (cache_dir or Path(tmp)) / f"{entry['id']}-{shipped_floor}.srt"
+                if not out.exists() or out.stat().st_size == 0:
+                    if not derive_cues(
+                        media, out, args.model, args.model_revision, shipped_floor
+                    ):
+                        continue
+                cues = parse_srt(out)
+                scored = evaluate_truth_files(
+                    entry["truth"], cues, total_s, shipped_pad, short_ms, detector
+                )
+                shipped_rows.append(
+                    {
+                        "id": entry["id"],
+                        "split": entry.get("split", "dev"),
+                        "pad_s": shipped_pad,
+                        "min_vad_evidence": shipped_floor,
+                        "metrics": scored["pooled"],
+                        "per_language": scored["per_language"],
+                    }
+                )
+
     dev_rows = [row for row in rows if row["split"] == "dev"]
     if not dev_rows:
         print("sweep produced no dev rows; cannot select a config", file=sys.stderr)
@@ -658,6 +690,7 @@ def run_sweep(args: argparse.Namespace) -> int:
     payload = {
         "manifest": str(args.manifest),
         "max_dialogue_leak_ratio": max_leak,
+        "shipped_config": shipped_cfg,
         "selected": {
             source: {
                 "pad_s": row["pad_s"],
@@ -670,6 +703,7 @@ def run_sweep(args: argparse.Namespace) -> int:
         "pending": pending,
         "dev": dev_rows,
         "holdout": holdout,
+        "shipped": shipped_rows,
     }
     write_json(Path(args.output), payload)
     for source, row in sorted(chosen.items()):
@@ -681,6 +715,13 @@ def run_sweep(args: argparse.Namespace) -> int:
         metrics = row["metrics"]
         print(
             f"holdout {row['id']}: leak={metrics['dialogue_leak_ratio']} "
+            f"recall={metrics['dialogue_time_recall']} "
+            f"retained={metrics['narratable_retained_ms']}ms"
+        )
+    for row in shipped_rows:
+        metrics = row["metrics"]
+        print(
+            f"shipped {row['id']}: leak={metrics['dialogue_leak_ratio']} "
             f"recall={metrics['dialogue_time_recall']} "
             f"retained={metrics['narratable_retained_ms']}ms"
         )

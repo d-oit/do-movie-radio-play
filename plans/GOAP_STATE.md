@@ -89,15 +89,17 @@
 - **Caveat on their independence:** both scenes were revised after the first sweep, which returned 0% leak and full recall because the shouts sat clear of any effect. The shouts were then moved under loud impacts and away from neighbouring lines so a miss could not hide behind a neighbour's padding. The scenes are therefore **regression fixtures, not unbiased generalization evidence**: their 0% leak figures say the cue path still catches those specific lines, not that it would on unseen material. Treat them as a guard against silent regressions, and judge generalization on real films.
 - **Measured end-to-end sweep (2026-11-02, `analysis/validation/cue-path-sweep-real.json`):** pad and evidence floor were chosen on the dev film only (Elephants Dream, ES subtitles as cues against DE truth so nothing is scored against itself): `derived_whisper` pad 0.8 s / floor 0.3, `exact_subtitles` pad 0. Those two configs were then applied unchanged to every holdout. Leakage here is the share of *retained narratable* time that is still true dialogue (`narration_on_dialogue / (retained + narration_on_dialogue)`), a different denominator from the 2-4% figures quoted above, which used the detector's gap time.
 
-| film | source | leak | dialogue recall | retained | narratable |
-|---|---|---:|---:|---:|---:|
-| Elephants Dream (dev) | derived | 2.5% | 0.92 | 336 s | 469 s |
-| Elephants Dream (dev) | exact | 0.0% | 1.00 | 398 s | 469 s |
-| Tears of Steel | derived | 3.5% | 0.83 | 468 s | 579 s |
-| Tears of Steel | exact | 0.0% | 1.00 | 532 s | 579 s |
-| Sintel | derived | 3.5% | 0.53 | 631 s | 794 s |
-| **Sprite Fright (unseen)** | derived | **10.3%** | 0.81 | 133 s | 289 s |
-| synthetic kitchen / night | derived | 0.0% | 0.93 | 0 s | 0 s |
+| film | leak (shipped) | dialogue recall | retained | narratable |
+|---|---:|---:|---:|---:|
+| Elephants Dream | 2.3% | 0.93 | 315 s | 469 s |
+| Tears of Steel | 2.5% | 0.90 | 440 s | 579 s |
+| Sintel | 3.1% | 0.68 | 589 s | 794 s |
+| **Sprite Fright (unseen)** | **8.5%** | 0.89 | 118 s | 289 s |
+| synthetic kitchen / night | 0.0% | 1.00 | 0 s | 0 s |
+
+These are the **shipped** settings: pad 0.8 s (`DERIVED_CUE_PAD_MS`) and the transcriber's 0.1 evidence floor. `cues.rs` passes neither flag, so tuning performed by the sweep is advisory unless it is wired into the product — a disconnect worth stating plainly, because the dev-selected config (pad 0.3 s / floor 0.3) reports Sprite Fright at 10.3% while the product actually runs the 8.5% row above. The sweep now reports a `shipped` section on every entry so this comparison is automatic rather than reconstructed by hand.
+
+With the tuned config instead (pad 0.3 s / floor 0.3), the same rows are 3.8% / 3.5% / 3.5% / 10.3% — tuning makes the tuned film and the other two slightly worse than the shipped pad on this metric, i.e. the sweep's selection does not transfer. The honest reading is that 0.8 s padding, not the sweep's winner, is the better setting on the shipped path.
 
 **Correction (2026-11-02):** earlier rows in this section scored cues alone, crediting the entire non-dialogue timeline as narratable. The shipped path only narrates *detector non-voice minus cues*, so those figures (14.0%, then 11.3%) were upper bounds that ignored dialogue the detector already refuses to narrate. Scoring now takes the Silero timeline as an input (`--detector-timeline`, `analysis/validation/detector/`), and every row above is `detector_plus_cues`. The rows without a timeline are labelled `cue_only_upper_bound` in the report rather than being mixed in silently.
 

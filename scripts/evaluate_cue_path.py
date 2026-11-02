@@ -122,13 +122,22 @@ def subtract(
 
 def load_detector_non_voice(path: Path) -> list[tuple[float, float]]:
     """Non-voice segments from a timeline JSON, in seconds."""
+    return _load_segments(path, "non_voice")
+
+
+def load_detector_speech(path: Path) -> list[tuple[float, float]]:
+    """Speech segments from a timeline JSON, in seconds."""
+    return _load_segments(path, "speech")
+
+
+def _load_segments(path: Path, kind: str) -> list[tuple[float, float]]:
     payload = load_json(path)
     segments = payload.get("segments")
     if not isinstance(segments, list):
         raise ValueError(f"{path}: no 'segments' list")
     spans = []
     for seg in segments:
-        if seg.get("kind") != "non_voice":
+        if seg.get("kind") != kind:
             continue
         start = seg.get("start_ms")
         end = seg.get("end_ms")

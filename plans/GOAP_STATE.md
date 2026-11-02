@@ -89,17 +89,23 @@
 - **Caveat on their independence:** both scenes were revised after the first sweep, which returned 0% leak and full recall because the shouts sat clear of any effect. The shouts were then moved under loud impacts and away from neighbouring lines so a miss could not hide behind a neighbour's padding. The scenes are therefore **regression fixtures, not unbiased generalization evidence**: their 0% leak figures say the cue path still catches those specific lines, not that it would on unseen material. Treat them as a guard against silent regressions, and judge generalization on real films.
 - **Measured end-to-end sweep (2026-11-02, `analysis/validation/cue-path-sweep-real.json`):** pad and evidence floor were chosen on the dev film only (Elephants Dream, ES subtitles as cues against DE truth so nothing is scored against itself): `derived_whisper` pad 0.8 s / floor 0.3, `exact_subtitles` pad 0. Those two configs were then applied unchanged to every holdout. Leakage here is the share of *retained narratable* time that is still true dialogue (`narration_on_dialogue / (retained + narration_on_dialogue)`), a different denominator from the 2-4% figures quoted above, which used the detector's gap time.
 
-| film | source | leak | dialogue recall | missed shouts | retained |
+| film | source | leak | dialogue recall | retained | narratable |
 |---|---|---:|---:|---:|---:|
-| Elephants Dream (dev) | derived | 3.6% (was 3.3) | 0.92 | 3/19 (was 3) | 74% (was 83) |
-| Elephants Dream (dev) | exact | 0.0% | 1.00 | 0/19 | 86% |
-| Tears of Steel | derived | 2.8% (was 6.1) | 0.90 (was 0.74) | 3/28 (was 11) | 77% (was 90) |
-| Sintel | derived | 3.8% (was 5.1) | 0.68 (was 0.44) | 2/4 (was 4) | 76% (was 98) |
-| **Sprite Fright (unseen)** | derived | **11.3%** (was 14.0) | 0.89 (was 0.79) | 4/34 (was 13) | 50% (was 72) |
-| synthetic kitchen / night | derived | 0.0% | 1.00 | 0/0 | 64% / 57% |
-| Tears of Steel | exact | 0.0% | 1.00 | 0/28 | 100% |
+| Elephants Dream (dev) | derived | 2.5% | 0.92 | 336 s | 469 s |
+| Elephants Dream (dev) | exact | 0.0% | 1.00 | 398 s | 469 s |
+| Tears of Steel | derived | 3.5% | 0.83 | 468 s | 579 s |
+| Tears of Steel | exact | 0.0% | 1.00 | 532 s | 579 s |
+| Sintel | derived | 3.5% | 0.53 | 631 s | 794 s |
+| **Sprite Fright (unseen)** | derived | **10.3%** | 0.81 | 133 s | 289 s |
+| synthetic kitchen / night | derived | 0.0% | 0.93 | 0 s | 0 s |
 
-Figures in parentheses are the pre-fix gate (every cue gated). The duration-aware gate improves leakage and shout recall on every real film except Elephants Dream, which gives back 0.3 pp of leak for 9 pp of coverage; it pays for that with 9-23 pp of retained narratable time. **Sprite Fright still exceeds the 5% floor at 11.3%**, so the fix narrows the gap rather than closing it.
+**Correction (2026-11-02):** earlier rows in this section scored cues alone, crediting the entire non-dialogue timeline as narratable. The shipped path only narrates *detector non-voice minus cues*, so those figures (14.0%, then 11.3%) were upper bounds that ignored dialogue the detector already refuses to narrate. Scoring now takes the Silero timeline as an input (`--detector-timeline`, `analysis/validation/detector/`), and every row above is `detector_plus_cues`. The rows without a timeline are labelled `cue_only_upper_bound` in the report rather than being mixed in silently.
+
+Two consequences worth keeping:
+- **The dev selection moved** from pad 0.8 s to pad 0.3 s once the denominator became the detector's non-voice time, because padding cues now eats into a much smaller narratable base. The pad is not robust across denominators, so any pad quoted without its scoring mode is meaningless.
+- **The unseen film is still the outlier:** three of four real films land at 2.5-3.5%, under the 5% floor, while Sprite Fright is **10.3%** — roughly double the floor — and only 289 s of its 630 s is even narratable to Silero. Derived cues leak about three times as much on unseen material as on the films that informed tuning.
+
+The synthetic scenes report 0% leak but **0 s narratable**: Silero classifies their music, effects and vocalise as speech, so they measure cue coverage but cannot measure retained narration. They are regression fixtures only.
 
 - **The generalization gap is the finding.** The dev-chosen config leaks 3.3% on the film that chose it and **14.0% on Sprite Fright**, a real film (CC BY 4.0, 80 timed cues from Wikimedia Commons) used in no earlier detector, cue, pad or threshold work here. The shipped derived-cue path therefore does **not** meet the 5% floor on unseen real material, and the honest working figure is "roughly one in seven retained narration seconds still lands on dialogue", not the 2-4% previously quoted from three tuned films. Missed shouted lines are the mechanism: 13 of 34 shouts on Sprite Fright, 11 of 28 on Tears of Steel, all 4 on Sintel.
 - **Exact subtitles remain the reliable path:** 0% leak and full recall on every film where they exist, at the cost of 17-29% of narratable time when padded.

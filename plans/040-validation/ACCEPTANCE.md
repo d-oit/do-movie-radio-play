@@ -39,10 +39,12 @@ python3 scripts/check_validation_coverage.py --tier A --strict-files
 
 # Deterministic cue-path regression gate (no media or model)
 python3 scripts/evaluate_cue_path.py fixtures --manifest testdata/cues/fixtures.json --output analysis/validation/cue-path-fixtures.json
+python3 scripts/test_cue_gate.py
+python3 scripts/test_cue_path_metrics.py
 
 # Opt-in end-to-end cue path (espeak-ng + faster-whisper; selects on dev, reports holdout)
 python3 scripts/generate_dialogue_fixtures.py --output-dir testdata/generated/dialogue
-python3 scripts/evaluate_cue_path.py sweep --manifest testdata/validation/cue-eval-manifest.json --output analysis/validation/cue-path-sweep.json --derive-cues
+python3 scripts/evaluate_cue_path.py sweep --manifest testdata/validation/cue-eval-manifest.json --output analysis/validation/cue-path-sweep-real.json --derive-cues --cue-cache-dir /tmp/cuecache
 ```
 
 Required outcome:
@@ -50,6 +52,7 @@ Required outcome:
 - manifest coverage check passes for required tier
 - output report includes stable metrics: `overlap_ratio`, precision/recall, and boundary error
 - cue-path fixtures pass, including the deliberate dropped-cue regression that must fail its gate
+- every reported leak figure names its scoring mode: `detector_plus_cues` is the shipped path, `cue_only_upper_bound` is not
 - the opt-in sweep reports per-film, per-source, per-language leakage and retained narratable time, with pad/threshold chosen on `split=dev` only
 - any failure is fixed or documented in `plans/050-status-report/STATUS.md`
 

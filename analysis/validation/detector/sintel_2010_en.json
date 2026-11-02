@@ -1,0 +1,61 @@
+{
+  "file": "Sintel.2010.720p.mkv",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 106980,
+      "kind": "non_voice",
+      "confidence": 0.9991029,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 159840,
+      "end_ms": 206440,
+      "kind": "non_voice",
+      "confidence": 0.99111134,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 211880,
+      "end_ms": 445760,
+      "kind": "non_voice",
+      "confidence": 0.99833125,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 461540,
+      "end_ms": 747800,
+      "kind": "non_voice",
+      "confidence": 0.97562635,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 755900,
+      "end_ms": 781760,
+      "kind": "non_voice",
+      "confidence": 0.9082059,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 793960,
+      "end_ms": 888040,
+      "kind": "non_voice",
+      "confidence": 0.97906286,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    }
+  ]
+}

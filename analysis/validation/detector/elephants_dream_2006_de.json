@@ -1,0 +1,79 @@
+{
+  "file": "elephants_dream_2006.mp4",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 14920,
+      "kind": "non_voice",
+      "confidence": 0.9944716,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 31520,
+      "end_ms": 52600,
+      "kind": "non_voice",
+      "confidence": 0.96307606,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 77960,
+      "end_ms": 169080,
+      "kind": "non_voice",
+      "confidence": 0.99408597,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 199480,
+      "end_ms": 268280,
+      "kind": "non_voice",
+      "confidence": 0.98982066,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 289560,
+      "end_ms": 360220,
+      "kind": "non_voice",
+      "confidence": 0.98879194,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 378780,
+      "end_ms": 436600,
+      "kind": "non_voice",
+      "confidence": 0.9777419,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 502080,
+      "end_ms": 532380,
+      "kind": "non_voice",
+      "confidence": 0.9628786,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 539320,
+      "end_ms": 653700,
+      "kind": "non_voice",
+      "confidence": 0.99838346,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    }
+  ]
+}

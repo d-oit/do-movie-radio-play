@@ -97,6 +97,46 @@ def pad_spans(
     return [(max(0.0, start - pad_s), end + pad_s) for start, end in spans]
 
 
+def subtract(
+    base: list[tuple[float, float]], remove: list[tuple[float, float]]
+) -> list[tuple[float, float]]:
+    """Remaining parts of `base` once `remove` is cut out of it."""
+    base, remove = merge(base), merge(remove)
+    out: list[tuple[float, float]] = []
+    for start, end in base:
+        cursor = start
+        for cut_start, cut_end in remove:
+            if cut_end <= cursor:
+                continue
+            if cut_start >= end:
+                break
+            if cut_start > cursor:
+                out.append((cursor, min(cut_start, end)))
+            cursor = max(cursor, cut_end)
+            if cursor >= end:
+                break
+        if cursor < end:
+            out.append((cursor, end))
+    return out
+
+
+def load_detector_non_voice(path: Path) -> list[tuple[float, float]]:
+    """Non-voice segments from a timeline JSON, in seconds."""
+    payload = load_json(path)
+    segments = payload.get("segments")
+    if not isinstance(segments, list):
+        raise ValueError(f"{path}: no 'segments' list")
+    spans = []
+    for seg in segments:
+        if seg.get("kind") != "non_voice":
+            continue
+        start = seg.get("start_ms")
+        end = seg.get("end_ms")
+        if isinstance(start, int) and isinstance(end, int) and end > start:
+            spans.append((start / 1000, end / 1000))
+    return merge(spans)
+
+
 def wilson(k: int, n: int, z: float = 1.96) -> dict:
     if n <= 0:
         return {"p": 0.0, "lo": 0.0, "hi": 0.0, "n": 0}
@@ -121,6 +161,7 @@ def evaluate(
     pad_s: float,
     short_utterance_ms: int,
     truth_entries: list[tuple[float, float, str]] | None = None,
+    detector_non_voice: list[tuple[float, float]] | None = None,
 ) -> dict:
     truth = merge(truth)
     cues = merge(pad_spans(cues, pad_s))
@@ -128,10 +169,23 @@ def evaluate(
     cue_ms = total(cues) * 1000
     covered_ms = total(intersect(truth, cues)) * 1000
     false_cue_ms = max(0.0, cue_ms - covered_ms)
-    narratable_ms = max(0.0, total_s * 1000 - truth_ms)
-    retained_ms = max(0.0, narratable_ms - false_cue_ms)
-    leak_ms = max(0.0, truth_ms - covered_ms)
-    leak_denom = retained_ms + leak_ms
+
+    # The pipeline narrates only inside detector non-voice segments, minus cues.
+    # Without a detector timeline the only honest denominator is the whole
+    # non-dialogue timeline, which no shipped path can actually reach.
+    if detector_non_voice is None:
+        credited = [(0.0, max(0.0, total_s))]
+        mode = "cue_only_upper_bound"
+    else:
+        credited = merge(detector_non_voice)
+        mode = "detector_plus_cues"
+    narration = subtract(credited, cues)
+    narratable_ms = total(credited) * 1000
+    narration_ms = total(narration) * 1000
+    leak_ms = total(intersect(truth, narration)) * 1000
+    retained_ms = max(0.0, narration_ms - leak_ms)
+    leak_denom = narration_ms
+    cue_veto_ms = max(0.0, narratable_ms - narration_ms)
 
     truth_segments = len(truth)
     covered_segments = sum(
@@ -161,8 +215,11 @@ def evaluate(
         "covered_dialogue_ms": round(covered_ms, 1),
         "false_cue_ms": round(false_cue_ms, 1),
         "narratable_ms": round(narratable_ms, 1),
+        "narration_window_ms": round(narration_ms, 1),
+        "cue_vetoed_ms": round(cue_veto_ms, 1),
         "narratable_retained_ms": round(retained_ms, 1),
         "narration_on_dialogue_ms": round(leak_ms, 1),
+        "scoring_mode": mode,
         "dialogue_time_recall": round(covered_ms / truth_ms, 4) if truth_ms else 1.0,
         "false_cue_coverage": round(false_cue_ms / cue_ms, 4) if cue_ms else 0.0,
         "dialogue_leak_ratio": round(leak_ms / leak_denom, 4) if leak_denom else 0.0,
@@ -224,6 +281,7 @@ def evaluate_truth_files(
     total_s: float,
     pad_s: float,
     short_utterance_ms: int,
+    detector_non_voice: list[tuple[float, float]] | None = None,
 ) -> dict:
     per_language = {}
     pooled_truth: list[tuple[float, float]] = []
@@ -234,12 +292,18 @@ def evaluate_truth_files(
         pooled_truth.extend(spans)
         pooled_entries.extend(entries)
         per_language[item.get("language", "und")] = evaluate(
-            spans, cues, total_s, pad_s, short_utterance_ms, entries
+            spans, cues, total_s, pad_s, short_utterance_ms, entries, detector_non_voice
         )
     return {
         "per_language": per_language,
         "pooled": evaluate(
-            pooled_truth, cues, total_s, pad_s, short_utterance_ms, pooled_entries
+            pooled_truth,
+            cues,
+            total_s,
+            pad_s,
+            short_utterance_ms,
+            pooled_entries,
+            detector_non_voice,
         ),
     }
 
@@ -361,13 +425,18 @@ def run_fixtures(manifest_path: Path, output: Path) -> int:
 def run_film(args: argparse.Namespace) -> int:
     truth_files = [{"path": path, "language": args.language} for path in args.truth]
     cues = parse_srt(Path(args.cues))
+    detector = (
+        load_detector_non_voice(Path(args.detector_timeline))
+        if args.detector_timeline
+        else None
+    )
     total_s = args.total_ms / 1000
     if total_s <= 0:
         ends = [end for item in truth_files for _, end in parse_srt(Path(item["path"]))]
         ends.extend(end for _, end in cues)
         total_s = max(ends, default=0.0) + 1.0
     scored = evaluate_truth_files(
-        truth_files, cues, total_s, args.pad, args.short_utterance_ms
+        truth_files, cues, total_s, args.pad, args.short_utterance_ms, detector
     )
     pooled_truth = [
         span for item in truth_files for span in parse_srt(Path(item["path"]))
@@ -376,6 +445,7 @@ def run_film(args: argparse.Namespace) -> int:
         "cue_source": args.cue_source,
         "pad_s": args.pad,
         "total_ms": round(total_s * 1000),
+        "detector_timeline": args.detector_timeline,
         "cue_details": cue_details(pooled_truth, cues, args.pad, args.cue_source),
         **scored,
     }
@@ -485,6 +555,20 @@ def run_sweep(args: argparse.Namespace) -> int:
                     }
                 )
                 continue
+            detector = None
+            timeline = entry.get("detector_timeline")
+            if timeline:
+                if not Path(timeline).exists():
+                    pending.append(
+                        {
+                            "id": entry["id"],
+                            "status": "missing_detector_timeline",
+                            "split": entry.get("split", "dev"),
+                            "paths": [timeline],
+                        }
+                    )
+                    continue
+                detector = load_detector_non_voice(Path(timeline))
             total_s = entry["total_ms"] / 1000
             for source in entry["cue_sources"]:
                 if source.get("derive"):
@@ -503,7 +587,7 @@ def run_sweep(args: argparse.Namespace) -> int:
                         cues = parse_srt(out)
                         for pad in pads:
                             scored = evaluate_truth_files(
-                                entry["truth"], cues, total_s, pad, short_ms
+                                entry["truth"], cues, total_s, pad, short_ms, detector
                             )
                             rows.append(
                                 {
@@ -532,7 +616,7 @@ def run_sweep(args: argparse.Namespace) -> int:
                     cues = parse_srt(Path(source["path"]))
                     for pad in pads:
                         scored = evaluate_truth_files(
-                            entry["truth"], cues, total_s, pad, short_ms
+                            entry["truth"], cues, total_s, pad, short_ms, detector
                         )
                         rows.append(
                             {
@@ -611,6 +695,11 @@ def main() -> int:
     film.add_argument("--truth", action="append", required=True)
     film.add_argument("--cues", required=True)
     film.add_argument("--cue-source", default="unknown")
+    film.add_argument(
+        "--detector-timeline",
+        default=None,
+        help="timeline JSON; narration windows become its non-voice segments minus cues",
+    )
     film.add_argument("--language", default="und")
     film.add_argument("--total-ms", type=int, default=0)
     film.add_argument("--pad", type=float, default=0.0)
@@ -623,6 +712,7 @@ def main() -> int:
     fixtures.add_argument(
         "--output", default="analysis/validation/cue-path-fixtures.json"
     )
+
     fixtures.set_defaults(func=lambda a: run_fixtures(Path(a.manifest), Path(a.output)))
 
     sweep = sub.add_parser("sweep", help="evaluate pad/threshold configs")

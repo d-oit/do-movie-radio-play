@@ -1,0 +1,61 @@
+{
+  "file": "sprite_fright_2021.webm",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 20680,
+      "kind": "non_voice",
+      "confidence": 0.9880414,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 122440,
+      "end_ms": 157120,
+      "kind": "non_voice",
+      "confidence": 0.9336867,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 304920,
+      "end_ms": 319300,
+      "kind": "non_voice",
+      "confidence": 0.83006716,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 322140,
+      "end_ms": 371740,
+      "kind": "non_voice",
+      "confidence": 0.8147518,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 383780,
+      "end_ms": 526600,
+      "kind": "non_voice",
+      "confidence": 0.8113011,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 603480,
+      "end_ms": 629860,
+      "kind": "non_voice",
+      "confidence": 0.92244285,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    }
+  ]
+}

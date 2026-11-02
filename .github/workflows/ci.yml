@@ -353,6 +353,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Cue evidence gate policy
         run: python3 scripts/test_cue_gate.py
+      - name: Cue-path scoring semantics
+        run: python3 scripts/test_cue_path_metrics.py
       - name: Deterministic cue-path regression gate
         run: |
           python3 scripts/evaluate_cue_path.py fixtures \

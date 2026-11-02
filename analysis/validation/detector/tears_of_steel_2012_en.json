@@ -1,0 +1,97 @@
+{
+  "file": "tears_of_steel_2012.mov",
+  "analysis_sample_rate": 16000,
+  "frame_ms": 20,
+  "segments": [
+    {
+      "start_ms": 9720,
+      "end_ms": 24700,
+      "kind": "non_voice",
+      "confidence": 0.9294876,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 62220,
+      "end_ms": 131580,
+      "kind": "non_voice",
+      "confidence": 0.9942407,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 137380,
+      "end_ms": 193020,
+      "kind": "non_voice",
+      "confidence": 0.9947186,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 225960,
+      "end_ms": 237720,
+      "kind": "non_voice",
+      "confidence": 0.9922993,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 247580,
+      "end_ms": 297540,
+      "kind": "non_voice",
+      "confidence": 0.9932145,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 304160,
+      "end_ms": 316360,
+      "kind": "non_voice",
+      "confidence": 0.99634075,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 327840,
+      "end_ms": 339640,
+      "kind": "non_voice",
+      "confidence": 0.9773019,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 368520,
+      "end_ms": 384000,
+      "kind": "non_voice",
+      "confidence": 0.96585494,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 392540,
+      "end_ms": 562860,
+      "kind": "non_voice",
+      "confidence": 0.9945105,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    },
+    {
+      "start_ms": 566440,
+      "end_ms": 734100,
+      "kind": "non_voice",
+      "confidence": 0.99878895,
+      "tags": [],
+      "prompt": null,
+      "sfx_trigger": null
+    }
+  ]
+}

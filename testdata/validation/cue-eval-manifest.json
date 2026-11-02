@@ -11,6 +11,7 @@
       "status": "ready",
       "split": "dev",
       "media": "testdata/raw/elephants_dream_2006.mp4",
+      "detector_timeline": "analysis/validation/detector/elephants_dream_2006_de.json",
       "total_ms": 653791,
       "truth": [
         {"path": "testdata/raw/elephants_dream_2006.de.srt", "language": "de"}
@@ -31,6 +32,7 @@
       "split": "holdout",
       "prior_tuning": "Its leakage numbers informed the cue evidence floor in #376, so it is a regression holdout, not unseen film material.",
       "media": "testdata/raw/tears_of_steel_2012.mov",
+      "detector_timeline": "analysis/validation/detector/tears_of_steel_2012_en.json",
       "total_ms": 734167,
       "truth": [
         {"path": "testdata/raw/tears_of_steel_2012.en.srt", "language": "en"}
@@ -51,6 +53,7 @@
       "split": "holdout",
       "prior_tuning": "Its leakage numbers informed the cue evidence floor in #376, so it is a regression holdout, not unseen film material.",
       "media": "testdata/raw/Sintel.2010.720p.mkv",
+      "detector_timeline": "analysis/validation/detector/sintel_2010_en.json",
       "total_ms": 888032,
       "truth": [
         {"path": "testdata/raw/sintel_2010.en.srt", "language": "en"}
@@ -69,6 +72,7 @@
       "status": "ready",
       "split": "holdout",
       "media": "testdata/generated/dialogue/synthetic_kitchen_en.wav",
+      "detector_timeline": "analysis/validation/detector/synthetic_kitchen_en.json",
       "total_ms": 32000,
       "truth": [
         {"path": "testdata/generated/dialogue/synthetic_kitchen_en.truth.srt", "language": "en"}
@@ -88,6 +92,7 @@
       "split": "holdout",
       "unseen": "Real film never used for detector, cue, pad or threshold work in this repository.",
       "media": "testdata/raw/sprite_fright_2021.webm",
+      "detector_timeline": "analysis/validation/detector/sprite_fright_2021_en.json",
       "total_ms": 629861,
       "truth": [
         {"path": "testdata/raw/sprite_fright_2021.en.srt", "language": "en"}
@@ -107,6 +112,7 @@
       "status": "ready",
       "split": "holdout",
       "media": "testdata/generated/dialogue/synthetic_night_de.wav",
+      "detector_timeline": "analysis/validation/detector/synthetic_night_de.json",
       "total_ms": 30000,
       "truth": [
         {"path": "testdata/generated/dialogue/synthetic_night_de.truth.srt", "language": "de"}

@@ -5,6 +5,11 @@
   "min_vad_evidence": [0.0, 0.1, 0.3],
   "short_utterance_ms": 1000,
   "max_dialogue_leak_ratio": 0.05,
+  "shipped_config": {
+    "pad_s": 0.8,
+    "min_vad_evidence": 0.1,
+    "source": "crates/movie-radio-goap/src/actions.rs DERIVED_CUE_PAD_MS=800 and the transcribe_cues.py default floor; cues.rs passes neither flag, so these values are what the product actually runs"
+  },
   "entries": [
     {
       "id": "elephants_dream_2006_de",

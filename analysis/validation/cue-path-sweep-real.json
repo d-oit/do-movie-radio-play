@@ -1571,5 +1571,492 @@
       "min_vad_evidence": null,
       "pad_s": 0.0
     }
+  },
+  "shipped": [
+    {
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 159869.0,
+        "covered_segments": 71,
+        "cue_ms": 306740.0,
+        "cue_segment_precision": {
+          "hi": 0.7757164048816557,
+          "lo": 0.42534520039420076,
+          "n": 26,
+          "p": 0.6153846153846154
+        },
+        "cue_segments": 26,
+        "cue_vetoed_ms": 146620.0,
+        "dialogue_leak_ratio": 0.0232,
+        "dialogue_segment_recall": {
+          "hi": 0.9637995380912008,
+          "lo": 0.840241945501405,
+          "n": 77,
+          "p": 0.922077922077922
+        },
+        "dialogue_time_recall": 0.9292,
+        "false_cue_coverage": 0.4788,
+        "false_cue_ms": 146871.0,
+        "missed_short_utterances": 1,
+        "missed_shouted_utterances": 2,
+        "narratable_ms": 469080.0,
+        "narratable_retained_ms": 314993.0,
+        "narratable_retained_ratio": 0.6715,
+        "narration_on_dialogue_ms": 7467.0,
+        "narration_window_ms": 322460.0,
+        "scoring_mode": "detector_plus_cues",
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 16,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.1,
+      "pad_s": 0.8,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 159869.0,
+          "covered_segments": 71,
+          "cue_ms": 306740.0,
+          "cue_segment_precision": {
+            "hi": 0.7757164048816557,
+            "lo": 0.42534520039420076,
+            "n": 26,
+            "p": 0.6153846153846154
+          },
+          "cue_segments": 26,
+          "cue_vetoed_ms": 146620.0,
+          "dialogue_leak_ratio": 0.0232,
+          "dialogue_segment_recall": {
+            "hi": 0.9637995380912008,
+            "lo": 0.840241945501405,
+            "n": 77,
+            "p": 0.922077922077922
+          },
+          "dialogue_time_recall": 0.9292,
+          "false_cue_coverage": 0.4788,
+          "false_cue_ms": 146871.0,
+          "missed_short_utterances": 1,
+          "missed_shouted_utterances": 2,
+          "narratable_ms": 469080.0,
+          "narratable_retained_ms": 314993.0,
+          "narratable_retained_ratio": 0.6715,
+          "narration_on_dialogue_ms": 7467.0,
+          "narration_window_ms": 322460.0,
+          "scoring_mode": "detector_plus_cues",
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 16,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "split": "dev"
+    },
+    {
+      "id": "tears_of_steel_2012_en",
+      "metrics": {
+        "covered_dialogue_ms": 122720.0,
+        "covered_segments": 58,
+        "cue_ms": 258520.0,
+        "cue_segment_precision": {
+          "hi": 0.6593093737195102,
+          "lo": 0.34069062628048985,
+          "n": 34,
+          "p": 0.5
+        },
+        "cue_segments": 34,
+        "cue_vetoed_ms": 127940.0,
+        "dialogue_leak_ratio": 0.025,
+        "dialogue_segment_recall": {
+          "hi": 0.92768990004016,
+          "lo": 0.7639940822527299,
+          "n": 67,
+          "p": 0.8656716417910447
+        },
+        "dialogue_time_recall": 0.901,
+        "false_cue_coverage": 0.5253,
+        "false_cue_ms": 135800.0,
+        "missed_short_utterances": 5,
+        "missed_shouted_utterances": 3,
+        "narratable_ms": 579160.0,
+        "narratable_retained_ms": 439940.0,
+        "narratable_retained_ratio": 0.7596,
+        "narration_on_dialogue_ms": 11280.0,
+        "narration_window_ms": 451220.0,
+        "scoring_mode": "detector_plus_cues",
+        "short_utterances": 22,
+        "shouted_utterances": 28,
+        "true_cue_segments": 17,
+        "truth_ms": 136200.0,
+        "truth_segments": 67
+      },
+      "min_vad_evidence": 0.1,
+      "pad_s": 0.8,
+      "per_language": {
+        "en": {
+          "covered_dialogue_ms": 122720.0,
+          "covered_segments": 58,
+          "cue_ms": 258520.0,
+          "cue_segment_precision": {
+            "hi": 0.6593093737195102,
+            "lo": 0.34069062628048985,
+            "n": 34,
+            "p": 0.5
+          },
+          "cue_segments": 34,
+          "cue_vetoed_ms": 127940.0,
+          "dialogue_leak_ratio": 0.025,
+          "dialogue_segment_recall": {
+            "hi": 0.92768990004016,
+            "lo": 0.7639940822527299,
+            "n": 67,
+            "p": 0.8656716417910447
+          },
+          "dialogue_time_recall": 0.901,
+          "false_cue_coverage": 0.5253,
+          "false_cue_ms": 135800.0,
+          "missed_short_utterances": 5,
+          "missed_shouted_utterances": 3,
+          "narratable_ms": 579160.0,
+          "narratable_retained_ms": 439940.0,
+          "narratable_retained_ratio": 0.7596,
+          "narration_on_dialogue_ms": 11280.0,
+          "narration_window_ms": 451220.0,
+          "scoring_mode": "detector_plus_cues",
+          "short_utterances": 22,
+          "shouted_utterances": 28,
+          "true_cue_segments": 17,
+          "truth_ms": 136200.0,
+          "truth_segments": 67
+        }
+      },
+      "split": "holdout"
+    },
+    {
+      "id": "sintel_2010_en",
+      "metrics": {
+        "covered_dialogue_ms": 51830.0,
+        "covered_segments": 19,
+        "cue_ms": 260760.0,
+        "cue_segment_precision": {
+          "hi": 0.39343630654458195,
+          "lo": 0.13824855751022433,
+          "n": 41,
+          "p": 0.24390243902439024
+        },
+        "cue_segments": 41,
+        "cue_vetoed_ms": 185850.0,
+        "dialogue_leak_ratio": 0.0314,
+        "dialogue_segment_recall": {
+          "hi": 0.8629572447493261,
+          "lo": 0.5391659658023868,
+          "n": 26,
+          "p": 0.7307692307692307
+        },
+        "dialogue_time_recall": 0.683,
+        "false_cue_coverage": 0.8012,
+        "false_cue_ms": 208930.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 2,
+        "narratable_ms": 793660.0,
+        "narratable_retained_ms": 588700.0,
+        "narratable_retained_ratio": 0.7418,
+        "narration_on_dialogue_ms": 19110.0,
+        "narration_window_ms": 607810.0,
+        "scoring_mode": "detector_plus_cues",
+        "short_utterances": 0,
+        "shouted_utterances": 4,
+        "true_cue_segments": 10,
+        "truth_ms": 75890.0,
+        "truth_segments": 26
+      },
+      "min_vad_evidence": 0.1,
+      "pad_s": 0.8,
+      "per_language": {
+        "en": {
+          "covered_dialogue_ms": 51830.0,
+          "covered_segments": 19,
+          "cue_ms": 260760.0,
+          "cue_segment_precision": {
+            "hi": 0.39343630654458195,
+            "lo": 0.13824855751022433,
+            "n": 41,
+            "p": 0.24390243902439024
+          },
+          "cue_segments": 41,
+          "cue_vetoed_ms": 185850.0,
+          "dialogue_leak_ratio": 0.0314,
+          "dialogue_segment_recall": {
+            "hi": 0.8629572447493261,
+            "lo": 0.5391659658023868,
+            "n": 26,
+            "p": 0.7307692307692307
+          },
+          "dialogue_time_recall": 0.683,
+          "false_cue_coverage": 0.8012,
+          "false_cue_ms": 208930.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 2,
+          "narratable_ms": 793660.0,
+          "narratable_retained_ms": 588700.0,
+          "narratable_retained_ratio": 0.7418,
+          "narration_on_dialogue_ms": 19110.0,
+          "narration_window_ms": 607810.0,
+          "scoring_mode": "detector_plus_cues",
+          "short_utterances": 0,
+          "shouted_utterances": 4,
+          "true_cue_segments": 10,
+          "truth_ms": 75890.0,
+          "truth_segments": 26
+        }
+      },
+      "split": "holdout"
+    },
+    {
+      "id": "synthetic_kitchen_en",
+      "metrics": {
+        "covered_dialogue_ms": 17011.0,
+        "covered_segments": 5,
+        "cue_ms": 22380.0,
+        "cue_segment_precision": {
+          "hi": 1.0,
+          "lo": 0.43849391955098227,
+          "n": 3,
+          "p": 1.0
+        },
+        "cue_segments": 3,
+        "cue_vetoed_ms": 0.0,
+        "dialogue_leak_ratio": 0.0,
+        "dialogue_segment_recall": {
+          "hi": 1.0,
+          "lo": 0.5655085052479191,
+          "n": 5,
+          "p": 1.0
+        },
+        "dialogue_time_recall": 1.0,
+        "false_cue_coverage": 0.2399,
+        "false_cue_ms": 5369.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 0,
+        "narratable_ms": 0,
+        "narratable_retained_ms": 0.0,
+        "narratable_retained_ratio": 0.0,
+        "narration_on_dialogue_ms": 0,
+        "narration_window_ms": 0,
+        "scoring_mode": "detector_plus_cues",
+        "short_utterances": 1,
+        "shouted_utterances": 0,
+        "true_cue_segments": 3,
+        "truth_ms": 17011.0,
+        "truth_segments": 5
+      },
+      "min_vad_evidence": 0.1,
+      "pad_s": 0.8,
+      "per_language": {
+        "en": {
+          "covered_dialogue_ms": 17011.0,
+          "covered_segments": 5,
+          "cue_ms": 22380.0,
+          "cue_segment_precision": {
+            "hi": 1.0,
+            "lo": 0.43849391955098227,
+            "n": 3,
+            "p": 1.0
+          },
+          "cue_segments": 3,
+          "cue_vetoed_ms": 0.0,
+          "dialogue_leak_ratio": 0.0,
+          "dialogue_segment_recall": {
+            "hi": 1.0,
+            "lo": 0.5655085052479191,
+            "n": 5,
+            "p": 1.0
+          },
+          "dialogue_time_recall": 1.0,
+          "false_cue_coverage": 0.2399,
+          "false_cue_ms": 5369.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 0,
+          "narratable_ms": 0,
+          "narratable_retained_ms": 0.0,
+          "narratable_retained_ratio": 0.0,
+          "narration_on_dialogue_ms": 0,
+          "narration_window_ms": 0,
+          "scoring_mode": "detector_plus_cues",
+          "short_utterances": 1,
+          "shouted_utterances": 0,
+          "true_cue_segments": 3,
+          "truth_ms": 17011.0,
+          "truth_segments": 5
+        }
+      },
+      "split": "holdout"
+    },
+    {
+      "id": "sprite_fright_2021_en",
+      "metrics": {
+        "covered_dialogue_ms": 198889.0,
+        "covered_segments": 33,
+        "cue_ms": 402860.0,
+        "cue_segment_precision": {
+          "hi": 0.6803001396872117,
+          "lo": 0.34840118286973176,
+          "n": 31,
+          "p": 0.5161290322580645
+        },
+        "cue_segments": 31,
+        "cue_vetoed_ms": 160100.0,
+        "dialogue_leak_ratio": 0.0845,
+        "dialogue_segment_recall": {
+          "hi": 0.9125469700311694,
+          "lo": 0.6804970794560755,
+          "n": 40,
+          "p": 0.825
+        },
+        "dialogue_time_recall": 0.8853,
+        "false_cue_coverage": 0.5063,
+        "false_cue_ms": 203971.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 4,
+        "narratable_ms": 288540.0,
+        "narratable_retained_ms": 117590.0,
+        "narratable_retained_ratio": 0.4075,
+        "narration_on_dialogue_ms": 10850.0,
+        "narration_window_ms": 128440.0,
+        "scoring_mode": "detector_plus_cues",
+        "short_utterances": 1,
+        "shouted_utterances": 34,
+        "true_cue_segments": 16,
+        "truth_ms": 224658.0,
+        "truth_segments": 40
+      },
+      "min_vad_evidence": 0.1,
+      "pad_s": 0.8,
+      "per_language": {
+        "en": {
+          "covered_dialogue_ms": 198889.0,
+          "covered_segments": 33,
+          "cue_ms": 402860.0,
+          "cue_segment_precision": {
+            "hi": 0.6803001396872117,
+            "lo": 0.34840118286973176,
+            "n": 31,
+            "p": 0.5161290322580645
+          },
+          "cue_segments": 31,
+          "cue_vetoed_ms": 160100.0,
+          "dialogue_leak_ratio": 0.0845,
+          "dialogue_segment_recall": {
+            "hi": 0.9125469700311694,
+            "lo": 0.6804970794560755,
+            "n": 40,
+            "p": 0.825
+          },
+          "dialogue_time_recall": 0.8853,
+          "false_cue_coverage": 0.5063,
+          "false_cue_ms": 203971.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 4,
+          "narratable_ms": 288540.0,
+          "narratable_retained_ms": 117590.0,
+          "narratable_retained_ratio": 0.4075,
+          "narration_on_dialogue_ms": 10850.0,
+          "narration_window_ms": 128440.0,
+          "scoring_mode": "detector_plus_cues",
+          "short_utterances": 1,
+          "shouted_utterances": 34,
+          "true_cue_segments": 16,
+          "truth_ms": 224658.0,
+          "truth_segments": 40
+        }
+      },
+      "split": "holdout"
+    },
+    {
+      "id": "synthetic_night_de",
+      "metrics": {
+        "covered_dialogue_ms": 12803.0,
+        "covered_segments": 6,
+        "cue_ms": 20160.0,
+        "cue_segment_precision": {
+          "hi": 0.9544139373553637,
+          "lo": 0.3006360524426366,
+          "n": 4,
+          "p": 0.75
+        },
+        "cue_segments": 4,
+        "cue_vetoed_ms": 0.0,
+        "dialogue_leak_ratio": 0.0,
+        "dialogue_segment_recall": {
+          "hi": 0.9999999999999999,
+          "lo": 0.6096569663469354,
+          "n": 6,
+          "p": 1.0
+        },
+        "dialogue_time_recall": 1.0,
+        "false_cue_coverage": 0.3649,
+        "false_cue_ms": 7357.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 0,
+        "narratable_ms": 0,
+        "narratable_retained_ms": 0.0,
+        "narratable_retained_ratio": 0.0,
+        "narration_on_dialogue_ms": 0,
+        "narration_window_ms": 0,
+        "scoring_mode": "detector_plus_cues",
+        "short_utterances": 1,
+        "shouted_utterances": 0,
+        "true_cue_segments": 3,
+        "truth_ms": 12803.0,
+        "truth_segments": 6
+      },
+      "min_vad_evidence": 0.1,
+      "pad_s": 0.8,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 12803.0,
+          "covered_segments": 6,
+          "cue_ms": 20160.0,
+          "cue_segment_precision": {
+            "hi": 0.9544139373553637,
+            "lo": 0.3006360524426366,
+            "n": 4,
+            "p": 0.75
+          },
+          "cue_segments": 4,
+          "cue_vetoed_ms": 0.0,
+          "dialogue_leak_ratio": 0.0,
+          "dialogue_segment_recall": {
+            "hi": 0.9999999999999999,
+            "lo": 0.6096569663469354,
+            "n": 6,
+            "p": 1.0
+          },
+          "dialogue_time_recall": 1.0,
+          "false_cue_coverage": 0.3649,
+          "false_cue_ms": 7357.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 0,
+          "narratable_ms": 0,
+          "narratable_retained_ms": 0.0,
+          "narratable_retained_ratio": 0.0,
+          "narration_on_dialogue_ms": 0,
+          "narration_window_ms": 0,
+          "scoring_mode": "detector_plus_cues",
+          "short_utterances": 1,
+          "shouted_utterances": 0,
+          "true_cue_segments": 3,
+          "truth_ms": 12803.0,
+          "truth_segments": 6
+        }
+      },
+      "split": "holdout"
+    }
+  ],
+  "shipped_config": {
+    "min_vad_evidence": 0.1,
+    "pad_s": 0.8,
+    "source": "crates/movie-radio-goap/src/actions.rs DERIVED_CUE_PAD_MS=800 and the transcribe_cues.py default floor; cues.rs passes neither flag, so these values are what the product actually runs"
   }
 }

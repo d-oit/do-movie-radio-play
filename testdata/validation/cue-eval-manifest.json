@@ -29,6 +29,7 @@
       "id": "tears_of_steel_2012_en",
       "status": "ready",
       "split": "holdout",
+      "prior_tuning": "Its leakage numbers informed the cue evidence floor in #376, so it is a regression holdout, not unseen film material.",
       "media": "testdata/raw/tears_of_steel_2012.mov",
       "total_ms": 734167,
       "truth": [
@@ -48,6 +49,7 @@
       "id": "sintel_2010_en",
       "status": "ready",
       "split": "holdout",
+      "prior_tuning": "Its leakage numbers informed the cue evidence floor in #376, so it is a regression holdout, not unseen film material.",
       "media": "testdata/raw/Sintel.2010.720p.mkv",
       "total_ms": 888032,
       "truth": [
@@ -78,6 +80,26 @@
         "source_url": "scripts/generate_dialogue_fixtures.py",
         "license": "synthetic (espeak-ng output, public domain voices)",
         "license_status": "synthetic"
+      }
+    },
+    {
+      "id": "sprite_fright_2021_en",
+      "status": "ready",
+      "split": "holdout",
+      "unseen": "Real film never used for detector, cue, pad or threshold work in this repository.",
+      "media": "testdata/raw/sprite_fright_2021.webm",
+      "total_ms": 629861,
+      "truth": [
+        {"path": "testdata/raw/sprite_fright_2021.en.srt", "language": "en"}
+      ],
+      "cue_sources": [
+        {"source": "derived_whisper", "derive": true}
+      ],
+      "provenance": {
+        "source_url": "https://commons.wikimedia.org/wiki/File:Sprite_Fright_-_Blender_Open_Movie-full_movie.webm",
+        "license": "CC BY 4.0",
+        "license_status": "cc_by",
+        "retrieved": "2026-11-02"
       }
     },
     {

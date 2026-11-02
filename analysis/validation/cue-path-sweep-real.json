@@ -1,0 +1,1461 @@
+{
+  "dev": [
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 172050.0,
+        "covered_segments": 77,
+        "cue_ms": 172050.0,
+        "cue_segment_precision": {
+          "hi": 1.0,
+          "lo": 0.9524799113327793,
+          "n": 77,
+          "p": 1.0
+        },
+        "cue_segments": 77,
+        "dialogue_leak_ratio": 0.0,
+        "dialogue_segment_recall": {
+          "hi": 1.0,
+          "lo": 0.9524799113327793,
+          "n": 77,
+          "p": 1.0
+        },
+        "dialogue_time_recall": 1.0,
+        "false_cue_coverage": 0.0,
+        "false_cue_ms": 0.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 0,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 481741.0,
+        "narratable_retained_ratio": 1.0,
+        "narration_on_dialogue_ms": 0.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 77,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": null,
+      "pad_s": 0.0,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 172050.0,
+          "covered_segments": 77,
+          "cue_ms": 172050.0,
+          "cue_segment_precision": {
+            "hi": 1.0,
+            "lo": 0.9524799113327793,
+            "n": 77,
+            "p": 1.0
+          },
+          "cue_segments": 77,
+          "dialogue_leak_ratio": 0.0,
+          "dialogue_segment_recall": {
+            "hi": 1.0,
+            "lo": 0.9524799113327793,
+            "n": 77,
+            "p": 1.0
+          },
+          "dialogue_time_recall": 1.0,
+          "false_cue_coverage": 0.0,
+          "false_cue_ms": 0.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 0,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 481741.0,
+          "narratable_retained_ratio": 1.0,
+          "narration_on_dialogue_ms": 0.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 77,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "exact_subtitles",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 172050.0,
+        "covered_segments": 77,
+        "cue_ms": 206186.0,
+        "cue_segment_precision": {
+          "hi": 1.0,
+          "lo": 0.9229238226702192,
+          "n": 46,
+          "p": 1.0
+        },
+        "cue_segments": 46,
+        "dialogue_leak_ratio": 0.0,
+        "dialogue_segment_recall": {
+          "hi": 1.0,
+          "lo": 0.9524799113327793,
+          "n": 77,
+          "p": 1.0
+        },
+        "dialogue_time_recall": 1.0,
+        "false_cue_coverage": 0.1656,
+        "false_cue_ms": 34136.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 0,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 447605.0,
+        "narratable_retained_ratio": 0.9291,
+        "narration_on_dialogue_ms": 0.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 46,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": null,
+      "pad_s": 0.3,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 172050.0,
+          "covered_segments": 77,
+          "cue_ms": 206186.0,
+          "cue_segment_precision": {
+            "hi": 1.0,
+            "lo": 0.9229238226702192,
+            "n": 46,
+            "p": 1.0
+          },
+          "cue_segments": 46,
+          "dialogue_leak_ratio": 0.0,
+          "dialogue_segment_recall": {
+            "hi": 1.0,
+            "lo": 0.9524799113327793,
+            "n": 77,
+            "p": 1.0
+          },
+          "dialogue_time_recall": 1.0,
+          "false_cue_coverage": 0.1656,
+          "false_cue_ms": 34136.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 0,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 447605.0,
+          "narratable_retained_ratio": 0.9291,
+          "narration_on_dialogue_ms": 0.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 46,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "exact_subtitles",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 172050.0,
+        "covered_segments": 77,
+        "cue_ms": 240512.0,
+        "cue_segment_precision": {
+          "hi": 0.9302145964938723,
+          "lo": 0.6286194521470433,
+          "n": 23,
+          "p": 0.8260869565217391
+        },
+        "cue_segments": 23,
+        "dialogue_leak_ratio": 0.0,
+        "dialogue_segment_recall": {
+          "hi": 1.0,
+          "lo": 0.9524799113327793,
+          "n": 77,
+          "p": 1.0
+        },
+        "dialogue_time_recall": 1.0,
+        "false_cue_coverage": 0.2847,
+        "false_cue_ms": 68462.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 0,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 413279.0,
+        "narratable_retained_ratio": 0.8579,
+        "narration_on_dialogue_ms": 0.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 19,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": null,
+      "pad_s": 0.8,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 172050.0,
+          "covered_segments": 77,
+          "cue_ms": 240512.0,
+          "cue_segment_precision": {
+            "hi": 0.9302145964938723,
+            "lo": 0.6286194521470433,
+            "n": 23,
+            "p": 0.8260869565217391
+          },
+          "cue_segments": 23,
+          "dialogue_leak_ratio": 0.0,
+          "dialogue_segment_recall": {
+            "hi": 1.0,
+            "lo": 0.9524799113327793,
+            "n": 77,
+            "p": 1.0
+          },
+          "dialogue_time_recall": 1.0,
+          "false_cue_coverage": 0.2847,
+          "false_cue_ms": 68462.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 0,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 413279.0,
+          "narratable_retained_ratio": 0.8579,
+          "narration_on_dialogue_ms": 0.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 19,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "exact_subtitles",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 120674.0,
+        "covered_segments": 57,
+        "cue_ms": 224280.0,
+        "cue_segment_precision": {
+          "hi": 0.8297226395105322,
+          "lo": 0.6410553271149313,
+          "n": 79,
+          "p": 0.7468354430379747
+        },
+        "cue_segments": 79,
+        "dialogue_leak_ratio": 0.1196,
+        "dialogue_segment_recall": {
+          "hi": 0.8251093352045924,
+          "lo": 0.6325758169942757,
+          "n": 77,
+          "p": 0.7402597402597403
+        },
+        "dialogue_time_recall": 0.7014,
+        "false_cue_coverage": 0.4619,
+        "false_cue_ms": 103606.0,
+        "missed_short_utterances": 3,
+        "missed_shouted_utterances": 8,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 378135.0,
+        "narratable_retained_ratio": 0.7849,
+        "narration_on_dialogue_ms": 51376.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 59,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.0,
+      "pad_s": 0.0,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 120674.0,
+          "covered_segments": 57,
+          "cue_ms": 224280.0,
+          "cue_segment_precision": {
+            "hi": 0.8297226395105322,
+            "lo": 0.6410553271149313,
+            "n": 79,
+            "p": 0.7468354430379747
+          },
+          "cue_segments": 79,
+          "dialogue_leak_ratio": 0.1196,
+          "dialogue_segment_recall": {
+            "hi": 0.8251093352045924,
+            "lo": 0.6325758169942757,
+            "n": 77,
+            "p": 0.7402597402597403
+          },
+          "dialogue_time_recall": 0.7014,
+          "false_cue_coverage": 0.4619,
+          "false_cue_ms": 103606.0,
+          "missed_short_utterances": 3,
+          "missed_shouted_utterances": 8,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 378135.0,
+          "narratable_retained_ratio": 0.7849,
+          "narration_on_dialogue_ms": 51376.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 59,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "derived_whisper",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 145460.0,
+        "covered_segments": 68,
+        "cue_ms": 267860.0,
+        "cue_segment_precision": {
+          "hi": 0.8256317500749166,
+          "lo": 0.6040199456171089,
+          "n": 59,
+          "p": 0.7288135593220338
+        },
+        "cue_segments": 59,
+        "dialogue_leak_ratio": 0.0689,
+        "dialogue_segment_recall": {
+          "hi": 0.9372750893541368,
+          "lo": 0.7925471803683823,
+          "n": 77,
+          "p": 0.8831168831168831
+        },
+        "dialogue_time_recall": 0.8455,
+        "false_cue_coverage": 0.457,
+        "false_cue_ms": 122400.0,
+        "missed_short_utterances": 1,
+        "missed_shouted_utterances": 3,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 359341.0,
+        "narratable_retained_ratio": 0.7459,
+        "narration_on_dialogue_ms": 26590.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 43,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.0,
+      "pad_s": 0.3,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 145460.0,
+          "covered_segments": 68,
+          "cue_ms": 267860.0,
+          "cue_segment_precision": {
+            "hi": 0.8256317500749166,
+            "lo": 0.6040199456171089,
+            "n": 59,
+            "p": 0.7288135593220338
+          },
+          "cue_segments": 59,
+          "dialogue_leak_ratio": 0.0689,
+          "dialogue_segment_recall": {
+            "hi": 0.9372750893541368,
+            "lo": 0.7925471803683823,
+            "n": 77,
+            "p": 0.8831168831168831
+          },
+          "dialogue_time_recall": 0.8455,
+          "false_cue_coverage": 0.457,
+          "false_cue_ms": 122400.0,
+          "missed_short_utterances": 1,
+          "missed_shouted_utterances": 3,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 359341.0,
+          "narratable_retained_ratio": 0.7459,
+          "narration_on_dialogue_ms": 26590.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 43,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "derived_whisper",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 159869.0,
+        "covered_segments": 71,
+        "cue_ms": 306740.0,
+        "cue_segment_precision": {
+          "hi": 0.7757164048816557,
+          "lo": 0.42534520039420076,
+          "n": 26,
+          "p": 0.6153846153846154
+        },
+        "cue_segments": 26,
+        "dialogue_leak_ratio": 0.0351,
+        "dialogue_segment_recall": {
+          "hi": 0.9637995380912008,
+          "lo": 0.840241945501405,
+          "n": 77,
+          "p": 0.922077922077922
+        },
+        "dialogue_time_recall": 0.9292,
+        "false_cue_coverage": 0.4788,
+        "false_cue_ms": 146871.0,
+        "missed_short_utterances": 1,
+        "missed_shouted_utterances": 2,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 334870.0,
+        "narratable_retained_ratio": 0.6951,
+        "narration_on_dialogue_ms": 12181.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 16,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.0,
+      "pad_s": 0.8,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 159869.0,
+          "covered_segments": 71,
+          "cue_ms": 306740.0,
+          "cue_segment_precision": {
+            "hi": 0.7757164048816557,
+            "lo": 0.42534520039420076,
+            "n": 26,
+            "p": 0.6153846153846154
+          },
+          "cue_segments": 26,
+          "dialogue_leak_ratio": 0.0351,
+          "dialogue_segment_recall": {
+            "hi": 0.9637995380912008,
+            "lo": 0.840241945501405,
+            "n": 77,
+            "p": 0.922077922077922
+          },
+          "dialogue_time_recall": 0.9292,
+          "false_cue_coverage": 0.4788,
+          "false_cue_ms": 146871.0,
+          "missed_short_utterances": 1,
+          "missed_shouted_utterances": 2,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 334870.0,
+          "narratable_retained_ratio": 0.6951,
+          "narration_on_dialogue_ms": 12181.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 16,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "derived_whisper",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 120674.0,
+        "covered_segments": 57,
+        "cue_ms": 199940.0,
+        "cue_segment_precision": {
+          "hi": 0.9193299132761629,
+          "lo": 0.7533626140708477,
+          "n": 69,
+          "p": 0.855072463768116
+        },
+        "cue_segments": 69,
+        "dialogue_leak_ratio": 0.1132,
+        "dialogue_segment_recall": {
+          "hi": 0.8251093352045924,
+          "lo": 0.6325758169942757,
+          "n": 77,
+          "p": 0.7402597402597403
+        },
+        "dialogue_time_recall": 0.7014,
+        "false_cue_coverage": 0.3964,
+        "false_cue_ms": 79266.0,
+        "missed_short_utterances": 3,
+        "missed_shouted_utterances": 8,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 402475.0,
+        "narratable_retained_ratio": 0.8355,
+        "narration_on_dialogue_ms": 51376.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 59,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.1,
+      "pad_s": 0.0,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 120674.0,
+          "covered_segments": 57,
+          "cue_ms": 199940.0,
+          "cue_segment_precision": {
+            "hi": 0.9193299132761629,
+            "lo": 0.7533626140708477,
+            "n": 69,
+            "p": 0.855072463768116
+          },
+          "cue_segments": 69,
+          "dialogue_leak_ratio": 0.1132,
+          "dialogue_segment_recall": {
+            "hi": 0.8251093352045924,
+            "lo": 0.6325758169942757,
+            "n": 77,
+            "p": 0.7402597402597403
+          },
+          "dialogue_time_recall": 0.7014,
+          "false_cue_coverage": 0.3964,
+          "false_cue_ms": 79266.0,
+          "missed_short_utterances": 3,
+          "missed_shouted_utterances": 8,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 402475.0,
+          "narratable_retained_ratio": 0.8355,
+          "narration_on_dialogue_ms": 51376.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 59,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "derived_whisper",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 145460.0,
+        "covered_segments": 68,
+        "cue_ms": 237880.0,
+        "cue_segment_precision": {
+          "hi": 0.9183087411197868,
+          "lo": 0.7198929160164018,
+          "n": 51,
+          "p": 0.8431372549019608
+        },
+        "cue_segments": 51,
+        "dialogue_leak_ratio": 0.0639,
+        "dialogue_segment_recall": {
+          "hi": 0.9372750893541368,
+          "lo": 0.7925471803683823,
+          "n": 77,
+          "p": 0.8831168831168831
+        },
+        "dialogue_time_recall": 0.8455,
+        "false_cue_coverage": 0.3885,
+        "false_cue_ms": 92420.0,
+        "missed_short_utterances": 1,
+        "missed_shouted_utterances": 3,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 389321.0,
+        "narratable_retained_ratio": 0.8082,
+        "narration_on_dialogue_ms": 26590.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 43,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.1,
+      "pad_s": 0.3,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 145460.0,
+          "covered_segments": 68,
+          "cue_ms": 237880.0,
+          "cue_segment_precision": {
+            "hi": 0.9183087411197868,
+            "lo": 0.7198929160164018,
+            "n": 51,
+            "p": 0.8431372549019608
+          },
+          "cue_segments": 51,
+          "dialogue_leak_ratio": 0.0639,
+          "dialogue_segment_recall": {
+            "hi": 0.9372750893541368,
+            "lo": 0.7925471803683823,
+            "n": 77,
+            "p": 0.8831168831168831
+          },
+          "dialogue_time_recall": 0.8455,
+          "false_cue_coverage": 0.3885,
+          "false_cue_ms": 92420.0,
+          "missed_short_utterances": 1,
+          "missed_shouted_utterances": 3,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 389321.0,
+          "narratable_retained_ratio": 0.8082,
+          "narration_on_dialogue_ms": 26590.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 43,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "derived_whisper",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 159869.0,
+        "covered_segments": 71,
+        "cue_ms": 269060.0,
+        "cue_segment_precision": {
+          "hi": 0.9447962896007217,
+          "lo": 0.6243407235682331,
+          "n": 19,
+          "p": 0.8421052631578947
+        },
+        "cue_segments": 19,
+        "dialogue_leak_ratio": 0.0317,
+        "dialogue_segment_recall": {
+          "hi": 0.9637995380912008,
+          "lo": 0.840241945501405,
+          "n": 77,
+          "p": 0.922077922077922
+        },
+        "dialogue_time_recall": 0.9292,
+        "false_cue_coverage": 0.4058,
+        "false_cue_ms": 109191.0,
+        "missed_short_utterances": 1,
+        "missed_shouted_utterances": 2,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 372550.0,
+        "narratable_retained_ratio": 0.7733,
+        "narration_on_dialogue_ms": 12181.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 16,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.1,
+      "pad_s": 0.8,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 159869.0,
+          "covered_segments": 71,
+          "cue_ms": 269060.0,
+          "cue_segment_precision": {
+            "hi": 0.9447962896007217,
+            "lo": 0.6243407235682331,
+            "n": 19,
+            "p": 0.8421052631578947
+          },
+          "cue_segments": 19,
+          "dialogue_leak_ratio": 0.0317,
+          "dialogue_segment_recall": {
+            "hi": 0.9637995380912008,
+            "lo": 0.840241945501405,
+            "n": 77,
+            "p": 0.922077922077922
+          },
+          "dialogue_time_recall": 0.9292,
+          "false_cue_coverage": 0.4058,
+          "false_cue_ms": 109191.0,
+          "missed_short_utterances": 1,
+          "missed_shouted_utterances": 2,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 372550.0,
+          "narratable_retained_ratio": 0.7733,
+          "narration_on_dialogue_ms": 12181.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 16,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "derived_whisper",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 118952.0,
+        "covered_segments": 56,
+        "cue_ms": 176580.0,
+        "cue_segment_precision": {
+          "hi": 0.9468464556807439,
+          "lo": 0.7939846696853139,
+          "n": 65,
+          "p": 0.8923076923076924
+        },
+        "cue_segments": 65,
+        "dialogue_leak_ratio": 0.1113,
+        "dialogue_segment_recall": {
+          "hi": 0.8141564445988116,
+          "lo": 0.6187889696433608,
+          "n": 77,
+          "p": 0.7272727272727273
+        },
+        "dialogue_time_recall": 0.6914,
+        "false_cue_coverage": 0.3264,
+        "false_cue_ms": 57628.0,
+        "missed_short_utterances": 3,
+        "missed_shouted_utterances": 9,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 424113.0,
+        "narratable_retained_ratio": 0.8804,
+        "narration_on_dialogue_ms": 53098.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 58,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.3,
+      "pad_s": 0.0,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 118952.0,
+          "covered_segments": 56,
+          "cue_ms": 176580.0,
+          "cue_segment_precision": {
+            "hi": 0.9468464556807439,
+            "lo": 0.7939846696853139,
+            "n": 65,
+            "p": 0.8923076923076924
+          },
+          "cue_segments": 65,
+          "dialogue_leak_ratio": 0.1113,
+          "dialogue_segment_recall": {
+            "hi": 0.8141564445988116,
+            "lo": 0.6187889696433608,
+            "n": 77,
+            "p": 0.7272727272727273
+          },
+          "dialogue_time_recall": 0.6914,
+          "false_cue_coverage": 0.3264,
+          "false_cue_ms": 57628.0,
+          "missed_short_utterances": 3,
+          "missed_shouted_utterances": 9,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 424113.0,
+          "narratable_retained_ratio": 0.8804,
+          "narration_on_dialogue_ms": 53098.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 58,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "derived_whisper",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 143298.0,
+        "covered_segments": 67,
+        "cue_ms": 212580.0,
+        "cue_segment_precision": {
+          "hi": 0.9438247628937535,
+          "lo": 0.7619492111337642,
+          "n": 50,
+          "p": 0.88
+        },
+        "cue_segments": 50,
+        "dialogue_leak_ratio": 0.0652,
+        "dialogue_segment_recall": {
+          "hi": 0.9279024850905981,
+          "lo": 0.7771800466752254,
+          "n": 77,
+          "p": 0.8701298701298701
+        },
+        "dialogue_time_recall": 0.8329,
+        "false_cue_coverage": 0.3259,
+        "false_cue_ms": 69282.0,
+        "missed_short_utterances": 1,
+        "missed_shouted_utterances": 4,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 412459.0,
+        "narratable_retained_ratio": 0.8562,
+        "narration_on_dialogue_ms": 28752.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 44,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.3,
+      "pad_s": 0.3,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 143298.0,
+          "covered_segments": 67,
+          "cue_ms": 212580.0,
+          "cue_segment_precision": {
+            "hi": 0.9438247628937535,
+            "lo": 0.7619492111337642,
+            "n": 50,
+            "p": 0.88
+          },
+          "cue_segments": 50,
+          "dialogue_leak_ratio": 0.0652,
+          "dialogue_segment_recall": {
+            "hi": 0.9279024850905981,
+            "lo": 0.7771800466752254,
+            "n": 77,
+            "p": 0.8701298701298701
+          },
+          "dialogue_time_recall": 0.8329,
+          "false_cue_coverage": 0.3259,
+          "false_cue_ms": 69282.0,
+          "missed_short_utterances": 1,
+          "missed_shouted_utterances": 4,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 412459.0,
+          "narratable_retained_ratio": 0.8562,
+          "narration_on_dialogue_ms": 28752.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 44,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "derived_whisper",
+      "split": "dev"
+    },
+    {
+      "cue_details": null,
+      "id": "elephants_dream_2006_de",
+      "metrics": {
+        "covered_dialogue_ms": 158660.0,
+        "covered_segments": 70,
+        "cue_ms": 243140.0,
+        "cue_segment_precision": {
+          "hi": 0.9689811315464172,
+          "lo": 0.6719975513339578,
+          "n": 18,
+          "p": 0.8888888888888888
+        },
+        "cue_segments": 18,
+        "dialogue_leak_ratio": 0.0326,
+        "dialogue_segment_recall": {
+          "hi": 0.9552648581064284,
+          "lo": 0.8240368875294818,
+          "n": 77,
+          "p": 0.9090909090909091
+        },
+        "dialogue_time_recall": 0.9222,
+        "false_cue_coverage": 0.3475,
+        "false_cue_ms": 84480.0,
+        "missed_short_utterances": 1,
+        "missed_shouted_utterances": 3,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 397261.0,
+        "narratable_retained_ratio": 0.8246,
+        "narration_on_dialogue_ms": 13390.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 16,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.3,
+      "pad_s": 0.8,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 158660.0,
+          "covered_segments": 70,
+          "cue_ms": 243140.0,
+          "cue_segment_precision": {
+            "hi": 0.9689811315464172,
+            "lo": 0.6719975513339578,
+            "n": 18,
+            "p": 0.8888888888888888
+          },
+          "cue_segments": 18,
+          "dialogue_leak_ratio": 0.0326,
+          "dialogue_segment_recall": {
+            "hi": 0.9552648581064284,
+            "lo": 0.8240368875294818,
+            "n": 77,
+            "p": 0.9090909090909091
+          },
+          "dialogue_time_recall": 0.9222,
+          "false_cue_coverage": 0.3475,
+          "false_cue_ms": 84480.0,
+          "missed_short_utterances": 1,
+          "missed_shouted_utterances": 3,
+          "narratable_ms": 481741.0,
+          "narratable_retained_ms": 397261.0,
+          "narratable_retained_ratio": 0.8246,
+          "narration_on_dialogue_ms": 13390.0,
+          "short_utterances": 4,
+          "shouted_utterances": 19,
+          "true_cue_segments": 16,
+          "truth_ms": 172050.0,
+          "truth_segments": 77
+        }
+      },
+      "source": "derived_whisper",
+      "split": "dev"
+    }
+  ],
+  "holdout": [
+    {
+      "cue_details": null,
+      "id": "tears_of_steel_2012_en",
+      "metrics": {
+        "covered_dialogue_ms": 136200.0,
+        "covered_segments": 67,
+        "cue_ms": 136200.0,
+        "cue_segment_precision": {
+          "hi": 0.9999999999999999,
+          "lo": 0.9457719757882374,
+          "n": 67,
+          "p": 1.0
+        },
+        "cue_segments": 67,
+        "dialogue_leak_ratio": 0.0,
+        "dialogue_segment_recall": {
+          "hi": 0.9999999999999999,
+          "lo": 0.9457719757882374,
+          "n": 67,
+          "p": 1.0
+        },
+        "dialogue_time_recall": 1.0,
+        "false_cue_coverage": 0.0,
+        "false_cue_ms": 0.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 0,
+        "narratable_ms": 597967.0,
+        "narratable_retained_ms": 597967.0,
+        "narratable_retained_ratio": 1.0,
+        "narration_on_dialogue_ms": 0.0,
+        "short_utterances": 22,
+        "shouted_utterances": 28,
+        "true_cue_segments": 67,
+        "truth_ms": 136200.0,
+        "truth_segments": 67
+      },
+      "min_vad_evidence": null,
+      "pad_s": 0.0,
+      "per_language": {
+        "en": {
+          "covered_dialogue_ms": 136200.0,
+          "covered_segments": 67,
+          "cue_ms": 136200.0,
+          "cue_segment_precision": {
+            "hi": 0.9999999999999999,
+            "lo": 0.9457719757882374,
+            "n": 67,
+            "p": 1.0
+          },
+          "cue_segments": 67,
+          "dialogue_leak_ratio": 0.0,
+          "dialogue_segment_recall": {
+            "hi": 0.9999999999999999,
+            "lo": 0.9457719757882374,
+            "n": 67,
+            "p": 1.0
+          },
+          "dialogue_time_recall": 1.0,
+          "false_cue_coverage": 0.0,
+          "false_cue_ms": 0.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 0,
+          "narratable_ms": 597967.0,
+          "narratable_retained_ms": 597967.0,
+          "narratable_retained_ratio": 1.0,
+          "narration_on_dialogue_ms": 0.0,
+          "short_utterances": 22,
+          "shouted_utterances": 28,
+          "true_cue_segments": 67,
+          "truth_ms": 136200.0,
+          "truth_segments": 67
+        }
+      },
+      "source": "exact_subtitles",
+      "split": "holdout"
+    },
+    {
+      "cue_details": null,
+      "id": "tears_of_steel_2012_en",
+      "metrics": {
+        "covered_dialogue_ms": 101200.0,
+        "covered_segments": 44,
+        "cue_ms": 162220.0,
+        "cue_segment_precision": {
+          "hi": 0.9734817912030528,
+          "lo": 0.7108541613925933,
+          "n": 21,
+          "p": 0.9047619047619048
+        },
+        "cue_segments": 21,
+        "dialogue_leak_ratio": 0.0612,
+        "dialogue_segment_recall": {
+          "hi": 0.7591115804066028,
+          "lo": 0.5373244120046358,
+          "n": 67,
+          "p": 0.6567164179104478
+        },
+        "dialogue_time_recall": 0.743,
+        "false_cue_coverage": 0.3762,
+        "false_cue_ms": 61020.0,
+        "missed_short_utterances": 12,
+        "missed_shouted_utterances": 11,
+        "narratable_ms": 597967.0,
+        "narratable_retained_ms": 536947.0,
+        "narratable_retained_ratio": 0.898,
+        "narration_on_dialogue_ms": 35000.0,
+        "short_utterances": 22,
+        "shouted_utterances": 28,
+        "true_cue_segments": 19,
+        "truth_ms": 136200.0,
+        "truth_segments": 67
+      },
+      "min_vad_evidence": 0.3,
+      "pad_s": 0.8,
+      "per_language": {
+        "en": {
+          "covered_dialogue_ms": 101200.0,
+          "covered_segments": 44,
+          "cue_ms": 162220.0,
+          "cue_segment_precision": {
+            "hi": 0.9734817912030528,
+            "lo": 0.7108541613925933,
+            "n": 21,
+            "p": 0.9047619047619048
+          },
+          "cue_segments": 21,
+          "dialogue_leak_ratio": 0.0612,
+          "dialogue_segment_recall": {
+            "hi": 0.7591115804066028,
+            "lo": 0.5373244120046358,
+            "n": 67,
+            "p": 0.6567164179104478
+          },
+          "dialogue_time_recall": 0.743,
+          "false_cue_coverage": 0.3762,
+          "false_cue_ms": 61020.0,
+          "missed_short_utterances": 12,
+          "missed_shouted_utterances": 11,
+          "narratable_ms": 597967.0,
+          "narratable_retained_ms": 536947.0,
+          "narratable_retained_ratio": 0.898,
+          "narration_on_dialogue_ms": 35000.0,
+          "short_utterances": 22,
+          "shouted_utterances": 28,
+          "true_cue_segments": 19,
+          "truth_ms": 136200.0,
+          "truth_segments": 67
+        }
+      },
+      "source": "derived_whisper",
+      "split": "holdout"
+    },
+    {
+      "cue_details": null,
+      "id": "sintel_2010_en",
+      "metrics": {
+        "covered_dialogue_ms": 33030.0,
+        "covered_segments": 13,
+        "cue_ms": 46260.0,
+        "cue_segment_precision": {
+          "hi": 0.9775830911367038,
+          "lo": 0.5291051942301386,
+          "n": 8,
+          "p": 0.875
+        },
+        "cue_segments": 8,
+        "dialogue_leak_ratio": 0.0509,
+        "dialogue_segment_recall": {
+          "hi": 0.6793969368499793,
+          "lo": 0.32060306315002074,
+          "n": 26,
+          "p": 0.5
+        },
+        "dialogue_time_recall": 0.4352,
+        "false_cue_coverage": 0.286,
+        "false_cue_ms": 13230.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 4,
+        "narratable_ms": 812142.0,
+        "narratable_retained_ms": 798912.0,
+        "narratable_retained_ratio": 0.9837,
+        "narration_on_dialogue_ms": 42860.0,
+        "short_utterances": 0,
+        "shouted_utterances": 4,
+        "true_cue_segments": 7,
+        "truth_ms": 75890.0,
+        "truth_segments": 26
+      },
+      "min_vad_evidence": 0.3,
+      "pad_s": 0.8,
+      "per_language": {
+        "en": {
+          "covered_dialogue_ms": 33030.0,
+          "covered_segments": 13,
+          "cue_ms": 46260.0,
+          "cue_segment_precision": {
+            "hi": 0.9775830911367038,
+            "lo": 0.5291051942301386,
+            "n": 8,
+            "p": 0.875
+          },
+          "cue_segments": 8,
+          "dialogue_leak_ratio": 0.0509,
+          "dialogue_segment_recall": {
+            "hi": 0.6793969368499793,
+            "lo": 0.32060306315002074,
+            "n": 26,
+            "p": 0.5
+          },
+          "dialogue_time_recall": 0.4352,
+          "false_cue_coverage": 0.286,
+          "false_cue_ms": 13230.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 4,
+          "narratable_ms": 812142.0,
+          "narratable_retained_ms": 798912.0,
+          "narratable_retained_ratio": 0.9837,
+          "narration_on_dialogue_ms": 42860.0,
+          "short_utterances": 0,
+          "shouted_utterances": 4,
+          "true_cue_segments": 7,
+          "truth_ms": 75890.0,
+          "truth_segments": 26
+        }
+      },
+      "source": "derived_whisper",
+      "split": "holdout"
+    },
+    {
+      "cue_details": null,
+      "id": "synthetic_kitchen_en",
+      "metrics": {
+        "covered_dialogue_ms": 17011.0,
+        "covered_segments": 5,
+        "cue_ms": 22380.0,
+        "cue_segment_precision": {
+          "hi": 1.0,
+          "lo": 0.43849391955098227,
+          "n": 3,
+          "p": 1.0
+        },
+        "cue_segments": 3,
+        "dialogue_leak_ratio": 0.0,
+        "dialogue_segment_recall": {
+          "hi": 1.0,
+          "lo": 0.5655085052479191,
+          "n": 5,
+          "p": 1.0
+        },
+        "dialogue_time_recall": 1.0,
+        "false_cue_coverage": 0.2399,
+        "false_cue_ms": 5369.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 0,
+        "narratable_ms": 14989.0,
+        "narratable_retained_ms": 9620.0,
+        "narratable_retained_ratio": 0.6418,
+        "narration_on_dialogue_ms": 0.0,
+        "short_utterances": 1,
+        "shouted_utterances": 0,
+        "true_cue_segments": 3,
+        "truth_ms": 17011.0,
+        "truth_segments": 5
+      },
+      "min_vad_evidence": 0.3,
+      "pad_s": 0.8,
+      "per_language": {
+        "en": {
+          "covered_dialogue_ms": 17011.0,
+          "covered_segments": 5,
+          "cue_ms": 22380.0,
+          "cue_segment_precision": {
+            "hi": 1.0,
+            "lo": 0.43849391955098227,
+            "n": 3,
+            "p": 1.0
+          },
+          "cue_segments": 3,
+          "dialogue_leak_ratio": 0.0,
+          "dialogue_segment_recall": {
+            "hi": 1.0,
+            "lo": 0.5655085052479191,
+            "n": 5,
+            "p": 1.0
+          },
+          "dialogue_time_recall": 1.0,
+          "false_cue_coverage": 0.2399,
+          "false_cue_ms": 5369.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 0,
+          "narratable_ms": 14989.0,
+          "narratable_retained_ms": 9620.0,
+          "narratable_retained_ratio": 0.6418,
+          "narration_on_dialogue_ms": 0.0,
+          "short_utterances": 1,
+          "shouted_utterances": 0,
+          "true_cue_segments": 3,
+          "truth_ms": 17011.0,
+          "truth_segments": 5
+        }
+      },
+      "source": "derived_whisper",
+      "split": "holdout"
+    },
+    {
+      "cue_details": null,
+      "id": "sprite_fright_2021_en",
+      "metrics": {
+        "covered_dialogue_ms": 177425.0,
+        "covered_segments": 22,
+        "cue_ms": 291260.0,
+        "cue_segment_precision": {
+          "hi": 0.90999218086618,
+          "lo": 0.5478497354769452,
+          "n": 18,
+          "p": 0.7777777777777778
+        },
+        "cue_segments": 18,
+        "dialogue_leak_ratio": 0.1395,
+        "dialogue_segment_recall": {
+          "hi": 0.6929492471905531,
+          "lo": 0.39828829888440775,
+          "n": 40,
+          "p": 0.55
+        },
+        "dialogue_time_recall": 0.7898,
+        "false_cue_coverage": 0.3908,
+        "false_cue_ms": 113835.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 13,
+        "narratable_ms": 405203.0,
+        "narratable_retained_ms": 291368.0,
+        "narratable_retained_ratio": 0.7191,
+        "narration_on_dialogue_ms": 47233.0,
+        "short_utterances": 1,
+        "shouted_utterances": 34,
+        "true_cue_segments": 14,
+        "truth_ms": 224658.0,
+        "truth_segments": 40
+      },
+      "min_vad_evidence": 0.3,
+      "pad_s": 0.8,
+      "per_language": {
+        "en": {
+          "covered_dialogue_ms": 177425.0,
+          "covered_segments": 22,
+          "cue_ms": 291260.0,
+          "cue_segment_precision": {
+            "hi": 0.90999218086618,
+            "lo": 0.5478497354769452,
+            "n": 18,
+            "p": 0.7777777777777778
+          },
+          "cue_segments": 18,
+          "dialogue_leak_ratio": 0.1395,
+          "dialogue_segment_recall": {
+            "hi": 0.6929492471905531,
+            "lo": 0.39828829888440775,
+            "n": 40,
+            "p": 0.55
+          },
+          "dialogue_time_recall": 0.7898,
+          "false_cue_coverage": 0.3908,
+          "false_cue_ms": 113835.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 13,
+          "narratable_ms": 405203.0,
+          "narratable_retained_ms": 291368.0,
+          "narratable_retained_ratio": 0.7191,
+          "narration_on_dialogue_ms": 47233.0,
+          "short_utterances": 1,
+          "shouted_utterances": 34,
+          "true_cue_segments": 14,
+          "truth_ms": 224658.0,
+          "truth_segments": 40
+        }
+      },
+      "source": "derived_whisper",
+      "split": "holdout"
+    },
+    {
+      "cue_details": null,
+      "id": "synthetic_night_de",
+      "metrics": {
+        "covered_dialogue_ms": 12803.0,
+        "covered_segments": 6,
+        "cue_ms": 20160.0,
+        "cue_segment_precision": {
+          "hi": 0.9544139373553637,
+          "lo": 0.3006360524426366,
+          "n": 4,
+          "p": 0.75
+        },
+        "cue_segments": 4,
+        "dialogue_leak_ratio": 0.0,
+        "dialogue_segment_recall": {
+          "hi": 0.9999999999999999,
+          "lo": 0.6096569663469354,
+          "n": 6,
+          "p": 1.0
+        },
+        "dialogue_time_recall": 1.0,
+        "false_cue_coverage": 0.3649,
+        "false_cue_ms": 7357.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 0,
+        "narratable_ms": 17197.0,
+        "narratable_retained_ms": 9840.0,
+        "narratable_retained_ratio": 0.5722,
+        "narration_on_dialogue_ms": 0.0,
+        "short_utterances": 1,
+        "shouted_utterances": 0,
+        "true_cue_segments": 3,
+        "truth_ms": 12803.0,
+        "truth_segments": 6
+      },
+      "min_vad_evidence": 0.3,
+      "pad_s": 0.8,
+      "per_language": {
+        "de": {
+          "covered_dialogue_ms": 12803.0,
+          "covered_segments": 6,
+          "cue_ms": 20160.0,
+          "cue_segment_precision": {
+            "hi": 0.9544139373553637,
+            "lo": 0.3006360524426366,
+            "n": 4,
+            "p": 0.75
+          },
+          "cue_segments": 4,
+          "dialogue_leak_ratio": 0.0,
+          "dialogue_segment_recall": {
+            "hi": 0.9999999999999999,
+            "lo": 0.6096569663469354,
+            "n": 6,
+            "p": 1.0
+          },
+          "dialogue_time_recall": 1.0,
+          "false_cue_coverage": 0.3649,
+          "false_cue_ms": 7357.0,
+          "missed_short_utterances": 0,
+          "missed_shouted_utterances": 0,
+          "narratable_ms": 17197.0,
+          "narratable_retained_ms": 9840.0,
+          "narratable_retained_ratio": 0.5722,
+          "narration_on_dialogue_ms": 0.0,
+          "short_utterances": 1,
+          "shouted_utterances": 0,
+          "true_cue_segments": 3,
+          "truth_ms": 12803.0,
+          "truth_segments": 6
+        }
+      },
+      "source": "derived_whisper",
+      "split": "holdout"
+    }
+  ],
+  "manifest": "testdata/validation/cue-eval-manifest.json",
+  "max_dialogue_leak_ratio": 0.05,
+  "pending": [
+    {
+      "id": "cosmos_laundromat_2015_en",
+      "split": "holdout",
+      "status": "pending_assets"
+    }
+  ],
+  "selected": {
+    "derived_whisper": {
+      "dev_film": "elephants_dream_2006_de",
+      "dev_metrics": {
+        "covered_dialogue_ms": 158660.0,
+        "covered_segments": 70,
+        "cue_ms": 243140.0,
+        "cue_segment_precision": {
+          "hi": 0.9689811315464172,
+          "lo": 0.6719975513339578,
+          "n": 18,
+          "p": 0.8888888888888888
+        },
+        "cue_segments": 18,
+        "dialogue_leak_ratio": 0.0326,
+        "dialogue_segment_recall": {
+          "hi": 0.9552648581064284,
+          "lo": 0.8240368875294818,
+          "n": 77,
+          "p": 0.9090909090909091
+        },
+        "dialogue_time_recall": 0.9222,
+        "false_cue_coverage": 0.3475,
+        "false_cue_ms": 84480.0,
+        "missed_short_utterances": 1,
+        "missed_shouted_utterances": 3,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 397261.0,
+        "narratable_retained_ratio": 0.8246,
+        "narration_on_dialogue_ms": 13390.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 16,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": 0.3,
+      "pad_s": 0.8
+    },
+    "exact_subtitles": {
+      "dev_film": "elephants_dream_2006_de",
+      "dev_metrics": {
+        "covered_dialogue_ms": 172050.0,
+        "covered_segments": 77,
+        "cue_ms": 172050.0,
+        "cue_segment_precision": {
+          "hi": 1.0,
+          "lo": 0.9524799113327793,
+          "n": 77,
+          "p": 1.0
+        },
+        "cue_segments": 77,
+        "dialogue_leak_ratio": 0.0,
+        "dialogue_segment_recall": {
+          "hi": 1.0,
+          "lo": 0.9524799113327793,
+          "n": 77,
+          "p": 1.0
+        },
+        "dialogue_time_recall": 1.0,
+        "false_cue_coverage": 0.0,
+        "false_cue_ms": 0.0,
+        "missed_short_utterances": 0,
+        "missed_shouted_utterances": 0,
+        "narratable_ms": 481741.0,
+        "narratable_retained_ms": 481741.0,
+        "narratable_retained_ratio": 1.0,
+        "narration_on_dialogue_ms": 0.0,
+        "short_utterances": 4,
+        "shouted_utterances": 19,
+        "true_cue_segments": 77,
+        "truth_ms": 172050.0,
+        "truth_segments": 77
+      },
+      "min_vad_evidence": null,
+      "pad_s": 0.0
+    }
+  }
+}

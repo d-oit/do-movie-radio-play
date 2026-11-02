@@ -7,4 +7,11 @@ ignore = [
   "RUSTSEC-2026-0368",  # zip transitive dep
   "RUSTSEC-2026-0369",  # zip transitive dep
   "RUSTSEC-2026-0381",  # webpki-roots 0.26.11 transitive dep of ureq 2 (hf-hub)
+  # zip 7.4.0 <= qwen_tts -> candle-core 0.9.2 -> zip ^7.2.0. Fixed only in
+  # zip >= 9.0.0, which needs candle-core >= 0.11; qwen_tts 0.1.1 requires
+  # candle ^0.9, so no resolvable upgrade exists. The advisory covers
+  # `ZipArchive::extract()` on a symlink entry; candle-core only uses
+  # `ZipArchive::new` + `by_index` and this workspace never opens untrusted
+  # archives. Remove once qwen_tts allows candle 0.11.
+  "RUSTSEC-2026-0429",
 ]

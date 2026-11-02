@@ -91,13 +91,15 @@
 
 | film | source | leak | dialogue recall | missed shouts | retained |
 |---|---|---:|---:|---:|---:|
-| Elephants Dream (dev) | derived | 3.3% | 0.92 | 3/19 | 397 s |
-| Elephants Dream (dev) | exact | 0.0% | 1.00 | 0/19 | 482 s |
-| Tears of Steel | derived | 6.1% | 0.74 | 11/28 | 537 s |
-| Sintel | derived | 5.1% | 0.44 | 4/4 | 799 s |
-| **Sprite Fright (unseen)** | derived | **14.0%** | 0.79 | 13/34 | 291 s |
-| synthetic kitchen / night | derived | 0.0% | 1.00 | 0/0 | 9.6 / 9.8 s |
-| Tears of Steel | exact | 0.0% | 1.00 | 0/28 | 598 s |
+| Elephants Dream (dev) | derived | 3.6% (was 3.3) | 0.92 | 3/19 (was 3) | 74% (was 83) |
+| Elephants Dream (dev) | exact | 0.0% | 1.00 | 0/19 | 86% |
+| Tears of Steel | derived | 2.8% (was 6.1) | 0.90 (was 0.74) | 3/28 (was 11) | 77% (was 90) |
+| Sintel | derived | 3.8% (was 5.1) | 0.68 (was 0.44) | 2/4 (was 4) | 76% (was 98) |
+| **Sprite Fright (unseen)** | derived | **11.3%** (was 14.0) | 0.89 (was 0.79) | 4/34 (was 13) | 50% (was 72) |
+| synthetic kitchen / night | derived | 0.0% | 1.00 | 0/0 | 64% / 57% |
+| Tears of Steel | exact | 0.0% | 1.00 | 0/28 | 100% |
+
+Figures in parentheses are the pre-fix gate (every cue gated). The duration-aware gate improves leakage and shout recall on every real film except Elephants Dream, which gives back 0.3 pp of leak for 9 pp of coverage; it pays for that with 9-23 pp of retained narratable time. **Sprite Fright still exceeds the 5% floor at 11.3%**, so the fix narrows the gap rather than closing it.
 
 - **The generalization gap is the finding.** The dev-chosen config leaks 3.3% on the film that chose it and **14.0% on Sprite Fright**, a real film (CC BY 4.0, 80 timed cues from Wikimedia Commons) used in no earlier detector, cue, pad or threshold work here. The shipped derived-cue path therefore does **not** meet the 5% floor on unseen real material, and the honest working figure is "roughly one in seven retained narration seconds still lands on dialogue", not the 2-4% previously quoted from three tuned films. Missed shouted lines are the mechanism: 13 of 34 shouts on Sprite Fright, 11 of 28 on Tears of Steel, all 4 on Sintel.
 - **Exact subtitles remain the reliable path:** 0% leak and full recall on every film where they exist, at the cost of 17-29% of narratable time when padded.

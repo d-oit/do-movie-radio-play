@@ -8,11 +8,15 @@
 
 ## Primary Post-2000 Fixtures
 
-| File | Year | Source | Intended Use |
-|------|------|--------|--------------|
-| `testdata/raw/elephants_dream_2006.mp4` | 2006 | Blender/Open Movie (Archive.org mirror) | decode/bench smoke |
-| `testdata/raw/big_buck_bunny_trailer_2008.mov` | 2008 | Blender trailer | decode/bench smoke |
-| `testdata/raw/sintel_trailer_2010.mp4` | 2010 | Blender trailer | decode/bench/srt validation |
+| File | Year | Source | Mirror | Intended Use |
+|------|------|--------|--------|--------------|
+| `testdata/raw/elephants_dream_2006.mp4` | 2006 | Archive.org | download.blender.org (fallback) | decode/bench smoke |
+| `testdata/raw/big_buck_bunny_trailer_2008.mov` | 2008 | download.blender.org | [Wikimedia Commons 400p ogv](https://upload.wikimedia.org/wikipedia/commons/b/b3/Big_Buck_Bunny_Trailer_400p.ogv) | decode/bench smoke |
+| `testdata/raw/sintel_trailer_2010.mp4` | 2010 | download.blender.org | [Wikimedia Commons 1080p ogv](https://upload.wikimedia.org/wikipedia/commons/0/06/Sintel_trailer-1080p.ogv) | decode/bench |
+
+Mirrors were added on 2026-11-03 after a `download.blender.org` outage aborted every CI job that fetches assets. `fetch_video_with_mirrors` tries the primary host first and falls back to the mirror, normalising it to 720p H.264/AAC in the target container so decode timings stay comparable. Verified: the Sintel mirror is the same 52 s cut (52.25 s vs 52.21 s) and decodes through `timeline extract` (2601 frames).
+
+Note: `sintel_trailer_2010.mp4` is listed as a critical asset, but no CI job consumes it — the coverage/test jobs only need generated fixtures, and the benchmark job benchmarks `elephants_dream_2006.mp4`. Its subtitle truth (`sintel_trailer_2010.srt`) has never existed, so "srt validation" in the table above refers only to the manual commands below. See `plans/FOLLOWUPS.md`.
 
 ## Non-English Subtitle Fixtures
 

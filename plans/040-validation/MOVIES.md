@@ -16,7 +16,7 @@
 
 Mirrors were added on 2026-11-03 after a `download.blender.org` outage aborted every CI job that fetches assets. `fetch_video_with_mirrors` tries the primary host first and falls back to the mirror, normalising it to 720p H.264/AAC in the target container so decode timings stay comparable. Verified: the Sintel mirror is the same 52 s cut (52.25 s vs 52.21 s) and decodes through `timeline extract` (2601 frames).
 
-Note: `sintel_trailer_2010.mp4` is listed as a critical asset, but no CI job consumes it — the coverage/test jobs only need generated fixtures, and the benchmark job benchmarks `elephants_dream_2006.mp4`. Its subtitle truth (`sintel_trailer_2010.srt`) has never existed, so "srt validation" in the table above refers only to the manual commands below. See `plans/FOLLOWUPS.md`.
+Note: `sintel_trailer_2010.mp4` is the preferred input for `cargo bench --bench pipeline_bench` (via `preferred_media_path()`), which runs in the `Benchmarks` CI job. That helper falls back through Big Buck Bunny, Elephants Dream and finally synthetic audio, so the bench degrades rather than failing — but the abort in `fetch_test_assets.sh` fires first and kills the whole job, before the fallback can be used. No Rust test references `testdata/raw/`, so the `Test` and `Code Coverage` jobs need none of these trailers. Its subtitle truth (`sintel_trailer_2010.srt`) has never existed, so "srt validation" in the table above refers only to the manual commands below. See `plans/FOLLOWUPS.md`.
 
 ## Non-English Subtitle Fixtures
 

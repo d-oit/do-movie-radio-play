@@ -52,6 +52,8 @@ pub struct ProduceOptions {
     pub no_auto_cues: bool,
     /// Freeze learning adaptations.
     pub no_learn: bool,
+    /// Mastering profile for normalization and quality validation.
+    pub mastering_profile: Option<String>,
 }
 
 pub fn handle_produce(opts: ProduceOptions, cfg: &AppConfig) -> Result<()> {
@@ -262,6 +264,15 @@ fn build_context(
     ctx.voice_orchestrator = voice_orchestrator;
     ctx.gap_confidence = opts.gap_confidence;
     ctx.no_learn = opts.no_learn;
+    if let Some(profile) = &opts.mastering_profile {
+        if movie_radio_render::mastering::MasteringProfile::from_name(profile).is_none() {
+            bail!(
+                "unknown mastering profile '{profile}'; available: {}",
+                movie_radio_render::mastering::MasteringProfile::available().join(", ")
+            );
+        }
+        ctx.mastering_profile = profile.clone();
+    }
     ctx.learning_state_path = Some(run_dir.join(LEARNING_STATE_FILE));
     ctx.config.sound_effects = Some(cfg.sound_effects.clone());
     if let Some(timeline) = &opts.timeline {

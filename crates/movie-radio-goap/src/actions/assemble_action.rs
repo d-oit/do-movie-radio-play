@@ -80,16 +80,31 @@ impl Action for AssembleRadioPlay {
             assembler.build_track_map(original.len(), &narration_segments, &sfx_segments);
         ctx.track_map = Some(track_map);
 
+        // Master the deliverable to the configured delivery profile. The
+        // pre-mastering mix stays in `assembled_audio` so preservation checks
+        // compare like with like.
+        let is_mp3 = ctx
+            .output_path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("mp3"));
+        let mut profile =
+            movie_radio_render::mastering::MasteringProfile::from_name(&ctx.mastering_profile)
+                .unwrap_or_default();
+        if is_mp3 {
+            // Lossy encoding can overshoot the sample-domain true peak; leave
+            // an extra half decibel so the encoded file still meets the ceiling.
+            profile.max_true_peak_dbtp = profile.max_true_peak_dbtp.min(-1.5);
+        }
+        let mastered =
+            movie_radio_render::mastering::master(&radio_play, ctx.sample_rate, 1, &profile);
+        ctx.mastering_report = Some(mastered.report);
+        let deliverable_samples = mastered.samples;
+
         if let Some(parent) = ctx.output_path.parent() {
             if !parent.as_os_str().is_empty() {
                 std::fs::create_dir_all(parent)?;
             }
         }
-
-        let is_mp3 = ctx
-            .output_path
-            .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("mp3"));
 
         let target_wav = if is_mp3 {
             ctx.output_path.with_extension("tmp.wav")
@@ -105,7 +120,7 @@ impl Action for AssembleRadioPlay {
         };
 
         let mut writer = hound::WavWriter::create(&target_wav, spec)?;
-        for &s in &radio_play {
+        for &s in &deliverable_samples {
             let clamped = s.clamp(-1.0, 1.0);
             let sample = (clamped * i16::MAX as f32) as i16;
             writer.write_sample(sample)?;
@@ -119,7 +134,7 @@ impl Action for AssembleRadioPlay {
 
         info!(
             output = %ctx.output_path.display(),
-            duration_s = radio_play.len() as f64 / ctx.sample_rate as f64,
+            duration_s = deliverable_samples.len() as f64 / ctx.sample_rate as f64,
             "Radio play assembled"
         );
         ctx.assembled_audio = Some(radio_play);

@@ -101,3 +101,37 @@ Required policy and coverage floor:
 - **CI Workflow Execution**: Automated `coverage` job executes `cargo llvm-cov --workspace --all-targets --lcov` and uploads reports to Codecov (`codecov/codecov-action@v5`).
 - **Codecov Threshold**: Root `.codecov.yml` enforces `target: auto` with a `threshold: 1%` tolerance for project and patch coverage.
 - **Baseline Coverage Floor**: Minimum overall workspace line coverage floor is 60% across `crates/`.
+
+## 6) Mastering Quality Gate (must pass for delivery)
+
+Every deliverable is normalized and limited to a selectable mastering profile;
+`--verify-quality` re-measures the written file and blocks export on hard
+failures while reporting warnings.
+
+```bash
+timeline gen-fixtures --output-dir testdata/generated
+timeline mastering testdata/generated/mastering/mastering_low_level.wav \
+  --profile ebu_r128 \
+  --output analysis/mastering/normalized.wav \
+  --json analysis/mastering/normalized.json \
+  --html analysis/mastering/normalized.html
+```
+
+Profiles: `ebu_r128` (-23 LUFS, -1 dBTP), `podcast` (-16 LUFS, -1 dBTP),
+`radio` (-23 LUFS, -1 dBTP), `atsc_a85` (-24 LUFS, -2 dBTP). `--target-lufs`
+and `--max-true-peak` override a profile for user-defined delivery targets.
+
+Required outcome:
+- the JSON report records the profile, integrated loudness, loudness range,
+  momentary/short-term maxima, sample peak, true peak, clipping, DC offset,
+  longest silence, discontinuity and channel imbalance
+- clipping, empty output and loudness outside the profile window are hard
+  failures; loudness-range, silence, DC-offset, discontinuity and channel
+  imbalance deviations are warnings
+- normalized output reaches the profile target within ±1 LU without exceeding
+  the true-peak ceiling
+- `timeline mastering <file>` validates an existing output independently and
+  exits non-zero on a hard failure
+- repeated runs on the same input and profile produce identical samples
+- fixtures cover mono/stereo, quiet/loud, clipping, silence, high dynamic range
+  and stereo imbalance under `testdata/generated/mastering/`

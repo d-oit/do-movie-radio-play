@@ -12,6 +12,24 @@ pub trait NarratorAiBackend: Send + Sync {
     ) -> Result<String>;
 }
 
+/// Single provider dispatch shared by the CLI handler and the GOAP narration
+/// stage (ADR-126, #412). Keeps backend defaults and error messages in one
+/// place instead of duplicating a `match` in every caller.
+pub fn build_narrator_backend(cfg: &NarratorConfig) -> Result<Box<dyn NarratorAiBackend>> {
+    match cfg.backend.as_str() {
+        "openai" => Ok(Box::new(OpenAiNarrator::new(cfg))),
+        "ollama_local" => Ok(Box::new(OllamaLocalNarrator::new(cfg))),
+        "anthropic" => Ok(Box::new(AnthropicNarrator::new(cfg))),
+        other => {
+            bail!("unknown narrator backend '{other}' (expected openai | ollama_local | anthropic)")
+        }
+    }
+}
+
+fn selected_model<'a>(configured: &'a str, params: &'a NarratorParams) -> &'a str {
+    params.model.as_deref().unwrap_or(configured)
+}
+
 pub struct RenderData {
     pub movie_title: String,
     pub prev_scene: String,
@@ -79,7 +97,7 @@ impl NarratorAiBackend for OpenAiNarrator {
     async fn generate_narration(
         &self,
         prompt: &RenderedPrompt,
-        _params: &NarratorParams,
+        params: &NarratorParams,
     ) -> Result<String> {
         // Never log secrets: api key fetched at runtime, redacted on error.
         let key = std::env::var(&self.api_key_env).unwrap_or_default();
@@ -90,7 +108,12 @@ impl NarratorAiBackend for OpenAiNarrator {
             .timeout(std::time::Duration::from_secs(30))
             .build()?;
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
-        let body = serde_json::json!({"model": self.model, "messages": [{"role": "user", "content": prompt.text}], "max_tokens": 200});
+        let body = serde_json::json!({
+            "model": selected_model(&self.model, params),
+            "messages": [{"role": "user", "content": prompt.text}],
+            "max_tokens": params.max_tokens,
+            "temperature": params.temperature,
+        });
         let resp = client
             .post(&url)
             .bearer_auth(key)
@@ -113,6 +136,7 @@ impl NarratorAiBackend for OpenAiNarrator {
 pub struct OllamaLocalNarrator {
     base_url: String,
     model: String,
+    num_ctx: u32,
 }
 
 impl OllamaLocalNarrator {
@@ -120,6 +144,7 @@ impl OllamaLocalNarrator {
         Self {
             base_url: cfg.ollama_local.base_url.clone(),
             model: cfg.ollama_local.model.clone(),
+            num_ctx: cfg.ollama_local.num_ctx,
         }
     }
 }
@@ -129,13 +154,22 @@ impl NarratorAiBackend for OllamaLocalNarrator {
     async fn generate_narration(
         &self,
         prompt: &RenderedPrompt,
-        _params: &NarratorParams,
+        params: &NarratorParams,
     ) -> Result<String> {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(60))
             .build()?;
         let url = format!("{}/api/generate", self.base_url.trim_end_matches('/'));
-        let body = serde_json::json!({"model": self.model, "prompt": prompt.text, "stream": false});
+        let body = serde_json::json!({
+            "model": selected_model(&self.model, params),
+            "prompt": prompt.text,
+            "stream": false,
+            "options": {
+                "temperature": params.temperature,
+                "num_predict": params.max_tokens,
+                "num_ctx": self.num_ctx,
+            },
+        });
         let resp = client.post(&url).json(&body).send().await?;
         if !resp.status().is_success() {
             bail!("ollama http {}", resp.status());
@@ -164,7 +198,7 @@ impl NarratorAiBackend for AnthropicNarrator {
     async fn generate_narration(
         &self,
         prompt: &RenderedPrompt,
-        _params: &NarratorParams,
+        params: &NarratorParams,
     ) -> Result<String> {
         let key = std::env::var(&self.api_key_env).unwrap_or_default();
         if key.is_empty() {
@@ -173,7 +207,12 @@ impl NarratorAiBackend for AnthropicNarrator {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()?;
-        let body = serde_json::json!({"model": self.model, "max_tokens": 200, "messages": [{"role": "user", "content": prompt.text}]});
+        let body = serde_json::json!({
+            "model": selected_model(&self.model, params),
+            "max_tokens": params.max_tokens,
+            "temperature": params.temperature,
+            "messages": [{"role": "user", "content": prompt.text}],
+        });
         let resp = client
             .post("https://api.anthropic.com/v1/messages")
             .header("x-api-key", key)
@@ -226,14 +265,7 @@ pub fn handle_narrate(
     }
     // Dispatch to the configured LLM backend (ADR-126). Secrets stay in
     // `api_key_env` variables and are never logged.
-    let backend: Box<dyn NarratorAiBackend> = match cfg.backend.as_str() {
-        "openai" => Box::new(OpenAiNarrator::new(cfg)),
-        "ollama_local" => Box::new(OllamaLocalNarrator::new(cfg)),
-        "anthropic" => Box::new(AnthropicNarrator::new(cfg)),
-        other => {
-            bail!("unknown narrator backend '{other}' (expected openai | ollama_local | anthropic)")
-        }
-    };
+    let backend = build_narrator_backend(cfg)?;
     let params = NarratorParams {
         language: cfg.language.clone(),
         style: parse_narrator_style(&cfg.style),

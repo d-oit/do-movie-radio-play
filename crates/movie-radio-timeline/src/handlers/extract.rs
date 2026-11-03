@@ -107,5 +107,6 @@ pub fn handle_bench(
 
 pub fn handle_gen_fixtures(output_dir: std::path::PathBuf) -> Result<()> {
     synthetic::generate_suite(&output_dir)?;
+    movie_radio_render::mastering::generate_fixtures(&output_dir.join("mastering"))?;
     Ok(())
 }

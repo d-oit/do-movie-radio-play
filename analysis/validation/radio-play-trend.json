@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "points": [
+    {
+      "run": "2026-11-03",
+      "recorded_at": "2026-11-03T07:46:51+00:00",
+      "entry_count": 9,
+      "pending": [],
+      "notes": [],
+      "entries": [
+        {
+          "id": "synthetic_alternating",
+          "cohort": "synthetic",
+          "language": "und",
+          "vad_engine": null,
+          "cue_source": "detector_only",
+          "overlap_ratio": 1.0,
+          "non_voice_precision": 0.0,
+          "non_voice_recall": 0.0
+        },
+        {
+          "id": "synthetic_speech_music_like",
+          "cohort": "synthetic",
+          "language": "und",
+          "vad_engine": null,
+          "cue_source": "detector_only",
+          "overlap_ratio": 1.0,
+          "non_voice_precision": 0.0,
+          "non_voice_recall": 0.0
+        },
+        {
+          "id": "elephants_dream_2006_de_radio",
+          "cohort": "modern",
+          "language": "de",
+          "vad_engine": "silero",
+          "cue_source": "detector_only",
+          "overlap_ratio": 0.8975233,
+          "non_voice_precision": 0.125,
+          "non_voice_recall": 0.012820513
+        },
+        {
+          "id": "elephants_dream_2006_es_radio",
+          "cohort": "modern",
+          "language": "es",
+          "vad_engine": "silero",
+          "cue_source": "detector_only",
+          "overlap_ratio": 0.8975233,
+          "non_voice_precision": 0.125,
+          "non_voice_recall": 0.012820513
+        },
+        {
+          "id": "tos-en-holdout",
+          "cohort": "modern",
+          "language": "en",
+          "vad_engine": "silero",
+          "cue_source": "detector_only",
+          "overlap_ratio": 0.90321606,
+          "non_voice_precision": 0.0,
+          "non_voice_recall": 0.0
+        },
+        {
+          "id": "tos-de-holdout",
+          "cohort": "modern",
+          "language": "de",
+          "vad_engine": "silero",
+          "cue_source": "detector_only",
+          "overlap_ratio": 0.90321606,
+          "non_voice_precision": 0.0,
+          "non_voice_recall": 0.0
+        },
+        {
+          "id": "sintelholdoutentry",
+          "cohort": "modern",
+          "language": "en",
+          "vad_engine": "silero",
+          "cue_source": "detector_only",
+          "overlap_ratio": 0.95207506,
+          "non_voice_precision": 0.16666667,
+          "non_voice_recall": 0.037037037
+        },
+        {
+          "id": "plan9-1959-en-holdout",
+          "cohort": "legacy",
+          "language": "en",
+          "vad_engine": "silero",
+          "cue_source": "detector_only",
+          "overlap_ratio": 0.80766076,
+          "non_voice_precision": 0.08888889,
+          "non_voice_recall": 0.010204081
+        },
+        {
+          "id": "charade-1963-fr-holdout",
+          "cohort": "legacy",
+          "language": "fr",
+          "vad_engine": "silero",
+          "cue_source": "detector_only",
+          "overlap_ratio": 0.7983468,
+          "non_voice_precision": 0.039215688,
+          "non_voice_recall": 0.0014695077
+        }
+      ]
+    }
+  ]
+}

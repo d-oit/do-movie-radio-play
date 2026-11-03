@@ -32,7 +32,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 | `crates/movie-radio-goap/` | GOAP planner, actions, orchestrator, gaps, narrate, assemble |
 | `crates/movie-radio-learning/` | Calibration, adaptive thresholds, libsql database |
 | `crates/movie-radio-verification/` | Spectral verification, fingerprinting, extractor |
-| `crates/movie-radio-render/` | Audio mixing, AGC, spatial panning, reverb |
+| `crates/movie-radio-render/` | Audio mixing, AGC, spatial panning, reverb, mastering profiles/loudness/true-peak reports |
 | `crates/movie-radio-io/` | JSON, EDL, VTT, WAV I/O utilities |
 | `crates/movie-radio-validation/` | Validation, comparison, SRT parsing, synthetic fixtures |
 | `crates/movie-radio-timeline/` | Binary crate (CLI, handlers, config) |

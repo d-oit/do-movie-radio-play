@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+"""Build the consolidated radio-play readiness report.
+
+The report keeps two scoring paths apart on purpose:
+
+* ``detector_only`` - the VAD timeline scored against truth, no cues.
+* ``cue_assisted`` - the shipped path (detector + subtitle/Whisper cues, cue
+  padding, gap subtraction and narration placement), read from a cue-path sweep.
+
+Pooled cohort averages are reported next to the worst entry so a single failing
+source can never hide behind a healthy mean.
+"""
+
 import argparse
 import json
 import math
@@ -44,10 +56,105 @@ def wilson_lower_bound(p: float, n: int, z: float = 1.96) -> float:
 
 def cohort_for_media(media_path: str) -> str:
     normalized = media_path.lower()
-    legacy_markers = ["the_hole_1962", "windy_day_1967"]
+    legacy_markers = ["the_hole_1962", "windy_day_1967", "plan9_1959", "charade_1963"]
     return (
         "legacy" if any(marker in normalized for marker in legacy_markers) else "modern"
     )
+
+
+def load_manifest_metadata(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    metadata = {}
+    for entry in payload.get("entries", []):
+        entry_id = entry.get("id")
+        if not isinstance(entry_id, str):
+            continue
+        metadata[entry_id] = {
+            "cohort": entry.get("cohort"),
+            "language": entry.get("language"),
+            "vad_engine": entry.get("vad_engine"),
+            "cue_source": entry.get("cue_source", "detector_only"),
+            "truth_source": entry.get("truth_source"),
+        }
+    return metadata
+
+
+def entry_metadata(result: dict, manifest: dict) -> dict:
+    entry_id = result.get("id", "unknown")
+    media = str(result.get("input_media") or entry_id)
+    declared = manifest.get(entry_id, {})
+    return {
+        "cohort": result.get("cohort")
+        or declared.get("cohort")
+        or cohort_for_media(media),
+        "language": result.get("language") or declared.get("language") or "und",
+        "vad_engine": result.get("vad_engine") or declared.get("vad_engine") or "unknown",
+        "cue_source": result.get("cue_source")
+        or declared.get("cue_source")
+        or "detector_only",
+        "truth_source": result.get("truth_source")
+        or declared.get("truth_source")
+        or "unknown",
+    }
+
+
+def avg(rows: list[dict], key: str) -> float:
+    if not rows:
+        return 0.0
+    return sum(float(r[key]) for r in rows) / len(rows)
+
+
+def cohort_summary(rows: list[dict]) -> dict:
+    worst = min(rows, key=lambda r: r["overlap_ratio"]) if rows else None
+    return {
+        "count": len(rows),
+        "languages": sorted({r["language"] for r in rows}),
+        "avg_overlap_ratio": avg(rows, "overlap_ratio"),
+        "avg_non_voice_precision": avg(rows, "non_voice_precision"),
+        "avg_non_voice_recall": avg(rows, "non_voice_recall"),
+        "avg_overlap_ratio_lb95": avg(rows, "overlap_ratio_lb95"),
+        "avg_non_voice_precision_lb95": avg(rows, "non_voice_precision_lb95"),
+        "avg_non_voice_recall_lb95": avg(rows, "non_voice_recall_lb95"),
+        "worst_entry": worst["id"] if worst else None,
+        "worst_overlap_ratio": worst["overlap_ratio"] if worst else 0.0,
+        "failing_entries": [r["id"] for r in rows if r.get("failing")],
+    }
+
+
+def cue_assisted_section(cue_summary_path: Path) -> dict:
+    if not cue_summary_path.exists():
+        return {"available": False, "reason": f"missing {cue_summary_path}"}
+    payload = json.loads(cue_summary_path.read_text(encoding="utf-8"))
+    rows = []
+    for item in payload.get("holdout", []):
+        metrics = item.get("metrics", {})
+        languages = sorted(
+            lang for lang in (item.get("per_language") or {}) if isinstance(lang, str)
+        )
+        rows.append(
+            {
+                "id": item.get("id", "unknown"),
+                "language": item.get("language")
+                or ("+".join(languages) if languages else "und"),
+                "cue_source": item.get("source", "unknown"),
+                "scoring_mode": metrics.get("scoring_mode", "detector_plus_cues"),
+                "dialogue_leak_ratio": metrics.get("dialogue_leak_ratio"),
+                "narratable_retained_ratio": metrics.get("narratable_retained_ratio"),
+                "cue_segment_precision": metrics.get("cue_segment_precision"),
+                "dialogue_segment_recall": metrics.get("dialogue_segment_recall"),
+                "missed_short_utterances": metrics.get("missed_short_utterances"),
+                "missed_shouted_utterances": metrics.get("missed_shouted_utterances"),
+            }
+        )
+    return {
+        "available": True,
+        "source": str(cue_summary_path),
+        "shipped_config": payload.get("shipped_config"),
+        "pending": payload.get("pending", []),
+        "entries": rows,
+    }
 
 
 def main() -> int:
@@ -58,6 +165,16 @@ def main() -> int:
         "--summary",
         default="analysis/validation/full-sweep-summary.json",
         help="Validation summary JSON",
+    )
+    parser.add_argument(
+        "--manifest",
+        default="testdata/validation/radio-play-manifest.json",
+        help="Validation manifest supplying cohort/language/engine metadata",
+    )
+    parser.add_argument(
+        "--cue-summary",
+        default="analysis/validation/cue-path-sweep.json",
+        help="Optional cue-path sweep JSON for the cue-assisted section",
     )
     parser.add_argument("--holdout-tier", default="C", help="Holdout tier")
     parser.add_argument(
@@ -90,6 +207,7 @@ def main() -> int:
         raise FileNotFoundError(f"missing summary file: {summary_path}")
 
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    manifest = load_manifest_metadata(Path(args.manifest))
     holdout_tier = args.holdout_tier.upper()
     results = summary.get("results", [])
     holdout = [r for r in results if str(r.get("tier", "")).upper() == holdout_tier]
@@ -99,17 +217,20 @@ def main() -> int:
 
     if not holdout:
         print(f"WARN: no holdout entries found for tier={holdout_tier}", file=sys.stderr)
-        threshold_failures.append(f"HOLDING_TIER_{holdout_tier}: missing (all entries skipped or manifest empty)")
+        threshold_failures.append(
+            f"HOLDING_TIER_{holdout_tier}: missing (all entries skipped or manifest empty)"
+        )
         readiness_pass = False
 
     lb95_failures = []
     failure_rows = []
-    cohort_rows = {"modern": [], "legacy": []}
+    cohort_rows: dict[str, list[dict]] = {}
 
     for item in holdout:
         metrics = item.get("metrics", {})
         entry_id = item.get("id", "unknown")
         media = str(item.get("input_media") or entry_id)
+        meta = entry_metadata(item, manifest)
 
         precision = metric_value(metrics, "non_voice_precision")
         recall = metric_value(metrics, "non_voice_recall")
@@ -131,7 +252,11 @@ def main() -> int:
             "id": entry_id,
             "media": media,
             "tier": item.get("tier", "unknown"),
-            "cohort": cohort_for_media(media),
+            "cohort": meta["cohort"],
+            "language": meta["language"],
+            "vad_engine": meta["vad_engine"],
+            "cue_source": meta["cue_source"],
+            "truth_source": meta["truth_source"],
             "non_voice_precision": precision,
             "non_voice_recall": recall,
             "overlap_ratio": overlap,
@@ -170,42 +295,32 @@ def main() -> int:
                 f"{entry_id}: overlap_lb95={overlap_lb95:.4f} < {args.min_lb95:.4f}"
             )
 
-        if (
+        row["failing"] = (
             precision < args.min_non_voice_precision
             or recall < args.min_non_voice_recall
             or overlap < args.min_overlap
             or precision_lb95 < args.min_lb95
             or recall_lb95 < args.min_lb95
             or overlap_lb95 < args.min_lb95
-        ):
+        )
+        if row["failing"]:
             failure_rows.append(row)
 
-        cohort_rows[row["cohort"]].append(row)
+        cohort_rows.setdefault(row["cohort"], []).append(row)
 
-    def avg(rows: list[dict], key: str) -> float:
-        if not rows:
-            return 0.0
-        return sum(float(r[key]) for r in rows) / len(rows)
-
-    cohorts = {
-        name: {
-            "count": len(rows),
-            "avg_overlap_ratio": avg(rows, "overlap_ratio"),
-            "avg_non_voice_precision": avg(rows, "non_voice_precision"),
-            "avg_non_voice_recall": avg(rows, "non_voice_recall"),
-            "avg_overlap_ratio_lb95": avg(rows, "overlap_ratio_lb95"),
-            "avg_non_voice_precision_lb95": avg(rows, "non_voice_precision_lb95"),
-            "avg_non_voice_recall_lb95": avg(rows, "non_voice_recall_lb95"),
-        }
-        for name, rows in cohort_rows.items()
-    }
+    cohorts = {name: cohort_summary(rows) for name, rows in cohort_rows.items()}
+    for name in ("modern", "legacy"):
+        cohorts.setdefault(name, cohort_summary([]))
 
     threshold_gate_pass = (len(threshold_failures) == 0) if holdout else False
     lb95_gate_pass = (len(lb95_failures) == 0) if holdout else False
     readiness_pass = readiness_pass and threshold_gate_pass and lb95_gate_pass
 
+    cue_assisted = cue_assisted_section(Path(args.cue_summary))
+
     report = {
         "summary": str(summary_path),
+        "manifest": str(args.manifest),
         "holdout_tier": holdout_tier,
         "thresholds": {
             "min_non_voice_precision": args.min_non_voice_precision,
@@ -219,7 +334,13 @@ def main() -> int:
         "threshold_failures": threshold_failures,
         "lb95_failures": lb95_failures,
         "cohort_summary": cohorts,
+        "detector_only": {
+            "entries": [row for rows in cohort_rows.values() for row in rows],
+            "cohort_summary": cohorts,
+        },
+        "cue_assisted": cue_assisted,
         "failing_entries": failure_rows,
+        "pending": summary.get("pending", []),
     }
 
     output_json = Path(args.output_json)
@@ -230,28 +351,72 @@ def main() -> int:
         "# Latest Radio-Play Readiness Report",
         "",
         f"- Source summary: `{summary_path}`",
+        f"- Manifest: `{args.manifest}`",
         f"- Holdout tier: `{holdout_tier}`",
         f"- Readiness pass: `{readiness_pass}`",
         f"- Threshold gate pass: `{threshold_gate_pass}`",
         f"- LB95 gate pass: `{lb95_gate_pass}`",
         "",
-        "## Cohort Summary",
+        "## Detector-Only Cohort Summary",
     ]
-    for cohort_name in ["modern", "legacy"]:
+    for cohort_name in ("modern", "legacy"):
         c = cohorts[cohort_name]
         lines.append(
-            f"- **{cohort_name}**: count={c['count']}, "
+            f"- **{cohort_name}**: count={c['count']}, languages={','.join(c['languages']) or 'none'}, "
             f"precision={c['avg_non_voice_precision']:.4f}, recall={c['avg_non_voice_recall']:.4f}, "
             f"overlap={c['avg_overlap_ratio']:.4f}, "
             f"precision_lb95={c['avg_non_voice_precision_lb95']:.4f}, "
             f"recall_lb95={c['avg_non_voice_recall_lb95']:.4f}, "
-            f"overlap_lb95={c['avg_overlap_ratio_lb95']:.4f}"
+            f"overlap_lb95={c['avg_overlap_ratio_lb95']:.4f}, "
+            f"worst={c['worst_entry'] or 'none'} ({c['worst_overlap_ratio']:.4f})"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Detector-Only Per-Film",
+            "",
+            "| Entry | Cohort | Lang | VAD | Precision | Recall | Overlap | Overlap LB95 |",
+            "|---|---|---|---|---:|---:|---:|---:|",
+        ]
+    )
+    for row in report["detector_only"]["entries"]:
+        lines.append(
+            f"| `{row['id']}` | {row['cohort']} | {row['language']} | {row['vad_engine']} | "
+            f"{row['non_voice_precision']:.4f} | {row['non_voice_recall']:.4f} | "
+            f"{row['overlap_ratio']:.4f} | {row['overlap_ratio_lb95']:.4f} |"
         )
 
     lines.extend(["", "## Threshold Failures"])
     lines.extend([f"- {f}" for f in threshold_failures] or ["- none"])
     lines.extend(["", "## LB95 Failures"])
     lines.extend([f"- {f}" for f in lb95_failures] or ["- none"])
+
+    lines.extend(["", "## Cue-Assisted (Shipped Path)"])
+    if cue_assisted.get("available"):
+        lines.append(f"- Source: `{cue_assisted['source']}`")
+        for row in cue_assisted["entries"]:
+            lines.append(
+                f"- `{row['id']}` ({row['language']}, {row['cue_source']}, {row['scoring_mode']}): "
+                f"dialogue_leak={row['dialogue_leak_ratio']}, "
+                f"narratable_retained={row['narratable_retained_ratio']}, "
+                f"missed_short={row['missed_short_utterances']}, "
+                f"missed_shouted={row['missed_shouted_utterances']}"
+            )
+        if cue_assisted.get("pending"):
+            lines.append(
+                f"- Pending assets: {', '.join(str(p.get('id')) for p in cue_assisted['pending'])}"
+            )
+    else:
+        lines.append(f"- Not available: {cue_assisted.get('reason')}")
+
+    if report["pending"]:
+        lines.extend(["", "## Pending Sources"])
+        for item in report["pending"]:
+            lines.append(
+                f"- `{item.get('id')}` ({item.get('cohort')}, {item.get('language')}): "
+                f"{item.get('status')} - {item.get('reason') or 'no reason recorded'}"
+            )
 
     output_md = Path(args.output_md)
     output_md.parent.mkdir(parents=True, exist_ok=True)

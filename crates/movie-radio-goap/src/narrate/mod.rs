@@ -7,6 +7,8 @@ use movie_radio_voice::Emotion;
 mod lang;
 use lang::Phrases;
 
+pub mod llm;
+pub mod stage;
 pub mod visual;
 
 /// Where a narration line's content came from. Serialized into scripts and the
@@ -23,6 +25,17 @@ pub enum NarrationEvidence {
         model: String,
         frame_refs: Vec<String>,
         confidence: f32,
+    },
+    /// Narration composed by the configured LLM backend (#412) from the
+    /// evidence ids it was allowed to cite.
+    Generated {
+        provider: String,
+        model: String,
+        evidence_ids: Vec<String>,
+        #[serde(default)]
+        uncertainty: Option<String>,
+        #[serde(default)]
+        pronunciation: Vec<llm::Pronunciation>,
     },
 }
 
@@ -380,7 +393,7 @@ fn reject_banned_filler_for(text: String, p: &Phrases) -> String {
 }
 
 #[derive(Debug, Default)]
-struct GapContext {
+pub(crate) struct GapContext {
     self_tags: Vec<String>,
     before_tags: Vec<String>,
     after_tags: Vec<String>,
@@ -392,6 +405,9 @@ struct GapContext {
     variant: usize,
     trend: Option<GapTrend>,
 }
+
+#[cfg(test)]
+mod llm_tests;
 
 #[cfg(test)]
 mod tests;

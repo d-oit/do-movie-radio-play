@@ -1,0 +1,22 @@
+{
+  "profile": "radio-play-default",
+  "tolerance_ms": 400,
+  "expected_segments": 1361,
+  "predicted_segments": 51,
+  "overlap_ratio": 0.7983468,
+  "boundary_error_ms": 11510.461,
+  "speech_precision": 0.0,
+  "speech_recall": 0.0,
+  "non_voice_precision": 0.039215688,
+  "non_voice_recall": 0.0014695077,
+  "speech_time_precision": 0.8140623,
+  "speech_time_recall": 0.9246391,
+  "non_voice_time_precision": 0.8827247,
+  "non_voice_time_recall": 0.72869253,
+  "speech_overlap_ms": 3537611,
+  "speech_predicted_ms": 4345627,
+  "speech_expected_ms": 3825937,
+  "non_voice_overlap_ms": 2170214,
+  "non_voice_predicted_ms": 2458540,
+  "non_voice_expected_ms": 2978230
+}

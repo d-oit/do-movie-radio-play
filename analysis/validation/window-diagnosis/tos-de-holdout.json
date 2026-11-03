@@ -1,0 +1,575 @@
+{
+  "entry_id": "tos-de-holdout",
+  "timeline": "testdata/raw/tears_of_steel_2012.mov",
+  "truth": "testdata/raw/tears_of_steel_2012.de.srt",
+  "total_ms": 734167,
+  "window_ms": 100,
+  "false_positive_ms": 47600,
+  "false_negative_ms": 66367,
+  "example_count": 76,
+  "examples": [
+    {
+      "kind": "false_negative",
+      "start_ms": 0,
+      "end_ms": 9700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 9700
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 23000,
+      "end_ms": 24500,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy"
+      ],
+      "truth_text": "Du bist ein Vollidiot, Thom.",
+      "duration_ms": 1500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 24700,
+      "end_ms": 25000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 30500,
+      "end_ms": 30800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 34000,
+      "end_ms": 34500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 36000,
+      "end_ms": 37000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 42000,
+      "end_ms": 42200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 45000,
+      "end_ms": 50000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 5000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 53500,
+      "end_ms": 61000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 7500
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 62200,
+      "end_ms": 63000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy",
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Das ist ziemlich irre.",
+      "duration_ms": 800
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 117000,
+      "end_ms": 119000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy",
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Solltest du nicht da unten sein?",
+      "duration_ms": 2000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 131000,
+      "end_ms": 131600,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy",
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Ich habe euch gestern Nacht reden h\u00f6ren.",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 133000,
+      "end_ms": 136000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 3000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 137400,
+      "end_ms": 138000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy",
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Es ist nicht meine Schuld, wei\u00dft du.",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 191000,
+      "end_ms": 192000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy",
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Bist du bereit?",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 195000,
+      "end_ms": 197000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 2000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 198000,
+      "end_ms": 199000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 201000,
+      "end_ms": 201500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 203000,
+      "end_ms": 203500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 206500,
+      "end_ms": 208000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 212000,
+      "end_ms": 213000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 217000,
+      "end_ms": 223000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 6000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 224000,
+      "end_ms": 224500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 225700,
+      "end_ms": 226000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 226000,
+      "end_ms": 227000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Thom!",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 231000,
+      "end_ms": 233000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Da ist sie.",
+      "duration_ms": 2000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 233500,
+      "end_ms": 234500,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Also:",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 235000,
+      "end_ms": 236000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Du liebst sie.",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 237000,
+      "end_ms": 237700,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Sie ist dein Ein und Alles.",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 238500,
+      "end_ms": 240000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 241000,
+      "end_ms": 241500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 244500,
+      "end_ms": 245000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 247600,
+      "end_ms": 248000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy",
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Erinnere sie daran was Liebe ist.",
+      "duration_ms": 400
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 292000,
+      "end_ms": 295000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy",
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "...und, Action!",
+      "duration_ms": 3000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 296500,
+      "end_ms": 297500,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy",
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "\u00dcberschreiben von Speicher l\u00e4uft!",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 298000,
+      "end_ms": 299000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 301000,
+      "end_ms": 302500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1500
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 304200,
+      "end_ms": 305000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Oh - Entschuldigung.",
+      "duration_ms": 800
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 316000,
+      "end_ms": 316400,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Schau Celia.",
+      "duration_ms": 400
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 317000,
+      "end_ms": 318000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 320000,
+      "end_ms": 321000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 323000,
+      "end_ms": 325000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 2000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 327800,
+      "end_ms": 328000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy",
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "...und ich will einfach nur superflott durch das Weltall d\u00fcsen.",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 339000,
+      "end_ms": 339600,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "impact_heavy",
+        "music_bed",
+        "music_like"
+      ],
+      "truth_text": "Okay, sie kommen. Noch zwei Minuten!",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 341000,
+      "end_ms": 343000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 2000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 344000,
+      "end_ms": 345000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 346000,
+      "end_ms": 347000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 350000,
+      "end_ms": 356000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 6000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 359000,
+      "end_ms": 359500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 363000,
+      "end_ms": 365000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 2000
+    }
+  ]
+}

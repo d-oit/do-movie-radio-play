@@ -15,9 +15,9 @@ pub mod voice_clone;
 pub mod voice_types;
 
 pub use app_config::{
-    AppConfig, CharacterConfig, NarratorAnthropicConfig, NarratorConfig, NarratorOllamaConfig,
-    NarratorOpenAiConfig, OutputConfig, PipelineConfig, ProvidersConfig, VisualConfig,
-    VoiceCloneConfig, VoiceCloneRoutingConfig, VoiceConfig,
+    AppConfig, CharacterConfig, NarratorAnthropicConfig, NarratorConfig, NarratorLlmConfig,
+    NarratorOllamaConfig, NarratorOpenAiConfig, OutputConfig, PipelineConfig, ProvidersConfig,
+    VisualConfig, VoiceCloneConfig, VoiceCloneRoutingConfig, VoiceConfig,
 };
 pub use compute::{ComputeEndpoint, ExecutionLocation};
 pub use config::{

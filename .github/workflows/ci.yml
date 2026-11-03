@@ -355,6 +355,8 @@ jobs:
         run: python3 scripts/test_cue_gate.py
       - name: Cue-path scoring semantics
         run: python3 scripts/test_cue_path_metrics.py
+      - name: Holdout reporting semantics
+        run: python3 scripts/test_radio_play_reporting.py
       - name: Deterministic cue-path regression gate
         run: |
           python3 scripts/evaluate_cue_path.py fixtures \

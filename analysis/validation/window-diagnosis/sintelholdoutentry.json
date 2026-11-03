@@ -1,0 +1,334 @@
+{
+  "entry_id": "sintelholdoutentry",
+  "timeline": "testdata/raw/Sintel.2010.720p.mkv",
+  "truth": "testdata/raw/sintel_2010.en.srt",
+  "total_ms": 888032,
+  "window_ms": 100,
+  "false_positive_ms": 29300,
+  "false_negative_ms": 47300,
+  "example_count": 30,
+  "examples": [
+    {
+      "kind": "false_negative",
+      "start_ms": 107000,
+      "end_ms": 107200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 109200,
+      "end_ms": 111800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "This blade has a dark past.",
+      "duration_ms": 2600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 115800,
+      "end_ms": 118000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 2200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 121400,
+      "end_ms": 121700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "You're a fool for traveling alone,\nso completely unprepared.",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 124800,
+      "end_ms": 125200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 400
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 126300,
+      "end_ms": 127500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 129000,
+      "end_ms": 129400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 400
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 133800,
+      "end_ms": 135000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 137500,
+      "end_ms": 138000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 142200,
+      "end_ms": 143400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 145000,
+      "end_ms": 148800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 3800
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 151700,
+      "end_ms": 152900,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "A dangerous quest for a lone hunter.",
+      "duration_ms": 1200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 155900,
+      "end_ms": 159800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 3900
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 206400,
+      "end_ms": 207200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "",
+      "duration_ms": 800
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 210500,
+      "end_ms": 210700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 211900,
+      "end_ms": 213500,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed"
+      ],
+      "truth_text": "Hey, sit still.",
+      "duration_ms": 1600
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 228200,
+      "end_ms": 232200,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed"
+      ],
+      "truth_text": "Good night, Scales.",
+      "duration_ms": 4000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 250300,
+      "end_ms": 253800,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed"
+      ],
+      "truth_text": "Get him, Scales! Come on!",
+      "duration_ms": 3500
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 265200,
+      "end_ms": 268200,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed"
+      ],
+      "truth_text": "Scales?",
+      "duration_ms": 3000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 304000,
+      "end_ms": 307500,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed"
+      ],
+      "truth_text": "Yeah! Come on!",
+      "duration_ms": 3500
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 338700,
+      "end_ms": 342000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed"
+      ],
+      "truth_text": "Scales!",
+      "duration_ms": 3300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 447500,
+      "end_ms": 452800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 5300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 456500,
+      "end_ms": 457800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 460500,
+      "end_ms": 460800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 461500,
+      "end_ms": 464000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed"
+      ],
+      "truth_text": "You are closer than you know.",
+      "duration_ms": 2500
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 557600,
+      "end_ms": 559500,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed"
+      ],
+      "truth_text": "Scales!",
+      "duration_ms": 1900
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 621600,
+      "end_ms": 624000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed"
+      ],
+      "truth_text": "Scales?",
+      "duration_ms": 2400
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 626200,
+      "end_ms": 629800,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "music_bed"
+      ],
+      "truth_text": "Scales...",
+      "duration_ms": 3600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 747800,
+      "end_ms": 755900,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 8100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 781800,
+      "end_ms": 794000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 12200
+    }
+  ]
+}

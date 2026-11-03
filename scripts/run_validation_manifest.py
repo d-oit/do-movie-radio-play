@@ -76,6 +76,11 @@ def run_entry(entry: dict) -> Optional[dict]:
     return {
         "id": entry_id,
         "tier": entry["tier"],
+        "cohort": entry.get("cohort"),
+        "language": entry.get("language"),
+        "truth_source": entry.get("truth_source"),
+        "vad_engine": entry.get("vad_engine"),
+        "cue_source": entry.get("cue_source", "detector_only"),
         "input_media": str(input_media),
         "truth_type": truth_type,
         "truth_path": str(truth_path),
@@ -133,8 +138,22 @@ def main() -> int:
         raise ValueError(f"no entries matched tiers: {', '.join(sorted(selected))}")
 
     results = []
+    pending = []
     started = time.time()
     for entry in selected_entries:
+        # Declared-but-unavailable sources are reported, never silently dropped.
+        if str(entry.get("status", "ready")).lower() != "ready":
+            pending.append(
+                {
+                    "id": entry.get("id"),
+                    "tier": entry.get("tier"),
+                    "cohort": entry.get("cohort"),
+                    "language": entry.get("language"),
+                    "status": entry.get("status"),
+                    "reason": entry.get("status_reason"),
+                }
+            )
+            continue
         res = run_entry(entry)
         if res is not None:
             results.append(res)
@@ -143,6 +162,8 @@ def main() -> int:
         "manifest": str(manifest_path),
         "selected_tiers": sorted(selected),
         "entry_count": len(results),
+        "pending_count": len(pending),
+        "pending": pending,
         "elapsed_ms": int((time.time() - started) * 1000),
         "results": results,
     }

@@ -296,6 +296,9 @@ pub enum Commands {
         /// Do not derive dialogue cues (embedded track / speech-to-text) when no subtitles are given.
         #[arg(long)]
         no_auto_cues: bool,
+        /// Mastering profile for the deliverable (ebu_r128, podcast, radio, atsc_a85).
+        #[arg(long)]
+        mastering_profile: Option<String>,
     },
     /// Preview a WAV file by streaming to system audio output.
     /// Useful for quick QA without writing intermediate files.
@@ -331,6 +334,28 @@ pub enum Commands {
         config: Option<PathBuf>,
         #[arg(long)]
         template: Option<PathBuf>,
+    },
+    /// Measure an existing output against a mastering profile, or master it.
+    Mastering {
+        input: PathBuf,
+        /// Selectable profile: ebu_r128, podcast, radio, atsc_a85.
+        #[arg(long, default_value = "ebu_r128")]
+        profile: String,
+        /// Override the profile's integrated loudness target (LUFS).
+        #[arg(long)]
+        target_lufs: Option<f32>,
+        /// Override the profile's true-peak ceiling (dBTP).
+        #[arg(long)]
+        max_true_peak: Option<f32>,
+        /// Write the machine-readable report here.
+        #[arg(long)]
+        json: Option<PathBuf>,
+        /// Write the human-readable HTML summary here.
+        #[arg(long)]
+        html: Option<PathBuf>,
+        /// Normalize and limit to the profile, writing the mastered file here.
+        #[arg(long)]
+        output: Option<PathBuf>,
     },
     /// Produce the complete radio-play deliverable: decode, speech analysis,
     /// gap identification, narration planning, voice synthesis and assembly,
@@ -371,6 +396,9 @@ pub enum Commands {
         /// Freeze learning adaptations.
         #[arg(long)]
         no_learn: bool,
+        /// Mastering profile for the deliverable (ebu_r128, podcast, radio, atsc_a85).
+        #[arg(long)]
+        mastering_profile: Option<String>,
     },
 }
 

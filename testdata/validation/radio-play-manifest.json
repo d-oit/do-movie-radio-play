@@ -4,12 +4,14 @@
     {
       "id": "synthetic_alternating",
       "tier": "A",
+      "cohort": "synthetic",
       "input_media": "testdata/generated/alternating.wav",
       "truth_type": "truth_json",
       "truth_path": "testdata/generated/alternating.truth.json",
       "profile": "synthetic",
       "config_path": "config/profiles/all-gaps.json",
       "output_report": "testdata/validation/validate_against_synthetic.json",
+      "cue_source": "detector_only",
       "provenance": {
         "source_url": "generated://movie-radio-validation/synthetic",
         "license": "synthetic",
@@ -24,8 +26,33 @@
       }
     },
     {
+      "id": "synthetic_speech_music_like",
+      "tier": "A",
+      "cohort": "synthetic",
+      "input_media": "testdata/generated/speech_music_like.wav",
+      "truth_type": "truth_json",
+      "truth_path": "testdata/generated/speech_music_like.truth.json",
+      "profile": "synthetic",
+      "config_path": "config/profiles/all-gaps.json",
+      "output_report": "testdata/validation/validate_speech_music_like.json",
+      "cue_source": "detector_only",
+      "provenance": {
+        "source_url": "generated://movie-radio-validation/synthetic",
+        "license": "synthetic",
+        "license_status": "synthetic",
+        "retrieved": "2026-11-03"
+      },
+      "truth_source": "synthetic",
+      "language": "und",
+      "expected_output": {
+        "max_dialogue_leak_ratio": 0.0,
+        "min_narratable_retained_ms": 0
+      }
+    },
+    {
       "id": "elephants_dream_2006_de_radio",
       "tier": "A",
+      "cohort": "modern",
       "input_media": "testdata/raw/elephants_dream_2006.mp4",
       "truth_type": "subtitles",
       "truth_path": "testdata/raw/elephants_dream_2006.de.srt",
@@ -33,6 +60,7 @@
       "profile": "radio-play-default",
       "output_report": "testdata/validation/elephants_dream_2006_de_radio_validation.json",
       "vad_engine": "silero",
+      "cue_source": "detector_only",
       "provenance": {
         "source_url": "https://studio.blender.org/films/elephants-dream/",
         "license": "CC BY 3.0",
@@ -49,6 +77,7 @@
     {
       "id": "elephants_dream_2006_es_radio",
       "tier": "B",
+      "cohort": "modern",
       "input_media": "testdata/raw/elephants_dream_2006.mp4",
       "truth_type": "subtitles",
       "truth_path": "testdata/raw/elephants_dream_2006.es.srt",
@@ -56,6 +85,7 @@
       "profile": "radio-play-default",
       "output_report": "testdata/validation/elephants_dream_2006_es_radio_validation.json",
       "vad_engine": "silero",
+      "cue_source": "detector_only",
       "provenance": {
         "source_url": "https://studio.blender.org/films/elephants-dream/",
         "license": "CC BY 3.0",
@@ -72,6 +102,7 @@
     {
       "id": "tos-en-holdout",
       "tier": "C",
+      "cohort": "modern",
       "input_media": "testdata/raw/tears_of_steel_2012.mov",
       "truth_type": "subtitles",
       "truth_path": "testdata/raw/tears_of_steel_2012.en.srt",
@@ -79,6 +110,7 @@
       "profile": "radio-play-default",
       "output_report": "testdata/validation/tos_en_validation.json",
       "vad_engine": "silero",
+      "cue_source": "detector_only",
       "provenance": {
         "source_url": "https://studio.blender.org/films/tears-of-steel/",
         "license": "CC BY 3.0",
@@ -93,8 +125,34 @@
       }
     },
     {
+      "id": "tos-de-holdout",
+      "tier": "C",
+      "cohort": "modern",
+      "input_media": "testdata/raw/tears_of_steel_2012.mov",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/tears_of_steel_2012.de.srt",
+      "total_ms": 734167,
+      "profile": "radio-play-default",
+      "output_report": "testdata/validation/tos_de_validation.json",
+      "vad_engine": "silero",
+      "cue_source": "detector_only",
+      "provenance": {
+        "source_url": "https://studio.blender.org/films/tears-of-steel/",
+        "license": "CC BY 3.0",
+        "license_status": "cc_by",
+        "retrieved": "2026-11-02"
+      },
+      "truth_source": "authored_subtitles",
+      "language": "de",
+      "expected_output": {
+        "max_dialogue_leak_ratio": 0.05,
+        "min_narratable_retained_ms": 0
+      }
+    },
+    {
       "id": "sintelholdoutentry",
       "tier": "C",
+      "cohort": "modern",
       "input_media": "testdata/raw/Sintel.2010.720p.mkv",
       "truth_type": "subtitles",
       "truth_path": "testdata/raw/sintel_2010.en.srt",
@@ -102,6 +160,7 @@
       "profile": "radio-play-default",
       "vad_engine": "silero",
       "output_report": "testdata/validation/sintel_en_validation.json",
+      "cue_source": "detector_only",
       "provenance": {
         "source_url": "https://studio.blender.org/films/sintel/",
         "license": "CC BY 3.0",
@@ -110,6 +169,56 @@
       },
       "truth_source": "embedded_subtitles",
       "language": "en",
+      "expected_output": {
+        "max_dialogue_leak_ratio": 0.05,
+        "min_narratable_retained_ms": 0
+      }
+    },
+    {
+      "id": "plan9-1959-en-holdout",
+      "tier": "C",
+      "cohort": "legacy",
+      "input_media": "testdata/raw/plan9_1959.webm",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/plan9_1959.en.srt",
+      "total_ms": 4746645,
+      "profile": "radio-play-default",
+      "output_report": "testdata/validation/plan9_1959_en_validation.json",
+      "vad_engine": "silero",
+      "cue_source": "detector_only",
+      "provenance": {
+        "source_url": "https://commons.wikimedia.org/wiki/File:Plan_9_from_Outer_Space_(1959).webm",
+        "license": "Public domain (film); CC BY-SA 3.0 (Wikimedia timed text)",
+        "license_status": "public_domain",
+        "retrieved": "2026-11-03"
+      },
+      "truth_source": "authored_subtitles",
+      "language": "en",
+      "expected_output": {
+        "max_dialogue_leak_ratio": 0.05,
+        "min_narratable_retained_ms": 0
+      }
+    },
+    {
+      "id": "charade-1963-fr-holdout",
+      "tier": "C",
+      "cohort": "legacy",
+      "input_media": "testdata/raw/charade_1963.webm",
+      "truth_type": "subtitles",
+      "truth_path": "testdata/raw/charade_1963.fr.srt",
+      "total_ms": 6804167,
+      "profile": "radio-play-default",
+      "output_report": "testdata/validation/charade_1963_fr_validation.json",
+      "vad_engine": "silero",
+      "cue_source": "detector_only",
+      "provenance": {
+        "source_url": "https://commons.wikimedia.org/wiki/File:Charade_(1963).webm",
+        "license": "Public domain (film); CC BY-SA 3.0 (Wikimedia timed text)",
+        "license_status": "public_domain",
+        "retrieved": "2026-11-03"
+      },
+      "truth_source": "authored_subtitles",
+      "language": "fr",
       "expected_output": {
         "max_dialogue_leak_ratio": 0.05,
         "min_narratable_retained_ms": 0

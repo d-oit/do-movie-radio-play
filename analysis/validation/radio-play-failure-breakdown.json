@@ -1,19 +1,40 @@
 {
   "summary": "analysis/validation/radio-play-sweep-summary.json",
-  "entry_count": 5,
-  "failure_count": 5,
+  "entry_count": 9,
+  "failure_count": 9,
   "cohort_summary": {
     "modern": {
       "count": 5,
-      "avg_overlap_ratio": 0.9300675439999999,
-      "avg_non_voice_precision": 0.8667293600000001,
-      "avg_non_voice_recall": 0.92034246
+      "languages": [
+        "de",
+        "en",
+        "es"
+      ],
+      "avg_overlap_ratio": 0.910710756,
+      "avg_non_voice_precision": 0.9236389199999999,
+      "avg_non_voice_recall": 0.89814492,
+      "worst_entry": "elephants_dream_2006_de_radio"
     },
     "legacy": {
-      "count": 0,
-      "avg_overlap_ratio": 0.0,
-      "avg_non_voice_precision": 0.0,
-      "avg_non_voice_recall": 0.0
+      "count": 2,
+      "languages": [
+        "en",
+        "fr"
+      ],
+      "avg_overlap_ratio": 0.8030037800000001,
+      "avg_non_voice_precision": 0.8943792,
+      "avg_non_voice_recall": 0.72862494,
+      "worst_entry": "charade-1963-fr-holdout"
+    },
+    "synthetic": {
+      "count": 2,
+      "languages": [
+        "und"
+      ],
+      "avg_overlap_ratio": 1.0,
+      "avg_non_voice_precision": 0.5666666499999999,
+      "avg_non_voice_recall": 1.0,
+      "worst_entry": "synthetic_alternating"
     }
   },
   "failures": [
@@ -21,9 +42,22 @@
       "id": "synthetic_alternating",
       "tier": "A",
       "media": "testdata/generated/alternating.wav",
-      "cohort": "modern",
+      "cohort": "synthetic",
+      "language": "und",
+      "vad_engine": "unknown",
       "overlap_ratio": 1.0,
       "non_voice_precision": 0.6333333,
+      "non_voice_recall": 1.0
+    },
+    {
+      "id": "synthetic_speech_music_like",
+      "tier": "A",
+      "media": "testdata/generated/speech_music_like.wav",
+      "cohort": "synthetic",
+      "language": "und",
+      "vad_engine": "unknown",
+      "overlap_ratio": 1.0,
+      "non_voice_precision": 0.5,
       "non_voice_recall": 1.0
     },
     {
@@ -31,6 +65,8 @@
       "tier": "A",
       "media": "testdata/raw/elephants_dream_2006.mp4",
       "cohort": "modern",
+      "language": "de",
+      "vad_engine": "silero",
       "overlap_ratio": 0.8975233,
       "non_voice_precision": 0.9096359,
       "non_voice_recall": 0.8857291
@@ -40,6 +76,8 @@
       "tier": "B",
       "media": "testdata/raw/elephants_dream_2006.mp4",
       "cohort": "modern",
+      "language": "es",
+      "vad_engine": "silero",
       "overlap_ratio": 0.8975233,
       "non_voice_precision": 0.9096359,
       "non_voice_recall": 0.8857291
@@ -49,6 +87,19 @@
       "tier": "C",
       "media": "testdata/raw/tears_of_steel_2012.mov",
       "cohort": "modern",
+      "language": "en",
+      "vad_engine": "silero",
+      "overlap_ratio": 0.90321606,
+      "non_voice_precision": 0.9178811,
+      "non_voice_recall": 0.8890123
+    },
+    {
+      "id": "tos-de-holdout",
+      "tier": "C",
+      "media": "testdata/raw/tears_of_steel_2012.mov",
+      "cohort": "modern",
+      "language": "de",
+      "vad_engine": "silero",
       "overlap_ratio": 0.90321606,
       "non_voice_precision": 0.9178811,
       "non_voice_recall": 0.8890123
@@ -58,9 +109,33 @@
       "tier": "C",
       "media": "testdata/raw/Sintel.2010.720p.mkv",
       "cohort": "modern",
+      "language": "en",
+      "vad_engine": "silero",
       "overlap_ratio": 0.95207506,
       "non_voice_precision": 0.9631606,
       "non_voice_recall": 0.9412418
+    },
+    {
+      "id": "plan9-1959-en-holdout",
+      "tier": "C",
+      "media": "testdata/raw/plan9_1959.webm",
+      "cohort": "legacy",
+      "language": "en",
+      "vad_engine": "silero",
+      "overlap_ratio": 0.80766076,
+      "non_voice_precision": 0.9060337,
+      "non_voice_recall": 0.72855735
+    },
+    {
+      "id": "charade-1963-fr-holdout",
+      "tier": "C",
+      "media": "testdata/raw/charade_1963.webm",
+      "cohort": "legacy",
+      "language": "fr",
+      "vad_engine": "silero",
+      "overlap_ratio": 0.7983468,
+      "non_voice_precision": 0.8827247,
+      "non_voice_recall": 0.72869253
     }
   ]
 }

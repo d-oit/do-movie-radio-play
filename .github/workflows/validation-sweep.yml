@@ -28,19 +28,22 @@ jobs:
           pip install onnxruntime
           echo "ORT_DYLIB_PATH=$(python3 -c 'import glob,os,onnxruntime as o;print(glob.glob(os.path.join(os.path.dirname(o.__file__),"capi","libonnxruntime.so*"))[0])')" >> "$GITHUB_ENV"
       - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
-      - run: chmod +x scripts/check_validation_coverage.py scripts/run_validation_manifest.py scripts/build_radio_play_failure_breakdown.py scripts/build_radio_play_readiness_report.py
+      - run: chmod +x scripts/check_validation_coverage.py scripts/run_validation_manifest.py scripts/build_radio_play_failure_breakdown.py scripts/build_radio_play_readiness_report.py scripts/build_radio_play_trend.py scripts/export_radio_play_window_diagnosis.py
       - run: python3 scripts/check_media_intake.py --input analysis/media/modern-multilang-intake.json --min-sub-langs 2 --strict-license
+      - run: python3 scripts/check_media_intake.py --input analysis/media/legacy-multilang-intake.json --min-sub-langs 2 --strict-license
       - run: python3 scripts/run_validation_manifest.py --manifest testdata/validation/radio-play-manifest.json --tier A --tier B --tier C --summary analysis/validation/radio-play-sweep-summary.json
-      - run: python3 scripts/check_validation_coverage.py --manifest testdata/validation/radio-play-manifest.json --tier A --tier B --tier C --require-provenance
+      - run: python3 scripts/check_validation_coverage.py --manifest testdata/validation/radio-play-manifest.json --tier A --tier B --tier C --require-provenance --require-cohorts --min-cohort-entries 2 --min-languages 2 --require-holdout-separation
       - run: |
           python3 scripts/build_radio_play_failure_breakdown.py \
             --summary analysis/validation/radio-play-sweep-summary.json \
+            --manifest testdata/validation/radio-play-manifest.json \
             --output-json analysis/validation/radio-play-failure-breakdown.json \
             --output-md analysis/learnings/latest-radio-play-failure-breakdown.md
       - name: 0.95 target report (aspirational, non-blocking, issue 363)
         run: |
           python3 scripts/build_radio_play_readiness_report.py \
             --summary analysis/validation/radio-play-sweep-summary.json \
+            --manifest testdata/validation/radio-play-manifest.json \
             --holdout-tier C \
             --min-non-voice-precision 0.95 \
             --min-non-voice-recall 0.95 \
@@ -48,6 +51,26 @@ jobs:
             --min-lb95 0.95 \
             --output-json analysis/validation/radio-play-readiness-report.json \
             --output-md analysis/learnings/latest-radio-play-readiness-report.md
+      - name: Per-window diagnosis for failing holdouts
+        run: |
+          python3 scripts/export_radio_play_window_diagnosis.py \
+            --readiness-report analysis/validation/radio-play-readiness-report.json \
+            --manifest testdata/validation/radio-play-manifest.json \
+            --output-dir analysis/validation/window-diagnosis
+      - name: Readiness report separation check
+        run: |
+          python3 scripts/check_validation_coverage.py \
+            --manifest testdata/validation/radio-play-manifest.json \
+            --tier A --tier B --tier C \
+            --require-cohorts --min-cohort-entries 2 --min-languages 2 \
+            --require-holdout-separation \
+            --readiness-report analysis/validation/radio-play-readiness-report.json
+      - name: Weekly trend artifact
+        run: |
+          python3 scripts/build_radio_play_trend.py \
+            --summary analysis/validation/radio-play-sweep-summary.json \
+            --history analysis/validation/radio-play-trend.json \
+            --output-md analysis/learnings/latest-radio-play-trend.md
       - name: Holdout ratchet (blocking regression floor)
         run: |
           python3 scripts/check_radio_play_readiness.py \
@@ -73,6 +96,16 @@ jobs:
           path: |
             analysis/validation/radio-play-readiness-report.json
             analysis/learnings/latest-radio-play-readiness-report.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: radio-play-trend
+          path: |
+            analysis/validation/radio-play-trend.json
+            analysis/learnings/latest-radio-play-trend.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: radio-play-window-diagnosis
+          path: analysis/validation/window-diagnosis/
 
   # Expensive model-based path: opt-in only, never on the weekly schedule.
   cue_path_eval:
@@ -99,8 +132,26 @@ jobs:
             --derive-cues \
             --model base \
             --model-revision ebe41f70d5b6dfa9166e2c581c45c9c0cfc57b66
+      - name: Detector-only holdout sweep (for the combined report)
+        run: |
+          python3 scripts/run_validation_manifest.py \
+            --manifest testdata/validation/radio-play-manifest.json \
+            --tier C \
+            --summary analysis/validation/radio-play-sweep-summary.json
+      - name: Combined detector-only and cue-assisted report
+        run: |
+          python3 scripts/build_radio_play_readiness_report.py \
+            --summary analysis/validation/radio-play-sweep-summary.json \
+            --manifest testdata/validation/radio-play-manifest.json \
+            --cue-summary analysis/validation/cue-path-sweep.json \
+            --holdout-tier C \
+            --output-json analysis/validation/radio-play-readiness-report.json \
+            --output-md analysis/learnings/latest-radio-play-readiness-report.md
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: cue-path-sweep
-          path: analysis/validation/cue-path-sweep.json
+          path: |
+            analysis/validation/cue-path-sweep.json
+            analysis/validation/radio-play-readiness-report.json
+            analysis/learnings/latest-radio-play-readiness-report.md

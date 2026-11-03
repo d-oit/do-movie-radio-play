@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "notes": "Legacy cohort (pre-2000) candidates. Films are public domain on Wikimedia Commons; timed text is community-authored CC BY-SA. Verify cue counts and spot-check timing before promoting a candidate to a tier C holdout.",
+  "candidates": [
+    {
+      "title": "Plan 9 from Outer Space (1959)",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Plan_9_from_Outer_Space_(1959).webm",
+      "catalog_url": "https://commons.wikimedia.org/wiki/Category:Plan_9_from_Outer_Space_(1959)",
+      "license_status": "public_domain",
+      "rights_notes": "Film is public domain in the United States (no copyright renewal). Timed text is CC BY-SA 3.0; 680 cues.",
+      "subtitle_languages": ["en", "es"]
+    },
+    {
+      "title": "Charade (1963)",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Charade_(1963).webm",
+      "catalog_url": "https://commons.wikimedia.org/wiki/Category:Charade_(1963_film)",
+      "license_status": "public_domain",
+      "rights_notes": "Film is public domain in the United States (no copyright renewal). Timed text is CC BY-SA 3.0; 1363 French cues.",
+      "subtitle_languages": ["en", "fr"]
+    },
+    {
+      "title": "Carnival of Souls (1962)",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Carnival_of_Souls_(1962)_by_Herk_Harvey.webm",
+      "catalog_url": "https://commons.wikimedia.org/wiki/Category:Carnival_of_Souls",
+      "license_status": "public_domain",
+      "rights_notes": "Film is public domain in the United States. Timed text is CC BY-SA 3.0; candidate only, not yet ingested.",
+      "subtitle_languages": ["en", "vi", "sw"]
+    },
+    {
+      "title": "The Last Man on Earth (1964)",
+      "source_url": "https://commons.wikimedia.org/wiki/File:The_Last_Man_on_Earth_(1964)_by_Ubaldo_Ragona_and_Sidney_Salkow.webm",
+      "catalog_url": "https://commons.wikimedia.org/wiki/Category:The_Last_Man_on_Earth_(1964_film)",
+      "license_status": "public_domain",
+      "rights_notes": "Film is public domain in the United States. Timed text is CC BY-SA 3.0; candidate only, not yet ingested.",
+      "subtitle_languages": ["en", "it"]
+    }
+  ]
+}

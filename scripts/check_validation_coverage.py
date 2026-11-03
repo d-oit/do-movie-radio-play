@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import glob
 import json
 import sys
 from pathlib import Path
@@ -124,6 +125,81 @@ def validate_provenance(entry: dict, entry_id: str, failures: list[str]) -> None
         )
 
 
+def check_cohorts(
+    entries: list[dict], min_entries: int, failures: list[str]
+) -> None:
+    counts: dict[str, int] = {}
+    for entry in entries:
+        cohort = entry.get("cohort")
+        if not isinstance(cohort, str) or not cohort.strip():
+            failures.append(f"{entry.get('id', 'entry')}: missing cohort")
+            continue
+        counts[cohort] = counts.get(cohort, 0) + 1
+    for cohort in ("modern", "legacy"):
+        if counts.get(cohort, 0) < min_entries:
+            failures.append(
+                f"cohort '{cohort}' has {counts.get(cohort, 0)} entries, "
+                f"need at least {min_entries}"
+            )
+
+
+def check_languages(entries: list[dict], minimum: int, failures: list[str]) -> None:
+    languages = {
+        entry.get("language")
+        for entry in entries
+        if isinstance(entry.get("language"), str) and entry.get("language") != "und"
+    }
+    if len(languages) < minimum:
+        failures.append(
+            f"only {len(languages)} spoken languages represented "
+            f"({', '.join(sorted(languages)) or 'none'}), need at least {minimum}"
+        )
+
+
+def check_holdout_separation(
+    entries: list[dict], tuning_glob: str, failures: list[str]
+) -> None:
+    holdout_ids = {
+        entry.get("id")
+        for entry in entries
+        if str(entry.get("tier", "")).upper() == "C"
+    }
+    for path in sorted(glob.glob(tuning_glob)):
+        try:
+            payload = json.loads(Path(path).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        tuned = payload.get("holdout_id")
+        if isinstance(tuned, str) and tuned in holdout_ids:
+            failures.append(
+                f"{tuned}: holdout entry is used as a tuning target in {path}"
+            )
+
+
+def check_readiness_report(path: Path, holdout_ids: set[str], failures: list[str]) -> None:
+    if not path.exists():
+        failures.append(f"readiness report missing: {path}")
+        return
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as err:
+        failures.append(f"readiness report is not valid JSON ({path}): {err}")
+        return
+    for section in ("detector_only", "cue_assisted"):
+        if section not in report:
+            failures.append(f"readiness report missing '{section}' section")
+    reported = {
+        row.get("id")
+        for row in report.get("detector_only", {}).get("entries", [])
+        if isinstance(row, dict)
+    }
+    missing = sorted(holdout_ids - reported)
+    if missing:
+        failures.append(
+            "readiness report omits holdout entries: " + ", ".join(missing)
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Validate production-eval manifest coverage and report artifacts"
@@ -149,6 +225,37 @@ def main() -> int:
         action="store_true",
         help="require provenance, truth_source, language and expected_output metadata",
     )
+    parser.add_argument(
+        "--require-cohorts",
+        action="store_true",
+        help="require modern and legacy cohorts to each meet --min-cohort-entries",
+    )
+    parser.add_argument(
+        "--min-cohort-entries",
+        type=int,
+        default=2,
+        help="minimum entries per cohort when --require-cohorts is set",
+    )
+    parser.add_argument(
+        "--min-languages",
+        type=int,
+        default=0,
+        help="minimum distinct spoken languages across selected entries",
+    )
+    parser.add_argument(
+        "--require-holdout-separation",
+        action="store_true",
+        help="fail when a tier C holdout is used as a tuning target",
+    )
+    parser.add_argument(
+        "--tuning-artifacts",
+        default="analysis/optimization/*.json",
+        help="glob of tuning artifacts scanned for holdout ids",
+    )
+    parser.add_argument(
+        "--readiness-report",
+        help="readiness report JSON that must separate detector-only and cue-assisted results",
+    )
     args = parser.parse_args()
 
     manifest_path = Path(args.manifest)
@@ -171,6 +278,7 @@ def main() -> int:
     failures: list[str] = []
     seen_ids: set[str] = set()
     seen_outputs: set[str] = set()
+    selected_entries: list[dict] = []
     checked = 0
 
     for idx, entry in enumerate(entries, start=1):
@@ -186,6 +294,7 @@ def main() -> int:
             continue
 
         checked += 1
+        selected_entries.append(entry)
         if entry_id in seen_ids:
             failures.append(f"{entry_id}: duplicate id")
         seen_ids.add(entry_id)
@@ -241,6 +350,20 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+
+    if args.require_cohorts:
+        check_cohorts(selected_entries, args.min_cohort_entries, failures)
+    if args.min_languages > 0:
+        check_languages(selected_entries, args.min_languages, failures)
+    if args.require_holdout_separation:
+        check_holdout_separation(selected_entries, args.tuning_artifacts, failures)
+    if args.readiness_report:
+        holdout_ids = {
+            entry.get("id")
+            for entry in selected_entries
+            if str(entry.get("tier", "")).upper() == "C"
+        }
+        check_readiness_report(Path(args.readiness_report), holdout_ids, failures)
 
     print(f"checked manifest entries: {checked}")
     print(f"selected tiers: {', '.join(sorted(selected_tiers))}")

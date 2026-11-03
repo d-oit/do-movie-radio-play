@@ -6,8 +6,19 @@ from pathlib import Path
 
 def cohort_for_media(media_path: str) -> str:
     normalized = media_path.lower()
-    legacy_markers = ["the_hole_1962", "windy_day_1967"]
+    legacy_markers = ["the_hole_1962", "windy_day_1967", "plan9_1959", "charade_1963"]
     return "legacy" if any(m in normalized for m in legacy_markers) else "modern"
+
+
+def load_manifest_metadata(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return {
+        entry.get("id"): entry
+        for entry in payload.get("entries", [])
+        if isinstance(entry.get("id"), str)
+    }
 
 
 def metric(metrics: dict, key: str) -> float:
@@ -35,6 +46,11 @@ def main() -> int:
         help="Validation summary JSON",
     )
     parser.add_argument(
+        "--manifest",
+        default="testdata/validation/radio-play-manifest.json",
+        help="Validation manifest supplying cohort/language metadata",
+    )
+    parser.add_argument(
         "--output-json",
         default="analysis/validation/radio-play-failure-breakdown.json",
         help="Output JSON path",
@@ -51,24 +67,30 @@ def main() -> int:
         raise FileNotFoundError(f"missing summary file: {summary_path}")
 
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    manifest = load_manifest_metadata(Path(args.manifest))
     results = summary.get("results", [])
 
     cohorts = {"modern": [], "legacy": []}
     failures = []
     for result in results:
         media = str(result.get("input_media") or result.get("id") or "unknown")
-        c = cohort_for_media(media)
+        declared = manifest.get(result.get("id"), {})
+        c = result.get("cohort") or declared.get("cohort") or cohort_for_media(media)
         metrics = result.get("metrics", {})
         row = {
             "id": result.get("id", "unknown"),
             "tier": result.get("tier", "unknown"),
             "media": media,
             "cohort": c,
+            "language": result.get("language") or declared.get("language") or "und",
+            "vad_engine": result.get("vad_engine")
+            or declared.get("vad_engine")
+            or "unknown",
             "overlap_ratio": metric(metrics, "overlap_ratio"),
             "non_voice_precision": metric(metrics, "non_voice_precision"),
             "non_voice_recall": metric(metrics, "non_voice_recall"),
         }
-        cohorts[c].append(row)
+        cohorts.setdefault(c, []).append(row)
 
         if (
             row["overlap_ratio"] < 0.95
@@ -85,12 +107,28 @@ def main() -> int:
     cohort_summary = {
         name: {
             "count": len(rows),
+            "languages": sorted({r["language"] for r in rows}),
             "avg_overlap_ratio": avg(rows, "overlap_ratio"),
             "avg_non_voice_precision": avg(rows, "non_voice_precision"),
             "avg_non_voice_recall": avg(rows, "non_voice_recall"),
+            "worst_entry": min(rows, key=lambda r: r["overlap_ratio"])["id"]
+            if rows
+            else None,
         }
         for name, rows in cohorts.items()
     }
+    for name in ("modern", "legacy"):
+        cohort_summary.setdefault(
+            name,
+            {
+                "count": 0,
+                "languages": [],
+                "avg_overlap_ratio": 0.0,
+                "avg_non_voice_precision": 0.0,
+                "avg_non_voice_recall": 0.0,
+                "worst_entry": None,
+            },
+        )
 
     output = {
         "summary": str(summary_path),
@@ -118,16 +156,19 @@ def main() -> int:
         lines.extend(
             [
                 f"- **{cohort_name}**: count={c['count']}, "
+                f"languages={','.join(c['languages']) or 'none'}, "
                 f"overlap={c['avg_overlap_ratio']:.4f}, "
                 f"precision={c['avg_non_voice_precision']:.4f}, "
-                f"recall={c['avg_non_voice_recall']:.4f}",
+                f"recall={c['avg_non_voice_recall']:.4f}, "
+                f"worst={c['worst_entry'] or 'none'}",
             ]
         )
 
     lines.extend(["", "## Top Failures"])
     for row in failures[:10]:
         lines.append(
-            f"- `{row['id']}` ({row['cohort']}) overlap={row['overlap_ratio']:.4f}, "
+            f"- `{row['id']}` ({row['cohort']}, {row['language']}) "
+            f"overlap={row['overlap_ratio']:.4f}, "
             f"precision={row['non_voice_precision']:.4f}, recall={row['non_voice_recall']:.4f}"
         )
 

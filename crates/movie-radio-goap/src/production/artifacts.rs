@@ -29,6 +29,7 @@ const NARRATION_INDEX_JSON: &str = "narration.json";
 const VERIFICATION_JSON: &str = "verification.json";
 const MASTERING_JSON: &str = "mastering-report.json";
 const ASSEMBLED_MIX_WAV: &str = "assembled-mix.wav";
+const TRACK_MAP_JSON: &str = "track-map.json";
 
 /// Persists the stage's artifacts and returns their keys mapped to paths.
 pub fn persist_stage_artifacts(
@@ -95,6 +96,13 @@ pub fn persist_stage_artifacts(
             let path = dir.join(ASSEMBLED_MIX_WAV);
             commit_wav(&path, mix, ctx.sample_rate)?;
             artifacts.insert("assembled_mix".to_string(), path_string(&path));
+            // Source/output intervals for narration and SFX, used by the run
+            // manifest to link every item to where it landed.
+            if let Some(track_map) = ctx.track_map.as_ref() {
+                let map_path = dir.join(TRACK_MAP_JSON);
+                commit_json(&map_path, track_map)?;
+                artifacts.insert("track_map".to_string(), path_string(&map_path));
+            }
         }
         "verify_quality" => {
             let report: &VerificationReport = ctx

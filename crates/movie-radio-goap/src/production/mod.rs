@@ -12,10 +12,14 @@ use crate::{Action, PipelineContext, WorldState};
 
 pub mod artifacts;
 pub mod checkpoint;
+pub mod manifest;
 
 pub use crate::orchestrator::StageObserver;
 pub use artifacts::{persist_stage_artifacts, restore_stage_artifacts};
 pub use checkpoint::{fingerprint, identify_input, Checkpoint, InputIdentity, StageRecord};
+pub use manifest::{
+    build_manifest, write_manifest_and_report, write_run_metadata, RunManifest, RunMetadata,
+};
 
 /// Fingerprint classes a stage can depend on. A checkpointed stage is only
 /// reusable while every class it reads still hashes the same, so a changed
@@ -159,7 +163,7 @@ pub const STAGES: &[ProductionStage] = &[
     ProductionStage {
         name: "assemble_radio_play",
         action: "assemble_radio_play",
-        version: 2,
+        version: 3,
         flag: StageFlag::RadioPlayAssembled,
         inputs: &[
             input_class::SOURCE,

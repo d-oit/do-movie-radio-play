@@ -400,6 +400,17 @@ pub enum Commands {
         #[arg(long)]
         mastering_profile: Option<String>,
     },
+    /// Inspect, validate and re-generate the manifest for a production run directory.
+    Report {
+        /// Run directory containing `checkpoint.json` and its artifacts.
+        run_dir: PathBuf,
+        /// Print the manifest JSON to stdout instead of the stage summary.
+        #[arg(long)]
+        json: bool,
+        /// Validate the run without rewriting `manifest.json` or `report.html`.
+        #[arg(long)]
+        validate: bool,
+    },
 }
 
 #[derive(Debug, Subcommand)]

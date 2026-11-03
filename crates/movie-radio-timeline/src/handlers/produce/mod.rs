@@ -119,6 +119,7 @@ pub(crate) fn run_produce(
         cfg,
         &ctx.config,
     )?;
+    write_run_metadata(&run_dir, &ctx, &fingerprints, &goal, cfg)?;
     let mut checkpoint = open_checkpoint(&checkpoint_path, input, fingerprints.clone())?;
     let start = restore_reusable(&mut ctx, &mut checkpoint, &fingerprints, &goal);
     checkpoint.save(&checkpoint_path)?;
@@ -142,6 +143,9 @@ pub(crate) fn run_produce(
         print_summary(saved, &goal, &deliverable);
     }
     if let Some(err) = outcome.err() {
+        if let Err(report_err) = generate_report(&run_dir) {
+            warn!(error = %report_err, "failed to write the production report");
+        }
         bail!(
             "produce failed: {err:#}\n  checkpoint kept at {}; continue with \
              `timeline produce --input {} --resume {}`",
@@ -153,8 +157,106 @@ pub(crate) fn run_produce(
     let saved = saved.context("checkpoint disappeared during a successful run")?;
     ensure_complete(&saved, &goal)?;
     report_output(&ctx)?;
+    let (manifest_path, report_path) = generate_report(&run_dir)?;
     println!("produce complete: {}", deliverable.display());
+    println!("  manifest: {}", manifest_path.display());
+    println!("  report:   {}", report_path.display());
     Ok(())
+}
+
+fn generate_report(run_dir: &Path) -> Result<(PathBuf, PathBuf)> {
+    let manifest = production::build_manifest(run_dir)?;
+    production::write_manifest_and_report(run_dir, &manifest)
+}
+
+/// Records the effective configuration before the first stage, so the manifest
+/// can explain provider selection even when a later stage fails.
+fn write_run_metadata(
+    run_dir: &Path,
+    ctx: &PipelineContext,
+    fingerprints: &BTreeMap<String, String>,
+    goal: &WorldState,
+    cfg: &AppConfig,
+) -> Result<()> {
+    let voice = ctx.voice_config.as_ref();
+    let mut tts_models = BTreeMap::new();
+    if let Some(voice) = voice {
+        if let Some(provider) = &voice.providers.elevenlabs {
+            tts_models.insert("elevenlabs".to_string(), provider.model.clone());
+        }
+        if let Some(provider) = &voice.providers.openai {
+            tts_models.insert("openai".to_string(), provider.model.clone());
+        }
+        if let Some(provider) = &voice.providers.kokoro {
+            tts_models.insert(
+                "kokoro".to_string(),
+                provider.model_path.display().to_string(),
+            );
+        }
+        if let Some(provider) = &voice.providers.orpheus {
+            tts_models.insert(
+                "orpheus".to_string(),
+                provider.model_path.display().to_string(),
+            );
+        }
+        if let Some(provider) = &voice.providers.audio_cpp {
+            if !provider.model.is_empty() {
+                tts_models.insert("audio_cpp".to_string(), provider.model.clone());
+            }
+        }
+    }
+    let mut sfx_providers = Vec::new();
+    if cfg.sound_effects.enabled {
+        if !cfg.sound_effects.local.root.is_empty() {
+            sfx_providers.push("local".to_string());
+        }
+        if cfg.sound_effects.freesound.enabled {
+            sfx_providers.push("freesound".to_string());
+        }
+        if cfg.sound_effects.ai_generate.enabled {
+            sfx_providers.push(format!(
+                "ai_generate:{}",
+                cfg.sound_effects.ai_generate.provider
+            ));
+        }
+    }
+    let parts: Vec<(&str, String)> = fingerprints
+        .iter()
+        .map(|(key, value)| (key.as_str(), value.clone()))
+        .collect();
+    let metadata = production::RunMetadata {
+        schema_version: movie_radio_goap::production::manifest::MANIFEST_SCHEMA_VERSION,
+        run_id: ctx.run_id.clone().unwrap_or_default(),
+        created_unix_ms: movie_radio_goap::production::checkpoint::now_unix_ms(),
+        input: identify_input(&ctx.movie_path)?,
+        config_hash: production::fingerprint(&parts),
+        vad_engine: ctx.config.vad_engine.clone(),
+        vad_model: if ctx.config.vad_engine == "silero" {
+            movie_radio_pipeline::pipeline::vad::silero_model_path()
+                .display()
+                .to_string()
+        } else {
+            String::new()
+        },
+        cue_source: match (&ctx.subtitles_path, ctx.subtitles_derived) {
+            (Some(_), true) => "derived".to_string(),
+            (Some(_), false) => "subtitles".to_string(),
+            (None, _) => "none".to_string(),
+        },
+        language: voice.map_or_else(String::new, |voice| voice.language.clone()),
+        narrator_provider: voice.map_or_else(String::new, |voice| voice.provider.clone()),
+        tts_fallback_chain: voice.map_or_else(Vec::new, |voice| voice.fallback_chain.clone()),
+        tts_models,
+        sfx_providers,
+        sfx_assets: Vec::new(),
+        mastering_profile: ctx.mastering_profile.clone(),
+        goal_stages: production::required_stages(goal)
+            .iter()
+            .map(|stage| stage.name.to_string())
+            .collect(),
+        max_cost_per_run_usd: voice.map_or(0.0, |voice| voice.max_cost_per_run_usd),
+    };
+    production::write_run_metadata(run_dir, &metadata)
 }
 
 /// Reports what the deliverable actually contains, so a run that found nothing

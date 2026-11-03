@@ -281,6 +281,15 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
                 &cfg,
             )
         }
+        Commands::Report {
+            run_dir,
+            json,
+            validate,
+        } => handlers::handle_report(handlers::ReportOptions {
+            run_dir,
+            json,
+            validate,
+        }),
         rest => dispatch_verification_and_output(rest),
     }
 }

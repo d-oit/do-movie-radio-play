@@ -15,6 +15,7 @@ pub mod learning;
 pub mod mastering;
 pub mod produce;
 pub mod radio_play;
+pub mod report;
 pub mod validate;
 
 pub use extract::{handle_bench, handle_extract, handle_gen_fixtures};
@@ -24,6 +25,7 @@ pub use learning::{
 pub use mastering::handle_mastering;
 pub use produce::{handle_produce, ProduceOptions};
 pub use radio_play::{handle_radio_play, RadioPlayOptions};
+pub use report::{handle_report, ReportOptions};
 pub use validate::{
     handle_ai_voice_extract, handle_export, handle_learning_experiments, handle_merge_timeline,
     handle_prompt, handle_review, handle_tag, handle_update_thresholds, handle_validate,

@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/d-oit/do-movie-radio-play/schema/run-manifest.schema.json",
+  "title": "Production run manifest",
+  "description": "Versioned manifest describing one radio-play production run (#416).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tool",
+    "generated_unix_ms",
+    "run_id",
+    "status",
+    "input",
+    "input_fingerprint",
+    "config_hash",
+    "stage_graph",
+    "stages",
+    "providers",
+    "quality_gates",
+    "warnings",
+    "usage",
+    "omitted_stages",
+    "narration",
+    "sfx",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "schema_version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "schema_version": { "type": "integer" }
+      }
+    },
+    "generated_unix_ms": { "type": "integer", "minimum": 0 },
+    "run_id": { "type": "string" },
+    "status": { "type": "string", "enum": ["complete", "incomplete", "failed"] },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size_bytes", "modified_unix_ms"],
+      "properties": {
+        "path": { "type": "string" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "modified_unix_ms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "input_fingerprint": { "type": "string" },
+    "config_hash": { "type": "string" },
+    "stage_graph": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "action", "version", "inputs", "produces", "optional_for"],
+        "properties": {
+          "name": { "type": "string" },
+          "action": { "type": "string" },
+          "version": { "type": "integer", "minimum": 0 },
+          "inputs": { "type": "array", "items": { "type": "string" } },
+          "produces": { "type": "string" },
+          "optional_for": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "action",
+          "version",
+          "status",
+          "optional",
+          "completed_unix_ms",
+          "provider",
+          "error",
+          "artifacts"
+        ],
+        "properties": {
+          "name": { "type": "string" },
+          "action": { "type": "string" },
+          "version": { "type": "integer", "minimum": 0 },
+          "status": {
+            "type": "string",
+            "enum": ["completed", "reused", "skipped", "not_run", "failed"]
+          },
+          "optional": { "type": "boolean" },
+          "completed_unix_ms": { "type": ["integer", "null"], "minimum": 0 },
+          "provider": { "type": ["string", "null"] },
+          "error": { "type": ["string", "null"] },
+          "artifacts": { "$ref": "#/$defs/artifacts" }
+        }
+      }
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vad_engine",
+        "vad_model",
+        "cue_source",
+        "language",
+        "narrator_provider",
+        "narrator_model",
+        "tts_providers",
+        "tts_models",
+        "fallback_chain",
+        "sfx_providers",
+        "sfx_assets",
+        "mastering_profile"
+      ],
+      "properties": {
+        "vad_engine": { "type": ["string", "null"] },
+        "vad_model": { "type": ["string", "null"] },
+        "cue_source": { "type": "string" },
+        "language": { "type": ["string", "null"] },
+        "narrator_provider": { "type": ["string", "null"] },
+        "narrator_model": { "type": ["string", "null"] },
+        "tts_providers": { "type": "array", "items": { "type": "string" } },
+        "tts_models": { "type": "object" },
+        "fallback_chain": { "type": "array", "items": { "type": "string" } },
+        "sfx_providers": { "type": "array", "items": { "type": "string" } },
+        "sfx_assets": { "type": "array", "items": { "type": "string" } },
+        "mastering_profile": { "type": ["string", "null"] }
+      }
+    },
+    "quality_gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "status", "detail"],
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "type": "string", "enum": ["pass", "warn", "fail", "skipped"] },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "narration_requests",
+        "narration_succeeded",
+        "narration_failed",
+        "sfx_assets_used",
+        "total_cost_usd",
+        "budget_usd"
+      ],
+      "properties": {
+        "narration_requests": { "type": "integer", "minimum": 0 },
+        "narration_succeeded": { "type": "integer", "minimum": 0 },
+        "narration_failed": { "type": "integer", "minimum": 0 },
+        "sfx_assets_used": { "type": "integer", "minimum": 0 },
+        "total_cost_usd": { "type": ["number", "null"] },
+        "budget_usd": { "type": ["number", "null"] }
+      }
+    },
+    "omitted_stages": { "type": "array", "items": { "type": "string" } },
+    "narration": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "source_start_ms",
+          "source_end_ms",
+          "output_start_ms",
+          "output_end_ms",
+          "provider",
+          "text"
+        ],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0 },
+          "source_start_ms": { "type": "integer", "minimum": 0 },
+          "source_end_ms": { "type": "integer", "minimum": 0 },
+          "output_start_ms": { "type": ["integer", "null"], "minimum": 0 },
+          "output_end_ms": { "type": ["integer", "null"], "minimum": 0 },
+          "provider": { "type": ["string", "null"] },
+          "text": { "type": "string" }
+        }
+      }
+    },
+    "sfx": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "source_start_ms",
+          "source_end_ms",
+          "output_start_ms",
+          "output_end_ms",
+          "asset_id",
+          "source",
+          "license"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "source_start_ms": { "type": "integer", "minimum": 0 },
+          "source_end_ms": { "type": "integer", "minimum": 0 },
+          "output_start_ms": { "type": "integer", "minimum": 0 },
+          "output_end_ms": { "type": "integer", "minimum": 0 },
+          "asset_id": { "type": "string" },
+          "source": { "type": "string" },
+          "license": { "type": "string" }
+        }
+      }
+    },
+    "artifacts": { "$ref": "#/$defs/artifacts" }
+  },
+  "$defs": {
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "path", "size_bytes", "checksum", "present"],
+        "properties": {
+          "key": { "type": "string" },
+          "path": { "type": "string" },
+          "size_bytes": { "type": "integer", "minimum": 0 },
+          "checksum": { "type": ["string", "null"] },
+          "present": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

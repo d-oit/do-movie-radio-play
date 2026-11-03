@@ -144,6 +144,29 @@ The synthetic scenes report 0% leak but **0 s narratable**: Silero classifies th
 - **Correction (2026-11-03): that is a default, not a missing capability.** `narrate::stage::generate` dispatches three ways — visual when `config.visual.provider != "none"`, structured LLM when `config.llm.enabled`, and the acoustic template above otherwise. The LLM path (#412, closed) is implemented and validated, not a stub: `narrate/llm/` is ~710 lines with a versioned prompt template, evidence-ID checking against the gap's acoustic tags, word/time budgets, banned-filler rejection, provider-error fallback to labelled acoustic text, and prompt-injection resistance. `cargo test -p movie-radio-goap --lib llm` runs 16 tests, all passing. What is missing is `llm.enabled: false` by default plus a configured provider (OpenAI/Ollama/Anthropic) and key.
 - **Pattern worth remembering:** both this and the chunked-extraction finding (#441) are capabilities that *exist* but are off by default. Reading the default config alone makes them look absent. Check the dispatch path and the tests before calling a feature missing.
 
+### Narration content baseline vs the visual path (measured 2026-11-03)
+
+The question was not "what is broken" but "what does a listener actually hear". Measured on Sprite Fright (630 s, real film with an animated story), default acoustic narration, tags re-derived from audio (`timeline tag`):
+
+| | acoustic (default) | visual path |
+|---|---|---|
+| lines for the film | 6 | 6 |
+| distinct lines | 5 | — (needs a model) |
+| content | sound only: "A heavy impact rings out.", "An engine drones in the background.", "A loud bang cuts through the scene." | entities, actions, positions (per its prompt) |
+| filler appended | 5 of 6: "The passage lasts several seconds." | forbidden by the prompt and rejected by grounding |
+
+Every acoustic line describes **what the gap sounds like**, never what happens, who is on screen or where. That is the real user-facing gap: it affects 100% of narrated time, whereas dialogue leakage affects 2-9%.
+
+**The visual path is fully wired; only a provider key is missing.** Verified with `crates/movie-radio-goap/tests/visual_narration_pipeline.rs`, which runs the real `FfmpegFrameExtractor` against Sprite Fright and injects a stub `VisionProvider`:
+
+- 6 gaps → 6 visual windows, 0 audio-only
+- the provider received **3 real 640 px frames per window** (18 total), each with its own word budget (25-178 words)
+- valid model output produced 6 narration scripts
+
+So sampling, prompt construction, response parsing, grounding validation and script emission all work on real media. What has *never* been measured is model output quality, because that needs an API key.
+
+**Cost is negligible, which removes the usual objection:** 6 vision calls and 18 frames for a 10.5-minute film, bounded by `max_total_frames = 60` and `max_frames_per_window = 3` per film regardless of length.
+
 ## Status 2026-10-10: issue validation, PR triage, profile sweep
 **Open issues vs what is on `main`** (#374, #376, #377, #379 merged):
 

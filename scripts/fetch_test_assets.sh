@@ -18,6 +18,46 @@ fetch(){
   return 0
 }
 
+# Mirrors recorded 2026-11-03 after a download.blender.org outage aborted every
+# job (this script marks sintel_trailer_2010.mp4 critical). Each alternate was
+# checked to be the same cut and to decode through the pipeline; Wikimedia is a
+# different host, so one outage no longer takes both down.
+#
+# A mirror is normalised to 720p H.264/AAC in the target's own container. The
+# pipeline routes mp4/mov straight to ffmpeg and decodes by content, but keeping
+# the container and resolution consistent means the benchmark timings stay
+# comparable and nothing downstream sees a surprise codec.
+#
+# Usage: fetch_video_with_mirrors OUT PRIMARY MIRROR
+fetch_video_with_mirrors(){
+  local out="$1"; local primary="$2"; local mirror="$3"
+  if [[ -s "$out" ]]; then echo "ok $out"; return 0; fi
+  if curl -L --fail --connect-timeout 15 --max-time 600 -o "$out" "$primary" 2>/dev/null && [[ -s "$out" ]]; then
+    echo "ok $out"
+    return 0
+  fi
+  echo "primary unavailable, trying mirror for $out: $mirror"
+  local tmp="${out}.mirror.ogv"
+  rm -f "$tmp" "$out"
+  if curl -L --fail --connect-timeout 15 --max-time 600 -o "$tmp" "$mirror" 2>/dev/null && [[ -s "$tmp" ]]; then
+    if command -v ffmpeg >/dev/null 2>&1 && \
+      ffmpeg -v error -y -i "$tmp" -vf scale=-2:720 -c:v libx264 -preset veryfast \
+        -crf 23 -c:a aac -b:a 128k "$out" 2>/dev/null && [[ -s "$out" ]]; then
+      echo "ok $out (mirror, re-encoded from $mirror)"
+      rm -f "$tmp"
+      return 0
+    fi
+    # No ffmpeg: keep the mirror bytes; ffmpeg still decodes them by content.
+    mv "$tmp" "$out"
+    echo "WARN: kept raw mirror bytes in $out (ffmpeg unavailable to normalise)"
+    return 0
+  fi
+  rm -f "$tmp"
+  echo "WARN: failed to fetch $out from $primary or $mirror"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+  return 0
+}
+
 extract_first_mp4_from_zip(){
   local zip_path="$1"; local out="$2"
   if [[ -s "$out" ]]; then echo "ok $out"; return 0; fi
@@ -51,9 +91,15 @@ fi
 fetch "https://commons.wikimedia.org/wiki/TimedText:Elephants_Dream_(2006).webm.es.srt?action=raw" "testdata/raw/elephants_dream_2006.es.srt"
 fetch "https://commons.wikimedia.org/wiki/TimedText:Elephants_Dream_(2006).webm.de.srt?action=raw" "testdata/raw/elephants_dream_2006.de.srt"
 # Big Buck Bunny trailer (2008) - Blender Open Movie trailer
-fetch "https://download.blender.org/peach/trailer/trailer_480p.mov" "testdata/raw/big_buck_bunny_trailer_2008.mov"
+fetch_video_with_mirrors \
+  "testdata/raw/big_buck_bunny_trailer_2008.mov" \
+  "https://download.blender.org/peach/trailer/trailer_480p.mov" \
+  "https://upload.wikimedia.org/wikipedia/commons/b/b3/Big_Buck_Bunny_Trailer_400p.ogv"
 # Sintel trailer (2010) - Blender Open Movie trailer
-fetch "https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4" "testdata/raw/sintel_trailer_2010.mp4"
+fetch_video_with_mirrors \
+  "testdata/raw/sintel_trailer_2010.mp4" \
+  "https://download.blender.org/durian/trailer/sintel_trailer-720p.mp4" \
+  "https://upload.wikimedia.org/wikipedia/commons/0/06/Sintel_trailer-1080p.ogv"
 # Elephants Dream teaser (2006) - Blender Open Movie teaser
 fetch "https://download.blender.org/demo/movies/elephantsdream_teaser.mp4.zip" "testdata/raw/elephantsdream_teaser.mp4.zip"
 extract_first_mp4_from_zip "testdata/raw/elephantsdream_teaser.mp4.zip" "testdata/raw/elephantsdream_teaser.mp4"

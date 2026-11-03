@@ -7,6 +7,8 @@ testdata/generated/*
 !testdata/generated/.gitkeep
 analysis/thresholds/*.db
 analysis/optimization/fp-sweep-runs/
+analysis/validation/window-diagnosis/*.timeline.json
+analysis/validation/window-diagnosis/*.tagged.json
 
 # Guardrail: no test/template/dummy/runtime-output files in root
 /dummy.*

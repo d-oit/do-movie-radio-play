@@ -1,39 +1,30 @@
 {
   "version": 1,
-  "notes": "Track legally usable modern films with multi-language subtitle availability before adding to validation corpus.",
+  "notes": "Track legally usable modern films with multi-language subtitle availability before adding to the validation corpus. Candidates are not holdouts until they are ingested and measured; never tune against a candidate that is later promoted to tier C.",
   "candidates": [
     {
       "title": "Cosmos Laundromat (2015)",
       "source_url": "https://studio.blender.org/films/cosmos-laundromat/",
-      "catalog_url": "https://studio.blender.org/films/cosmos-laundromat/",
+      "catalog_url": "https://commons.wikimedia.org/wiki/File:Cosmos_Laundromat_-_First_Cycle_-_Official_Blender_Foundation_release.webm",
       "license_status": "cc_by",
-      "rights_notes": "Blender Foundation open movie, CC BY 3.0. Verify the subtitle translation provenance before ingestion.",
-      "subtitle_languages": [
-        "en",
-        "fr"
-      ]
+      "rights_notes": "Blender Foundation open movie, CC BY 3.0. Wikimedia Commons timed text is CC BY-SA; verify the translation provenance before ingestion.",
+      "subtitle_languages": ["de", "es", "it", "cs", "pt", "fi"]
     },
     {
-      "title": "REPLACE_TITLE",
-      "source_url": "https://wikiflix.toolforge.org",
-      "catalog_url": "https://wikiflix.toolforge.org",
-      "license_status": "other_permissive",
-      "rights_notes": "Verify exact rights on the underlying Wikimedia source page before dataset ingestion.",
-      "subtitle_languages": [
-        "en",
-        "de"
-      ]
+      "title": "Spring (2019)",
+      "source_url": "https://studio.blender.org/films/spring/",
+      "catalog_url": "https://commons.wikimedia.org/wiki/File:Spring_-_Blender_Open_Movie.webm",
+      "license_status": "cc_by",
+      "rights_notes": "Blender Foundation open movie, CC BY 3.0. Wikimedia Commons timed text is CC BY-SA; verify the translation provenance before ingestion.",
+      "subtitle_languages": ["fr", "es", "pt-br", "pl", "nl", "tr"]
     },
     {
-      "title": "REPLACE_TITLE",
-      "source_url": "https://player.eyefilm.nl/en/all-films",
-      "catalog_url": "https://player.eyefilm.nl/en/all-films",
-      "license_status": "other_permissive",
-      "rights_notes": "Verify archival use terms and subtitle download rights for offline validation usage.",
-      "subtitle_languages": [
-        "en",
-        "nl"
-      ]
+      "title": "Sprite Fright (2021)",
+      "source_url": "https://studio.blender.org/films/sprite-fright/",
+      "catalog_url": "https://commons.wikimedia.org/wiki/File:Sprite_Fright_-_Blender_Open_Movie-full_movie.webm",
+      "license_status": "cc_by",
+      "rights_notes": "Blender Foundation open movie, CC BY 4.0. English truth is already used by the cue-path holdout; other languages are candidates only.",
+      "subtitle_languages": ["en", "de", "es", "pt", "id"]
     }
   ]
 }

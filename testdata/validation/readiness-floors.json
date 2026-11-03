@@ -13,6 +13,27 @@
       "overlap_ratio": 0.952,
       "speech_time_precision": 0.4943,
       "speech_time_recall": 0.6148
+    },
+    "tos-de-holdout": {
+      "non_voice_precision": 0.9178,
+      "non_voice_recall": 0.889,
+      "overlap_ratio": 0.9032,
+      "speech_time_precision": 0.5718,
+      "speech_time_recall": 0.6508
+    },
+    "plan9-1959-en-holdout": {
+      "non_voice_precision": 0.906,
+      "non_voice_recall": 0.7285,
+      "overlap_ratio": 0.8076,
+      "speech_time_precision": 0.7938,
+      "speech_time_recall": 0.9325
+    },
+    "charade-1963-fr-holdout": {
+      "non_voice_precision": 0.8827,
+      "non_voice_recall": 0.7286,
+      "overlap_ratio": 0.7983,
+      "speech_time_precision": 0.814,
+      "speech_time_recall": 0.9246
     }
   }
 }

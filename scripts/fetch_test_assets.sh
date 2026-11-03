@@ -104,6 +104,26 @@ if [[ "${FETCH_SECOND_FILM:-0}" == "1" ]]; then
     echo "WARN: sprite_fright_2021.en.srt has ${sprite_cues:-0} cues, expected 80"
     FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
+
+  # Legacy cohort (pre-2000, public domain). Wikimedia Commons hosts the films and
+  # community timed text; the timed text is CC BY-SA 3.0 and the films are PD.
+  # Plan 9 from Outer Space (1959) - English truth, 680 cues.
+  fetch "https://upload.wikimedia.org/wikipedia/commons/6/64/Plan_9_from_Outer_Space_%281959%29.webm" "testdata/raw/plan9_1959.webm"
+  fetch "https://commons.wikimedia.org/wiki/TimedText:Plan_9_from_Outer_Space_(1959).webm.en.srt?action=raw" "testdata/raw/plan9_1959.en.srt"
+  plan9_cues="$(grep -c -- '-->' testdata/raw/plan9_1959.en.srt 2>/dev/null || true)"
+  if [[ "${plan9_cues:-0}" != "680" ]]; then
+    echo "WARN: plan9_1959.en.srt has ${plan9_cues:-0} cues, expected 680"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  # Charade (1963) - French truth, 1363 cues; a second legacy language.
+  fetch "https://upload.wikimedia.org/wikipedia/commons/d/dc/Charade_%281963%29.webm" "testdata/raw/charade_1963.webm"
+  fetch "https://commons.wikimedia.org/wiki/TimedText:Charade_(1963).webm.fr.srt?action=raw" "testdata/raw/charade_1963.fr.srt"
+  charade_cues="$(grep -c -- '-->' testdata/raw/charade_1963.fr.srt 2>/dev/null || true)"
+  if [[ "${charade_cues:-0}" != "1363" ]]; then
+    echo "WARN: charade_1963.fr.srt has ${charade_cues:-0} cues, expected 1363"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
 fi
 
 CRITICAL_ASSETS="testdata/raw/elephants_dream_2006.mp4 testdata/raw/sintel_trailer_2010.mp4"

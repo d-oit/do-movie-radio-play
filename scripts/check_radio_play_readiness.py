@@ -107,6 +107,7 @@ def main() -> int:
         raise ValueError(f"no holdout entries found for tier={holdout_tier}")
 
     failures = []
+    missing_floors = []
     checks = []
     floors = load_floors(Path(args.floors)) if args.floors else {}
     for result in holdout_results:
@@ -134,7 +135,9 @@ def main() -> int:
             if floor is None:
                 # A new entry has nothing to regress from; --update-floors seeds it.
                 if not args.update_floors:
-                    failures.append(f"{entry_id}: no floor recorded (run with --update-floors)")
+                    missing_floors.append(
+                        f"{entry_id}: no floor recorded (run with --update-floors)"
+                    )
             else:
                 for key in METRICS:
                     value = checks[-1][key]
@@ -158,7 +161,7 @@ def main() -> int:
 
     if args.floors and args.update_floors:
         # Only ratchet up when the gate currently holds, so a regression cannot lower the bar.
-        if failures and floors:
+        if failures:
             print("refusing to update floors while gate is red", file=__import__("sys").stderr)
         else:
             Path(args.floors).write_text(
@@ -166,6 +169,9 @@ def main() -> int:
                 encoding="utf-8",
             )
             failures = []
+            missing_floors = []
+
+    failures = failures + missing_floors
 
     report = {
         "summary": str(summary_path),

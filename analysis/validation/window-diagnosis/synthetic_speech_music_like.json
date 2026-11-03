@@ -1,0 +1,22 @@
+{
+  "entry_id": "synthetic_speech_music_like",
+  "timeline": "testdata/generated/speech_music_like.wav",
+  "truth": "testdata/generated/speech_music_like.truth.json",
+  "total_ms": 5000,
+  "window_ms": 100,
+  "false_positive_ms": 0,
+  "false_negative_ms": 2500,
+  "example_count": 1,
+  "examples": [
+    {
+      "kind": "false_negative",
+      "start_ms": 2500,
+      "end_ms": 5000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 2500
+    }
+  ]
+}

@@ -37,6 +37,29 @@ timeline validate testdata/raw/sintel_trailer_2010.mp4 --subtitles testdata/raw/
 # Coverage + artifact integrity for Tier A production evals
 python3 scripts/check_validation_coverage.py --tier A --strict-files
 
+# Holdout corpus breadth, language coverage and tuning separation
+python3 scripts/check_validation_coverage.py --tier A --tier B --tier C \
+  --require-provenance --require-cohorts --min-cohort-entries 2 \
+  --min-languages 2 --require-holdout-separation
+
+# Detector-only vs cue-assisted readiness report
+python3 scripts/build_radio_play_readiness_report.py \
+  --summary analysis/validation/radio-play-sweep-summary.json \
+  --manifest testdata/validation/radio-play-manifest.json \
+  --cue-summary analysis/validation/cue-path-sweep.json
+
+# Per-window diagnosis for every failing holdout
+python3 scripts/export_radio_play_window_diagnosis.py \
+  --readiness-report analysis/validation/radio-play-readiness-report.json \
+  --manifest testdata/validation/radio-play-manifest.json \
+  --output-dir analysis/validation/window-diagnosis
+
+# Weekly trend artifact
+python3 scripts/build_radio_play_trend.py \
+  --summary analysis/validation/radio-play-sweep-summary.json \
+  --history analysis/validation/radio-play-trend.json \
+  --output-md analysis/learnings/latest-radio-play-trend.md
+
 # Deterministic cue-path regression gate (no media or model)
 python3 scripts/evaluate_cue_path.py fixtures --manifest testdata/cues/fixtures.json --output analysis/validation/cue-path-fixtures.json
 python3 scripts/test_cue_gate.py
@@ -54,6 +77,9 @@ Required outcome:
 - cue-path fixtures pass, including the deliberate dropped-cue regression that must fail its gate
 - every reported leak figure names its scoring mode: `detector_plus_cues` is the shipped path, `cue_only_upper_bound` is not
 - the opt-in sweep reports per-film, per-source, per-language leakage and retained narratable time, with pad/threshold chosen on `split=dev` only
+- the readiness report separates `detector_only` from `cue_assisted` results and names cohort, language, VAD engine and cue source per film
+- every failing holdout has a per-window diagnosis with time ranges, predicted tags and ground-truth labels
+- the trend artifact records pending sources and unavailable optional dependencies
 - any failure is fixed or documented in `plans/050-status-report/STATUS.md`
 
 ## 4) Benchmark Regression Visibility (must pass)

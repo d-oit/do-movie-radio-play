@@ -1,0 +1,516 @@
+{
+  "entry_id": "charade-1963-fr-holdout",
+  "timeline": "testdata/raw/charade_1963.webm",
+  "truth": "testdata/raw/charade_1963.fr.srt",
+  "total_ms": 6804167,
+  "window_ms": 100,
+  "false_positive_ms": 288100,
+  "false_negative_ms": 807500,
+  "example_count": 1116,
+  "examples": [
+    {
+      "kind": "false_positive",
+      "start_ms": 231300,
+      "end_ms": 232400,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "Oh, pardon !",
+      "duration_ms": 1100
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 232500,
+      "end_ms": 235600,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "Tu ne vas pas me dire que\ntu ne savais pas qu'il \u00e9tait charg\u00e9 !",
+      "duration_ms": 3100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 237500,
+      "end_ms": 237600,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "- Sylvie !\n- Oh.",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 240000,
+      "end_ms": 240100,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "- Sylvie !\n- Oh. Ne peut-il rien faire dans la vie\nsans d\u00e9clencher une avalanche ?",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 244100,
+      "end_ms": 248200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Ne peut-il rien faire dans la vie\nsans d\u00e9clencher une avalanche ?",
+      "duration_ms": 4100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 250200,
+      "end_ms": 253900,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Quand je te vois un tel app\u00e9tit\nc'est que \u00e7a ne va pas.",
+      "duration_ms": 3700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 255800,
+      "end_ms": 255900,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Sylvie, je vais divorcer. - Quoi ? De Charles ?\n- C'est le seul mari que j'aie.",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 260100,
+      "end_ms": 260200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "- Quoi ? De Charles ?\n- C'est le seul mari que j'aie. - J'ai essay\u00e9 d'y mettre du mien, mais...\n- Mais quoi ?",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 268700,
+      "end_ms": 271000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 2300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 274000,
+      "end_ms": 277500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Au moins on ne peut pas dire que\nles malheurs te font engraisser !",
+      "duration_ms": 3500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 280500,
+      "end_ms": 281200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 283200,
+      "end_ms": 284200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Parce que je l'aime pas.\nEt qu'il ne m'aime pas non plus.",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 286200,
+      "end_ms": 286800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 288800,
+      "end_ms": 289000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 291000,
+      "end_ms": 291800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 800
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 293800,
+      "end_ms": 294500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 296500,
+      "end_ms": 297500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 299500,
+      "end_ms": 300200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "J'ai une certaine r\u00e9pugnance\n\u00e0 l'id\u00e9e de divorcer, Sylvie.",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 302200,
+      "end_ms": 302500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Mais si seulement Charles\navait \u00e9t\u00e9 sinc\u00e8re avec moi.",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 304500,
+      "end_ms": 304800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "C'est la seule chose que je demande\naux \u00eatres, la franchise.",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 308800,
+      "end_ms": 311100,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Mais avec Charles,\ntout n'est que mensonges et myst\u00e8res.",
+      "duration_ms": 2300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 313100,
+      "end_ms": 313300,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Il me cache quelque chose, Sylvie.",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 316300,
+      "end_ms": 316900,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Quelque chose de terrible\net qui m'effraie.",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 317900,
+      "end_ms": 319000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Cet enfant est \u00e0 vous ?",
+      "duration_ms": 1100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 321600,
+      "end_ms": 321800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 323800,
+      "end_ms": 324000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 327000,
+      "end_ms": 327300,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 330300,
+      "end_ms": 330800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 332800,
+      "end_ms": 333400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 335400,
+      "end_ms": 336000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 340000,
+      "end_ms": 340200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 341200,
+      "end_ms": 342300,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "- L\u00e2cheur !\n- \u00c7a veut dire ?",
+      "duration_ms": 1100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 345300,
+      "end_ms": 345400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Viens, Jean-Louis, allons faire un tour.\nJe n'ai encore jamais vu un Rothschild, moi.",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 348400,
+      "end_ms": 355000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 6600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 358000,
+      "end_ms": 358700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 359700,
+      "end_ms": 360700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Merci.",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 364700,
+      "end_ms": 365400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 367400,
+      "end_ms": 367600,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 370600,
+      "end_ms": 371200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "C'est ma derni\u00e8re chance.\nJe prends l'avion pour Paris, cet apr\u00e8s-midi.",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 373200,
+      "end_ms": 373700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "- Quel est votre nom ?\n- Peter Joshua.",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 375700,
+      "end_ms": 376400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "- Moi, c'est Regina Lampert.\n- Y a-t-il un M. Lampert ?",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 377400,
+      "end_ms": 377700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 378700,
+      "end_ms": 379400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Non, justement je vais divorcer.",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 382400,
+      "end_ms": 382600,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "- Je vous en prie, pas \u00e0 cause de moi !\n- Non, voyez-vous je ne l'aime vraiment pas.",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 385600,
+      "end_ms": 386300,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "- Vous au moins vous \u00eates franche.\n- Y a-t-il une Mme Joshua ?",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 388300,
+      "end_ms": 388700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 400
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 390700,
+      "end_ms": 391000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 393000,
+      "end_ms": 393500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Votre mari est avec vous ?",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 395500,
+      "end_ms": 396100,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 398100,
+      "end_ms": 398600,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    }
+  ]
+}

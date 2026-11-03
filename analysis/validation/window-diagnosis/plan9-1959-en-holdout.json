@@ -1,0 +1,548 @@
+{
+  "entry_id": "plan9-1959-en-holdout",
+  "timeline": "testdata/raw/plan9_1959.webm",
+  "truth": "testdata/raw/plan9_1959.en.srt",
+  "total_ms": 4746645,
+  "window_ms": 100,
+  "false_positive_ms": 168900,
+  "false_negative_ms": 608245,
+  "example_count": 433,
+  "examples": [
+    {
+      "kind": "false_positive",
+      "start_ms": 22700,
+      "end_ms": 24900,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "Greetings, my friend. We are\nall interested in the future,",
+      "duration_ms": 2200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 26800,
+      "end_ms": 26900,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "for that is where you and I\nare going to spend the\nrest of our lives.",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 37400,
+      "end_ms": 38000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 84300,
+      "end_ms": 84400,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "from outer space?",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 165800,
+      "end_ms": 166100,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "All of us on this earth, know that\nthere is a time to live,",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 169900,
+      "end_ms": 170400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 174400,
+      "end_ms": 174700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "and that there is a time to die,\nyet death is always a shock",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 177400,
+      "end_ms": 178400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 185400,
+      "end_ms": 186700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "It is even more of a shock, when death,\nthe proud brother, comes suddenly without warning.",
+      "duration_ms": 1300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 198500,
+      "end_ms": 198700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 202700,
+      "end_ms": 204000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "yet also the sundown of the old man's heart,",
+      "duration_ms": 1300
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 207900,
+      "end_ms": 208300,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "for the shadows of grief clouded his very reason.",
+      "duration_ms": 400
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 220200,
+      "end_ms": 220900,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 224400,
+      "end_ms": 224900,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "The funeral over, the saddened group left the graveside.",
+      "duration_ms": 500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 248900,
+      "end_ms": 249000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "It was when the gravediggers started their task",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 255900,
+      "end_ms": 259700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "that strange things began to take place.",
+      "duration_ms": 3800
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 275300,
+      "end_ms": 275600,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Burbank Tower, this is American\nFlight 812, over.",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 279700,
+      "end_ms": 280300,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 288000,
+      "end_ms": 289200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 293200,
+      "end_ms": 299900,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "You got me that time, Mac.\nThis American Flight 812 requesting -",
+      "duration_ms": 6700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 307000,
+      "end_ms": 307700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 700
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 313700,
+      "end_ms": 314300,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "are you in trouble?",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 318100,
+      "end_ms": 320000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1900
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 332100,
+      "end_ms": 332400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "-Mayday, mayday. Stand by, Burbank Tower.\n-Do you suppose the passengers saw it?",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 343500,
+      "end_ms": 344300,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "-Right.\n-American Flight 812 reporting to Burbank Tower, over.",
+      "duration_ms": 800
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 364700,
+      "end_ms": 367000,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "(buzzing noise)",
+      "duration_ms": 2300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 369800,
+      "end_ms": 370100,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 384500,
+      "end_ms": 388200,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "-Yeah, let's go.",
+      "duration_ms": 3700
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 413400,
+      "end_ms": 415200,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "(The two men scream.)",
+      "duration_ms": 1800
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 422000,
+      "end_ms": 422900,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "The grief of his wife's death",
+      "duration_ms": 900
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 429300,
+      "end_ms": 434200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 4900
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 438300,
+      "end_ms": 439800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1500
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 443800,
+      "end_ms": 444700,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "A sweet memory of her joyous living.",
+      "duration_ms": 900
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 450100,
+      "end_ms": 450500,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "The sky to which she had once looked,\nwas now only a covering for her dead body.",
+      "duration_ms": 400
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 465900,
+      "end_ms": 467300,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "The ever-beautiful flowers she had\nplanted with her own hands,",
+      "duration_ms": 1400
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 471000,
+      "end_ms": 471300,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 475300,
+      "end_ms": 482100,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "became nothing more than the\nlost roses of her cheeks.",
+      "duration_ms": 6800
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 488900,
+      "end_ms": 497900,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "left that home,\nnever to return again.",
+      "duration_ms": 9000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 502600,
+      "end_ms": 502800,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 506900,
+      "end_ms": 508100,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 1200
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 512100,
+      "end_ms": 512200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "his dead wife was watching.",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 529500,
+      "end_ms": 533900,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 4400
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 537400,
+      "end_ms": 540400,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "Then, as two of his mourners left his final resting place\u2026",
+      "duration_ms": 3000
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 573400,
+      "end_ms": 573500,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 586100,
+      "end_ms": 586200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "-Medical, uh, examiner been 'round yet?\n-Just left.",
+      "duration_ms": 100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 593400,
+      "end_ms": 594000,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "statement ?\nYeah, much as we could. They're pretty scared.",
+      "duration_ms": 600
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 598100,
+      "end_ms": 598400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "",
+      "duration_ms": 300
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 602400,
+      "end_ms": 603400,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [],
+      "truth_text": "Have one of the boys take the guy\nand the girl back to town. You take charge.",
+      "duration_ms": 1000
+    },
+    {
+      "kind": "false_positive",
+      "start_ms": 618300,
+      "end_ms": 619400,
+      "predicted_label": "non_voice",
+      "truth_label": "speech",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "-You be careful Clay.\n-I'm a big boy now, Johnny.",
+      "duration_ms": 1100
+    },
+    {
+      "kind": "false_negative",
+      "start_ms": 675900,
+      "end_ms": 676200,
+      "predicted_label": "speech",
+      "truth_label": "non_voice",
+      "predicted_tags": [
+        "ambience"
+      ],
+      "truth_text": "",
+      "duration_ms": 300
+    }
+  ]
+}

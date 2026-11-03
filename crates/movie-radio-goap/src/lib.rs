@@ -47,9 +47,7 @@ pub struct PipelineContext {
     /// Narration audio aligned 1:1 with `scripts` (same order/length);
     /// `None` marks a script whose synthesis failed.
     pub narration_audio: Vec<Option<movie_radio_voice::AudioOutput>>,
-    /// Provider that synthesized each entry of `narration_audio` (`None`
-    /// for failed/skipped scripts). Keeps trace attribution honest when
-    /// the fallback chain serves different scripts with different voices.
+    /// Provider for each `narration_audio` entry; keeps trace attribution honest.
     pub narration_provider: Vec<Option<String>>,
     pub original_audio: Option<Vec<f32>>,
     pub sample_rate: u32,
@@ -59,9 +57,7 @@ pub struct PipelineContext {
     pub learning: Option<movie_radio_learning::adaptive_thresholds::AdaptiveThresholds>,
     /// Verification report produced by the `verify_quality` action.
     pub verification: Option<VerificationReport>,
-    /// Optional path for the adaptive-threshold learning state
-    /// (`learning_state_path`); when `None`, `apply_learnings` keeps the
-    /// state in memory only.
+    /// Adaptive-threshold state path; `None` keeps it in memory only.
     pub learning_state_path: Option<PathBuf>,
     /// Optional libsql database path for threshold history persistence.
     pub learning_db_path: Option<PathBuf>,
@@ -71,6 +67,10 @@ pub struct PipelineContext {
     pub track_map: Option<movie_radio_verification::TrackMap>,
     /// Preservation and narration-placement report produced during verification.
     pub preservation_report: Option<movie_radio_verification::PreservationReport>,
+    /// Mastering profile name used for normalization and quality validation.
+    pub mastering_profile: String,
+    /// Mastering quality report produced by assembly and re-checked by verification.
+    pub mastering_report: Option<movie_radio_render::mastering::MasteringReport>,
     /// Skip trace recording and learning adaptations when true (`--no-learn`).
     pub no_learn: bool,
     /// Unique identifier for this pipeline run.
@@ -81,8 +81,7 @@ pub struct PipelineContext {
     pub gap_confidence: Option<f32>,
     /// Cues came from speech-to-text, so gap clipping uses a wider safety pad.
     pub subtitles_derived: bool,
-    /// Prebuilt synthesizer chain replacing the one built from
-    /// `voice_config` (deterministic providers for tests and offline runs).
+    /// Prebuilt synthesizer chain for tests and offline runs.
     pub voice_orchestrator: Option<std::sync::Arc<movie_radio_voice::voice::SynthesisOrchestrator>>,
     /// Narrator configuration, known characters and the visual review report.
     pub visual: crate::narrate::visual::VisualPipelineState,
@@ -111,6 +110,8 @@ impl PipelineContext {
             assembled_audio: None,
             track_map: None,
             preservation_report: None,
+            mastering_profile: movie_radio_render::mastering::DEFAULT_PROFILE.to_string(),
+            mastering_report: None,
             no_learn: false,
             run_id: None,
             voice_reference: None,

@@ -167,6 +167,7 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             gap_confidence,
             vad_engine,
             no_auto_cues,
+            mastering_profile,
         } => handlers::handle_radio_play(
             movie,
             handlers::RadioPlayOptions {
@@ -185,6 +186,7 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
                 gap_confidence,
                 vad_engine,
                 no_auto_cues,
+                mastering_profile,
             },
         ),
         Commands::Calibrate {
@@ -228,6 +230,23 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             // Delegate to pipeline narrator handler
             movie_radio_pipeline::narrator::handle_narrate(scene, dry_run, template, &cfg.narrator)
         }
+        Commands::Mastering {
+            input,
+            profile,
+            target_lufs,
+            max_true_peak,
+            json,
+            html,
+            output,
+        } => handlers::handle_mastering(
+            input,
+            profile,
+            target_lufs,
+            max_true_peak,
+            json,
+            html,
+            output,
+        ),
         Commands::Produce {
             input,
             config,
@@ -241,6 +260,7 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             gap_confidence,
             no_auto_cues,
             no_learn,
+            mastering_profile,
         } => {
             let cfg = crate::app_config_loader::load_app_config(config)?;
             handlers::handle_produce(
@@ -256,6 +276,7 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
                     gap_confidence,
                     no_auto_cues,
                     no_learn,
+                    mastering_profile,
                 },
                 &cfg,
             )

@@ -125,12 +125,49 @@ impl Action for VerifyQuality {
         }
         self.check_assembled_output(ctx)?;
         self.verify_preservation_and_placement(ctx)?;
+        self.verify_mastering(ctx)?;
         ctx.verification = Some(report);
         Ok(())
     }
 }
 
 impl VerifyQuality {
+    /// Measures the written deliverable against the configured mastering
+    /// profile and blocks export on hard failures (clipping, empty output,
+    /// loudness outside the delivery window, true peak over ceiling).
+    fn verify_mastering(&self, ctx: &mut PipelineContext) -> Result<()> {
+        let profile =
+            movie_radio_render::mastering::MasteringProfile::from_name(&ctx.mastering_profile)
+                .unwrap_or_default();
+        let report = movie_radio_render::mastering::validate_file(&ctx.output_path, &profile)
+            .context("mastering validation failed")?;
+
+        let json_path = ctx.output_path.with_extension("mastering.json");
+        movie_radio_render::mastering::write_json(&json_path, &report)?;
+        let html_path = ctx.output_path.with_extension("mastering.html");
+        movie_radio_render::mastering::write_html(&html_path, &report)?;
+
+        tracing::info!(
+            profile = %report.profile.name,
+            integrated_lufs = report.measurements.integrated_lufs,
+            true_peak_dbtp = report.measurements.true_peak_dbtp,
+            overall = ?report.overall,
+            "Mastering quality measured"
+        );
+        for warning in report.warnings() {
+            tracing::warn!(check = %warning.id, message = %warning.message, "mastering warning");
+        }
+        if report.overall.is_fail() {
+            anyhow::bail!(
+                "mastering quality gate failed for profile '{}': {}",
+                report.profile.name,
+                report.failure_summary()
+            );
+        }
+        ctx.mastering_report = Some(report);
+        Ok(())
+    }
+
     fn verify_preservation_and_placement(&self, ctx: &mut PipelineContext) -> Result<()> {
         let (original, assembled) = match (&ctx.original_audio, &ctx.assembled_audio) {
             (Some(orig), Some(asm)) => (orig.as_slice(), asm.as_slice()),

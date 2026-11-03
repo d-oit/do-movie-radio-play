@@ -211,6 +211,7 @@ impl SoundEffectBackend for AiGenerateSfxBackend {
             duration_secs: query.duration_secs,
             tags: query.tags.clone(),
             provider: "ai_generate".to_string(),
+            attribution: None,
         }])
     }
 
@@ -396,6 +397,7 @@ mod tests {
             duration_secs: None,
             tags: Vec::new(),
             provider: "ai_generate".to_string(),
+            attribution: None,
         };
         let res = b.fetch(&cand).await;
         assert!(res.is_err());

@@ -1,20 +1,61 @@
 use anyhow::{bail, Result};
 use movie_radio_types::{
-    SfxCandidate, SfxProviderCapabilities, SfxQuery, SfxTrigger, SoundEffectsConfig,
+    MissingSfxPolicy, SfxAssetProvenance, SfxCandidate, SfxProviderCapabilities, SfxQuery,
+    SfxTransformation, SfxTrigger, SoundEffectsConfig,
 };
 
 use super::{
-    ai_generate::AiGenerateSfxBackend, freesound::FreesoundBackend, local::LocalSfxBackend,
-    processor::SfxProcessor, SoundEffectBackend,
+    ai_generate::AiGenerateSfxBackend, cache::SfxCache, freesound::FreesoundBackend,
+    local::LocalSfxBackend, processor::SfxProcessor, SoundEffectBackend,
 };
+
+/// A rendered effect together with the provenance needed to audit or replay it.
+#[derive(Debug, Clone)]
+pub struct RenderedSfx {
+    pub samples: Vec<f32>,
+    pub provenance: SfxAssetProvenance,
+}
 
 pub struct SfxManager {
     backends: Vec<Box<dyn SoundEffectBackend>>,
+    cache: Option<SfxCache>,
+    offline: bool,
+    on_missing: MissingSfxPolicy,
+    max_asset_bytes: u64,
+    max_asset_duration_secs: f32,
 }
 
 impl SfxManager {
     pub fn new(backends: Vec<Box<dyn SoundEffectBackend>>) -> Self {
-        Self { backends }
+        Self {
+            backends,
+            cache: None,
+            offline: false,
+            on_missing: MissingSfxPolicy::Warn,
+            max_asset_bytes: 20_000_000,
+            max_asset_duration_secs: 300.0,
+        }
+    }
+
+    pub fn with_cache(mut self, cache: SfxCache) -> Self {
+        self.cache = Some(cache);
+        self
+    }
+
+    pub fn offline(mut self, offline: bool) -> Self {
+        self.offline = offline;
+        self
+    }
+
+    pub fn with_on_missing(mut self, policy: MissingSfxPolicy) -> Self {
+        self.on_missing = policy;
+        self
+    }
+
+    pub fn with_limits(mut self, max_asset_bytes: u64, max_asset_duration_secs: f32) -> Self {
+        self.max_asset_bytes = max_asset_bytes;
+        self.max_asset_duration_secs = max_asset_duration_secs;
+        self
     }
 
     pub fn backend_count(&self) -> usize {
@@ -46,18 +87,68 @@ impl SfxManager {
         Ok(all)
     }
 
-    pub async fn fetch_best(&self, query: &SfxQuery) -> Result<(SfxCandidate, Vec<u8>)> {
+    pub async fn fetch_best(
+        &self,
+        query: &SfxQuery,
+        sample_rate: u32,
+    ) -> Result<(SfxCandidate, Vec<u8>, SfxAssetProvenance)> {
+        let transformation = SfxTransformation {
+            target_sample_rate_hz: sample_rate,
+            target_duration_secs: query.duration_secs,
+            ..SfxTransformation::default()
+        };
+        // A valid cached asset wins over any network call, which keeps a
+        // resumed or offline run independent of provider availability.
+        if let Some(cache) = &self.cache {
+            if let Some(cached) = cache.search(query).into_iter().next() {
+                let candidate = candidate_from(&cached.provenance);
+                let mut provenance = cached.provenance;
+                provenance.transformation = transformation.clone();
+                return Ok((candidate, cached.bytes, provenance));
+            }
+        }
+        if self.offline {
+            bail!("offline mode: no cached SFX asset matches the query");
+        }
         let candidates = self.search_all(query).await?;
         if candidates.is_empty() {
             bail!("no SFX candidates found");
         }
         for cand in candidates {
+            if let Some(cache) = &self.cache {
+                if let Some(cached) = cache.get(&cand.provider, &cand.id) {
+                    let mut provenance = cached.provenance;
+                    provenance.transformation = transformation.clone();
+                    return Ok((cand, cached.bytes, provenance));
+                }
+            }
             for backend in &self.backends {
                 if backend.capabilities().is_paid && cand.provider != "ai_generate" {
                     continue;
                 }
                 match backend.fetch(&cand).await {
-                    Ok(bytes) => return Ok((cand, bytes)),
+                    Ok(bytes) => {
+                        if bytes.len() as u64 > self.max_asset_bytes {
+                            bail!(
+                                "SFX asset {} exceeds size limit: {} > {}",
+                                cand.id,
+                                bytes.len(),
+                                self.max_asset_bytes
+                            );
+                        }
+                        let provenance = match &self.cache {
+                            Some(cache) => cache.put(
+                                &cand,
+                                &bytes,
+                                transformation.clone(),
+                                self.max_asset_bytes,
+                            )?,
+                            None => {
+                                super::cache::provenance_for(&cand, &bytes, transformation.clone())
+                            }
+                        };
+                        return Ok((cand, bytes, provenance));
+                    }
                     Err(e) => {
                         tracing::debug!("fetch via {} failed for {}: {e}", cand.provider, cand.id);
                     }
@@ -91,7 +182,7 @@ impl SfxManager {
     pub fn from_config(config: &SoundEffectsConfig) -> Result<Self> {
         let mut backends: Vec<Box<dyn SoundEffectBackend>> = Vec::new();
         if !config.enabled {
-            return Ok(Self { backends });
+            return Ok(Self::new(backends));
         }
 
         if let Ok(local) = LocalSfxBackend::new(config.local.clone()) {
@@ -108,7 +199,22 @@ impl SfxManager {
             }
         }
 
-        Ok(Self { backends })
+        Ok(Self::new(backends)
+            .with_cache_config(config)
+            .offline(config.offline)
+            .with_on_missing(config.on_missing)
+            .with_limits(config.max_asset_bytes, config.max_asset_duration_secs))
+    }
+
+    fn with_cache_config(mut self, config: &SoundEffectsConfig) -> Self {
+        if config.cache_dir.is_empty() {
+            return self;
+        }
+        match SfxCache::new(&config.cache_dir) {
+            Ok(cache) => self.cache = Some(cache),
+            Err(e) => tracing::warn!(error = %e, "SFX cache unavailable; continuing without it"),
+        }
+        self
     }
 
     pub async fn render_trigger(
@@ -116,28 +222,59 @@ impl SfxManager {
         trigger: &SfxTrigger,
         sample_rate: u32,
         duration_secs: Option<f32>,
-    ) -> Result<Option<Vec<f32>>> {
+    ) -> Result<Option<RenderedSfx>> {
         let Some(query) = trigger_to_query(trigger, duration_secs) else {
             return Ok(None);
         };
 
-        if self.backends.is_empty() {
-            return Ok(None);
+        if self.backends.is_empty() && self.cache.is_none() {
+            return self.missing(trigger, "no SFX backends or cache configured");
         }
 
-        match self.fetch_best(&query).await {
-            Ok((_cand, bytes)) => {
+        match self.fetch_best(&query, sample_rate).await {
+            Ok((_cand, bytes, provenance)) => {
                 let samples =
                     Self::decode_and_mix_params(&bytes, sample_rate, query.duration_secs)?;
-                Ok(Some(samples))
+                let rendered_secs = samples.len() as f32 / sample_rate.max(1) as f32;
+                if rendered_secs > self.max_asset_duration_secs {
+                    bail!(
+                        "SFX asset {} exceeds duration limit: {:.1}s > {:.1}s",
+                        provenance.provider_asset_id,
+                        rendered_secs,
+                        self.max_asset_duration_secs
+                    );
+                }
+                Ok(Some(RenderedSfx {
+                    samples,
+                    provenance,
+                }))
             }
-            Err(e) => {
-                // Expected with an empty library: the film's own effects already
-                // play through the original track.
-                tracing::debug!("No SFX for trigger {:?}: {e}", trigger);
+            Err(e) => self.missing(trigger, &e.to_string()),
+        }
+    }
+
+    fn missing(&self, trigger: &SfxTrigger, reason: &str) -> Result<Option<RenderedSfx>> {
+        match self.on_missing {
+            MissingSfxPolicy::Fail => {
+                bail!("missing required SFX for trigger {trigger:?}: {reason}")
+            }
+            MissingSfxPolicy::Warn => {
+                tracing::warn!("missing SFX for trigger {trigger:?}: {reason}");
                 Ok(None)
             }
         }
+    }
+}
+
+fn candidate_from(provenance: &SfxAssetProvenance) -> SfxCandidate {
+    SfxCandidate {
+        id: provenance.provider_asset_id.clone(),
+        path_or_url: provenance.source_url.clone(),
+        license: provenance.license.clone(),
+        duration_secs: provenance.transformation.target_duration_secs,
+        tags: provenance.tags.clone(),
+        provider: provenance.provider.clone(),
+        attribution: provenance.attribution.clone(),
     }
 }
 
@@ -176,125 +313,5 @@ fn trigger_to_query(trigger: &SfxTrigger, duration_secs: Option<f32>) -> Option<
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use movie_radio_types::{SfxLicense, SfxQuery};
-
-    struct MockBackend {
-        candidates: Vec<SfxCandidate>,
-        bytes: Vec<u8>,
-    }
-
-    #[async_trait::async_trait]
-    impl SoundEffectBackend for MockBackend {
-        async fn search(&self, _q: &SfxQuery) -> Result<Vec<SfxCandidate>> {
-            Ok(self.candidates.clone())
-        }
-        async fn fetch(&self, _c: &SfxCandidate) -> Result<Vec<u8>> {
-            Ok(self.bytes.clone())
-        }
-        fn capabilities(&self) -> SfxProviderCapabilities {
-            SfxProviderCapabilities {
-                supports_search: true,
-                supports_fetch: true,
-                supports_generate: false,
-                requires_network: false,
-                is_paid: false,
-            }
-        }
-    }
-
-    fn make_test_wav_bytes() -> Vec<u8> {
-        let spec = hound::WavSpec {
-            channels: 1,
-            sample_rate: 16000,
-            bits_per_sample: 16,
-            sample_format: hound::SampleFormat::Int,
-        };
-        let mut buf = Vec::new();
-        let mut cursor = std::io::Cursor::new(&mut buf);
-        let mut w = hound::WavWriter::new(&mut cursor, spec).expect("writer");
-        for i in 0..160 {
-            let s = (i as f32 * 0.1).sin() * 1000.0;
-            w.write_sample(s as i16).expect("sample");
-        }
-        w.finalize().expect("finalize");
-        buf
-    }
-
-    #[tokio::test]
-    async fn test_search_all_deterministic() -> Result<()> {
-        let mgr = SfxManager::new(vec![
-            Box::new(MockBackend {
-                candidates: vec![SfxCandidate {
-                    id: "b".to_string(),
-                    path_or_url: "b.wav".to_string(),
-                    license: SfxLicense::Cc0,
-                    duration_secs: None,
-                    tags: vec!["rain".to_string()],
-                    provider: "local".to_string(),
-                }],
-                bytes: vec![1, 2, 3],
-            }),
-            Box::new(MockBackend {
-                candidates: vec![SfxCandidate {
-                    id: "a".to_string(),
-                    path_or_url: "a.wav".to_string(),
-                    license: SfxLicense::Cc0,
-                    duration_secs: None,
-                    tags: Vec::new(),
-                    provider: "local".to_string(),
-                }],
-                bytes: vec![4, 5, 6],
-            }),
-        ]);
-        let res = mgr.search_all(&SfxQuery::default()).await?;
-        assert_eq!(res[0].id, "a");
-        assert_eq!(res[1].id, "b");
-        Ok(())
-    }
-
-    #[test]
-    fn test_from_config() -> Result<()> {
-        let cfg = SoundEffectsConfig::default();
-        let mgr = SfxManager::from_config(&cfg)?;
-        // Default config has local enabled (if assets dir exists or default) and others disabled
-        assert!(mgr.backend_count() >= 1);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_render_trigger_none() -> Result<()> {
-        let mgr = SfxManager::new(Vec::new());
-        let res = mgr.render_trigger(&SfxTrigger::None, 16000, None).await?;
-        assert!(res.is_none());
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_render_trigger_success() -> Result<()> {
-        let wav = make_test_wav_bytes();
-        let mgr = SfxManager::new(vec![Box::new(MockBackend {
-            candidates: vec![SfxCandidate {
-                id: "rain_sfx".to_string(),
-                path_or_url: "rain.wav".to_string(),
-                license: SfxLicense::Cc0,
-                duration_secs: Some(1.0),
-                tags: vec!["rain".to_string()],
-                provider: "local".to_string(),
-            }],
-            bytes: wav,
-        })]);
-
-        let trigger = SfxTrigger::AutoSelect {
-            tags: vec!["rain".to_string()],
-            mood: None,
-        };
-        let res = mgr
-            .render_trigger(&trigger, 16000, Some(0.01))
-            .await?
-            .expect("rendered audio");
-        assert!(!res.is_empty());
-        Ok(())
-    }
-}
+#[path = "manager_tests.rs"]
+mod tests;

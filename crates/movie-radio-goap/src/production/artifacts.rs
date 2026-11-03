@@ -30,6 +30,7 @@ const VERIFICATION_JSON: &str = "verification.json";
 const MASTERING_JSON: &str = "mastering-report.json";
 const ASSEMBLED_MIX_WAV: &str = "assembled-mix.wav";
 const TRACK_MAP_JSON: &str = "track-map.json";
+const SFX_ASSETS_JSON: &str = "sfx-assets.json";
 
 /// Persists the stage's artifacts and returns their keys mapped to paths.
 pub fn persist_stage_artifacts(
@@ -103,6 +104,11 @@ pub fn persist_stage_artifacts(
                 commit_json(&map_path, track_map)?;
                 artifacts.insert("track_map".to_string(), path_string(&map_path));
             }
+            if !ctx.sfx_assets.is_empty() {
+                let assets_path = dir.join(SFX_ASSETS_JSON);
+                commit_json(&assets_path, &ctx.sfx_assets)?;
+                artifacts.insert("sfx_assets".to_string(), path_string(&assets_path));
+            }
         }
         "verify_quality" => {
             let report: &VerificationReport = ctx
@@ -159,18 +165,23 @@ pub fn restore_stage_artifacts(
         "synthesize_narration" => {
             restore_narration(ctx, artifacts)?;
         }
-        "assemble_radio_play" => match artifacts.get("assembled_mix") {
-            Some(path) => {
-                let (samples, sample_rate) = read_wav(Path::new(path))?;
-                ctx.sample_rate = sample_rate;
-                ctx.assembled_audio = Some(samples);
+        "assemble_radio_play" => {
+            match artifacts.get("assembled_mix") {
+                Some(path) => {
+                    let (samples, sample_rate) = read_wav(Path::new(path))?;
+                    ctx.sample_rate = sample_rate;
+                    ctx.assembled_audio = Some(samples);
+                }
+                None => {
+                    let path = artifact_path(artifacts, "deliverable")?;
+                    let (samples, _) = decode_audio(path, ctx.sample_rate)?;
+                    ctx.assembled_audio = Some(samples);
+                }
             }
-            None => {
-                let path = artifact_path(artifacts, "deliverable")?;
-                let (samples, _) = decode_audio(path, ctx.sample_rate)?;
-                ctx.assembled_audio = Some(samples);
+            if let Some(path) = artifacts.get("sfx_assets") {
+                ctx.sfx_assets = read_json(Path::new(path)).context("cannot restore SFX assets")?;
             }
-        },
+        }
         "verify_quality" => {
             ctx.verification = Some(read_json(artifact_path(artifacts, "verification")?)?);
             if let Some(path) = artifacts.get("mastering_report") {

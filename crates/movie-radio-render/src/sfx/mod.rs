@@ -1,4 +1,5 @@
 pub mod ai_generate;
+pub mod cache;
 pub mod freesound;
 pub mod local;
 pub mod manager;
@@ -16,7 +17,8 @@ pub trait SoundEffectBackend: Send + Sync {
 }
 
 pub use ai_generate::AiGenerateSfxBackend;
+pub use cache::{checksum_bytes, CacheCleanup, SfxCache};
 pub use freesound::FreesoundBackend;
 pub use local::LocalSfxBackend;
-pub use manager::SfxManager;
+pub use manager::{RenderedSfx, SfxManager};
 pub use processor::SfxProcessor;

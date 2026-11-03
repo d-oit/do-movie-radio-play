@@ -23,6 +23,7 @@
     "omitted_stages",
     "narration",
     "sfx",
+    "sfx_assets",
     "artifacts"
   ],
   "properties": {
@@ -216,6 +217,51 @@
           "asset_id": { "type": "string" },
           "source": { "type": "string" },
           "license": { "type": "string" }
+        }
+      }
+    },
+    "sfx_assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "provider_asset_id",
+          "source_url",
+          "license",
+          "retrieved_unix_ms",
+          "checksum",
+          "source_sample_rate_hz",
+          "tags",
+          "transformation"
+        ],
+        "properties": {
+          "provider": { "type": "string" },
+          "provider_asset_id": { "type": "string" },
+          "source_url": { "type": "string" },
+          "license": { "type": ["string", "object"] },
+          "attribution": { "type": ["string", "null"] },
+          "retrieved_unix_ms": { "type": "integer", "minimum": 0 },
+          "checksum": { "type": "string" },
+          "source_sample_rate_hz": { "type": "integer", "minimum": 0 },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "transformation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "target_sample_rate_hz",
+              "gain",
+              "fade_ms",
+              "target_duration_secs"
+            ],
+            "properties": {
+              "target_sample_rate_hz": { "type": "integer", "minimum": 0 },
+              "gain": { "type": "number" },
+              "fade_ms": { "type": "integer", "minimum": 0 },
+              "target_duration_secs": { "type": ["number", "null"] }
+            }
+          }
         }
       }
     },

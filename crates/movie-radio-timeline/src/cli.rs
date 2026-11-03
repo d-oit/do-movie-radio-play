@@ -411,6 +411,37 @@ pub enum Commands {
         #[arg(long)]
         validate: bool,
     },
+    /// Inspect or clean the content-addressed SFX asset cache.
+    Sfx {
+        #[command(subcommand)]
+        command: SfxCommands,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SfxCommands {
+    /// List cached SFX assets and their provenance.
+    CacheInspect {
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// Print provenance records as JSON.
+        #[arg(long)]
+        json: bool,
+    },
+    /// Remove cached assets not referenced by retained production manifests.
+    CacheClean {
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// Production run directory whose manifest protects its assets.
+        #[arg(long = "run-dir")]
+        run_dirs: Vec<PathBuf>,
+        /// Allow cleaning the whole cache when no run directory is given.
+        #[arg(long)]
+        all: bool,
+        /// Report what would be removed without deleting anything.
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Debug, Subcommand)]

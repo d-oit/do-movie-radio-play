@@ -65,6 +65,8 @@ pub struct PipelineContext {
     pub assembled_audio: Option<Vec<f32>>,
     /// Track and segment mapping artifact produced during assembly.
     pub track_map: Option<movie_radio_verification::TrackMap>,
+    /// Provenance for every SFX asset mixed into this run.
+    pub sfx_assets: Vec<movie_radio_types::SfxAssetProvenance>,
     /// Preservation and narration-placement report produced during verification.
     pub preservation_report: Option<movie_radio_verification::PreservationReport>,
     /// Mastering profile name used for normalization and quality validation.
@@ -109,6 +111,7 @@ impl PipelineContext {
             learning_db_path: None,
             assembled_audio: None,
             track_map: None,
+            sfx_assets: Vec::new(),
             preservation_report: None,
             mastering_profile: movie_radio_render::mastering::DEFAULT_PROFILE.to_string(),
             mastering_report: None,

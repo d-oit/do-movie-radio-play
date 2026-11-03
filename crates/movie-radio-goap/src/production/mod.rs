@@ -18,7 +18,8 @@ pub use crate::orchestrator::StageObserver;
 pub use artifacts::{persist_stage_artifacts, restore_stage_artifacts};
 pub use checkpoint::{fingerprint, identify_input, Checkpoint, InputIdentity, StageRecord};
 pub use manifest::{
-    build_manifest, write_manifest_and_report, write_run_metadata, RunManifest, RunMetadata,
+    build_manifest, write_credits, write_manifest_and_report, write_run_metadata, RunManifest,
+    RunMetadata, SFX_ASSETS_FILE,
 };
 
 /// Fingerprint classes a stage can depend on. A checkpointed stage is only

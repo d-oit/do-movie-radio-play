@@ -5,6 +5,7 @@
 //! re-reported without re-executing production.
 
 use anyhow::{bail, Context, Result};
+use movie_radio_types::SfxAssetProvenance;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -23,7 +24,9 @@ pub use build::{build_manifest, write_run_metadata, RunMetadata};
 pub const MANIFEST_SCHEMA_VERSION: u32 = 1;
 pub const MANIFEST_FILE: &str = "manifest.json";
 pub const HTML_REPORT_FILE: &str = "report.html";
+pub const CREDITS_FILE: &str = "credits.md";
 pub const RUN_METADATA_FILE: &str = "run-metadata.json";
+pub const SFX_ASSETS_FILE: &str = "sfx-assets.json";
 pub const TOOL_NAME: &str = "movie-radio-timeline";
 pub const TOOL_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -187,6 +190,9 @@ pub struct RunManifest {
     pub omitted_stages: Vec<String>,
     pub narration: Vec<NarrationLink>,
     pub sfx: Vec<SfxLink>,
+    /// Full provenance for every SFX asset mixed into the run.
+    #[serde(default)]
+    pub sfx_assets: Vec<SfxAssetProvenance>,
     pub artifacts: Vec<ArtifactChecksum>,
 }
 
@@ -259,6 +265,26 @@ pub fn write_manifest_and_report(
     let report_path = run_dir.join(HTML_REPORT_FILE);
     write_atomic(&report_path, html::render(manifest).as_bytes())?;
     Ok((manifest_path, report_path))
+}
+
+/// Writes a credits file covering every asset whose licence requires
+/// attribution. Returns its path when the file was written.
+pub fn write_credits(run_dir: &Path, manifest: &RunManifest) -> Result<Option<PathBuf>> {
+    let lines: Vec<String> = manifest
+        .sfx_assets
+        .iter()
+        .filter_map(SfxAssetProvenance::credits_line)
+        .collect();
+    if lines.is_empty() {
+        return Ok(None);
+    }
+    let mut body = String::from("# SFX credits\n\n");
+    for line in lines {
+        body.push_str(&format!("- {line}\n"));
+    }
+    let path = run_dir.join(CREDITS_FILE);
+    write_atomic(&path, body.as_bytes())?;
+    Ok(Some(path))
 }
 
 pub(crate) fn write_json_atomic<T: Serialize>(path: &Path, value: &T) -> Result<()> {

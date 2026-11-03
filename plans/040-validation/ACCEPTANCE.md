@@ -23,6 +23,7 @@ cargo test --test integration_cli repeated_extract_is_deterministic
 Required outcome:
 - extract output validates against `schema/timeline.schema.json`
 - repeated runs on identical input produce byte-identical output JSON
+- the contract test reads the schema file itself and fails on any schema keyword it does not implement, so the two cannot drift silently. It previously had: `Segment::sfx_trigger` was always emitted while the schema forbade additional properties, so this gate would have failed had it ever been run.
 
 ## 3) Production Evaluation Correctness (must pass)
 

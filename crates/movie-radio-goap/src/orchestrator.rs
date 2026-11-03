@@ -168,6 +168,15 @@ impl Orchestrator {
                 );
             }
         }
+        if let Some(report) = &ctx.mastering_report {
+            if report.overall.is_fail() {
+                bail!(
+                    "quality gate not met: mastering profile '{}' failed: {}",
+                    report.profile.name,
+                    report.failure_summary()
+                );
+            }
+        }
         Ok(())
     }
 }
@@ -349,5 +358,22 @@ mod tests {
         orch.run(&mut ctx)
             .await
             .expect("clean report must pass the gate");
+    }
+
+    #[test]
+    fn quality_gate_blocks_mastering_failure() {
+        let orch = Orchestrator::new(WorldState::default(), verified_goal(), Vec::new());
+        let mut ctx = PipelineContext::new("movie.mkv".into(), "out.wav".into());
+        let clipped: Vec<f32> = (0..48_000)
+            .map(|i| (i as f32 * 440.0 * std::f32::consts::TAU / 48_000.0).sin() * 1.5)
+            .collect();
+        let profile = movie_radio_render::mastering::MasteringProfile::ebu_r128();
+        ctx.mastering_report = Some(movie_radio_render::mastering::validate(
+            &clipped, 48_000, 1, &profile,
+        ));
+        let err = orch
+            .check_quality_gate(&ctx)
+            .expect_err("clipped mastering report must fail the gate");
+        assert!(err.to_string().contains("mastering profile"), "{err}");
     }
 }

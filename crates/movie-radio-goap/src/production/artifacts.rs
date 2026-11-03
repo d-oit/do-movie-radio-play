@@ -27,6 +27,8 @@ const SCRIPTS_JSON: &str = "scripts.json";
 const VISUAL_REVIEW_JSON: &str = "visual-review.json";
 const NARRATION_INDEX_JSON: &str = "narration.json";
 const VERIFICATION_JSON: &str = "verification.json";
+const MASTERING_JSON: &str = "mastering-report.json";
+const ASSEMBLED_MIX_WAV: &str = "assembled-mix.wav";
 
 /// Persists the stage's artifacts and returns their keys mapped to paths.
 pub fn persist_stage_artifacts(
@@ -84,6 +86,15 @@ pub fn persist_stage_artifacts(
                 bail!("assembled deliverable missing: {}", deliverable.display());
             }
             artifacts.insert("deliverable".to_string(), path_string(deliverable));
+            // Keep the pre-mastering mix so a resumed run compares preservation
+            // against the same signal, not the gain-adjusted deliverable.
+            let mix = ctx
+                .assembled_audio
+                .as_ref()
+                .context("cannot commit assembled mix: no samples in context")?;
+            let path = dir.join(ASSEMBLED_MIX_WAV);
+            commit_wav(&path, mix, ctx.sample_rate)?;
+            artifacts.insert("assembled_mix".to_string(), path_string(&path));
         }
         "verify_quality" => {
             let report: &VerificationReport = ctx
@@ -93,6 +104,11 @@ pub fn persist_stage_artifacts(
             let path = dir.join(VERIFICATION_JSON);
             commit_json(&path, report)?;
             artifacts.insert("verification".to_string(), path_string(&path));
+            if let Some(mastering) = ctx.mastering_report.as_ref() {
+                let path = dir.join(MASTERING_JSON);
+                commit_json(&path, mastering)?;
+                artifacts.insert("mastering_report".to_string(), path_string(&path));
+            }
         }
         "apply_learnings" => {
             let path = ctx
@@ -135,13 +151,24 @@ pub fn restore_stage_artifacts(
         "synthesize_narration" => {
             restore_narration(ctx, artifacts)?;
         }
-        "assemble_radio_play" => {
-            let path = artifact_path(artifacts, "deliverable")?;
-            let (samples, _) = decode_audio(path, ctx.sample_rate)?;
-            ctx.assembled_audio = Some(samples);
-        }
+        "assemble_radio_play" => match artifacts.get("assembled_mix") {
+            Some(path) => {
+                let (samples, sample_rate) = read_wav(Path::new(path))?;
+                ctx.sample_rate = sample_rate;
+                ctx.assembled_audio = Some(samples);
+            }
+            None => {
+                let path = artifact_path(artifacts, "deliverable")?;
+                let (samples, _) = decode_audio(path, ctx.sample_rate)?;
+                ctx.assembled_audio = Some(samples);
+            }
+        },
         "verify_quality" => {
             ctx.verification = Some(read_json(artifact_path(artifacts, "verification")?)?);
+            if let Some(path) = artifacts.get("mastering_report") {
+                ctx.mastering_report =
+                    Some(read_json(Path::new(path)).context("cannot restore mastering report")?);
+            }
         }
         "apply_learnings" => {
             // The action already wrote the learning state to the recorded path.

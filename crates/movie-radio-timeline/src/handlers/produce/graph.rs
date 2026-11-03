@@ -79,15 +79,27 @@ pub(super) fn run_fingerprints(
         fingerprint(&[(
             "assembly",
             format!(
-                "out={}|sfx={}",
+                "out={}|sfx={}|mastering={}",
                 deliverable.display(),
-                serde_json::to_string(&cfg.sound_effects)?
+                serde_json::to_string(&cfg.sound_effects)?,
+                opts.mastering_profile
+                    .as_deref()
+                    .unwrap_or(movie_radio_render::mastering::DEFAULT_PROFILE)
             ),
         )]),
     );
     map.insert(
         input_class::VERIFICATION.to_string(),
-        fingerprint(&[("verification", format!("verify={}", opts.verify_quality))]),
+        fingerprint(&[(
+            "verification",
+            format!(
+                "verify={} mastering={}",
+                opts.verify_quality,
+                opts.mastering_profile
+                    .as_deref()
+                    .unwrap_or(movie_radio_render::mastering::DEFAULT_PROFILE)
+            ),
+        )]),
     );
     Ok(map)
 }

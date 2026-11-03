@@ -25,6 +25,7 @@ pub struct RadioPlayOptions {
     pub gap_confidence: Option<f32>,
     pub vad_engine: Option<String>,
     pub no_auto_cues: bool,
+    pub mastering_profile: Option<String>,
 }
 
 fn default_vad_engine(
@@ -65,6 +66,15 @@ pub fn handle_radio_play(movie: PathBuf, opts: RadioPlayOptions) -> Result<()> {
     ctx.learning_db_path = opts.learning_db;
     ctx.no_learn = opts.no_learn;
     ctx.gap_confidence = opts.gap_confidence;
+    if let Some(profile) = &opts.mastering_profile {
+        if movie_radio_render::mastering::MasteringProfile::from_name(profile).is_none() {
+            bail!(
+                "unknown mastering profile '{profile}'; available: {}",
+                movie_radio_render::mastering::MasteringProfile::available().join(", ")
+            );
+        }
+        ctx.mastering_profile = profile.clone();
+    }
     match opts.vad_engine {
         Some(engine) => ctx.config.vad_engine = engine,
         None => {

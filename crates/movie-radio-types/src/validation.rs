@@ -105,6 +105,9 @@ fn validate_narrator(n: &NarratorConfig) -> Result<(), String> {
     if n.prompt_template.trim().is_empty() {
         return Err("narrator.prompt_template must not be empty".to_string());
     }
+    if !(1..=3).contains(&n.llm.max_attempts) {
+        return Err("narrator.llm.max_attempts must be in [1,3]".to_string());
+    }
     let tpl_path = std::path::Path::new(&n.prompt_template);
     if tpl_path
         .components()
@@ -206,6 +209,17 @@ mod tests {
         assert!(validate_app_config(&cfg).is_err());
 
         cfg.narrator.prompt_template = "templates/my..prompt.md".to_string();
+        assert!(validate_app_config(&cfg).is_ok());
+    }
+
+    #[test]
+    fn narrator_llm_retry_bound_validated() {
+        let mut cfg = AppConfig::default();
+        cfg.narrator.llm.max_attempts = 0;
+        assert!(validate_app_config(&cfg).is_err());
+        cfg.narrator.llm.max_attempts = 4;
+        assert!(validate_app_config(&cfg).is_err());
+        cfg.narrator.llm.max_attempts = 3;
         assert!(validate_app_config(&cfg).is_ok());
     }
 

@@ -122,6 +122,10 @@ pub struct NarratorConfig {
     pub ollama_local: NarratorOllamaConfig,
     #[serde(default)]
     pub anthropic: NarratorAnthropicConfig,
+    /// Optional LLM-backed gap narration (#412). Disabled by default so the
+    /// deterministic tag-based generator stays the default behaviour.
+    #[serde(default)]
+    pub llm: NarratorLlmConfig,
     #[serde(default)]
     pub visual: VisualConfig,
 }
@@ -138,7 +142,27 @@ impl Default for NarratorConfig {
             openai: NarratorOpenAiConfig::default(),
             ollama_local: NarratorOllamaConfig::default(),
             anthropic: NarratorAnthropicConfig::default(),
+            llm: NarratorLlmConfig::default(),
             visual: VisualConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NarratorLlmConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    /// Bounded retries per narration window. Invalid model output is never
+    /// retried past this limit; the window is left unnarrated and reported.
+    #[serde(default = "default_narrator_llm_max_attempts")]
+    pub max_attempts: u32,
+}
+
+impl Default for NarratorLlmConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            max_attempts: default_narrator_llm_max_attempts(),
         }
     }
 }
@@ -320,6 +344,9 @@ fn default_narrator_temperature() -> f32 {
 fn default_narrator_template() -> String {
     "templates/narrator_prompt.md".to_string()
 }
+fn default_narrator_llm_max_attempts() -> u32 {
+    2
+}
 fn default_openai_api_env() -> String {
     "OPENAI_API_KEY".to_string()
 }
@@ -394,5 +421,8 @@ mod tests {
         let narrator: NarratorConfig = serde_json::from_str(json).expect("deserialize");
         assert_eq!(narrator.visual.provider, "none");
         assert_eq!(narrator.visual.max_frames_per_window, 3);
+        // LLM narration stays opt-in so the deterministic path is unchanged.
+        assert!(!narrator.llm.enabled);
+        assert_eq!(narrator.llm.max_attempts, 2);
     }
 }

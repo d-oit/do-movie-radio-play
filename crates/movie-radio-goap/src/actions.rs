@@ -13,7 +13,7 @@ pub use verify::{ApplyLearnings, VerifyQuality};
 use crate::gaps::{
     energy_trend, split_gap_windows, subtract_cues, GapIdentifier, MAX_NARRATION_WINDOW_MS,
 };
-use crate::narrate::{NarrationEvidence, NarrationGenerator};
+use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_pipeline::pipeline::tags::add_tags_from_samples;
@@ -250,66 +250,61 @@ impl Action for GenerateNarration {
         );
         let generator = NarrationGenerator::default().with_language(&language);
         let narrator_config = ctx.visual.narrator_config.clone().unwrap_or_default();
-        let visual_config = narrator_config.visual;
-        let (scripts, report) = {
+        let outcome = {
             let timeline = ctx.timeline.as_ref().context("Timeline not extracted")?;
             let gaps = &ctx
                 .gap_analysis
                 .as_ref()
                 .context("Gaps not identified")?
                 .gaps;
-            if visual_config.provider == "none" {
-                (generator.generate(timeline, gaps)?, None)
-            } else {
-                let narrator =
-                    crate::narrate::visual::VisualNarrator::new(visual_config, &generator.language)
-                        .with_known_characters(ctx.visual.known_characters.clone());
-                match narrator.generate(&ctx.movie_path, timeline, gaps).await {
-                    Ok(outcome) => {
-                        let path = visual_report_path(&ctx.output_path);
-                        write_visual_report(&path, &outcome.report)?;
-                        info!(
-                            path = %path.display(),
-                            visual = outcome.report.visual_windows,
-                            audio_only = outcome.report.audio_only_windows,
-                            "Visual narration review written"
-                        );
-                        (outcome.scripts, Some(outcome.report))
-                    }
-                    Err(error) => {
-                        tracing::warn!(
-                            error = %error,
-                            "visual narration stage failed; using labelled acoustic fallback"
-                        );
-                        let reason = format!("visual stage failed: {error}");
-                        let mut scripts = generator.generate(timeline, gaps)?;
-                        for script in &mut scripts {
-                            script.evidence = NarrationEvidence::AudioOnly {
-                                reason: reason.clone(),
-                            };
-                        }
-                        (scripts, None)
-                    }
-                }
-            }
+            crate::narrate::stage::generate(
+                &generator,
+                &narrator_config,
+                &ctx.visual.known_characters,
+                &ctx.movie_path,
+                timeline,
+                gaps,
+            )
+            .await?
         };
-        info!(scripts = scripts.len(), "Narration scripts generated");
-        ctx.scripts = Some(scripts);
-        ctx.visual.report = report;
+        if let Some(report) = &outcome.visual_report {
+            let path = report_path(&ctx.output_path, ".visual-review.json");
+            write_report(&path, report)?;
+            info!(
+                path = %path.display(),
+                visual = report.visual_windows,
+                audio_only = report.audio_only_windows,
+                "Visual narration review written"
+            );
+        }
+        if let Some(report) = &outcome.llm_report {
+            let path = report_path(&ctx.output_path, ".llm-narration.json");
+            write_report(&path, report)?;
+            info!(
+                path = %path.display(),
+                accepted = report.accepted,
+                rejected = report.rejected,
+                fallback = report.fallback,
+                "LLM narration review written"
+            );
+        }
+        info!(
+            scripts = outcome.scripts.len(),
+            "Narration scripts generated"
+        );
+        ctx.scripts = Some(outcome.scripts);
+        ctx.visual.report = outcome.visual_report;
         Ok(())
     }
 }
 
-fn visual_report_path(output: &std::path::Path) -> std::path::PathBuf {
+fn report_path(output: &std::path::Path, suffix: &str) -> std::path::PathBuf {
     let mut path = output.as_os_str().to_os_string();
-    path.push(".visual-review.json");
+    path.push(suffix);
     std::path::PathBuf::from(path)
 }
 
-fn write_visual_report(
-    path: &std::path::Path,
-    report: &crate::narrate::visual::VisualNarrationReport,
-) -> Result<()> {
+fn write_report<T: serde::Serialize>(path: &std::path::Path, report: &T) -> Result<()> {
     if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("cannot create {}", parent.display()))?;
@@ -343,6 +338,7 @@ fn build_narration_segments(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::narrate::NarrationEvidence;
     use crate::narrate::NarrationScript;
     use movie_radio_voice::Emotion;
 

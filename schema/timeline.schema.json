@@ -67,6 +67,87 @@
               "string",
               "null"
             ]
+          },
+          "sfx_trigger": {
+            "description": "Optional sound-effect trigger. Serialized by Segment with a serde tag of `type`; emitted as null when absent, and optional on input via #[serde(default)].",
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "none"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "tags"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "auto_select"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "mood": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "sfx_id"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "specific"
+                  },
+                  "sfx_id": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "prompt",
+                  "duration_secs"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "ai_generate"
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "duration_secs": {
+                    "type": "number"
+                  }
+                }
+              }
+            ]
           }
         }
       }

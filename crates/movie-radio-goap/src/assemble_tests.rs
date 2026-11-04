@@ -39,6 +39,7 @@ fn test_assemble_with_sfx() {
     let sfx = vec![SfxSegment {
         start_sample: 2000,
         samples: vec![0.3; 1000],
+        provenance: None,
     }];
     let result = assembler
         .assemble_with_sfx(&original, &[], &sfx)

@@ -10,7 +10,7 @@ use super::quality::{quality_gates, usage, warnings, NarrationIndex};
 use super::{
     checksum_file, read_json_optional, redact, write_json_atomic, ArtifactChecksum, NarrationLink,
     ProviderSelection, RunManifest, RunStatus, SfxLink, StageGraphNode, StageRunStatus,
-    StageStatus, ToolInfo, MANIFEST_SCHEMA_VERSION, RUN_METADATA_FILE,
+    StageStatus, ToolInfo, MANIFEST_SCHEMA_VERSION, RUN_METADATA_FILE, SFX_ASSETS_FILE,
 };
 use crate::narrate::NarrationScript;
 use crate::production::checkpoint::{fingerprint, now_unix_ms, Checkpoint, InputIdentity};
@@ -113,6 +113,7 @@ pub fn build_manifest(run_dir: &Path) -> Result<RunManifest> {
     let track_map = read_json_optional::<TrackMap>(&run_dir.join("track-map.json"));
     let narration = narration_links(run_dir, track_map.as_ref());
     let sfx = sfx_links(track_map.as_ref());
+    let sfx_assets = read_json_optional(&run_dir.join(SFX_ASSETS_FILE)).unwrap_or_default();
     let usage = usage(run_dir, &metadata, sfx.len());
     let quality_gates = quality_gates(run_dir, &artifacts, status);
     let warnings = warnings(&stages, &narration, status);
@@ -148,6 +149,7 @@ pub fn build_manifest(run_dir: &Path) -> Result<RunManifest> {
         omitted_stages,
         narration,
         sfx,
+        sfx_assets,
         artifacts,
     })
 }

@@ -23,8 +23,9 @@ struct FreesoundSearchResponse {
 #[derive(Debug, Deserialize)]
 struct FreesoundResult {
     id: u64,
-    #[allow(dead_code)]
     name: String,
+    #[serde(default)]
+    username: String,
     tags: Vec<String>,
     license: String,
     #[serde(default)]
@@ -131,7 +132,7 @@ impl SoundEffectBackend for FreesoundBackend {
         let mut req = self.client.get(FREESOUND_SEARCH_URL).query(&[
             ("query", q.as_str()),
             ("page_size", "10"),
-            ("fields", "id,name,tags,license,previews"),
+            ("fields", "id,name,username,tags,license,previews"),
         ]);
         if let Some(t) = token.as_deref() {
             req = req.header("Authorization", format!("Token {t}"));
@@ -170,6 +171,7 @@ impl SoundEffectBackend for FreesoundBackend {
                 duration_secs: None,
                 tags: r.tags,
                 provider: "freesound".to_string(),
+                attribution: Some(format!("“{}” by {}", r.name, r.username)),
             });
         }
         out.sort_by(|a, b| a.id.cmp(&b.id));
@@ -286,6 +288,7 @@ mod tests {
             duration_secs: None,
             tags: Vec::new(),
             provider: "freesound".to_string(),
+            attribution: None,
         };
         assert!(backend.fetch(&cand).await.is_err());
     }

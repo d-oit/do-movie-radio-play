@@ -46,6 +46,7 @@ impl Action for AssembleRadioPlay {
         let narration_segments = assembler.build_narration_segments(scripts, &ctx.narration_audio);
 
         let mut sfx_segments = Vec::new();
+        let mut sfx_assets = Vec::new();
         if let Some(ref mut timeline) = ctx.timeline {
             autofill_silent_scene_sfx(timeline);
             let sfx_cfg = ctx.config.sound_effects.clone().unwrap_or_default();
@@ -56,17 +57,19 @@ impl Action for AssembleRadioPlay {
                             let duration_secs = ((seg.end_ms.saturating_sub(seg.start_ms)) as f32
                                 / 1000.0)
                                 .clamp(0.0, 300.0);
-                            if let Ok(Some(samples)) = sfx_mgr
+                            let rendered = sfx_mgr
                                 .render_trigger(trigger, ctx.sample_rate, Some(duration_secs))
-                                .await
-                            {
+                                .await?;
+                            if let Some(rendered) = rendered {
                                 let start_sample = (seg.start_ms as f64 * ctx.sample_rate as f64
                                     / 1000.0)
                                     as usize;
                                 sfx_segments.push(SfxSegment {
                                     start_sample,
-                                    samples,
+                                    samples: rendered.samples,
+                                    provenance: Some(rendered.provenance.clone()),
                                 });
+                                sfx_assets.push(rendered.provenance);
                             }
                         }
                     }
@@ -79,6 +82,7 @@ impl Action for AssembleRadioPlay {
         let track_map =
             assembler.build_track_map(original.len(), &narration_segments, &sfx_segments);
         ctx.track_map = Some(track_map);
+        ctx.sfx_assets = sfx_assets;
 
         // Master the deliverable to the configured delivery profile. The
         // pre-mastering mix stays in `assembled_audio` so preservation checks

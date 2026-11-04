@@ -52,6 +52,13 @@ allow_paid = false
 
 [sound_effects]
 enabled = true
+# Content-addressed asset cache; offline runs are served from here.
+cache_dir = ".movie-radio/sfx-cache"
+offline = false
+# warn: log and continue without the effect; fail: abort the run.
+on_missing = "warn"
+max_asset_bytes = 20000000
+max_asset_duration_secs = 300.0
 
 [sound_effects.local]
 root = "./assets/sfx"

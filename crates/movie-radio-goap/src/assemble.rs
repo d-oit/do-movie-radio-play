@@ -2,6 +2,7 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::narrate::NarrationScript;
+use movie_radio_types::SfxAssetProvenance;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NarrationSegment {
@@ -14,6 +15,9 @@ pub struct NarrationSegment {
 pub struct SfxSegment {
     pub start_sample: usize,
     pub samples: Vec<f32>,
+    /// Source asset record, when the effect came from the SFX manager.
+    #[serde(default)]
+    pub provenance: Option<SfxAssetProvenance>,
 }
 
 pub struct RadioPlayAssembler {
@@ -378,6 +382,18 @@ impl RadioPlayAssembler {
             let start_ms = (sfx.start_sample as u64 * 1000) / sample_rate as u64;
             let sfx_len_samples = sfx.samples.len();
             let end_ms = ((sfx.start_sample + sfx_len_samples) as u64 * 1000) / sample_rate as u64;
+            let (asset_id, source, license) = match sfx.provenance.as_ref() {
+                Some(p) => (
+                    p.provider_asset_id.clone(),
+                    p.provider.clone(),
+                    p.license.clone(),
+                ),
+                None => (
+                    format!("sfx_asset_{i}"),
+                    "sfx_manager".to_string(),
+                    SfxLicense::Cc0,
+                ),
+            };
             entries.push(TrackMapEntry {
                 id: format!("sfx_seg_{i}"),
                 track_type: TrackType::Sfx,
@@ -387,10 +403,10 @@ impl RadioPlayAssembler {
                 output_end_ms: end_ms,
                 operation: GainDuckingOperation::Gain { db: 0.0 },
                 provenance: ContentProvenance {
-                    asset_id: format!("sfx_asset_{i}"),
-                    source: "sfx_manager".to_string(),
-                    license: SfxLicense::Cc0,
-                    prompt: None,
+                    asset_id,
+                    source,
+                    license,
+                    prompt: sfx.provenance.as_ref().and_then(|p| p.attribution.clone()),
                 },
             });
         }

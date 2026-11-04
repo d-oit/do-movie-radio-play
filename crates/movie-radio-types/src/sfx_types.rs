@@ -49,6 +49,10 @@ impl SfxLicense {
     }
 
     pub fn is_allowed(&self, allowed: &[String]) -> bool {
+        // Unknown licences are never safe to use, even with no allowlist.
+        if matches!(self, Self::Unknown(_)) {
+            return false;
+        }
         if allowed.is_empty() {
             return true;
         }
@@ -81,6 +85,61 @@ pub struct SfxCandidate {
     pub duration_secs: Option<f32>,
     pub tags: Vec<String>,
     pub provider: String,
+    /// Attribution required by the provider, when it reports one.
+    #[serde(default)]
+    pub attribution: Option<String>,
+}
+
+/// Provenance for one asset used in a production. Stable enough to audit and
+/// reproduce a render without contacting the provider again.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SfxAssetProvenance {
+    pub provider: String,
+    pub provider_asset_id: String,
+    pub source_url: String,
+    pub license: SfxLicense,
+    /// Required attribution text; `None` when the licence needs none.
+    #[serde(default)]
+    pub attribution: Option<String>,
+    pub retrieved_unix_ms: u64,
+    /// FNV-1a digest of the exact asset bytes.
+    pub checksum: String,
+    /// Sample rate of the stored asset, or `0` when the format did not say.
+    pub source_sample_rate_hz: u32,
+    pub tags: Vec<String>,
+    pub transformation: SfxTransformation,
+}
+
+impl SfxAssetProvenance {
+    /// Attribution line for a credits file, if the licence requires one.
+    pub fn credits_line(&self) -> Option<String> {
+        self.attribution.as_ref().map(|text| {
+            format!(
+                "{text} — {} asset {} ({}) [{}]",
+                self.provider, self.provider_asset_id, self.source_url, self.checksum
+            )
+        })
+    }
+}
+
+/// Deterministic settings applied after the asset bytes were fetched.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SfxTransformation {
+    pub target_sample_rate_hz: u32,
+    pub gain: f32,
+    pub fade_ms: u32,
+    pub target_duration_secs: Option<f32>,
+}
+
+impl Default for SfxTransformation {
+    fn default() -> Self {
+        Self {
+            target_sample_rate_hz: 0,
+            gain: 0.9,
+            fade_ms: 10,
+            target_duration_secs: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -114,6 +173,19 @@ pub struct SoundEffectsConfig {
     pub freesound: FreesoundConfig,
     #[serde(default)]
     pub ai_generate: AiGenerateConfig,
+    /// Content-addressed asset cache; empty disables caching and offline replay.
+    #[serde(default = "default_sfx_cache_dir")]
+    pub cache_dir: String,
+    /// Never call a remote provider; serve assets from the cache only.
+    #[serde(default)]
+    pub offline: bool,
+    /// What a missing required SFX asset does: `warn` (default) or `fail`.
+    #[serde(default)]
+    pub on_missing: MissingSfxPolicy,
+    #[serde(default = "default_max_audio_bytes")]
+    pub max_asset_bytes: u64,
+    #[serde(default = "default_max_asset_duration_secs")]
+    pub max_asset_duration_secs: f32,
 }
 
 impl Default for SoundEffectsConfig {
@@ -123,8 +195,23 @@ impl Default for SoundEffectsConfig {
             local: LocalSfxConfig::default(),
             freesound: FreesoundConfig::default(),
             ai_generate: AiGenerateConfig::default(),
+            cache_dir: default_sfx_cache_dir(),
+            offline: false,
+            on_missing: MissingSfxPolicy::default(),
+            max_asset_bytes: default_max_audio_bytes(),
+            max_asset_duration_secs: default_max_asset_duration_secs(),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MissingSfxPolicy {
+    /// Log a warning and continue without the effect.
+    #[default]
+    Warn,
+    /// Fail the run so a silent omission cannot pass as success.
+    Fail,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -221,6 +308,14 @@ fn default_true() -> bool {
     true
 }
 
+fn default_sfx_cache_dir() -> String {
+    ".movie-radio/sfx-cache".to_string()
+}
+
+fn default_max_asset_duration_secs() -> f32 {
+    300.0
+}
+
 fn default_timeout_secs() -> u64 {
     300
 }
@@ -291,12 +386,12 @@ mod tests {
         assert!(SfxLicense::CcBySa.is_allowed(&[]));
         assert!(SfxLicense::CcByNcSa.is_allowed(&[]));
         assert!(SfxLicense::SamplingPlus.is_allowed(&[]));
-        assert!(SfxLicense::Unknown("anything".to_string()).is_allowed(&[]));
+        assert!(!SfxLicense::Unknown("anything".to_string()).is_allowed(&[]));
 
         // Specified allowed list matches
         assert!(SfxLicense::Cc0.is_allowed(&allowed));
         assert!(SfxLicense::CcBy.is_allowed(&allowed));
-        assert!(SfxLicense::Unknown("custom-license".to_string()).is_allowed(&allowed));
+        assert!(!SfxLicense::Unknown("custom-license".to_string()).is_allowed(&allowed));
 
         // Case insensitivity in allowed slice
         let uppercase_allowed = vec!["CC0".to_string(), "CC-BY".to_string()];

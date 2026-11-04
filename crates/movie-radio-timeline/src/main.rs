@@ -290,6 +290,28 @@ fn dispatch_command(cmd: Commands) -> Result<()> {
             json,
             validate,
         }),
+        Commands::Sfx { command } => match command {
+            crate::cli::SfxCommands::CacheInspect { config, json } => {
+                let cfg = crate::app_config_loader::load_app_config(config)?;
+                handlers::handle_sfx_cache_inspect(&cfg, handlers::SfxCacheInspectOptions { json })
+            }
+            crate::cli::SfxCommands::CacheClean {
+                config,
+                run_dirs,
+                all,
+                dry_run,
+            } => {
+                let cfg = crate::app_config_loader::load_app_config(config)?;
+                handlers::handle_sfx_cache_clean(
+                    &cfg,
+                    handlers::SfxCacheCleanOptions {
+                        run_dirs,
+                        all,
+                        dry_run,
+                    },
+                )
+            }
+        },
         rest => dispatch_verification_and_output(rest),
     }
 }

@@ -166,7 +166,11 @@ pub(crate) fn run_produce(
 
 fn generate_report(run_dir: &Path) -> Result<(PathBuf, PathBuf)> {
     let manifest = production::build_manifest(run_dir)?;
-    production::write_manifest_and_report(run_dir, &manifest)
+    let paths = production::write_manifest_and_report(run_dir, &manifest)?;
+    if let Some(credits) = production::write_credits(run_dir, &manifest)? {
+        println!("  credits:  {}", credits.display());
+    }
+    Ok(paths)
 }
 
 /// Records the effective configuration before the first stage, so the manifest

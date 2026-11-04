@@ -36,8 +36,9 @@ pub use segment::{
     AiVoiceOutput, GapAnalysisOutput, GapTrend, Segment, SegmentKind, TimelineOutput, VisualGap,
 };
 pub use sfx_types::{
-    AiGenerateConfig, FreesoundConfig, LocalSfxConfig, SfxCandidate, SfxLicense,
-    SfxProviderCapabilities, SfxQuery, SfxTrigger, SoundEffectsConfig,
+    AiGenerateConfig, FreesoundConfig, LocalSfxConfig, MissingSfxPolicy, SfxAssetProvenance,
+    SfxCandidate, SfxLicense, SfxProviderCapabilities, SfxQuery, SfxTransformation, SfxTrigger,
+    SoundEffectsConfig,
 };
 pub use voice_clone::{VoiceReference, VoiceReferenceParams};
 pub use voice_types::{

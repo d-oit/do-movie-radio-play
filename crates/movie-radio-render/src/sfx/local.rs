@@ -208,6 +208,7 @@ impl SoundEffectBackend for LocalSfxBackend {
                     duration_secs: None,
                     tags: f.tags.clone(),
                     provider: "local".to_string(),
+                    attribution: None,
                 }
             })
             .collect();
@@ -316,6 +317,7 @@ mod tests {
             duration_secs: None,
             tags: Vec::new(),
             provider: "local".to_string(),
+            attribution: None,
         };
         let res = backend.fetch(&candidate).await;
         assert!(res.is_err());

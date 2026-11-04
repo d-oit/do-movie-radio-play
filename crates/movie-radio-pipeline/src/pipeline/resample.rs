@@ -40,6 +40,89 @@ pub fn resample(input: &[f32], src_rate: u32, dst_rate: u32) -> Result<Vec<f32>>
     Ok(resample_linear(input, src_rate, dst_rate))
 }
 
+/// Incremental linear resampler. Yields exactly the samples [`resample`]
+/// produces for the same input regardless of how it is split across
+/// [`StreamingResampler::push`] calls, so streaming and whole-file decode stay
+/// sample-identical.
+#[cfg(not(feature = "high-quality-resample"))]
+pub struct StreamingResampler {
+    ratio: f64,
+    passthrough: bool,
+    next_out: u64,
+    base: u64,
+    total_in: u64,
+    buf: std::collections::VecDeque<f32>,
+}
+
+#[cfg(not(feature = "high-quality-resample"))]
+impl StreamingResampler {
+    pub fn new(src_rate: u32, dst_rate: u32) -> Self {
+        Self {
+            ratio: dst_rate as f64 / src_rate as f64,
+            passthrough: src_rate == dst_rate,
+            next_out: 0,
+            base: 0,
+            total_in: 0,
+            buf: std::collections::VecDeque::new(),
+        }
+    }
+
+    pub fn push(&mut self, input: &[f32]) -> Vec<f32> {
+        self.total_in += input.len() as u64;
+        if self.passthrough {
+            return input.to_vec();
+        }
+        self.buf.extend(input.iter().copied());
+        self.emit(false)
+    }
+
+    pub fn finish(&mut self) -> Vec<f32> {
+        if self.passthrough {
+            return Vec::new();
+        }
+        self.emit(true)
+    }
+
+    fn sample(&self, idx: u64) -> Option<f32> {
+        if idx < self.base || idx >= self.total_in {
+            return None;
+        }
+        self.buf.get((idx - self.base) as usize).copied()
+    }
+
+    fn emit(&mut self, final_pass: bool) -> Vec<f32> {
+        // The final length is `round(total * ratio)`, which is not known until
+        // the stream ends. `floor(total * ratio)` is a safe lower bound, so a
+        // streaming pass never emits a sample the whole-buffer path would omit.
+        let out_len = if final_pass {
+            (self.total_in as f64 * self.ratio).round() as u64
+        } else {
+            (self.total_in as f64 * self.ratio).floor() as u64
+        };
+        let mut out = Vec::new();
+        while self.next_out < out_len {
+            let src_pos = self.next_out as f64 / self.ratio;
+            let idx = src_pos.floor() as u64;
+            // A non-final pass can only emit samples whose right neighbour is
+            // already decoded; the tail is produced by `finish`.
+            if !final_pass && (self.sample(idx).is_none() || self.sample(idx + 1).is_none()) {
+                break;
+            }
+            let a = self.sample(idx).unwrap_or(0.0);
+            let b = self.sample(idx + 1).unwrap_or(a);
+            let frac = (src_pos - idx as f64) as f32;
+            out.push(a + (b - a) * frac);
+            self.next_out += 1;
+        }
+        let keep_from = (self.next_out as f64 / self.ratio).floor() as u64;
+        while self.base < keep_from && !self.buf.is_empty() {
+            self.buf.pop_front();
+            self.base += 1;
+        }
+        out
+    }
+}
+
 #[cfg(not(feature = "high-quality-resample"))]
 fn resample_linear(input: &[f32], src_rate: u32, dst_rate: u32) -> Vec<f32> {
     if src_rate == dst_rate || input.is_empty() {
@@ -103,6 +186,53 @@ mod tests {
         assert_eq!(output.len(), 4);
         assert!((output[0] - 0.0).abs() < 1e-6);
         assert!((output[2] - 1.0).abs() < 1e-6);
+    }
+
+    #[cfg(not(feature = "high-quality-resample"))]
+    fn tone(len: usize, hz: f32, rate: u32) -> Vec<f32> {
+        (0..len)
+            .map(|i| (i as f32 / rate as f32 * hz * std::f32::consts::TAU).sin() * 0.5)
+            .collect()
+    }
+
+    #[cfg(not(feature = "high-quality-resample"))]
+    #[test]
+    fn streaming_resampler_matches_whole_buffer_for_split_input() {
+        for (src, dst) in [(48_000u32, 16_000u32), (44_100, 16_000), (16_000, 16_000)] {
+            let input = tone(src as usize * 2 + 37, 440.0, src);
+            let whole = resample(&input, src, dst).unwrap();
+
+            for split in [1usize, 97, 1_000, 8_191] {
+                let mut resampler = StreamingResampler::new(src, dst);
+                let mut streamed = Vec::new();
+                for chunk in input.chunks(split) {
+                    streamed.extend(resampler.push(chunk));
+                }
+                streamed.extend(resampler.finish());
+                assert_eq!(
+                    streamed.len(),
+                    whole.len(),
+                    "split {split} at {src}->{dst} produced a different sample count"
+                );
+                for (idx, (got, want)) in streamed.iter().zip(&whole).enumerate() {
+                    assert_eq!(got, want, "split {split} at {src}->{dst} diverged at {idx}");
+                }
+            }
+        }
+    }
+
+    #[cfg(not(feature = "high-quality-resample"))]
+    #[test]
+    fn streaming_resampler_upsamples_across_boundaries() {
+        let input = tone(4_000, 300.0, 16_000);
+        let whole = resample(&input, 16_000, 48_000).unwrap();
+        let mut resampler = StreamingResampler::new(16_000, 48_000);
+        let mut streamed = Vec::new();
+        for chunk in input.chunks(333) {
+            streamed.extend(resampler.push(chunk));
+        }
+        streamed.extend(resampler.finish());
+        assert_eq!(streamed, whole);
     }
 
     /// The whole point of the `high-quality-resample` feature: the sinc path

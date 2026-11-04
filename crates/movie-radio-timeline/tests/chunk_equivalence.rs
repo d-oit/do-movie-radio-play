@@ -9,24 +9,32 @@ use std::path::Path;
 
 use assert_cmd::Command;
 
-const SAMPLE_RATE: u32 = 16_000;
+/// Stereo 44.1 kHz so the resampling path runs, with alternating vowel-like
+/// and near-silent 15 s blocks so the fixture yields several non-voice
+/// segments instead of one whole-file span.
+const SAMPLE_RATE: u32 = 44_100;
+const CHANNELS: u16 = 2;
+const BLOCK_SECONDS: usize = 15;
+const BLOCKS: usize = 8;
 
-/// Alternating tone/noise blocks, long enough that at least one boundary lands
-/// inside a run rather than between blocks.
 fn write_fixture(path: &Path) {
     let mut samples = Vec::new();
-    let mut state: u32 = 7;
-    for block in 0..12 {
-        let voiced = block % 2 == 0;
-        for i in 0..(SAMPLE_RATE as usize * 10) {
-            let value = if voiced {
-                let t = i as f32 / SAMPLE_RATE as f32;
-                (2.0 * std::f32::consts::PI * 220.0 * t).sin() * 0.3
+    for block in 0..BLOCKS {
+        let speech_like = block % 2 == 0;
+        for i in 0..(SAMPLE_RATE as usize * BLOCK_SECONDS) {
+            let t = i as f32 / SAMPLE_RATE as f32;
+            let value = if speech_like {
+                let env = 0.5 + 0.5 * (2.0 * std::f32::consts::PI * 4.0 * t).sin();
+                0.12 * env
+                    * ((2.0 * std::f32::consts::PI * 150.0 * t).sin() * 0.5
+                        + (2.0 * std::f32::consts::PI * 900.0 * t).sin() * 0.35
+                        + (2.0 * std::f32::consts::PI * 2400.0 * t).sin() * 0.2)
             } else {
-                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-                ((state >> 8) as f32 / u32::MAX as f32 - 0.5) * 0.004
+                (2.0 * std::f32::consts::PI * 50.0 * t).sin() * 0.0005
             };
-            samples.push(value);
+            for _ in 0..CHANNELS {
+                samples.push(value);
+            }
         }
     }
 
@@ -37,10 +45,10 @@ fn write_fixture(path: &Path) {
     bytes.extend_from_slice(b"WAVEfmt ");
     bytes.extend_from_slice(&16u32.to_le_bytes());
     bytes.extend_from_slice(&1u16.to_le_bytes());
-    bytes.extend_from_slice(&1u16.to_le_bytes());
+    bytes.extend_from_slice(&CHANNELS.to_le_bytes());
     bytes.extend_from_slice(&SAMPLE_RATE.to_le_bytes());
-    bytes.extend_from_slice(&(SAMPLE_RATE * 2).to_le_bytes());
-    bytes.extend_from_slice(&2u16.to_le_bytes());
+    bytes.extend_from_slice(&(SAMPLE_RATE * u32::from(CHANNELS) * 2).to_le_bytes());
+    bytes.extend_from_slice(&(CHANNELS * 2).to_le_bytes());
     bytes.extend_from_slice(&16u16.to_le_bytes());
     bytes.extend_from_slice(b"data");
     bytes.extend_from_slice(&data_len.to_le_bytes());
@@ -98,8 +106,9 @@ fn chunked_extraction_matches_whole_file_extraction() {
             None,
         );
         assert!(
-            !whole.is_empty(),
-            "fixture should produce non-voice segments"
+            whole.len() >= 4,
+            "fixture should yield several non-voice segments, got {}",
+            whole.len()
         );
 
         for chunk_seconds in [20, 35, 60] {

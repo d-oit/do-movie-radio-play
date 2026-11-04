@@ -193,3 +193,84 @@ fn test_decode_audio_chunks_cb_streaming() {
     assert_eq!(chunk_count, 3);
     assert_eq!(total_samples, 48000);
 }
+
+#[cfg(not(feature = "high-quality-resample"))]
+fn write_tone_wav(path: &std::path::Path, rate: u32, channels: u16, seconds: f32) {
+    let spec = WavSpec {
+        channels,
+        sample_rate: rate,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut writer = WavWriter::create(path, spec).unwrap();
+    let frames = (rate as f32 * seconds) as usize;
+    for i in 0..frames {
+        let t = i as f32 / rate as f32;
+        let left = (t * 440.0 * std::f32::consts::TAU).sin() * 0.6;
+        let right = (t * 660.0 * std::f32::consts::TAU).sin() * 0.4;
+        let values = [left, right];
+        for channel in 0..channels {
+            let sample = values[(channel % 2) as usize];
+            writer
+                .write_sample((sample * i16::MAX as f32) as i16)
+                .unwrap();
+        }
+    }
+    writer.finalize().unwrap();
+}
+
+#[cfg(not(feature = "high-quality-resample"))]
+#[test]
+fn test_streaming_symphonia_matches_buffered_chunks() {
+    let temp_dir = tempfile::tempdir().unwrap();
+
+    // 44.1 kHz stereo forces the resampling path, 16 kHz mono exercises the
+    // passthrough path.
+    for (rate, channels) in [(44_100u32, 2u16), (16_000, 1)] {
+        let wav_path = temp_dir
+            .path()
+            .join(format!("stream_{rate}_{channels}.wav"));
+        write_tone_wav(&wav_path, rate, channels, 2.5);
+
+        for chunk_secs in [1u64, 2] {
+            let mut streamed_chunks: Vec<Vec<f32>> = Vec::new();
+            super::symphonia::stream_via_symphonia_chunks(
+                &wav_path,
+                Some("wav"),
+                16_000,
+                chunk_secs,
+                &mut |samples, _| {
+                    streamed_chunks.push(samples.to_vec());
+                    Ok(())
+                },
+            )
+            .unwrap();
+
+            let mut buffered_symphonia = Vec::new();
+            decode_audio_chunks_cb(&wav_path, 16_000, chunk_secs, |samples, _| {
+                buffered_symphonia.extend_from_slice(samples);
+                Ok(())
+            })
+            .unwrap();
+
+            let streamed: Vec<f32> = streamed_chunks.concat();
+            assert_eq!(
+                streamed.len(),
+                buffered_symphonia.len(),
+                "sample count differs at {rate}Hz/{channels}ch, {chunk_secs}s chunks"
+            );
+            let per_chunk = (chunk_secs * 16_000) as usize;
+            for (idx, (got, want)) in streamed.iter().zip(&buffered_symphonia).enumerate() {
+                assert!(
+                    (got - want).abs() < 1e-6,
+                    "sample {idx} differs at {rate}Hz/{channels}ch: {got} vs {want}"
+                );
+            }
+            assert_eq!(
+                streamed_chunks[0].len(),
+                per_chunk,
+                "full chunks should be sized by the chunk duration"
+            );
+        }
+    }
+}

@@ -3,11 +3,43 @@ use std::path::Path;
 use std::time::Instant;
 use tracing::info;
 
-use crate::pipeline::decode::decode_audio_chunks_cb;
+use crate::pipeline::decode::{decode_audio_chunks_cb, decode_audio_chunks_prefer_streaming};
 use crate::pipeline::framing::FrameStreamer;
 use crate::pipeline::tri_state;
 use crate::pipeline::vad::{adapt_spectral_thresholds, classify_with_engine, create_engine};
 use movie_radio_types::{AnalysisConfig, Frame, StageDurations, TimelineOutput};
+
+/// Frames accumulated while decoding. Reset when a streaming decode attempt is
+/// discarded and the file has to be decoded in full.
+struct FrameSink {
+    streamer: FrameStreamer,
+    frames: Vec<Frame>,
+    total_samples: u64,
+}
+
+impl FrameSink {
+    fn new(cfg: &AnalysisConfig) -> Self {
+        Self {
+            streamer: FrameStreamer::new(cfg.sample_rate_hz, cfg.frame_ms),
+            frames: Vec::new(),
+            total_samples: 0,
+        }
+    }
+
+    fn reset(&mut self, cfg: &AnalysisConfig) {
+        *self = Self::new(cfg);
+    }
+
+    fn push(&mut self, chunk_samples: &[f32]) {
+        self.total_samples += chunk_samples.len() as u64;
+        self.frames.extend(self.streamer.push(chunk_samples));
+    }
+
+    fn finish(&mut self) -> Vec<Frame> {
+        self.frames.extend(self.streamer.finish());
+        std::mem::take(&mut self.frames)
+    }
+}
 
 /// Streams decode and framing in bounded chunks, then classifies and runs the
 /// same post-VAD stages as whole-file extraction over the retained frames.
@@ -32,31 +64,40 @@ pub fn extract_timeline_chunked(
     let effective_threshold = cfg.energy_threshold + cfg.vad_threshold_delta;
     let frame_ms = cfg.frame_ms;
 
-    let mut streamer = FrameStreamer::new(cfg.sample_rate_hz, frame_ms);
-    let mut frames: Vec<Frame> = Vec::new();
-    let mut total_samples: u64 = 0;
-
-    decode_audio_chunks_cb(
+    let mut sink = FrameSink::new(cfg);
+    let streamed = decode_audio_chunks_prefer_streaming(
         input,
         cfg.sample_rate_hz,
         chunk_duration_sec,
         |chunk_samples, chunk_idx| {
-            total_samples += chunk_samples.len() as u64;
-            frames.extend(streamer.push(chunk_samples));
-
+            sink.push(chunk_samples);
             if chunk_idx % 10 == 0 {
                 info!(
                     chunk = chunk_idx,
-                    samples = total_samples,
-                    frames = frames.len(),
+                    samples = sink.total_samples,
+                    frames = sink.frames.len(),
                     "chunk processed"
                 );
             }
-
             Ok(())
         },
     )?;
-    frames.extend(streamer.finish());
+    if !streamed {
+        // Chunks from the failed incremental attempt are unusable, so retry
+        // with the full-decode path rather than the streaming wrapper.
+        sink.reset(cfg);
+        decode_audio_chunks_cb(
+            input,
+            cfg.sample_rate_hz,
+            chunk_duration_sec,
+            |chunk_samples, _| {
+                sink.push(chunk_samples);
+                Ok(())
+            },
+        )?;
+    }
+    let total_samples = sink.total_samples;
+    let frames = sink.finish();
 
     // Spectral engines adapt their thresholds from the whole file, so this
     // must run after decode, over every frame.

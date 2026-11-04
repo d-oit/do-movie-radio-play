@@ -1,15 +1,9 @@
-//! Chunked streaming extraction should agree with whole-file extraction.
+//! Chunked streaming extraction must agree with whole-file extraction.
 //!
-//! It does not, which is why `chunk_duration_sec` stays off by default and why
-//! the bounded-memory work in #418 cannot simply switch it on. Measured on
-//! Elephants Dream: whole-file yields 9 non-voice segments / 374.4 s, while
-//! `--chunk-duration 120` yields 9 / 377.5 s with only 2 of 9 spans identical
-//! and segment starts sitting exactly on chunk boundaries (240000, 480000 ms).
-//! See `plans/FOLLOWUPS.md`.
-//!
-//! The test is `#[ignore]`d because it fails today. When the stitching in
-//! `pipeline/chunked.rs` is fixed, remove the `#[ignore]` and this becomes a
-//! live guard against re-introducing boundary-dependent output.
+//! `pipeline/chunked.rs` streams decode and VAD but runs segmentation, merging
+//! and inversion once over the accumulated per-frame state, so the result must
+//! not depend on `chunk_duration_sec`. This guards against re-introducing
+//! boundary-dependent output (see #418).
 
 use std::path::Path;
 
@@ -89,7 +83,6 @@ fn extract(media: &Path, out: &Path, chunk: Option<u32>) -> Vec<(u64, u64)> {
 }
 
 #[test]
-#[ignore = "known divergence: chunked extraction splits spans at chunk boundaries; see plans/FOLLOWUPS.md and #418"]
 fn chunked_extraction_matches_whole_file_extraction() {
     let dir = tempfile::tempdir().expect("tempdir");
     let media = dir.path().join("fixture.wav");

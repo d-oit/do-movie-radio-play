@@ -141,15 +141,12 @@ fn run_pipeline_from_samples(
     let (speech, frame_likelihoods) =
         vad_stage(mono, &frames, cfg, effective_threshold, &mut stage_ms)?;
     let smoothed = smoothing_stage(&speech, &frames, &frame_likelihoods, cfg, &mut stage_ms);
-    let speech_segments = speech_segments_stage(&smoothed, &frame_likelihoods, cfg, &mut stage_ms);
-    let filtered_speech = merging_stage(&speech_segments, &frames, cfg, &mut stage_ms);
-    let speech_segment_count = filtered_speech.len();
-
     let total_audio_ms = mono.len() as u64 * 1000 / cfg.sample_rate_hz as u64;
-    let segments = non_voice_inversion_stage(
+    let (segments, speech_segment_count) = segments_from_smoothed(
         file_path,
-        &filtered_speech,
+        &smoothed,
         &frame_likelihoods,
+        &frames,
         total_audio_ms,
         cfg,
         &mut stage_ms,
@@ -173,6 +170,32 @@ fn run_pipeline_from_samples(
         speech_segment_count,
         stage_ms,
     })
+}
+
+/// Post-VAD stages shared by whole-file and chunked extraction. Running the
+/// same segmentation, merging and inversion over the full timeline is what
+/// keeps chunked output independent of chunk size.
+pub(crate) fn segments_from_smoothed(
+    file_path: &Path,
+    smoothed: &[bool],
+    frame_likelihoods: &[f32],
+    frames: &[Frame],
+    total_audio_ms: u64,
+    cfg: &AnalysisConfig,
+    stage_ms: &mut StageDurations,
+) -> Result<(Vec<Segment>, usize)> {
+    let speech_segments = speech_segments_stage(smoothed, frame_likelihoods, cfg, stage_ms);
+    let filtered_speech = merging_stage(&speech_segments, frames, cfg, stage_ms);
+    let speech_segment_count = filtered_speech.len();
+    let segments = non_voice_inversion_stage(
+        file_path,
+        &filtered_speech,
+        frame_likelihoods,
+        total_audio_ms,
+        cfg,
+        stage_ms,
+    )?;
+    Ok((segments, speech_segment_count))
 }
 
 #[rustfmt::skip]

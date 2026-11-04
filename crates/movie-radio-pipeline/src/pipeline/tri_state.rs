@@ -2,7 +2,7 @@ use crate::pipeline::segmenter;
 use movie_radio_types::frame::Frame;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum FrameState {
+pub(crate) enum FrameState {
     Speech,
     MusicLike,
     NoiseLike,
@@ -50,7 +50,7 @@ pub fn resolve_speech(
     smooth_states(&states, frame_ms, hangover_ms)
 }
 
-fn classify_frame_states(
+pub(crate) fn classify_frame_states(
     speech: &[bool],
     frames: &[Frame],
     frame_likelihoods: &[f32],
@@ -102,7 +102,7 @@ fn is_noise_like(frame: &Frame) -> bool {
         || (frame.high_band_ratio > 0.4 && frame.zcr > 0.35)
 }
 
-fn smooth_states(states: &[FrameState], frame_ms: u32, hangover_ms: u32) -> Vec<bool> {
+pub(crate) fn smooth_states(states: &[FrameState], frame_ms: u32, hangover_ms: u32) -> Vec<bool> {
     let hang = (hangover_ms / frame_ms.max(1)) as usize;
     let mut out = vec![false; states.len()];
     let mut hard_non_speech = vec![false; states.len()];

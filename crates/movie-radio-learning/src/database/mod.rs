@@ -93,6 +93,8 @@ impl LearningDb {
 
         trace_store::create_trace_tables(&self.conn).await?;
 
+        crate::review_feedback::create_review_tables(&self.conn).await?;
+
         self.conn
             .execute(
                 "CREATE TABLE IF NOT EXISTS experiments (

@@ -1,5 +1,6 @@
 mod app_config_loader;
 mod cli;
+mod cli_review_feedback;
 mod config;
 mod handlers;
 mod merge;
@@ -13,6 +14,7 @@ use clap::Parser;
 use tracing::info;
 
 use crate::cli::{Cli, Commands};
+use crate::cli_review_feedback::ReviewFeedbackCommands;
 
 fn main() {
     if let Err(err) = run() {
@@ -380,6 +382,7 @@ fn dispatch_verification_and_output(cmd: Commands) -> Result<()> {
             learning_db,
             output,
         } => handlers::handle_learning_experiments(learning_db, output),
+        Commands::ReviewFeedback { command } => dispatch_review_feedback(command),
         Commands::MergeTimeline {
             input,
             output,
@@ -402,5 +405,45 @@ fn dispatch_verification_and_output(cmd: Commands) -> Result<()> {
             verified,
         } => handlers::handle_export(input, output, format, verified),
         _ => unreachable!(),
+    }
+}
+
+fn dispatch_review_feedback(cmd: ReviewFeedbackCommands) -> Result<()> {
+    match cmd {
+        ReviewFeedbackCommands::Import {
+            input,
+            learning_db,
+            reviewer,
+            dry_run,
+            output,
+        } => handlers::handle_import_review_feedback(input, learning_db, reviewer, dry_run, output),
+        ReviewFeedbackCommands::Proposals {
+            learning_db,
+            output,
+        } => handlers::handle_review_proposals(learning_db, output),
+        ReviewFeedbackCommands::Apply {
+            proposal_id,
+            confirm,
+            learning_db,
+        } => handlers::handle_apply_review_proposal(proposal_id, confirm, learning_db),
+        ReviewFeedbackCommands::Rollback {
+            proposal_id,
+            confirm,
+            learning_db,
+        } => handlers::handle_rollback_review_proposal(proposal_id, confirm, learning_db),
+        ReviewFeedbackCommands::Metrics {
+            learning_db,
+            output,
+        } => handlers::handle_review_metrics(learning_db, output),
+        ReviewFeedbackCommands::RegisterHoldout {
+            fixture_id,
+            path,
+            learning_db,
+        } => handlers::handle_register_holdout(fixture_id, path, learning_db),
+        ReviewFeedbackCommands::Export {
+            output,
+            learning_db,
+            include_artifact_paths,
+        } => handlers::handle_export_review_feedback(output, learning_db, include_artifact_paths),
     }
 }

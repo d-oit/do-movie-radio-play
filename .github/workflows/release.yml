@@ -33,7 +33,7 @@ jobs:
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       - name: Install System Dependencies
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg libasound2-dev
+        run: bash scripts/install-system-deps.sh ffmpeg libasound2-dev
 
       - name: Validate VERSION and Annotated Tag
         run: bash scripts/check_version.sh "${{ github.ref_name }}"

@@ -103,7 +103,16 @@ impl RadioPlayAssembler {
         use movie_radio_render::spatial::StereoPosition;
 
         let total_len = narr_ducked.len();
-        let mut sfx_track = vec![0.0f32; total_len];
+        // Silence past the last effect only needs to reach the mixer as an
+        // implicit tail, so the track stops at the final effect instead of
+        // spanning the whole film.
+        let sfx_len = sfx_segments
+            .iter()
+            .map(|seg| seg.start_sample.saturating_add(seg.samples.len()))
+            .max()
+            .unwrap_or(0)
+            .min(total_len);
+        let mut sfx_track = vec![0.0f32; sfx_len];
         for seg in sfx_segments {
             add_sfx_segment(&mut sfx_track, seg);
         }
@@ -129,16 +138,9 @@ impl RadioPlayAssembler {
         };
 
         let mut mixer = Mixer::new();
-        let stereo = mixer.render_mix(vec![track_main, track_sfx])?;
-
-        let mono: Vec<f32> = stereo
-            .as_chunks::<2>()
-            .0
-            .iter()
-            .map(|[l, r]| (l + r) * 0.5 * std::f32::consts::SQRT_2)
-            .collect();
-
-        Ok(mono)
+        Ok(mixer
+            .render_mix_centre_mono(vec![track_main, track_sfx])?
+            .to_vec())
     }
 }
 

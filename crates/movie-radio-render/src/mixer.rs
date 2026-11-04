@@ -1,6 +1,6 @@
 use crate::agc::{apply_agc, apply_reverb};
 use crate::spatial::{ReverbConfig, StereoPosition};
-use anyhow::Result;
+use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
 /// Input track for the mixer
@@ -44,6 +44,7 @@ pub struct Mixer {
     left_channel: Vec<f32>,
     right_channel: Vec<f32>,
     interleaved_output: Vec<f32>,
+    mono_output: Vec<f32>,
 }
 
 impl Mixer {
@@ -53,6 +54,7 @@ impl Mixer {
             left_channel: Vec::new(),
             right_channel: Vec::new(),
             interleaved_output: Vec::new(),
+            mono_output: Vec::new(),
         }
     }
 
@@ -136,6 +138,70 @@ impl Mixer {
         }
 
         Ok(&self.interleaved_output)
+    }
+
+    /// Renders a centred mix folded to mono, holding one full-length buffer
+    /// instead of the four used by [`Mixer::render_mix`] plus the caller's
+    /// fold.
+    ///
+    /// Equivalent to `render_mix` followed by `(l + r) * 0.5 * SQRT_2` when
+    /// every track is centred, including the peak normalization.
+    pub fn render_mix_centre_mono(&mut self, tracks: Vec<TrackInput>) -> Result<&[f32]> {
+        if tracks.iter().any(|track| {
+            let (left, right) = track.position.gains();
+            left != right
+        }) {
+            bail!("render_mix_centre_mono requires centred tracks; use render_mix for panning");
+        }
+
+        let max_len = tracks.iter().map(|t| t.samples.len()).max().unwrap_or(0);
+        self.mono_output.clear();
+        if max_len == 0 {
+            return Ok(&[]);
+        }
+        self.mono_output.resize(max_len, 0.0);
+
+        for track in tracks {
+            let sample_rate = track.sample_rate;
+            let gain = track.position.gains().0;
+
+            let agc = apply_agc(
+                track.samples,
+                sample_rate,
+                track.agc_attack,
+                track.agc_release,
+                track.agc_max_gain,
+            )?;
+            let rendered = if let Some(ref rev) = track.reverb {
+                apply_reverb(agc, sample_rate, rev.delay_ms, rev.amplitude)?
+            } else {
+                agc
+            };
+
+            let limit = rendered.len().min(self.mono_output.len());
+            for (out, sample) in self.mono_output[..limit].iter_mut().zip(&rendered[..limit]) {
+                *out += sample * gain;
+            }
+        }
+
+        // Same peak as the per-channel buffers, then the same fold and scale
+        // in the same order so the result matches the stereo path.
+        let peak = self
+            .mono_output
+            .iter()
+            .map(|s| s.abs())
+            .fold(0.0_f32, f32::max);
+        for s in &mut self.mono_output {
+            *s *= std::f32::consts::SQRT_2;
+        }
+        if peak > 1.0 {
+            let scale = 1.0 / peak;
+            for s in &mut self.mono_output {
+                *s *= scale;
+            }
+        }
+
+        Ok(&self.mono_output)
     }
 }
 
@@ -258,5 +324,66 @@ mod tests {
         // Sequential mixes of the same input must be completely identical (no state pollution)
         assert_eq!(res1, res2);
         Ok(())
+    }
+
+    fn centred(samples: Vec<f32>, max_gain: f32) -> TrackInput {
+        TrackInput {
+            samples,
+            sample_rate: 44_100,
+            position: StereoPosition::CENTRE,
+            reverb: None,
+            agc_attack: 0.01,
+            agc_release: 0.1,
+            agc_max_gain: max_gain,
+        }
+    }
+
+    #[test]
+    fn centre_mono_matches_stereo_fold() -> Result<()> {
+        let signal = |len: usize, step: f32| -> Vec<f32> {
+            (0..len)
+                .map(|i| (i as f32 * step).sin() * 0.4 + (i as f32 * 0.01).cos() * 0.1)
+                .collect()
+        };
+        // Peak above 1.0 exercises the normalization branch.
+        for (main_gain, sfx_gain) in [(1.0_f32, 20.0_f32), (1.0, 1.0)] {
+            let tracks = vec![
+                centred(signal(4_800, 0.002), main_gain),
+                centred(signal(3_000, 0.003), sfx_gain),
+            ];
+            let mut mixer = Mixer::new();
+            let stereo = mixer.render_mix(tracks.clone())?.to_vec();
+            let mono = mixer.render_mix_centre_mono(tracks)?.to_vec();
+
+            let folded: Vec<f32> = stereo
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|[l, r]| (l + r) * 0.5 * std::f32::consts::SQRT_2)
+                .collect();
+            assert_eq!(mono.len(), folded.len());
+            for (idx, (got, want)) in mono.iter().zip(&folded).enumerate() {
+                assert!(
+                    (got - want).abs() <= 1e-6,
+                    "sample {idx} differs: {got} vs {want}"
+                );
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn centre_mono_rejects_panned_tracks() {
+        let track = TrackInput {
+            samples: vec![0.1, 0.2],
+            sample_rate: 44_100,
+            position: StereoPosition::HARD_LEFT,
+            reverb: None,
+            agc_attack: 0.01,
+            agc_release: 0.1,
+            agc_max_gain: 1.0,
+        };
+        let mut mixer = Mixer::new();
+        assert!(mixer.render_mix_centre_mono(vec![track]).is_err());
     }
 }

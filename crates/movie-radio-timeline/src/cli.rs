@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+use crate::cli_review_feedback::ReviewFeedbackCommands;
+
 #[derive(Debug, Parser)]
 #[command(name = "timeline")]
 #[command(about = "Extract non-voice timeline segments from movie audio")]
@@ -234,6 +236,11 @@ pub enum Commands {
         learning_db: PathBuf,
         #[arg(long)]
         output: Option<PathBuf>,
+    },
+    /// Human-in-the-loop review feedback workflow.
+    ReviewFeedback {
+        #[command(subcommand)]
+        command: ReviewFeedbackCommands,
     },
     /// Merge adjacent segments by gap duration and strategy.
     MergeTimeline {

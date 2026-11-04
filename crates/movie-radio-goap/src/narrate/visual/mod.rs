@@ -29,7 +29,7 @@ pub use frames::{
 };
 pub use grounding::{GroundedFrame, GroundingIssue, RejectedClaim};
 pub use provider::{
-    build_prompt, parse_analysis, FrameObservation, OllamaVision, OpenAiVision, VisionAnalysis,
+    build_prompt, parse_analysis, FrameObservation, OllamaVision, OpenRouterVision, VisionAnalysis,
     VisionError, VisionErrorKind, VisionProvider, VisionRequest,
 };
 pub use state::VisualPipelineState;
@@ -124,7 +124,13 @@ impl VisualNarrator {
     /// audio-only path in place.
     pub fn new(config: VisualConfig, language: &str) -> Self {
         let provider: Option<Arc<dyn VisionProvider>> = match config.provider.as_str() {
-            "openai" => Some(Arc::new(OpenAiVision::from_config(&config))),
+            "openrouter" => match OpenRouterVision::from_config(&config) {
+                Ok(provider) => Some(Arc::new(provider)),
+                Err(err) => {
+                    tracing::warn!(error = %err, "visual provider disabled by the LLM provider policy");
+                    None
+                }
+            },
             "ollama" => Some(Arc::new(OllamaVision::from_config(&config))),
             _ => None,
         };

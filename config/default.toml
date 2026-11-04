@@ -77,26 +77,24 @@ max_prompt_len = 1000
 max_audio_bytes = 20000000
 
 [narrator]
-backend = "openai"
+# ADR-131: only OpenRouter, a local Ollama, or merge.dev may be called.
+# Direct OpenAI/Anthropic endpoints and keys are rejected at config validation.
+backend = "openrouter"
 language = "en-US"
 style = "radio_drama"
 max_tokens = 200
 temperature = 0.7
 prompt_template = "templates/narrator_prompt.md"
 
-[narrator.openai]
-api_key_env = "OPENAI_API_KEY"
-model = "gpt-4o"
-base_url = "https://api.openai.com/v1"
+[narrator.openrouter]
+api_key_env = "OPENROUTER_API_KEY"
+model = "openai/gpt-4o-mini"
+base_url = "https://openrouter.ai/api/v1"
 
 [narrator.ollama_local]
 base_url = "http://localhost:11434"
 model = "llama3.1:8b"
 num_ctx = 2048
-
-[narrator.anthropic]
-api_key_env = "ANTHROPIC_API_KEY"
-model = "claude-3-5-haiku-20241022"
 
 # Optional LLM-backed gap narration (#412). Reuses [narrator] backend/model/
 # temperature/max_tokens through the same provider dispatch as the CLI.
@@ -108,13 +106,13 @@ enabled = false
 max_attempts = 2
 
 # Optional visual scene understanding for grounded audio description (#409).
-# provider: "none" (acoustic narration only), "openai" (any OpenAI-compatible
+# provider: "none" (acoustic narration only), "openrouter" (OpenRouter vision)
 # vision endpoint) or "ollama" (local vision model, e.g. llava).
 [narrator.visual]
 provider = "none"
 model = "gpt-4o-mini"
-base_url = "https://api.openai.com/v1"
-api_key_env = "OPENAI_API_KEY"
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
 timeout_secs = 30
 max_frames_per_window = 3
 max_total_frames = 60

@@ -92,29 +92,36 @@ pub trait VisionProvider: Send + Sync {
     async fn describe(&self, request: &VisionRequest<'_>) -> Result<String, VisionError>;
 }
 
-/// Any OpenAI-compatible `/chat/completions` vision endpoint.
-pub struct OpenAiVision {
+/// OpenRouter's OpenAI-compatible `/chat/completions` vision endpoint (ADR-131).
+pub struct OpenRouterVision {
     base_url: String,
     model: String,
     api_key_env: String,
     timeout: Duration,
 }
 
-impl OpenAiVision {
-    pub fn from_config(cfg: &VisualConfig) -> Self {
-        Self {
+impl OpenRouterVision {
+    /// Fails when the configured endpoint or key is a direct provider (ADR-131).
+    pub fn from_config(cfg: &VisualConfig) -> Result<Self, VisionError> {
+        movie_radio_types::check_endpoint(&cfg.base_url, &cfg.api_key_env).map_err(|e| {
+            VisionError::new(
+                VisionErrorKind::MissingCredentials,
+                format!("narrator.visual: {e}"),
+            )
+        })?;
+        Ok(Self {
             base_url: cfg.base_url.clone(),
             model: cfg.model.clone(),
             api_key_env: cfg.api_key_env.clone(),
             timeout: Duration::from_secs(cfg.timeout_secs.max(1)),
-        }
+        })
     }
 }
 
 #[async_trait::async_trait]
-impl VisionProvider for OpenAiVision {
+impl VisionProvider for OpenRouterVision {
     fn name(&self) -> &str {
-        "openai"
+        "openrouter"
     }
 
     fn model(&self) -> &str {
@@ -161,7 +168,7 @@ impl VisionProvider for OpenAiVision {
         if !response.status().is_success() {
             return Err(VisionError::new(
                 VisionErrorKind::Transport,
-                format!("openai vision http {}", response.status()),
+                format!("openrouter vision http {}", response.status()),
             ));
         }
         let value: serde_json::Value = response
@@ -171,7 +178,7 @@ impl VisionProvider for OpenAiVision {
         value["choices"][0]["message"]["content"]
             .as_str()
             .map(str::to_string)
-            .ok_or_else(|| VisionError::malformed("openai response had no message content"))
+            .ok_or_else(|| VisionError::malformed("openrouter response had no message content"))
     }
 }
 

@@ -217,7 +217,7 @@ async fn known_visual_events_produce_grounded_description() {
     let (provider, _) = FakeProvider::new(grounded_reply());
     let seen = Arc::clone(&provider.seen);
     let narrator = narrator(
-        config("openai", dir.path()),
+        config("openrouter", dir.path()),
         Arc::new(extractor),
         Arc::new(provider),
     );
@@ -264,7 +264,7 @@ async fn ambiguous_frame_yields_uncertainty_and_audio_fallback() {
             "uncertainty":"Das Bild ist dunkel und verdeckt."}]}"#,
     );
     let narrator = narrator(
-        config("openai", dir.path()),
+        config("openrouter", dir.path()),
         Arc::new(extractor),
         Arc::new(provider),
     );
@@ -302,7 +302,7 @@ async fn unsupported_identity_is_rejected() {
         r#"{"frames":[{"frame_ref":"frame-2500","description":"Der Mann heißt Karl und öffnet die Tür.","confidence":0.95}]}"#,
     );
     let narrator = narrator(
-        config("openai", dir.path()),
+        config("openrouter", dir.path()),
         Arc::new(extractor),
         Arc::new(provider),
     );
@@ -346,7 +346,7 @@ async fn malformed_provider_output_falls_back() {
     let (extractor, _) = FakeExtractor::new(&[(2_500, b"jpeg")]);
     let (provider, _) = FakeProvider::new("I cannot describe that.");
     let narrator = narrator(
-        config("openai", dir.path()),
+        config("openrouter", dir.path()),
         Arc::new(extractor),
         Arc::new(provider),
     );
@@ -371,7 +371,7 @@ async fn malformed_provider_output_falls_back() {
 async fn provider_timeout_falls_back() {
     let dir = tempfile::tempdir().expect("tempdir");
     let (extractor, _) = FakeExtractor::new(&[(2_500, b"jpeg")]);
-    let mut cfg = config("openai", dir.path());
+    let mut cfg = config("openrouter", dir.path());
     cfg.timeout_secs = 1;
     let narrator = VisualNarrator::new(cfg, "de")
         .with_extractor(Arc::new(extractor))
@@ -395,7 +395,7 @@ async fn empty_frames_fall_back_without_calling_provider() {
     let (extractor, _) = FakeExtractor::new(&[]);
     let (provider, provider_calls) = FakeProvider::new(grounded_reply());
     let narrator = narrator(
-        config("openai", dir.path()),
+        config("openrouter", dir.path()),
         Arc::new(extractor),
         Arc::new(provider),
     );
@@ -418,7 +418,7 @@ async fn analysis_cache_reuses_frames_and_provider_result() {
     let (extractor, extractor_calls) = FakeExtractor::new(&[(2_500, b"jpeg")]);
     let (provider, provider_calls) = FakeProvider::new(grounded_reply());
     let narrator = narrator(
-        config("openai", dir.path()),
+        config("openrouter", dir.path()),
         Arc::new(extractor),
         Arc::new(provider),
     );

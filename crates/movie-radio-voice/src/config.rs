@@ -4,6 +4,8 @@ use std::path::PathBuf;
 pub const ENV_ELEVENLABS_API_KEY: &str = "ELEVENLABS_API_KEY";
 pub const ENV_KOKORO_ENDPOINT_URL: &str = "KOKORO_ENDPOINT_URL";
 pub const ENV_MODAL_TTS_ENDPOINT: &str = "MODAL_TTS_ENDPOINT";
+/// Direct OpenAI key. Not read by default (ADR-131): the OpenAI-compatible TTS
+/// provider is enabled only through an explicit `OPENAI_TTS_BASE_URL` sidecar.
 pub const ENV_OPENAI_API_KEY: &str = "OPENAI_API_KEY";
 pub const ENV_OPENAI_TTS_BASE_URL: &str = "OPENAI_TTS_BASE_URL";
 const LEGACY_KOKORO_MODEL_PATH: &str = "models/kokoro-martin.onnx";
@@ -77,16 +79,8 @@ impl VoiceSynthesisConfig {
     }
 
     fn openai_config_from_env() -> Option<OpenAiConfig> {
-        if std::env::var(ENV_OPENAI_API_KEY).is_ok() {
-            return Some(OpenAiConfig {
-                api_key_env: Some(ENV_OPENAI_API_KEY.to_string()),
-                base_url: default_openai_base_url(),
-                model: "tts-1-hd".to_string(),
-                voice: "onyx".to_string(),
-                response_format: "mp3".to_string(),
-            });
-        }
-
+        // ADR-131: a bare OPENAI_API_KEY no longer enables a direct OpenAI call.
+        // The OpenAI-compatible provider is for explicit local sidecars only.
         std::env::var(ENV_OPENAI_TTS_BASE_URL).ok().map(|base_url| {
             tracing::info!(
                 base_url = %base_url,

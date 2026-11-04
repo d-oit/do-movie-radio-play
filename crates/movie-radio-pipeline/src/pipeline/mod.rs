@@ -57,7 +57,13 @@ macro_rules! timed_stage {
 
 pub fn extract_timeline(input: &Path, cfg: &AnalysisConfig) -> Result<TimelineOutput> {
     if let Some(chunk_sec) = cfg.chunk_duration_sec.filter(|&s| s > 0) {
-        return chunked::extract_timeline_chunked(input, cfg, chunk_sec);
+        if vad::supports_chunked_extraction(&cfg.vad_engine) {
+            return chunked::extract_timeline_chunked(input, cfg, chunk_sec);
+        }
+        info!(
+            engine = %cfg.vad_engine,
+            "chunked extraction skipped: engine keeps state across samples and needs the whole file"
+        );
     }
     info!(input = %input.display(), sample_rate = cfg.sample_rate_hz, frame_ms = cfg.frame_ms, "extract start");
     let total_start = Instant::now();

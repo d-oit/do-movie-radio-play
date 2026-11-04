@@ -58,6 +58,13 @@ pub fn preferred_engine_from_env() -> Option<&'static str> {
     )
 }
 
+/// Raw-sample engines build up detection state call by call, so splitting the
+/// audio at decode boundaries would change their output. They are excluded
+/// from chunked extraction, which classifies only after the full decode.
+pub fn supports_chunked_extraction(name: &str) -> bool {
+    !matches!(name, "silero" | "webrtc")
+}
+
 pub fn create_engine(
     name: &str,
     threshold: f32,
@@ -236,6 +243,16 @@ mod tests {
     #[test]
     fn unknown_engine_is_rejected() {
         assert!(create_engine("bogus", 0.015, None, None, None, None, 16000, 20).is_err());
+    }
+
+    #[test]
+    fn raw_sample_engines_do_not_use_chunked_extraction() {
+        for engine in ["energy", "spectral", "hybrid"] {
+            assert!(supports_chunked_extraction(engine), "{engine}");
+        }
+        for engine in ["silero", "webrtc"] {
+            assert!(!supports_chunked_extraction(engine), "{engine}");
+        }
     }
 
     fn engine_error(name: &str, threshold: f32) -> String {

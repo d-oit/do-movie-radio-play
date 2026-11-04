@@ -51,7 +51,7 @@ fn write_fixture(path: &Path) {
     std::fs::write(path, bytes).expect("write fixture wav");
 }
 
-fn extract(media: &Path, out: &Path, chunk: Option<u32>) -> Vec<(u64, u64)> {
+fn extract(media: &Path, out: &Path, engine: &str, chunk: Option<u32>) -> Vec<(u64, u64)> {
     let mut command = Command::cargo_bin("timeline").expect("timeline binary");
     command.args([
         "extract",
@@ -59,7 +59,7 @@ fn extract(media: &Path, out: &Path, chunk: Option<u32>) -> Vec<(u64, u64)> {
         "--output",
         out.to_str().expect("output path"),
         "--vad-engine",
-        "energy",
+        engine,
     ]);
     if let Some(seconds) = chunk {
         command.args(["--chunk-duration", &seconds.to_string()]);
@@ -88,22 +88,33 @@ fn chunked_extraction_matches_whole_file_extraction() {
     let media = dir.path().join("fixture.wav");
     write_fixture(&media);
 
-    let whole = extract(&media, &dir.path().join("whole.json"), None);
-    assert!(
-        !whole.is_empty(),
-        "fixture should produce non-voice segments"
-    );
-
-    for chunk_seconds in [20, 35, 60] {
-        let chunked = extract(
+    // `spectral` additionally adapts its thresholds from every frame, so this
+    // also guards the whole-file percentile pass in the streaming path.
+    for engine in ["energy", "spectral", "hybrid"] {
+        let whole = extract(
             &media,
-            &dir.path().join(format!("chunk{chunk_seconds}.json")),
-            Some(chunk_seconds),
+            &dir.path().join(format!("whole-{engine}.json")),
+            engine,
+            None,
         );
-        assert_eq!(
-            whole, chunked,
-            "chunk-duration {chunk_seconds}s changed the segmentation; streaming must not \
-             depend on chunk size"
+        assert!(
+            !whole.is_empty(),
+            "fixture should produce non-voice segments"
         );
+
+        for chunk_seconds in [20, 35, 60] {
+            let chunked = extract(
+                &media,
+                &dir.path()
+                    .join(format!("chunk-{engine}-{chunk_seconds}.json")),
+                engine,
+                Some(chunk_seconds),
+            );
+            assert_eq!(
+                whole, chunked,
+                "{engine} with chunk-duration {chunk_seconds}s changed the segmentation; \
+                 streaming must not depend on chunk size"
+            );
+        }
     }
 }

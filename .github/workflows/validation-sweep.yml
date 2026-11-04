@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: bash scripts/install-system-deps.sh ffmpeg
       - run: FETCH_SECOND_FILM=1 bash scripts/fetch_test_assets.sh
       - name: Neural VAD (model + ONNX Runtime) for the shipped detector
         run: |
@@ -115,7 +115,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg espeak-ng
+      - run: bash scripts/install-system-deps.sh ffmpeg espeak-ng
       - run: FETCH_SECOND_FILM=1 bash scripts/fetch_test_assets.sh
       - name: Build synthetic dialogue holdouts
         run: python3 scripts/generate_dialogue_fixtures.py --output-dir testdata/generated/dialogue

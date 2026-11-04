@@ -394,12 +394,12 @@ async fn stage_reports_bounded_fallback_when_backend_key_is_missing() {
     const KEY_ENV: &str = "MRPLAY_TEST_LLM_MISSING_KEY_412";
     std::env::remove_var(KEY_ENV);
     let config = movie_radio_types::NarratorConfig {
-        backend: "openai".to_string(),
+        backend: "openrouter".to_string(),
         llm: movie_radio_types::NarratorLlmConfig {
             enabled: true,
             max_attempts: 1,
         },
-        openai: movie_radio_types::NarratorOpenAiConfig {
+        openrouter: movie_radio_types::NarratorOpenRouterConfig {
             api_key_env: KEY_ENV.to_string(),
             ..Default::default()
         },
@@ -424,7 +424,7 @@ async fn stage_reports_bounded_fallback_when_backend_key_is_missing() {
         NarrationEvidence::AudioOnly { reason } if reason.contains("llm provider unavailable")
     ));
     let report = outcome.llm_report.expect("llm report");
-    assert_eq!(report.provider, "openai");
+    assert_eq!(report.provider, "openrouter");
     assert_eq!(report.fallback, 1);
     assert!(outcome.visual_report.is_none());
 }

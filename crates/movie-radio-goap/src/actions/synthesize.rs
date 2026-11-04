@@ -108,7 +108,7 @@ impl Action for SynthesizeNarrator {
             ctx.narration_provider.truncate(narration_baseline);
             anyhow::bail!(
                 "all {} narration syntheses failed; check TTS provider configuration \
-                 (e.g. OPENAI_API_KEY / OPENAI_TTS_BASE_URL / MODAL_TTS_ENDPOINT)",
+                 (e.g. OPENAI_TTS_BASE_URL / MODAL_TTS_ENDPOINT / ELEVENLABS_API_KEY)",
                 scripts.len()
             );
         }

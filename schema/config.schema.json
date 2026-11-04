@@ -91,7 +91,7 @@
     "narrator": {
       "type": "object",
       "properties": {
-        "backend": { "type": "string", "enum": ["openai", "ollama_local", "anthropic"] },
+        "backend": { "type": "string", "enum": ["openrouter", "ollama_local"] },
         "language": { "type": "string" },
         "style": { "type": "string" },
         "max_tokens": { "type": "integer", "minimum": 1 },
@@ -107,7 +107,7 @@
         "visual": {
           "type": "object",
           "properties": {
-            "provider": { "type": "string", "enum": ["none", "openai", "ollama"] },
+            "provider": { "type": "string", "enum": ["none", "openrouter", "ollama"] },
             "model": { "type": "string" },
             "base_url": { "type": "string" },
             "api_key_env": { "type": "string" },

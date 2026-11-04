@@ -36,14 +36,14 @@ fn cache_key_tracks_provider_model_and_window() {
         end_ms: 5_000,
     };
     let movie = Path::new("missing-movie.mkv");
-    let base = cache_key(movie, window, &policy, "openai", "model-a", "de");
+    let base = cache_key(movie, window, &policy, "openrouter", "model-a", "de");
     assert_eq!(
         base,
-        cache_key(movie, window, &policy, "openai", "model-a", "de")
+        cache_key(movie, window, &policy, "openrouter", "model-a", "de")
     );
     assert_ne!(
         base,
-        cache_key(movie, window, &policy, "openai", "model-b", "de")
+        cache_key(movie, window, &policy, "openrouter", "model-b", "de")
     );
     assert_ne!(
         base,
@@ -54,7 +54,7 @@ fn cache_key_tracks_provider_model_and_window() {
                 end_ms: 5_000
             },
             &policy,
-            "openai",
+            "openrouter",
             "model-a",
             "de"
         )

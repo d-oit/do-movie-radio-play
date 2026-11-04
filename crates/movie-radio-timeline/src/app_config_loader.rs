@@ -230,7 +230,7 @@ mod tests {
         assert_eq!(parsed.voice.gpu_policy.max_cost_per_day, 5.0);
         assert_eq!(parsed.voice.gpu_pool.len(), 1);
         assert_eq!(parsed.voice.gpu_pool[0].name, "free-credit");
-        assert_eq!(parsed.narrator.backend, "openai");
+        assert_eq!(parsed.narrator.backend, "openrouter");
         assert_eq!(parsed.narrator.max_tokens, 200);
         assert!(validate_app_config(&parsed).is_ok());
     }

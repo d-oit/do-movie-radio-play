@@ -1,4 +1,4 @@
-# ADR-131: Human-in-the-Loop Review Feedback
+# ADR-132: Human-in-the-Loop Review Feedback
 
 **Status**: Accepted
 **Date**: 2026-11-04

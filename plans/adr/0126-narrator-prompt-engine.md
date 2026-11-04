@@ -3,6 +3,9 @@
 **Status**: Accepted
 **Date**: 2026-09-01
 **Issues**: #240
+**Update 2026-11-04**: the `openai` and `anthropic` backends were removed. Backends are now
+`openrouter` (OpenRouter, `OPENROUTER_API_KEY`) and `ollama_local`; direct provider endpoints and
+keys are rejected by `movie_radio_types::llm_policy` — see ADR-131.
 
 ## Context
 

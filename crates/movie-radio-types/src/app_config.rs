@@ -117,11 +117,9 @@ pub struct NarratorConfig {
     #[serde(default = "default_narrator_template")]
     pub prompt_template: String,
     #[serde(default)]
-    pub openai: NarratorOpenAiConfig,
+    pub openrouter: NarratorOpenRouterConfig,
     #[serde(default)]
     pub ollama_local: NarratorOllamaConfig,
-    #[serde(default)]
-    pub anthropic: NarratorAnthropicConfig,
     /// Optional LLM-backed gap narration (#412). Disabled by default so the
     /// deterministic tag-based generator stays the default behaviour.
     #[serde(default)]
@@ -139,9 +137,8 @@ impl Default for NarratorConfig {
             max_tokens: default_narrator_max_tokens(),
             temperature: default_narrator_temperature(),
             prompt_template: default_narrator_template(),
-            openai: NarratorOpenAiConfig::default(),
+            openrouter: NarratorOpenRouterConfig::default(),
             ollama_local: NarratorOllamaConfig::default(),
-            anthropic: NarratorAnthropicConfig::default(),
             llm: NarratorLlmConfig::default(),
             visual: VisualConfig::default(),
         }
@@ -179,9 +176,9 @@ pub struct VisualConfig {
     pub provider: String,
     #[serde(default = "default_vision_model")]
     pub model: String,
-    #[serde(default = "default_openai_base_url")]
+    #[serde(default = "default_openrouter_base_url")]
     pub base_url: String,
-    #[serde(default = "default_openai_api_env")]
+    #[serde(default = "default_openrouter_api_env")]
     pub api_key_env: String,
     #[serde(default = "default_vision_timeout_secs")]
     pub timeout_secs: u64,
@@ -205,8 +202,8 @@ impl Default for VisualConfig {
         Self {
             provider: default_vision_provider(),
             model: default_vision_model(),
-            base_url: default_openai_base_url(),
-            api_key_env: default_openai_api_env(),
+            base_url: default_openrouter_base_url(),
+            api_key_env: default_openrouter_api_env(),
             timeout_secs: default_vision_timeout_secs(),
             max_frames_per_window: default_vision_max_frames_per_window(),
             max_total_frames: default_vision_max_total_frames(),
@@ -219,21 +216,21 @@ impl Default for VisualConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NarratorOpenAiConfig {
-    #[serde(default = "default_openai_api_env")]
+pub struct NarratorOpenRouterConfig {
+    #[serde(default = "default_openrouter_api_env")]
     pub api_key_env: String,
-    #[serde(default = "default_openai_model")]
+    #[serde(default = "default_openrouter_model")]
     pub model: String,
-    #[serde(default = "default_openai_base_url")]
+    #[serde(default = "default_openrouter_base_url")]
     pub base_url: String,
 }
 
-impl Default for NarratorOpenAiConfig {
+impl Default for NarratorOpenRouterConfig {
     fn default() -> Self {
         Self {
-            api_key_env: default_openai_api_env(),
-            model: default_openai_model(),
-            base_url: default_openai_base_url(),
+            api_key_env: default_openrouter_api_env(),
+            model: default_openrouter_model(),
+            base_url: default_openrouter_base_url(),
         }
     }
 }
@@ -254,23 +251,6 @@ impl Default for NarratorOllamaConfig {
             base_url: default_ollama_base_url(),
             model: default_ollama_model(),
             num_ctx: default_ollama_ctx(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NarratorAnthropicConfig {
-    #[serde(default = "default_anthropic_api_env")]
-    pub api_key_env: String,
-    #[serde(default = "default_anthropic_model")]
-    pub model: String,
-}
-
-impl Default for NarratorAnthropicConfig {
-    fn default() -> Self {
-        Self {
-            api_key_env: default_anthropic_api_env(),
-            model: default_anthropic_model(),
         }
     }
 }
@@ -326,7 +306,7 @@ fn default_audio_cpp_mode() -> String {
     "auto".to_string()
 }
 fn default_narrator_backend() -> String {
-    "openai".to_string()
+    "openrouter".to_string()
 }
 fn default_narrator_language() -> String {
     "en-US".to_string()
@@ -347,14 +327,14 @@ fn default_narrator_template() -> String {
 fn default_narrator_llm_max_attempts() -> u32 {
     2
 }
-fn default_openai_api_env() -> String {
-    "OPENAI_API_KEY".to_string()
+fn default_openrouter_api_env() -> String {
+    "OPENROUTER_API_KEY".to_string()
 }
-fn default_openai_model() -> String {
-    "gpt-4o".to_string()
+fn default_openrouter_model() -> String {
+    "openai/gpt-4o-mini".to_string()
 }
-fn default_openai_base_url() -> String {
-    "https://api.openai.com/v1".to_string()
+fn default_openrouter_base_url() -> String {
+    "https://openrouter.ai/api/v1".to_string()
 }
 fn default_ollama_base_url() -> String {
     "http://localhost:11434".to_string()
@@ -365,17 +345,11 @@ fn default_ollama_model() -> String {
 fn default_ollama_ctx() -> u32 {
     2048
 }
-fn default_anthropic_api_env() -> String {
-    "ANTHROPIC_API_KEY".to_string()
-}
-fn default_anthropic_model() -> String {
-    "claude-3-5-haiku-20241022".to_string()
-}
 fn default_vision_provider() -> String {
     "none".to_string()
 }
 fn default_vision_model() -> String {
-    "gpt-4o-mini".to_string()
+    "openai/gpt-4o-mini".to_string()
 }
 fn default_vision_timeout_secs() -> u64 {
     30
@@ -416,7 +390,7 @@ mod tests {
 
     #[test]
     fn narrator_config_without_visual_section_defaults_to_none() {
-        let json = r#"{"backend":"openai","language":"de","style":"radio_drama",
+        let json = r#"{"backend":"openrouter","language":"de","style":"radio_drama",
             "max_tokens":200,"temperature":0.7,"prompt_template":"templates/narrator_prompt.md"}"#;
         let narrator: NarratorConfig = serde_json::from_str(json).expect("deserialize");
         assert_eq!(narrator.visual.provider, "none");

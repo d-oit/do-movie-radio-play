@@ -68,6 +68,7 @@ The `VERSION` file in the root is the single source of truth. Never edit version
 - **Root Cleanliness**: Never commit test fixtures or runtime-output files to the repository root.
 - **Deterministic output**: All pipeline stages must produce deterministic output for identical inputs.
 - **Pre-existing issues**: Address pre-existing warnings or document in `plans/FOLLOWUPS.md`.
+- **LLM providers**: Only OpenRouter, Ollama, or merge.dev. Never add a direct OpenAI/Anthropic endpoint or key; route through `movie_radio_types::llm_policy` (ADR-131).
 - **Narration content**: Any code generating narration/gap-filling text must describe actual detected content (grounded in segment tags/context) — never content-free filler (e.g. bare "Stille."/"Pause."). See [ADR-128](plans/adr/0128-audio-description-standards.md) and [`.agents/skills/audio-description-writer/SKILL.md`](.agents/skills/audio-description-writer/SKILL.md).
 
 ## Skill Activation Policy

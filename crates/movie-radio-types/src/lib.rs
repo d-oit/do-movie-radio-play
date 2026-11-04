@@ -5,6 +5,7 @@ pub mod error;
 pub mod features;
 pub mod fingerprint;
 pub mod frame;
+pub mod llm_policy;
 pub mod metrics;
 pub mod narrator_types;
 pub mod provider_registry;
@@ -15,9 +16,9 @@ pub mod voice_clone;
 pub mod voice_types;
 
 pub use app_config::{
-    AppConfig, CharacterConfig, NarratorAnthropicConfig, NarratorConfig, NarratorLlmConfig,
-    NarratorOllamaConfig, NarratorOpenAiConfig, OutputConfig, PipelineConfig, ProvidersConfig,
-    VisualConfig, VoiceCloneConfig, VoiceCloneRoutingConfig, VoiceConfig,
+    AppConfig, CharacterConfig, NarratorConfig, NarratorLlmConfig, NarratorOllamaConfig,
+    NarratorOpenRouterConfig, OutputConfig, PipelineConfig, ProvidersConfig, VisualConfig,
+    VoiceCloneConfig, VoiceCloneRoutingConfig, VoiceConfig,
 };
 pub use compute::{ComputeEndpoint, ExecutionLocation};
 pub use config::{
@@ -29,6 +30,7 @@ pub use error::TimelineError;
 pub use features::FeatureSet;
 pub use fingerprint::Fingerprint;
 pub use frame::Frame;
+pub use llm_policy::{check_endpoint, PolicyViolation, ALLOWED_PROVIDERS, FORBIDDEN_KEY_ENVS};
 pub use metrics::{BenchmarkResult, StageDurations};
 pub use narrator_types::{parse_narrator_style, NarratorParams, NarratorStyle, RenderedPrompt};
 pub use provider_registry::{ProviderEntry, ProviderRegistry};

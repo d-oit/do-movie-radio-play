@@ -17,11 +17,12 @@ pub trait NarratorAiBackend: Send + Sync {
 /// place instead of duplicating a `match` in every caller.
 pub fn build_narrator_backend(cfg: &NarratorConfig) -> Result<Box<dyn NarratorAiBackend>> {
     match cfg.backend.as_str() {
-        "openai" => Ok(Box::new(OpenAiNarrator::new(cfg))),
+        "openrouter" => Ok(Box::new(OpenRouterNarrator::new(cfg)?)),
         "ollama_local" => Ok(Box::new(OllamaLocalNarrator::new(cfg))),
-        "anthropic" => Ok(Box::new(AnthropicNarrator::new(cfg))),
         other => {
-            bail!("unknown narrator backend '{other}' (expected openai | ollama_local | anthropic)")
+            bail!(
+                "unknown narrator backend '{other}' (expected openrouter | ollama_local; ADR-131)"
+            )
         }
     }
 }
@@ -76,24 +77,28 @@ fn strip_frontmatter(s: &str) -> String {
     s.trim().to_string()
 }
 
-pub struct OpenAiNarrator {
+/// OpenRouter's OpenAI-compatible chat endpoint (ADR-131). Direct OpenAI and
+/// Anthropic endpoints are refused by the policy check in `new`.
+pub struct OpenRouterNarrator {
     base_url: String,
     model: String,
     api_key_env: String,
 }
 
-impl OpenAiNarrator {
-    pub fn new(cfg: &NarratorConfig) -> Self {
-        Self {
-            base_url: cfg.openai.base_url.clone(),
-            model: cfg.openai.model.clone(),
-            api_key_env: cfg.openai.api_key_env.clone(),
-        }
+impl OpenRouterNarrator {
+    pub fn new(cfg: &NarratorConfig) -> Result<Self> {
+        movie_radio_types::check_endpoint(&cfg.openrouter.base_url, &cfg.openrouter.api_key_env)
+            .map_err(|e| anyhow::anyhow!("narrator.openrouter: {e}"))?;
+        Ok(Self {
+            base_url: cfg.openrouter.base_url.clone(),
+            model: cfg.openrouter.model.clone(),
+            api_key_env: cfg.openrouter.api_key_env.clone(),
+        })
     }
 }
 
 #[async_trait::async_trait]
-impl NarratorAiBackend for OpenAiNarrator {
+impl NarratorAiBackend for OpenRouterNarrator {
     async fn generate_narration(
         &self,
         prompt: &RenderedPrompt,
@@ -120,9 +125,9 @@ impl NarratorAiBackend for OpenAiNarrator {
             .json(&body)
             .send()
             .await
-            .map_err(|e| anyhow::anyhow!("openai request failed: {e}"))?;
+            .map_err(|e| anyhow::anyhow!("openrouter request failed: {e}"))?;
         if !resp.status().is_success() {
-            bail!("openai http {}", resp.status());
+            bail!("openrouter http {}", resp.status());
         }
         let v: serde_json::Value = resp.json().await?;
         let text = v["choices"][0]["message"]["content"]
@@ -176,55 +181,6 @@ impl NarratorAiBackend for OllamaLocalNarrator {
         }
         let v: serde_json::Value = resp.json().await?;
         Ok(v["response"].as_str().unwrap_or("").to_string())
-    }
-}
-
-pub struct AnthropicNarrator {
-    api_key_env: String,
-    model: String,
-}
-
-impl AnthropicNarrator {
-    pub fn new(cfg: &NarratorConfig) -> Self {
-        Self {
-            api_key_env: cfg.anthropic.api_key_env.clone(),
-            model: cfg.anthropic.model.clone(),
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl NarratorAiBackend for AnthropicNarrator {
-    async fn generate_narration(
-        &self,
-        prompt: &RenderedPrompt,
-        params: &NarratorParams,
-    ) -> Result<String> {
-        let key = std::env::var(&self.api_key_env).unwrap_or_default();
-        if key.is_empty() {
-            bail!("missing api key env {}", self.api_key_env);
-        }
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()?;
-        let body = serde_json::json!({
-            "model": selected_model(&self.model, params),
-            "max_tokens": params.max_tokens,
-            "temperature": params.temperature,
-            "messages": [{"role": "user", "content": prompt.text}],
-        });
-        let resp = client
-            .post("https://api.anthropic.com/v1/messages")
-            .header("x-api-key", key)
-            .header("anthropic-version", "2023-06-01")
-            .json(&body)
-            .send()
-            .await?;
-        if !resp.status().is_success() {
-            bail!("anthropic http {}", resp.status());
-        }
-        let v: serde_json::Value = resp.json().await?;
-        Ok(v["content"][0]["text"].as_str().unwrap_or("").to_string())
     }
 }
 

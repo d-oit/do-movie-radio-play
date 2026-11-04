@@ -94,7 +94,7 @@ async fn visual_path_produces_a_script_from_real_frames() {
 
     let cache = tempfile::tempdir().expect("tempdir");
     let mut config = VisualConfig {
-        provider: "openai".to_string(),
+        provider: "openrouter".to_string(),
         ..VisualConfig::default()
     };
     config.cache_dir = Some(

@@ -8,6 +8,7 @@
 //! description, explicitly labelled as such.
 
 pub mod cache;
+pub mod evidence;
 pub mod frames;
 pub mod grounding;
 pub mod provider;
@@ -19,95 +20,27 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use movie_radio_types::{TimelineOutput, VisualConfig, VisualGap};
-use serde::{Deserialize, Serialize};
 
 use super::{NarrationEvidence, NarrationGenerator, NarrationScript};
 
 pub use cache::{cache_key, FrameAnalysisCache};
+/// Minimum gap confidence the acoustic generator narrates; the visual stage
+/// uses the same bound so both paths cover identical windows.
+const MIN_GAP_CONFIDENCE: f32 = 0.4;
+
+pub use evidence::{
+    EvidenceSource, FrameEvidence, NarrationWindow, VisualNarrationOutcome, VisualNarrationReport,
+    WindowEvidence,
+};
 pub use frames::{
     sample_timestamps, FfmpegFrameExtractor, FrameExtractor, FrameSample, SamplingPolicy,
 };
 pub use grounding::{GroundedFrame, GroundingIssue, RejectedClaim};
 pub use provider::{
-    build_prompt, parse_analysis, FrameObservation, OllamaVision, OpenAiVision, VisionAnalysis,
+    build_prompt, parse_analysis, FrameObservation, OllamaVision, OpenRouterVision, VisionAnalysis,
     VisionError, VisionErrorKind, VisionProvider, VisionRequest,
 };
 pub use state::VisualPipelineState;
-
-/// Minimum gap confidence and duration the acoustic generator narrates; the
-/// visual stage uses the same bounds so both paths cover identical windows.
-const MIN_GAP_CONFIDENCE: f32 = 0.4;
-const MIN_GAP_DURATION_MS: u64 = 1_000;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NarrationWindow {
-    pub start_ms: u64,
-    pub end_ms: u64,
-}
-
-impl NarrationWindow {
-    pub fn from_gap(gap: &VisualGap) -> Self {
-        Self {
-            start_ms: gap.start_ms,
-            end_ms: gap.end_ms,
-        }
-    }
-
-    pub fn duration_ms(&self) -> u64 {
-        self.end_ms.saturating_sub(self.start_ms)
-    }
-
-    fn is_narratable(&self) -> bool {
-        self.duration_ms() >= MIN_GAP_DURATION_MS
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EvidenceSource {
-    Visual,
-    AudioOnly,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct FrameEvidence {
-    pub frame_ref: String,
-    pub timestamp_ms: u64,
-    pub confidence: f32,
-    pub description: String,
-    pub uncertainty: Vec<String>,
-    /// On-disk sampled frame used as evidence.
-    pub path: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct WindowEvidence {
-    pub gap_start_ms: u64,
-    pub gap_end_ms: u64,
-    pub source: EvidenceSource,
-    pub narration_text: String,
-    pub frames: Vec<FrameEvidence>,
-    pub rejected_claims: Vec<RejectedClaim>,
-    pub fallback_reason: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct VisualNarrationReport {
-    pub movie: String,
-    pub language: String,
-    pub provider: String,
-    pub model: String,
-    pub sampling: SamplingPolicy,
-    pub visual_windows: usize,
-    pub audio_only_windows: usize,
-    pub windows: Vec<WindowEvidence>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VisualNarrationOutcome {
-    pub scripts: Vec<NarrationScript>,
-    pub report: VisualNarrationReport,
-}
 
 pub struct VisualNarrator {
     config: VisualConfig,
@@ -124,7 +57,13 @@ impl VisualNarrator {
     /// audio-only path in place.
     pub fn new(config: VisualConfig, language: &str) -> Self {
         let provider: Option<Arc<dyn VisionProvider>> = match config.provider.as_str() {
-            "openai" => Some(Arc::new(OpenAiVision::from_config(&config))),
+            "openrouter" => match OpenRouterVision::from_config(&config) {
+                Ok(provider) => Some(Arc::new(provider)),
+                Err(err) => {
+                    tracing::warn!(error = %err, "visual provider disabled by the LLM provider policy");
+                    None
+                }
+            },
             "ollama" => Some(Arc::new(OllamaVision::from_config(&config))),
             _ => None,
         };

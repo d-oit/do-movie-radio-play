@@ -138,9 +138,8 @@ fn narrator_params(config: &NarratorConfig, language: &str) -> NarratorParams {
 
 fn configured_model(config: &NarratorConfig) -> String {
     match config.backend.as_str() {
-        "openai" => config.openai.model.clone(),
+        "openrouter" => config.openrouter.model.clone(),
         "ollama_local" => config.ollama_local.model.clone(),
-        "anthropic" => config.anthropic.model.clone(),
         _ => String::new(),
     }
 }

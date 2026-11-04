@@ -5,8 +5,8 @@ use crate::config::{AudioCppConfig, GpuPolicyConfig, GpuPoolEndpoint};
 const VALID_AUDIO_CPP_MODES: [&str; 3] = ["auto", "local", "remote"];
 const VALID_LOCAL_MODES: [&str; 2] = ["server", "cli"];
 const VALID_BACKENDS: [&str; 6] = ["best", "cpu", "cuda", "vulkan", "metal", "hip"];
-const VALID_NARRATOR_BACKENDS: [&str; 3] = ["openai", "ollama_local", "anthropic"];
-const VALID_VISION_PROVIDERS: [&str; 3] = ["none", "openai", "ollama"];
+const VALID_NARRATOR_BACKENDS: [&str; 2] = ["openrouter", "ollama_local"];
+const VALID_VISION_PROVIDERS: [&str; 3] = ["none", "openrouter", "ollama"];
 
 pub fn validate_app_config(cfg: &AppConfig) -> Result<(), String> {
     validate_audio_cpp(&cfg.voice.audio_cpp)?;
@@ -118,6 +118,12 @@ fn validate_narrator(n: &NarratorConfig) -> Result<(), String> {
                 .to_string(),
         );
     }
+    // ADR-131: only OpenRouter, Ollama and merge.dev may be called; a direct
+    // OpenAI/Anthropic endpoint or key is a configuration error, not a warning.
+    if n.backend == "openrouter" {
+        crate::llm_policy::check_endpoint(&n.openrouter.base_url, &n.openrouter.api_key_env)
+            .map_err(|e| format!("narrator.openrouter: {e}"))?;
+    }
     validate_visual(&n.visual)?;
     Ok(())
 }
@@ -125,6 +131,10 @@ fn validate_narrator(n: &NarratorConfig) -> Result<(), String> {
 fn validate_visual(v: &crate::app_config::VisualConfig) -> Result<(), String> {
     if !VALID_VISION_PROVIDERS.contains(&v.provider.as_str()) {
         return Err(format!("invalid narrator.visual.provider: {}", v.provider));
+    }
+    if v.provider == "openrouter" {
+        crate::llm_policy::check_endpoint(&v.base_url, &v.api_key_env)
+            .map_err(|e| format!("narrator.visual: {e}"))?;
     }
     if !(1..=300).contains(&v.timeout_secs) {
         return Err(format!(
@@ -182,6 +192,42 @@ mod tests {
     }
 
     #[test]
+    fn direct_provider_narrator_config_is_rejected() {
+        let mut cfg = AppConfig::default();
+        cfg.narrator.openrouter.base_url = "https://api.openai.com/v1".to_string();
+        let err = validate_app_config(&cfg).expect_err("direct OpenAI endpoint must be rejected");
+        assert!(err.contains("ADR-131"), "{err}");
+
+        let mut cfg = AppConfig::default();
+        cfg.narrator.openrouter.api_key_env = "ANTHROPIC_API_KEY".to_string();
+        let err = validate_app_config(&cfg).expect_err("direct Anthropic key must be rejected");
+        assert!(err.contains("ADR-131"), "{err}");
+    }
+
+    #[test]
+    fn direct_provider_vision_config_is_rejected() {
+        let mut cfg = AppConfig::default();
+        cfg.narrator.visual.provider = "openrouter".to_string();
+        cfg.narrator.visual.base_url = "https://api.anthropic.com/v1".to_string();
+        let err =
+            validate_app_config(&cfg).expect_err("direct Anthropic endpoint must be rejected");
+        assert!(err.contains("ADR-131"), "{err}");
+    }
+
+    #[test]
+    fn openrouter_and_local_ollama_configs_are_accepted() {
+        let mut cfg = AppConfig::default();
+        cfg.narrator.backend = "openrouter".to_string();
+        cfg.narrator.openrouter.base_url = "https://openrouter.ai/api/v1".to_string();
+        cfg.narrator.openrouter.api_key_env = "OPENROUTER_API_KEY".to_string();
+        assert!(validate_app_config(&cfg).is_ok());
+
+        cfg.narrator.backend = "ollama_local".to_string();
+        cfg.narrator.ollama_local.base_url = "http://localhost:11434".to_string();
+        assert!(validate_app_config(&cfg).is_ok());
+    }
+
+    #[test]
     fn invalid_mode_rejected() {
         let mut cfg = AppConfig::default();
         cfg.voice.audio_cpp.mode = "bogus".to_string();
@@ -230,7 +276,7 @@ mod tests {
         assert!(validate_app_config(&cfg).is_err());
 
         let mut cfg = AppConfig::default();
-        cfg.narrator.visual.provider = "openai".to_string();
+        cfg.narrator.visual.provider = "openrouter".to_string();
         cfg.narrator.visual.model.clear();
         assert!(validate_app_config(&cfg).is_err());
 

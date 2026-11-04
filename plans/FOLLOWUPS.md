@@ -4,11 +4,12 @@ Pre-existing issues encountered during implementation runs that could not be fix
 Each entry includes file path, description, priority, and suggested approach.
 
 **Created:** 2026-06-23
-**Updated:** 2026-10-10 — radio-play validation, voice-reference and llama-cpp work (`plans/GOAP_STATE.md`)
+**Updated:** 2026-11-04 — LLM provider policy (ADR-131): OpenRouter/Ollama/merge.dev only
 ## Open
 
 | Path | Description | Priority |
 |------|-------------|----------|
+| `crates/movie-radio-voice/src/voice/openai.rs` | OpenAI-compatible TTS provider kept for explicit local sidecars (`OPENAI_TTS_BASE_URL`); a bare `OPENAI_API_KEY` no longer enables it (ADR-131). Decide whether to remove the provider or rename it to `openai_compatible_sidecar` so no direct-provider name remains. | Low |
 | `Cargo.lock` (`qwen_tts` -> `candle-core` -> `zip 7.4.0`) | **RUSTSEC-2026-0429 (high), accepted risk with a documented ignore** in `deny.toml` and `.cargo/audit.toml` (2026-11-02). The advisory is `ZipArchive::extract` aborting on a symlink entry with a large declared size; fixed in `zip >= 9.0.0`. No upgrade path exists: `zip` is a non-optional `^7.2.0` dependency of `candle-core 0.9.2` (the newest 0.9.x), only `candle-core >= 0.11` accepts `zip ^9.1.3`, and `qwen_tts 0.1.1` (newest) requires `candle ^0.9`. The vulnerable entry point is not reachable: candle-core opens archives only through `ZipArchive::new` + `by_index`, never `extract()`, and this workspace never opens untrusted archives. **Remove the ignore once `qwen_tts` allows `candle-core 0.11`.** | Medium |
 | `crates/movie-radio-goap/src/narrate/` | **Partially stale as written.** Only the *default* path is tag + loudness-trend clauses. Two richer paths already exist and are tested: visual narration (`config.visual.provider != "none"`, #409) and structured LLM narration (`config.llm.enabled`, #412 closed — evidence-ID validation, word/time budgets, banned-filler rejection, provider fallback, 16 passing tests). The real remaining gap is that neither is on by default and each needs a configured provider and key, so a default run still cannot say what happens, who speaks or where. Decide whether to document and enable a provider, rather than building narration context from scratch. | Low |
 | `crates/movie-radio-render/src/sfx/` | No local SFX library by default (warning demoted to debug); the film's own effects pass through the original track. Optional: layer extra clips from `assets/sfx/<tag>/`. | Low |

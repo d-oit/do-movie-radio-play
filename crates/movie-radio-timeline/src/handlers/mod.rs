@@ -16,6 +16,7 @@ pub mod mastering;
 pub mod produce;
 pub mod radio_play;
 pub mod report;
+pub mod review_feedback;
 pub mod sfx;
 pub mod validate;
 
@@ -27,6 +28,11 @@ pub use mastering::handle_mastering;
 pub use produce::{handle_produce, ProduceOptions};
 pub use radio_play::{handle_radio_play, RadioPlayOptions};
 pub use report::{handle_report, ReportOptions};
+pub use review_feedback::{
+    handle_apply_review_proposal, handle_export_review_feedback, handle_import_review_feedback,
+    handle_register_holdout, handle_review_metrics, handle_review_proposals,
+    handle_rollback_review_proposal,
+};
 pub use sfx::{
     handle_sfx_cache_clean, handle_sfx_cache_inspect, SfxCacheCleanOptions, SfxCacheInspectOptions,
 };

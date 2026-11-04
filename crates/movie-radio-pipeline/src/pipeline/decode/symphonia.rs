@@ -122,42 +122,15 @@ pub fn decode_via_symphonia(
     extension: Option<&str>,
     target_sample_rate: u32,
 ) -> Result<(Vec<f32>, u32)> {
-    let file = std::fs::File::open(path)?;
-    let mss = MediaSourceStream::new(Box::new(file), MediaSourceStreamOptions::default());
-    let mut hint = Hint::new();
-    if let Some(ext) = extension {
-        hint.with_extension(ext);
-    }
-
-    let mut format_reader = symphonia::default::get_probe().probe(
-        &hint,
-        mss,
-        FormatOptions::default(),
-        MetadataOptions::default(),
-    )?;
-
-    let track = format_reader
-        .default_track(TrackType::Audio)
-        .context("no audio track found")?;
-
-    let codec_params = track
-        .codec_params
-        .as_ref()
-        .context("no codec params")?
-        .audio()
-        .context("not audio")?;
-
-    let mut decoder = symphonia::default::get_codecs()
-        .make_audio_decoder(codec_params, &AudioDecoderOptions::default())?;
-
-    let track_id = track.id;
-    let source_sample_rate = codec_params.sample_rate.context("unknown sample rate")?;
+    let mut stream = open_stream(path, extension)?;
+    let track_id = stream.track_id;
+    let source_sample_rate = stream.source_sample_rate;
 
     let mut samples = Vec::new();
     let mut decode_buf: Vec<f32> = Vec::new();
 
     loop {
-        let packet = match format_reader.next_packet() {
+        let packet = match stream.reader.next_packet() {
             Ok(Some(packet)) => packet,
             Ok(None) => break,
             Err(_) => break,
@@ -167,7 +140,7 @@ pub fn decode_via_symphonia(
             continue;
         }
 
-        let decoded = decoder.decode(&packet)?;
+        let decoded = stream.decoder.decode(&packet)?;
         let frames = decoded.frames();
         let channels = decoded.spec().channels().count();
 

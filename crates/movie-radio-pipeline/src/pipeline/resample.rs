@@ -40,12 +40,6 @@ pub fn resample(input: &[f32], src_rate: u32, dst_rate: u32) -> Result<Vec<f32>>
     Ok(resample_linear(input, src_rate, dst_rate))
 }
 
-/// Whether decoded audio can be resampled incrementally. The sinc path needs
-/// the whole buffer, so streaming decode is limited to the linear path.
-pub const fn streaming_supported() -> bool {
-    cfg!(not(feature = "high-quality-resample"))
-}
-
 /// Incremental linear resampler. Yields exactly the samples [`resample`]
 /// produces for the same input regardless of how it is split across
 /// [`StreamingResampler::push`] calls, so streaming and whole-file decode stay

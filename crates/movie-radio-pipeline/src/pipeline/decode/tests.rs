@@ -194,6 +194,7 @@ fn test_decode_audio_chunks_cb_streaming() {
     assert_eq!(total_samples, 48000);
 }
 
+#[cfg(not(feature = "high-quality-resample"))]
 fn write_tone_wav(path: &std::path::Path, rate: u32, channels: u16, seconds: f32) {
     let spec = WavSpec {
         channels,

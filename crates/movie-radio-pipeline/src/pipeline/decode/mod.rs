@@ -93,6 +93,9 @@ where
 /// Returns `true` when the stream was delivered incrementally. When it returns
 /// `false` any chunks already passed to `callback` must be discarded: the file
 /// could not be streamed and was decoded in full instead.
+// `callback` is only mutated by the incremental branch, which the
+// `high-quality-resample` build does not compile.
+#[allow(unused_mut)]
 pub fn decode_audio_chunks_prefer_streaming<F>(
     path: &Path,
     target_sample_rate: u32,
@@ -107,7 +110,7 @@ where
     }
 
     #[cfg(not(feature = "high-quality-resample"))]
-    if crate::pipeline::resample::streaming_supported() {
+    {
         let ext = path.extension().and_then(|e| e.to_str());
         let ext_lower = ext.map(|s| s.to_lowercase());
         if let Some(ext_str) = ext_lower.as_deref() {

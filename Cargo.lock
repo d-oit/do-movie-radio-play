@@ -2326,6 +2326,7 @@ name = "movie-radio-verification"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "hound",
  "movie-radio-io",
  "movie-radio-learning",
  "movie-radio-types",

@@ -11,6 +11,7 @@ movie-radio-types.workspace = true
 movie-radio-io.workspace = true
 movie-radio-learning.workspace = true
 anyhow.workspace = true
+hound.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true

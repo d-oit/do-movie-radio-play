@@ -65,12 +65,9 @@ pub fn master_to_wav(
     } else {
         (profile.target_lufs - before.integrated_lufs).clamp(-24.0, 24.0)
     };
-    let mut applied_gain_db = initial_gain_db;
-    let mut limiting_reduction_db = 0.0;
-    let ceiling = 10f32.powf(profile.max_true_peak_dbtp / 20.0);
 
-    let mut current = tempfile::NamedTempFile::new().context("create mastering temp file")?;
-    let mut measurement = process_slice(
+    let current = tempfile::NamedTempFile::new().context("create mastering temp file")?;
+    let measurement = process_slice(
         source,
         current.path(),
         sample_rate,
@@ -80,25 +77,108 @@ pub fn master_to_wav(
         false,
     )?;
 
+    finish_passes(
+        current,
+        measurement,
+        initial_gain_db,
+        output_path,
+        sample_rate,
+        channels,
+        profile,
+        &config,
+    )
+}
+
+/// Masters a raw little-endian `f32` file into a 16-bit WAV at `output_path`.
+///
+/// Same passes as [`master_to_wav`], but the source is read from disk, so the
+/// caller never has to hold the assembled mix in memory (#418).
+pub fn master_file_to_wav(
+    source_path: &Path,
+    output_path: &Path,
+    sample_rate: u32,
+    channels: u16,
+    profile: &MasteringProfile,
+) -> Result<StreamingMasteringOutcome> {
+    let channels = channels.max(1);
+    let config = MeasurementConfig {
+        silence_threshold_dbfs: profile.silence_threshold_dbfs,
+        clipping_threshold: profile.clipping_threshold,
+    };
+
+    let before = measure_f32_file(source_path, sample_rate, channels, &config)?;
+    if before.duration_s <= 0.0 || sample_rate == 0 {
+        write_wav_from_f32_file(None, output_path, sample_rate, channels)?;
+        let report = validate_measurement(
+            LoudnessMeasurement::default(),
+            sample_rate,
+            channels,
+            profile,
+        );
+        return Ok(StreamingMasteringOutcome {
+            report,
+            applied_gain_db: 0.0,
+            limiting_reduction_db: 0.0,
+        });
+    }
+
+    let initial_gain_db = if before.integrated_lufs <= SILENCE_LUFS + 1.0 {
+        0.0
+    } else {
+        (profile.target_lufs - before.integrated_lufs).clamp(-24.0, 24.0)
+    };
+
+    let (current, measurement) = process_file(
+        source_path,
+        sample_rate,
+        channels,
+        &config,
+        10f32.powf(initial_gain_db / 20.0),
+        false,
+    )?;
+
+    finish_passes(
+        current,
+        measurement,
+        initial_gain_db,
+        output_path,
+        sample_rate,
+        channels,
+        profile,
+        &config,
+    )
+}
+
+/// Runs the limit/top-up passes over an already gain-adjusted temp file and
+/// writes the deliverable.
+#[allow(clippy::too_many_arguments)]
+fn finish_passes(
+    mut current: tempfile::NamedTempFile,
+    mut measurement: LoudnessMeasurement,
+    initial_gain_db: f32,
+    output_path: &Path,
+    sample_rate: u32,
+    channels: u16,
+    profile: &MasteringProfile,
+    config: &MeasurementConfig,
+) -> Result<StreamingMasteringOutcome> {
+    let mut applied_gain_db = initial_gain_db;
+    let mut limiting_reduction_db = 0.0;
+    let ceiling = 10f32.powf(profile.max_true_peak_dbtp / 20.0);
+
     for _ in 0..3 {
         let peak_before = linear_peak(measurement.true_peak_dbtp);
         if peak_before > ceiling {
             limiting_reduction_db += 20.0 * (ceiling / peak_before).log10();
             let (next, next_measurement) =
-                process_file(current.path(), sample_rate, channels, &config, 1.0, true)?;
+                process_file(current.path(), sample_rate, channels, config, 1.0, true)?;
             current = next;
             measurement = next_measurement;
             let peak_after = linear_peak(measurement.true_peak_dbtp);
             if peak_after > ceiling {
                 let safety = ceiling / peak_after;
-                let (next, next_measurement) = process_file(
-                    current.path(),
-                    sample_rate,
-                    channels,
-                    &config,
-                    safety,
-                    false,
-                )?;
+                let (next, next_measurement) =
+                    process_file(current.path(), sample_rate, channels, config, safety, false)?;
                 current = next;
                 measurement = next_measurement;
                 limiting_reduction_db += 20.0 * safety.log10();
@@ -119,7 +199,7 @@ pub fn master_to_wav(
             current.path(),
             sample_rate,
             channels,
-            &config,
+            config,
             10f32.powf(extra / 20.0),
             false,
         )?;
@@ -131,20 +211,14 @@ pub fn master_to_wav(
     if final_peak > ceiling {
         limiting_reduction_db += 20.0 * (ceiling / final_peak).log10();
         let (next, next_measurement) =
-            process_file(current.path(), sample_rate, channels, &config, 1.0, true)?;
+            process_file(current.path(), sample_rate, channels, config, 1.0, true)?;
         current = next;
         measurement = next_measurement;
         let after = linear_peak(measurement.true_peak_dbtp);
         if after > ceiling {
             let safety = ceiling / after;
-            let (next, next_measurement) = process_file(
-                current.path(),
-                sample_rate,
-                channels,
-                &config,
-                safety,
-                false,
-            )?;
+            let (next, next_measurement) =
+                process_file(current.path(), sample_rate, channels, config, safety, false)?;
             current = next;
             measurement = next_measurement;
             limiting_reduction_db += 20.0 * safety.log10();
@@ -161,6 +235,31 @@ pub fn master_to_wav(
         applied_gain_db,
         limiting_reduction_db,
     })
+}
+
+/// Measures a raw little-endian `f32` file without loading it whole.
+fn measure_f32_file(
+    path: &Path,
+    sample_rate: u32,
+    channels: u16,
+    config: &MeasurementConfig,
+) -> Result<LoudnessMeasurement> {
+    let mut meter = LoudnessMeter::new(sample_rate, channels, config);
+    let mut reader = BufReader::new(File::open(path).context("open mastering source")?);
+    let mut bytes = vec![0u8; CHUNK_SAMPLES * 4];
+    let mut samples = Vec::with_capacity(CHUNK_SAMPLES);
+    loop {
+        let read = reader.read(&mut bytes)?;
+        if read == 0 {
+            break;
+        }
+        samples.clear();
+        for chunk in bytes[..read].as_chunks::<4>().0 {
+            samples.push(f32::from_le_bytes(*chunk));
+        }
+        meter.push(&samples);
+    }
+    Ok(meter.finish())
 }
 
 fn linear_peak(dbtp: f32) -> f32 {

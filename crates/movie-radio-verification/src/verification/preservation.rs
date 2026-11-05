@@ -1,8 +1,102 @@
 use anyhow::{Context, Result};
 use movie_radio_io::wav::read_wav_to_f32;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub use super::preservation_types::*;
+
+/// Random-access mono sample source for preservation verification.
+///
+/// Verification only inspects bounded windows, so a file-backed source lets it
+/// run without holding the whole track in memory (#418).
+pub trait SampleSource {
+    /// Number of mono frames in the source.
+    fn len(&self) -> usize;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Copies `[start, end)` clamped to the source length into `out`.
+    fn read_window(&self, start: usize, end: usize, out: &mut Vec<f32>) -> Result<()>;
+}
+
+impl SampleSource for [f32] {
+    fn len(&self) -> usize {
+        <[f32]>::len(self)
+    }
+
+    fn read_window(&self, start: usize, end: usize, out: &mut Vec<f32>) -> Result<()> {
+        out.clear();
+        let end = end.min(self.len());
+        if start < end {
+            out.extend_from_slice(&self[start..end]);
+        }
+        Ok(())
+    }
+}
+
+/// A 16-bit PCM WAV read on demand, folded to mono like
+/// [`read_wav_to_f32`].
+pub struct WavSampleSource {
+    path: PathBuf,
+    frames: usize,
+    sample_rate: u32,
+}
+
+impl WavSampleSource {
+    pub fn open(path: &Path) -> Result<Self> {
+        let reader = hound::WavReader::open(path)
+            .with_context(|| format!("cannot open {}", path.display()))?;
+        let spec = reader.spec();
+        if spec.bits_per_sample != 16 {
+            anyhow::bail!("only 16-bit PCM wav is supported in direct mode");
+        }
+        let channels = spec.channels.max(1) as usize;
+        Ok(Self {
+            path: path.to_path_buf(),
+            frames: reader.len() as usize / channels,
+            sample_rate: spec.sample_rate,
+        })
+    }
+
+    pub fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+}
+
+impl SampleSource for WavSampleSource {
+    fn len(&self) -> usize {
+        self.frames
+    }
+
+    fn read_window(&self, start: usize, end: usize, out: &mut Vec<f32>) -> Result<()> {
+        out.clear();
+        let end = end.min(self.frames);
+        if start >= end {
+            return Ok(());
+        }
+        let mut reader = hound::WavReader::open(&self.path)
+            .with_context(|| format!("cannot open {}", self.path.display()))?;
+        let channels = reader.spec().channels.max(1) as usize;
+        // `seek` takes a frame position, so the channel fold stays aligned.
+        reader
+            .seek(start as u32)
+            .with_context(|| format!("cannot seek {}", self.path.display()))?;
+        out.reserve(end - start);
+        let mut accum = 0.0f32;
+        let mut idx = 0usize;
+        for sample in reader.samples::<i16>().take((end - start) * channels) {
+            accum += (sample? as f32) / (i16::MAX as f32);
+            idx += 1;
+            if idx == channels {
+                out.push(accum / channels as f32);
+                idx = 0;
+                accum = 0.0;
+            }
+        }
+        Ok(())
+    }
+}
 
 fn compute_rms(samples: &[f32]) -> f32 {
     if samples.is_empty() {
@@ -50,14 +144,51 @@ pub fn verify_audio_preservation_samples(
     track_map: &TrackMap,
     config: &PreservationConfig,
 ) -> PreservationReport {
+    // Slice reads cannot fail, so an error here is unreachable; report it as a
+    // failed run rather than panicking.
+    match verify_audio_preservation_sources(
+        source_samples,
+        output_samples,
+        sample_rate,
+        channels,
+        dialogue_regions,
+        track_map,
+        config,
+    ) {
+        Ok(report) => report,
+        Err(error) => failed_report(track_map, sample_rate, channels, error.to_string()),
+    }
+}
+
+/// Evaluates preservation and placement over any [`SampleSource`] pair.
+///
+/// Only the windows the checks need are read, so a file-backed output keeps
+/// peak memory bounded for long films (#418).
+pub fn verify_audio_preservation_sources<S, O>(
+    source: &S,
+    output: &O,
+    sample_rate: u32,
+    channels: u16,
+    dialogue_regions: &[TimeRange],
+    track_map: &TrackMap,
+    config: &PreservationConfig,
+) -> Result<PreservationReport>
+where
+    S: SampleSource + ?Sized,
+    O: SampleSource + ?Sized,
+{
     let mut window_verdicts = Vec::new();
     let mut license_verdicts = Vec::new();
     let channels = channels.max(1);
+    // Reused across windows so verification allocates one window, not one
+    // buffer per check.
+    let mut s_buf: Vec<f32> = Vec::new();
+    let mut o_buf: Vec<f32> = Vec::new();
 
     let source_duration_ms =
-        ((source_samples.len() as f64 / (sample_rate as f64 * channels as f64)) * 1000.0) as u64;
+        ((source.len() as f64 / (sample_rate as f64 * channels as f64)) * 1000.0) as u64;
     let output_duration_ms =
-        ((output_samples.len() as f64 / (sample_rate as f64 * channels as f64)) * 1000.0) as u64;
+        ((output.len() as f64 / (sample_rate as f64 * channels as f64)) * 1000.0) as u64;
 
     let duration_diff = source_duration_ms.abs_diff(output_duration_ms);
     let duration_matches = if source_duration_ms > 0 {
@@ -70,9 +201,9 @@ pub fn verify_audio_preservation_samples(
         duration_ms: output_duration_ms,
         sample_rate,
         channels,
-        codec_valid: !output_samples.is_empty(),
+        codec_valid: !output.is_empty(),
         duration_matches_source: duration_matches,
-        error: if output_samples.is_empty() {
+        error: if output.is_empty() {
             Some("Output samples buffer is empty".to_string())
         } else if !duration_matches {
             Some(format!(
@@ -113,16 +244,10 @@ pub fn verify_audio_preservation_samples(
             let start_sample = ms_to_sample(entry.source_start_ms, sample_rate, channels);
             let end_sample = ms_to_sample(entry.source_end_ms, sample_rate, channels);
 
-            let s_slice = if start_sample < source_samples.len() {
-                &source_samples[start_sample..end_sample.min(source_samples.len())]
-            } else {
-                &[]
-            };
-            let o_slice = if start_sample < output_samples.len() {
-                &output_samples[start_sample..end_sample.min(output_samples.len())]
-            } else {
-                &[]
-            };
+            source.read_window(start_sample, end_sample, &mut s_buf)?;
+            output.read_window(start_sample, end_sample, &mut o_buf)?;
+            let s_slice = s_buf.as_slice();
+            let o_slice = o_buf.as_slice();
 
             let rms_diff = compute_diff_rms(s_slice, o_slice);
             let peak_level = compute_peak(o_slice);
@@ -196,16 +321,10 @@ pub fn verify_audio_preservation_samples(
         let start_sample = ms_to_sample(dialogue.start_ms, sample_rate, channels);
         let end_sample = ms_to_sample(dialogue.end_ms, sample_rate, channels);
 
-        let s_slice = if start_sample < source_samples.len() {
-            &source_samples[start_sample..end_sample.min(source_samples.len())]
-        } else {
-            &[]
-        };
-        let o_slice = if start_sample < output_samples.len() {
-            &output_samples[start_sample..end_sample.min(output_samples.len())]
-        } else {
-            &[]
-        };
+        source.read_window(start_sample, end_sample, &mut s_buf)?;
+        output.read_window(start_sample, end_sample, &mut o_buf)?;
+        let s_slice = s_buf.as_slice();
+        let o_slice = o_buf.as_slice();
 
         let src_rms = compute_rms(s_slice);
         let out_rms = compute_rms(o_slice);
@@ -281,11 +400,8 @@ pub fn verify_audio_preservation_samples(
         // Check clipping
         let start_sample = ms_to_sample(narr.output_start_ms, sample_rate, channels);
         let end_sample = ms_to_sample(narr.output_end_ms, sample_rate, channels);
-        let o_slice = if start_sample < output_samples.len() {
-            &output_samples[start_sample..end_sample.min(output_samples.len())]
-        } else {
-            &[]
-        };
+        output.read_window(start_sample, end_sample, &mut o_buf)?;
+        let o_slice = o_buf.as_slice();
         let peak = compute_peak(o_slice);
         if peak > config.peak_clipping_threshold {
             passed = false;
@@ -329,13 +445,44 @@ pub fn verify_audio_preservation_samples(
         failed_licenses,
     };
 
-    PreservationReport {
+    Ok(PreservationReport {
         overall_passed,
         track_map: track_map.clone(),
         window_verdicts,
         license_provenance_summary: license_verdicts,
         file_integrity,
         summary,
+    })
+}
+
+/// Report for a run whose samples could not be read at all.
+fn failed_report(
+    track_map: &TrackMap,
+    sample_rate: u32,
+    channels: u16,
+    error: String,
+) -> PreservationReport {
+    PreservationReport {
+        overall_passed: false,
+        track_map: track_map.clone(),
+        window_verdicts: Vec::new(),
+        license_provenance_summary: Vec::new(),
+        file_integrity: FileIntegrityResult {
+            duration_ms: 0,
+            sample_rate,
+            channels,
+            codec_valid: false,
+            duration_matches_source: false,
+            error: Some(error),
+        },
+        summary: PreservationSummary {
+            total_windows: 0,
+            passed_windows: 0,
+            failed_windows: 0,
+            total_assets: track_map.entries.len(),
+            verified_licenses: 0,
+            failed_licenses: 0,
+        },
     }
 }
 
@@ -361,28 +508,30 @@ pub fn verify_audio_preservation_files(
         );
     }
 
-    let (source_samples, sample_rate) = read_wav_to_f32(source_media_path).with_context(|| {
+    // Read windows on demand instead of loading both tracks, so verification
+    // of a long film does not need two full-length buffers (#418).
+    let source = WavSampleSource::open(source_media_path).with_context(|| {
         format!(
             "Failed to read WAV source media: {}",
             source_media_path.display()
         )
     })?;
-    let (output_samples, _out_rate) = read_wav_to_f32(output_media_path).with_context(|| {
+    let output = WavSampleSource::open(output_media_path).with_context(|| {
         format!(
             "Failed to read WAV output media: {}",
             output_media_path.display()
         )
     })?;
 
-    let report = verify_audio_preservation_samples(
-        &source_samples,
-        &output_samples,
-        sample_rate,
+    let report = verify_audio_preservation_sources(
+        &source,
+        &output,
+        source.sample_rate(),
         1,
         dialogue_regions,
         track_map,
         config,
-    );
+    )?;
 
     if let Some(out_path) = report_output_path {
         if let Some(parent) = out_path.parent() {

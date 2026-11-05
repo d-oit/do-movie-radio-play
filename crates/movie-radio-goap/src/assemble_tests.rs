@@ -16,6 +16,107 @@ fn test_assemble_empty_narrations() {
     assert_eq!(result, original);
 }
 
+fn streamed(
+    assembler: &RadioPlayAssembler,
+    original: &[f32],
+    narrations: &[NarrationSegment],
+) -> Vec<f32> {
+    let mut bytes = Vec::new();
+    assembler
+        .assemble_to_writer(original, narrations, &mut bytes)
+        .expect("stream assembly");
+    bytes
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| f32::from_le_bytes(*chunk))
+        .collect()
+}
+
+fn varied_source(len: usize) -> Vec<f32> {
+    (0..len)
+        .map(|i| {
+            let t = i as f32;
+            (t * 0.013).sin() * 0.3 + (t * 0.0007).cos() * 0.2
+        })
+        .collect()
+}
+
+#[test]
+fn streaming_assembly_matches_buffered_assembly() {
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let original = varied_source(200_000);
+    let narrations = vec![
+        make_narration(1_000, 4_000),
+        make_narration(50_000, 9_000),
+        make_narration(150_000, 2_500),
+    ];
+    let buffered = assembler
+        .assemble(&original, &narrations)
+        .expect("buffered");
+    let streamed = streamed(&assembler, &original, &narrations);
+    assert_eq!(buffered.len(), streamed.len());
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_assembly_matches_across_chunk_boundaries() {
+    // Narrations deliberately straddle the 1M-sample chunk boundary so the
+    // overlap arithmetic is exercised on both sides of a split.
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let boundary = ASSEMBLY_CHUNK_SAMPLES;
+    let original = varied_source(boundary * 2 + 5_000);
+    let narrations = vec![
+        make_narration(boundary - 2_000, 4_000),
+        make_narration(boundary * 2 - 500, 3_000),
+    ];
+    let buffered = assembler
+        .assemble(&original, &narrations)
+        .expect("buffered");
+    let streamed = streamed(&assembler, &original, &narrations);
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_assembly_matches_with_zero_crossfade() {
+    // A zero crossfade takes the branch the old inline code handled
+    // separately, so it must still agree.
+    let assembler = RadioPlayAssembler::new(16_000, 0, 0.3);
+    let original = varied_source(20_000);
+    let narrations = vec![make_narration(1_000, 3_000)];
+    let buffered = assembler
+        .assemble(&original, &narrations)
+        .expect("buffered");
+    let streamed = streamed(&assembler, &original, &narrations);
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_assembly_truncates_narration_past_end_like_buffered() {
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let original = varied_source(10_000);
+    // Narration runs past the end of the source and carries more samples than
+    // its declared span.
+    let mut narration = make_narration(9_000, 5_000);
+    narration.samples = vec![0.4; 8_000];
+    let narrations = vec![narration];
+    let buffered = assembler
+        .assemble(&original, &narrations)
+        .expect("buffered");
+    let streamed = streamed(&assembler, &original, &narrations);
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_assembly_rejects_overlaps() {
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let narrations = vec![make_narration(100, 200), make_narration(150, 200)];
+    let mut bytes = Vec::new();
+    assert!(assembler
+        .assemble_to_writer(&vec![0.0; 1_000], &narrations, &mut bytes)
+        .is_err());
+}
+
 #[test]
 fn test_no_overlap_validation() {
     let assembler = RadioPlayAssembler::new(16000, 50, 0.3);

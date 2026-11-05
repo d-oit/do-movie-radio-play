@@ -22,4 +22,4 @@ pub use limiter::{master, MasteringOutcome};
 pub use measure::{measure, LoudnessMeasurement, LoudnessMeter, MeasurementConfig, SILENCE_LUFS};
 pub use profiles::{MasteringProfile, DEFAULT_PROFILE};
 pub use report::{validate, validate_measurement, CheckStatus, MasteringReport, QualityCheck};
-pub use streaming::{master_to_wav, StreamingMasteringOutcome};
+pub use streaming::{master_file_to_wav, master_to_wav, StreamingMasteringOutcome};

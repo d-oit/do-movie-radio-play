@@ -1,8 +1,12 @@
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 
 use crate::narrate::NarrationScript;
 use movie_radio_types::SfxAssetProvenance;
+
+/// Samples per streaming assembly step. 1M mono samples is 4 MB.
+pub const ASSEMBLY_CHUNK_SAMPLES: usize = 1 << 20;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NarrationSegment {
@@ -79,6 +83,62 @@ impl RadioPlayAssembler {
             self.apply_crossfade_duck(&mut output, start, end, narr_samples);
         }
         Ok(output)
+    }
+
+    /// Streams the ducked mix to `writer` as raw little-endian `f32`.
+    ///
+    /// Equivalent to [`RadioPlayAssembler::assemble`] but holds one chunk
+    /// instead of a full-length copy of the source, so peak memory no longer
+    /// scales with film length (#418). Ducking only rewrites a window around
+    /// each narration, so a chunk can be produced from the source slice plus
+    /// the narrations that overlap it.
+    pub fn assemble_to_writer<W: Write>(
+        &self,
+        original: &[f32],
+        narrations: &[NarrationSegment],
+        writer: &mut W,
+    ) -> Result<()> {
+        self.validate_no_overlaps(narrations)?;
+        let total_len = original.len();
+        let mut chunk = vec![0.0f32; ASSEMBLY_CHUNK_SAMPLES];
+        let mut bytes = Vec::new();
+        let mut start = 0usize;
+        while start < total_len {
+            let end = (start + ASSEMBLY_CHUNK_SAMPLES).min(total_len);
+            let buffer = &mut chunk[..end - start];
+            buffer.copy_from_slice(&original[start..end]);
+
+            for narration in narrations {
+                let narr_start = narration.start_sample.min(total_len);
+                let narr_end = narration.end_sample.min(total_len);
+                let narr_len = narr_end.saturating_sub(narr_start);
+                if narr_len == 0 {
+                    continue;
+                }
+                let samples = &narration.samples[..narr_len.min(narration.samples.len())];
+                let span_end = narr_start + samples.len();
+                let lo = narr_start.max(start);
+                let hi = span_end.min(end);
+                if lo >= hi {
+                    continue;
+                }
+                for pos in lo..hi {
+                    let i = pos - narr_start;
+                    let (duck_ramp, envelope) = self.duck_envelope(i, samples.len());
+                    let slot = &mut buffer[pos - start];
+                    *slot = *slot * duck_ramp + samples[i] * envelope;
+                }
+            }
+
+            bytes.clear();
+            bytes.reserve(buffer.len() * 4);
+            for sample in buffer.iter() {
+                bytes.extend_from_slice(&sample.to_le_bytes());
+            }
+            writer.write_all(&bytes)?;
+            start = end;
+        }
+        Ok(())
     }
 
     pub fn assemble_with_sfx(
@@ -182,7 +242,6 @@ impl RadioPlayAssembler {
         _end: usize,
         narration: &[f32],
     ) {
-        let cf = self.crossfade_samples;
         let total_len = output.len();
 
         for i in 0..narration.len() {
@@ -191,37 +250,36 @@ impl RadioPlayAssembler {
                 break;
             }
 
-            let sample = narration[i];
-
-            let fade_in = if i < cf { i as f32 / cf as f32 } else { 1.0 };
-
-            let remaining = narration.len() - i;
-            let fade_out = if remaining <= cf {
-                remaining as f32 / cf as f32
-            } else {
-                1.0
-            };
-
-            let envelope = fade_in.min(fade_out);
-
-            let duck_start = if i >= cf { i - cf } else { 0 };
-            let duck_end = (i + cf).min(narration.len());
-            let is_ducking = i >= duck_start && i < duck_end;
-
-            if is_ducking {
-                let duck_ramp = if i < cf {
-                    self.duck_level + (1.0 - self.duck_level) * (i as f32 / cf as f32)
-                } else if remaining <= cf {
-                    self.duck_level + (1.0 - self.duck_level) * (remaining as f32 / cf as f32)
-                } else {
-                    self.duck_level
-                };
-
-                output[pos] = output[pos] * duck_ramp + sample * envelope;
-            } else {
-                output[pos] = output[pos] * self.duck_level + sample * envelope;
-            }
+            let (duck_ramp, envelope) = self.duck_envelope(i, narration.len());
+            output[pos] = output[pos] * duck_ramp + narration[i] * envelope;
         }
+    }
+
+    /// Duck ramp and narration envelope for sample `i` of a narration of
+    /// `len` samples.
+    ///
+    /// Shared by the buffered and streaming paths so they cannot drift. The
+    /// old inline version had a branch that was unreachable for a non-zero
+    /// crossfade and produced the same values as this formula when the
+    /// crossfade was zero, so this is a pure simplification.
+    fn duck_envelope(&self, i: usize, len: usize) -> (f32, f32) {
+        let cf = self.crossfade_samples;
+        let fade_in = if i < cf { i as f32 / cf as f32 } else { 1.0 };
+        let remaining = len - i;
+        let fade_out = if remaining <= cf {
+            remaining as f32 / cf as f32
+        } else {
+            1.0
+        };
+        let envelope = fade_in.min(fade_out);
+        let duck_ramp = if i < cf {
+            self.duck_level + (1.0 - self.duck_level) * (i as f32 / cf as f32)
+        } else if remaining <= cf {
+            self.duck_level + (1.0 - self.duck_level) * (remaining as f32 / cf as f32)
+        } else {
+            self.duck_level
+        };
+        (duck_ramp, envelope)
     }
 
     pub fn narration_to_segment(

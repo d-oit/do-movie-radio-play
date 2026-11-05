@@ -1,4 +1,4 @@
-use crate::agc::{apply_agc, apply_reverb};
+use crate::agc::{apply_agc_in_place, apply_reverb};
 use crate::spatial::{ReverbConfig, StereoPosition};
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -76,8 +76,9 @@ impl Mixer {
         for track in tracks {
             let sample_rate = track.sample_rate;
 
-            let agc = apply_agc(
-                track.samples,
+            let mut agc = track.samples;
+            apply_agc_in_place(
+                &mut agc,
                 sample_rate,
                 track.agc_attack,
                 track.agc_release,
@@ -147,6 +148,18 @@ impl Mixer {
     /// Equivalent to `render_mix` followed by `(l + r) * 0.5 * SQRT_2` when
     /// every track is centred, including the peak normalization.
     pub fn render_mix_centre_mono(&mut self, tracks: Vec<TrackInput>) -> Result<&[f32]> {
+        self.mono_output = self.render_mix_centre_mono_owned(tracks)?;
+        Ok(&self.mono_output)
+    }
+
+    /// Owned variant of [`Mixer::render_mix_centre_mono`].
+    ///
+    /// Renders every track before allocating the mix, then reuses the first
+    /// track's buffer as the accumulator when it spans the full mix. That
+    /// keeps peak memory at the input tracks plus one rendered track instead
+    /// of an extra full-length output buffer, and preserves the summation
+    /// order of the reference implementation.
+    pub fn render_mix_centre_mono_owned(&mut self, tracks: Vec<TrackInput>) -> Result<Vec<f32>> {
         if tracks.iter().any(|track| {
             let (left, right) = track.position.gains();
             left != right
@@ -155,53 +168,67 @@ impl Mixer {
         }
 
         let max_len = tracks.iter().map(|t| t.samples.len()).max().unwrap_or(0);
-        self.mono_output.clear();
         if max_len == 0 {
-            return Ok(&[]);
+            return Ok(Vec::new());
         }
-        self.mono_output.resize(max_len, 0.0);
 
+        let mut rendered: Vec<(Vec<f32>, f32)> = Vec::with_capacity(tracks.len());
         for track in tracks {
             let sample_rate = track.sample_rate;
             let gain = track.position.gains().0;
 
-            let agc = apply_agc(
-                track.samples,
+            // In-place AGC keeps peak memory at the track itself instead of
+            // allocating a second full-length buffer per track.
+            let mut samples = track.samples;
+            apply_agc_in_place(
+                &mut samples,
                 sample_rate,
                 track.agc_attack,
                 track.agc_release,
                 track.agc_max_gain,
             )?;
-            let rendered = if let Some(ref rev) = track.reverb {
-                apply_reverb(agc, sample_rate, rev.delay_ms, rev.amplitude)?
+            let samples = if let Some(ref rev) = track.reverb {
+                apply_reverb(samples, sample_rate, rev.delay_ms, rev.amplitude)?
             } else {
-                agc
+                samples
             };
+            rendered.push((samples, gain));
+        }
 
-            let limit = rendered.len().min(self.mono_output.len());
-            for (out, sample) in self.mono_output[..limit].iter_mut().zip(&rendered[..limit]) {
+        let mut output = if rendered[0].0.len() == max_len {
+            let (samples, gain) = rendered.remove(0);
+            let mut output = samples;
+            if gain != 1.0 {
+                for s in &mut output {
+                    *s *= gain;
+                }
+            }
+            output
+        } else {
+            vec![0.0f32; max_len]
+        };
+
+        for (samples, gain) in rendered {
+            let limit = samples.len().min(output.len());
+            for (out, sample) in output[..limit].iter_mut().zip(&samples[..limit]) {
                 *out += sample * gain;
             }
         }
 
         // Same peak as the per-channel buffers, then the same fold and scale
         // in the same order so the result matches the stereo path.
-        let peak = self
-            .mono_output
-            .iter()
-            .map(|s| s.abs())
-            .fold(0.0_f32, f32::max);
-        for s in &mut self.mono_output {
+        let peak = output.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
+        for s in &mut output {
             *s *= std::f32::consts::SQRT_2;
         }
         if peak > 1.0 {
             let scale = 1.0 / peak;
-            for s in &mut self.mono_output {
+            for s in &mut output {
                 *s *= scale;
             }
         }
 
-        Ok(&self.mono_output)
+        Ok(output)
     }
 }
 
@@ -385,5 +412,41 @@ mod tests {
         };
         let mut mixer = Mixer::new();
         assert!(mixer.render_mix_centre_mono(vec![track]).is_err());
+    }
+
+    #[test]
+    fn centre_mono_owned_matches_borrowed() -> Result<()> {
+        let signal = |len: usize, step: f32| -> Vec<f32> {
+            (0..len)
+                .map(|i| (i as f32 * step).sin() * 0.4 + (i as f32 * 0.01).cos() * 0.1)
+                .collect()
+        };
+        // First track spans the mix, second is shorter, and the peak exceeds
+        // 1.0 so the normalization branch runs.
+        let tracks = vec![
+            centred(signal(4_800, 0.002), 1.0),
+            centred(signal(3_000, 0.003), 20.0),
+        ];
+        let mut mixer = Mixer::new();
+        let borrowed = mixer.render_mix_centre_mono(tracks.clone())?.to_vec();
+        let owned = mixer.render_mix_centre_mono_owned(tracks)?;
+        assert_eq!(borrowed, owned);
+        Ok(())
+    }
+
+    #[test]
+    fn centre_mono_owned_handles_shorter_first_track() -> Result<()> {
+        let signal = |len: usize, step: f32| -> Vec<f32> {
+            (0..len).map(|i| (i as f32 * step).sin() * 0.3).collect()
+        };
+        let tracks = vec![
+            centred(signal(1_000, 0.002), 1.0),
+            centred(signal(2_500, 0.003), 1.0),
+        ];
+        let mut mixer = Mixer::new();
+        let borrowed = mixer.render_mix_centre_mono(tracks.clone())?.to_vec();
+        let owned = mixer.render_mix_centre_mono_owned(tracks)?;
+        assert_eq!(borrowed, owned);
+        Ok(())
     }
 }

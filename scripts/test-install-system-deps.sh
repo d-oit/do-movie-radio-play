@@ -24,6 +24,9 @@ STUB
 cat >"${tmp}/bin/apt-get" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"${APT_LOG}"
+if [[ -n "${APT_SLEEP:-}" ]]; then
+  sleep "${APT_SLEEP}"
+fi
 if [[ -n "${APT_FAIL:-}" ]]; then
   exit 100
 fi
@@ -33,6 +36,7 @@ chmod +x "${tmp}/bin/sudo" "${tmp}/bin/apt-get"
 
 export PATH="${tmp}/bin:${PATH}"
 export INSTALL_DEPS_RETRY_DELAY_SECS=0
+export INSTALL_DEPS_NETWORK_TIMEOUT_SECS=180
 
 fail() {
   echo "FAIL: $*" >&2
@@ -56,9 +60,14 @@ bash "${installer}" ffmpeg libasound2-dev
 grep -q '^update ' "${APT_LOG}" || fail "apt-get update was not called"
 grep -q '^install -y --no-install-recommends ' "${APT_LOG}" \
   || fail "install did not request --no-install-recommends"
+grep -q '^install -y --no-install-recommends --download-only ' "${APT_LOG}" \
+  || fail "packages were not fetched in a bounded download-only phase"
 grep -q 'Acquire::http::Timeout=15' "${APT_LOG}" || fail "missing http timeout"
 grep -q 'ffmpeg libasound2-dev' "${APT_LOG}" || fail "packages were not forwarded"
-[[ "$(grep -c '^install ' "${APT_LOG}")" -eq 1 ]] \
+# One download-only fetch plus one local install, and no retry.
+[[ "$(grep -c '^install ' "${APT_LOG}")" -eq 2 ]] \
+  || fail "successful install should make exactly two install calls"
+[[ "$(grep -c '^update ' "${APT_LOG}")" -eq 1 ]] \
   || fail "successful install should not retry"
 
 # 3. A failing apt is retried MAX_ATTEMPTS times and then aborts, so the job
@@ -77,5 +86,28 @@ unset APT_FAIL
   || fail "expected 3 update attempts, got $(grep -c '^update ' "${APT_LOG}")"
 [[ "${output}" == *"failed after 3 attempts"* ]] \
   || fail "abort message missing from output"
+
+# 4. A mirror that keeps trickling bytes is cut off by the wall-clock budget
+#    instead of consuming the job, and the retry path still runs.
+export APT_LOG="${tmp}/slow.log"
+: >"${APT_LOG}"
+export APT_SLEEP=5
+export INSTALL_DEPS_NETWORK_TIMEOUT_SECS=1
+started=${SECONDS}
+set +e
+output="$(bash "${installer}" ffmpeg 2>&1)"
+status=$?
+set -e
+unset APT_SLEEP
+export INSTALL_DEPS_NETWORK_TIMEOUT_SECS=180
+elapsed=$((SECONDS - started))
+
+[[ ${status} -eq 1 ]] || fail "expected exit 1 when the network budget expires, got ${status}"
+[[ ${elapsed} -lt 20 ]] \
+  || fail "slow mirror was not bounded: script took ${elapsed}s"
+[[ "${output}" == *"network budget 1s"* ]] \
+  || fail "retry message did not report the network budget"
+[[ "$(grep -c '^update ' "${APT_LOG}")" -eq 3 ]] \
+  || fail "bounded timeout should still retry 3 times, got $(grep -c '^update ' "${APT_LOG}")"
 
 echo "install-system-deps: all checks passed"

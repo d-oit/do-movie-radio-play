@@ -47,7 +47,7 @@ run_step() {
 }
 
 run_step "fetch assets" bash scripts/fetch_test_assets.sh
-run_step "generate fixtures" cargo run --quiet -- gen-fixtures --output-dir testdata/generated
+run_step "generate fixtures" cargo run --quiet -p movie-radio-timeline --bin timeline -- gen-fixtures --output-dir testdata/generated
 run_step "quality gate" bash scripts/quality_gate.sh
 run_step "benchmark ci artifact" bash scripts/benchmark.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/ci.json
 run_step "benchmark regression check" python3 scripts/check_benchmark_regression.py --baseline analysis/benchmarks/latest.json --candidate analysis/benchmarks/ci.json

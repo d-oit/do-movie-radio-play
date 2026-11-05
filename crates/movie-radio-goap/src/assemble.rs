@@ -138,9 +138,7 @@ impl RadioPlayAssembler {
         };
 
         let mut mixer = Mixer::new();
-        Ok(mixer
-            .render_mix_centre_mono(vec![track_main, track_sfx])?
-            .to_vec())
+        mixer.render_mix_centre_mono_owned(vec![track_main, track_sfx])
     }
 }
 

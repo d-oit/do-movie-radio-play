@@ -11,6 +11,7 @@ mod limiter;
 mod measure;
 mod profiles;
 mod report;
+mod streaming;
 
 #[cfg(test)]
 mod tests;
@@ -18,6 +19,7 @@ mod tests;
 pub use fixtures::generate_fixtures;
 pub use io::{read_audio, read_wav, validate_file, write_html, write_json, write_wav};
 pub use limiter::{master, MasteringOutcome};
-pub use measure::{measure, LoudnessMeasurement, MeasurementConfig, SILENCE_LUFS};
+pub use measure::{measure, LoudnessMeasurement, LoudnessMeter, MeasurementConfig, SILENCE_LUFS};
 pub use profiles::{MasteringProfile, DEFAULT_PROFILE};
-pub use report::{validate, CheckStatus, MasteringReport, QualityCheck};
+pub use report::{validate, validate_measurement, CheckStatus, MasteringReport, QualityCheck};
+pub use streaming::{master_to_wav, StreamingMasteringOutcome};

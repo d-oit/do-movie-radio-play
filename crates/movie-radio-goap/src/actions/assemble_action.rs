@@ -99,11 +99,6 @@ impl Action for AssembleRadioPlay {
             // an extra half decibel so the encoded file still meets the ceiling.
             profile.max_true_peak_dbtp = profile.max_true_peak_dbtp.min(-1.5);
         }
-        let mastered =
-            movie_radio_render::mastering::master(&radio_play, ctx.sample_rate, 1, &profile);
-        ctx.mastering_report = Some(mastered.report);
-        let deliverable_samples = mastered.samples;
-
         if let Some(parent) = ctx.output_path.parent() {
             if !parent.as_os_str().is_empty() {
                 std::fs::create_dir_all(parent)?;
@@ -116,20 +111,16 @@ impl Action for AssembleRadioPlay {
             ctx.output_path.clone()
         };
 
-        let spec = hound::WavSpec {
-            channels: 1,
-            sample_rate: ctx.sample_rate,
-            bits_per_sample: 16,
-            sample_format: hound::SampleFormat::Int,
-        };
-
-        let mut writer = hound::WavWriter::create(&target_wav, spec)?;
-        for &s in &deliverable_samples {
-            let clamped = s.clamp(-1.0, 1.0);
-            let sample = (clamped * i16::MAX as f32) as i16;
-            writer.write_sample(sample)?;
-        }
-        writer.finalize()?;
+        // Stream the mastered deliverable to disk instead of holding a second
+        // full-length buffer next to the assembled mix.
+        let mastered = movie_radio_render::mastering::master_to_wav(
+            &radio_play,
+            &target_wav,
+            ctx.sample_rate,
+            1,
+            &profile,
+        )?;
+        ctx.mastering_report = Some(mastered.report);
 
         if is_mp3 {
             encode_to_mp3(&target_wav, &ctx.output_path)?;
@@ -138,7 +129,7 @@ impl Action for AssembleRadioPlay {
 
         info!(
             output = %ctx.output_path.display(),
-            duration_s = deliverable_samples.len() as f64 / ctx.sample_rate as f64,
+            duration_s = radio_play.len() as f64 / ctx.sample_rate as f64,
             "Radio play assembled"
         );
         ctx.assembled_audio = Some(radio_play);

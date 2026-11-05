@@ -1,6 +1,7 @@
 #![allow(clippy::needless_range_loop)]
 
 use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use movie_radio_render::mastering::{master, master_to_wav, MasteringProfile};
 use movie_radio_render::mixer::{render_mix, Mixer, TrackInput};
 use movie_radio_render::noise::{generate_noise_samples, NoiseTrackConfig, NoiseType};
 use movie_radio_render::spatial::{ReverbConfig, StereoPosition};
@@ -232,11 +233,46 @@ fn bench_render_mix_legacy(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_mastering_streaming(c: &mut Criterion) {
+    let sample_rate = 48_000;
+    let seconds = 30;
+    let frames = sample_rate * seconds;
+    let samples: Vec<f32> = (0..frames)
+        .map(|i| {
+            let t = i as f32 / sample_rate as f32;
+            0.2 * (2.0 * std::f32::consts::PI * 440.0 * t).sin()
+        })
+        .collect();
+    let profile = MasteringProfile::podcast();
+    let dir = tempfile::tempdir().expect("tempdir");
+    let output = dir.path().join("mastered.wav");
+
+    let mut group = c.benchmark_group("mastering");
+    group.throughput(Throughput::Elements(frames as u64));
+    group.bench_function("master_in_memory_30s", |b| {
+        b.iter(|| master(std::hint::black_box(&samples), sample_rate, 1, &profile))
+    });
+    group.bench_function("master_to_wav_streaming_30s", |b| {
+        b.iter(|| {
+            master_to_wav(
+                std::hint::black_box(&samples),
+                &output,
+                sample_rate,
+                1,
+                &profile,
+            )
+            .expect("streaming master")
+        })
+    });
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_render_mix_reusable,
     bench_focused_stereo_render,
     bench_complex_radio_play,
-    bench_render_mix_legacy
+    bench_render_mix_legacy,
+    bench_mastering_streaming
 );
 criterion_main!(benches);

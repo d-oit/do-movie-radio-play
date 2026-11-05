@@ -43,8 +43,10 @@ fi
 
 if [[ ! -f "$input" && "$input" == "testdata/generated/alternating.wav" ]]; then
   echo "benchmark input missing ($input); generating deterministic fixtures..." >&2
-  cargo run --quiet -- gen-fixtures --output-dir testdata/generated
+  cargo run --quiet -p movie-radio-timeline --bin timeline -- gen-fixtures --output-dir testdata/generated
 fi
 
-cargo run --quiet -- bench "$input" --output "$out"
+# Name the package and binary: the workspace has more than one binary, so a
+# bare `cargo run` cannot pick one.
+cargo run --quiet -p movie-radio-timeline --bin timeline -- bench "$input" --output "$out"
 echo "benchmark written: $out"

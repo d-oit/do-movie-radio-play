@@ -10,18 +10,25 @@
 
 use std::time::Instant;
 
+use clap::Parser;
 use movie_radio_goap::assemble::{NarrationSegment, RadioPlayAssembler};
 
+#[derive(Debug, Parser)]
+#[command(about = "Measure assembly peak memory and throughput for one duration")]
+struct Args {
+    /// Length of the synthetic film to assemble, in seconds.
+    #[arg(default_value_t = 60)]
+    duration_seconds: u64,
+    /// Analysis sample rate in Hz.
+    #[arg(default_value_t = 16_000)]
+    sample_rate: u32,
+}
+
 fn main() {
-    let mut args = std::env::args().skip(1);
-    let duration_secs: u64 = args
-        .next()
-        .and_then(|value| value.parse().ok())
-        .unwrap_or(60);
-    let sample_rate: u32 = args
-        .next()
-        .and_then(|value| value.parse().ok())
-        .unwrap_or(16_000);
+    let Args {
+        duration_seconds: duration_secs,
+        sample_rate,
+    } = Args::parse();
 
     let total_samples = duration_secs as usize * sample_rate as usize;
     // A quiet bed with periodic louder passages, so the AGC and ducking paths

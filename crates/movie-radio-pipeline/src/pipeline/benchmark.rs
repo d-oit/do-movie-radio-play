@@ -21,5 +21,6 @@ pub fn benchmark_file(input: &Path, cfg: &AnalysisConfig) -> Result<BenchmarkRes
         frame_count,
         segment_count,
         stage_ms,
+        peak_rss_kb: movie_radio_types::peak_rss_kb(),
     })
 }

@@ -31,7 +31,7 @@ pub use features::FeatureSet;
 pub use fingerprint::Fingerprint;
 pub use frame::Frame;
 pub use llm_policy::{check_endpoint, PolicyViolation, ALLOWED_PROVIDERS, FORBIDDEN_KEY_ENVS};
-pub use metrics::{BenchmarkResult, StageDurations};
+pub use metrics::{parse_peak_rss_kb, peak_rss_kb, BenchmarkResult, StageDurations};
 pub use narrator_types::{parse_narrator_style, NarratorParams, NarratorStyle, RenderedPrompt};
 pub use provider_registry::{ProviderEntry, ProviderRegistry};
 pub use segment::{

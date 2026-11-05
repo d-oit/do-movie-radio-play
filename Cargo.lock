@@ -252,6 +252,7 @@ name = "benchmarks"
 version = "0.0.0"
 dependencies = [
  "criterion",
+ "movie-radio-goap",
  "movie-radio-pipeline",
  "movie-radio-render",
  "movie-radio-types",

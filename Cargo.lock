@@ -256,6 +256,7 @@ dependencies = [
  "movie-radio-render",
  "movie-radio-types",
  "movie-radio-verification",
+ "tempfile",
 ]
 
 [[package]]

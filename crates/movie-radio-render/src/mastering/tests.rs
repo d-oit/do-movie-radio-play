@@ -126,3 +126,119 @@ fn fixtures_generate_and_validate() {
     assert!(dir.path().join("mastering_mono.wav").exists());
     assert!(dir.path().join("mastering_stereo.wav").exists());
 }
+
+#[test]
+fn loudness_meter_matches_measure_across_chunkings() {
+    let input = interleave(&tone(440.0, 2.0, 0.2), &tone(660.0, 2.0, 0.1));
+    let config = MeasurementConfig::default();
+    let expected = measure(&input, SR, 2, &config);
+    for chunk_frames in [1, 7, 1000, 48_000] {
+        let mut meter = LoudnessMeter::new(SR, 2, &config);
+        for chunk in input.chunks(chunk_frames * 2) {
+            meter.push(chunk);
+        }
+        let actual = meter.finish();
+        assert_eq!(actual.integrated_lufs, expected.integrated_lufs);
+        assert_eq!(actual.loudness_range_lu, expected.loudness_range_lu);
+        assert_eq!(actual.true_peak_dbtp, expected.true_peak_dbtp);
+        assert_eq!(actual.duration_s, expected.duration_s);
+    }
+}
+
+#[test]
+fn streaming_master_matches_reference_within_tolerance() {
+    let input = interleave(&tone(440.0, 2.0, 0.2), &tone(660.0, 2.0, 0.1));
+    let profile = MasteringProfile::podcast();
+    let reference = master(&input, SR, 2, &profile);
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("streamed.wav");
+    let streamed = master_to_wav(&input, &path, SR, 2, &profile).expect("streaming master");
+
+    assert!(
+        (streamed.report.measurements.integrated_lufs
+            - reference.report.measurements.integrated_lufs)
+            .abs()
+            < 0.5,
+        "streamed {} LUFS vs reference {} LUFS",
+        streamed.report.measurements.integrated_lufs,
+        reference.report.measurements.integrated_lufs
+    );
+    assert!(
+        (streamed.report.measurements.true_peak_dbtp
+            - reference.report.measurements.true_peak_dbtp)
+            .abs()
+            < 0.5
+    );
+
+    let (samples, sample_rate, channels) = read_wav(&path).expect("read streamed wav");
+    assert_eq!(sample_rate, SR);
+    assert_eq!(channels, 2);
+    assert_eq!(samples.len(), reference.samples.len());
+    let max_diff = samples
+        .iter()
+        .zip(&reference.samples)
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0f32, f32::max);
+    assert!(max_diff < 0.02, "max sample difference {max_diff}");
+}
+
+#[test]
+fn streaming_master_respects_true_peak_ceiling() {
+    let loud = tone(1000.0, 2.0, 0.9);
+    let profile = MasteringProfile::custom("loud", -10.0, -1.0);
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("streamed.wav");
+    let outcome = master_to_wav(&loud, &path, SR, 1, &profile).expect("streaming master");
+    assert!(
+        outcome.report.measurements.true_peak_dbtp <= profile.max_true_peak_dbtp + 0.1,
+        "true peak {} dBTP exceeds ceiling {}",
+        outcome.report.measurements.true_peak_dbtp,
+        profile.max_true_peak_dbtp
+    );
+}
+
+#[test]
+fn streaming_master_is_deterministic() {
+    let input = interleave(&tone(440.0, 1.0, 0.2), &tone(660.0, 1.0, 0.1));
+    let profile = MasteringProfile::podcast();
+    let dir = tempfile::tempdir().expect("tempdir");
+    let first_path = dir.path().join("first.wav");
+    let second_path = dir.path().join("second.wav");
+    let first = master_to_wav(&input, &first_path, SR, 2, &profile).expect("first");
+    let second = master_to_wav(&input, &second_path, SR, 2, &profile).expect("second");
+    assert_eq!(first.report.measurements, second.report.measurements);
+    assert_eq!(
+        std::fs::read(&first_path).expect("read first"),
+        std::fs::read(&second_path).expect("read second")
+    );
+}
+
+#[test]
+fn streaming_master_handles_dynamic_material() {
+    let mut input = Vec::new();
+    for block in 0..4 {
+        let amplitude = if block % 2 == 0 { 0.05 } else { 0.4 };
+        input.extend(tone(220.0 + block as f32 * 110.0, 1.0, amplitude));
+    }
+    let profile = MasteringProfile::ebu_r128();
+    let reference = master(&input, SR, 1, &profile);
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("dynamic.wav");
+    let streamed = master_to_wav(&input, &path, SR, 1, &profile).expect("streaming master");
+    assert!(
+        (streamed.report.measurements.integrated_lufs
+            - reference.report.measurements.integrated_lufs)
+            .abs()
+            < 0.5,
+        "streamed {} LUFS vs reference {} LUFS",
+        streamed.report.measurements.integrated_lufs,
+        reference.report.measurements.integrated_lufs
+    );
+    assert!(
+        (streamed.report.measurements.true_peak_dbtp
+            - reference.report.measurements.true_peak_dbtp)
+            .abs()
+            < 0.5
+    );
+}

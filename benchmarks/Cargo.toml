@@ -12,6 +12,7 @@ movie-radio-types = { path = "../crates/movie-radio-types" }
 movie-radio-verification = { path = "../crates/movie-radio-verification" }
 movie-radio-render = { path = "../crates/movie-radio-render" }
 criterion = { version = "0.8", features = ["html_reports"] }
+tempfile.workspace = true
 
 [[bench]]
 name = "pipeline_bench"

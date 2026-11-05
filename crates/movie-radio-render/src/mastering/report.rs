@@ -293,6 +293,19 @@ pub fn validate(
         clipping_threshold: profile.clipping_threshold,
     };
     let measurements = measure(samples, sample_rate, channels, &config);
+    validate_measurement(measurements, sample_rate, channels, profile)
+}
+
+/// Builds the pass/warn/fail report from an already computed measurement.
+///
+/// Streaming mastering measures the output as it is written, so it cannot hand
+/// `validate` a full sample buffer.
+pub fn validate_measurement(
+    measurements: LoudnessMeasurement,
+    sample_rate: u32,
+    channels: u16,
+    profile: &MasteringProfile,
+) -> MasteringReport {
     let checks = build_checks(&measurements, profile);
     let overall = checks
         .iter()

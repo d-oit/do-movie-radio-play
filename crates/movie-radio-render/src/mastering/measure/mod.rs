@@ -3,6 +3,10 @@
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
+mod meter;
+
+pub use meter::LoudnessMeter;
+
 /// Floor used instead of `-inf` so reports stay valid JSON.
 pub const SILENCE_LUFS: f32 = -100.0;
 
@@ -59,7 +63,7 @@ impl Default for MeasurementConfig {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Biquad {
+pub(super) struct Biquad {
     b0: f32,
     b1: f32,
     b2: f32,
@@ -70,7 +74,7 @@ struct Biquad {
 }
 
 impl Biquad {
-    fn new(b0: f32, b1: f32, b2: f32, a0: f32, a1: f32, a2: f32) -> Self {
+    pub(super) fn new(b0: f32, b1: f32, b2: f32, a0: f32, a1: f32, a2: f32) -> Self {
         let inv = if a0.abs() > f32::EPSILON {
             1.0 / a0
         } else {
@@ -87,7 +91,7 @@ impl Biquad {
         }
     }
 
-    fn process(&mut self, x: f32) -> f32 {
+    pub(super) fn process(&mut self, x: f32) -> f32 {
         let y = self.b0 * x + self.z1;
         self.z1 = self.b1 * x - self.a1 * y + self.z2;
         self.z2 = self.b2 * x - self.a2 * y;
@@ -125,14 +129,14 @@ fn high_pass(sample_rate: f32, freq: f32, q: f32) -> Biquad {
     Biquad::new(b0, b1, b2, a0, a1, a2)
 }
 
-fn k_weighting(sample_rate: f32) -> (Biquad, Biquad) {
+pub(super) fn k_weighting(sample_rate: f32) -> (Biquad, Biquad) {
     (
         high_shelf(sample_rate, 1681.97, 4.0, 0.707_106_77),
         high_pass(sample_rate, 38.13, 0.5),
     )
 }
 
-fn loudness_from_energy(mean_energy: f64) -> f32 {
+pub(super) fn loudness_from_energy(mean_energy: f64) -> f32 {
     if mean_energy <= 0.0 {
         SILENCE_LUFS
     } else {
@@ -144,7 +148,7 @@ fn energy_from_loudness(loudness: f32) -> f64 {
     10f64.powf((f64::from(loudness) + 0.691) / 10.0)
 }
 
-fn integrated_loudness(blocks: &[f32]) -> f32 {
+pub(super) fn integrated_loudness(blocks: &[f32]) -> f32 {
     let gated: Vec<f64> = blocks
         .iter()
         .copied()
@@ -169,7 +173,7 @@ fn integrated_loudness(blocks: &[f32]) -> f32 {
     loudness_from_energy(mean)
 }
 
-fn loudness_range(blocks: &[f32]) -> f32 {
+pub(super) fn loudness_range(blocks: &[f32]) -> f32 {
     let gated: Vec<f32> = blocks.iter().copied().filter(|&l| l > -70.0).collect();
     if gated.is_empty() {
         return 0.0;
@@ -202,7 +206,7 @@ fn percentile(sorted: &[f32], fraction: f64) -> f32 {
     }
 }
 
-fn channel_imbalance(sum_sq: &[f64], frames: usize) -> f32 {
+pub(super) fn channel_imbalance(sum_sq: &[f64], frames: usize) -> f32 {
     if sum_sq.len() < 2 || frames == 0 {
         return 0.0;
     }
@@ -300,140 +304,7 @@ pub fn measure(
     channels: u16,
     config: &MeasurementConfig,
 ) -> LoudnessMeasurement {
-    let channels = channels.max(1) as usize;
-    let frames = samples.len() / channels;
-    if frames == 0 || sample_rate == 0 {
-        return LoudnessMeasurement::default();
-    }
-    let sr = sample_rate as f32;
-    let block = ((sr * 0.4).round() as usize).max(1);
-    let hop = ((sr * 0.1).round() as usize).max(1);
-    let short_block = ((sr * 3.0).round() as usize).max(1);
-    let short_hop = ((sr * 1.0).round() as usize).max(1);
-
-    let (shelf, hp) = k_weighting(sr);
-    let mut shelf_states = vec![shelf; channels];
-    let mut hp_states = vec![hp; channels];
-
-    let mut block_ring = vec![0.0f64; block];
-    let mut block_sum = 0.0f64;
-    let mut block_pos = 0usize;
-    let mut block_filled = 0usize;
-    let mut block_loudness = Vec::new();
-    let mut momentary_max = SILENCE_LUFS;
-
-    let mut short_ring = vec![0.0f64; short_block];
-    let mut short_sum = 0.0f64;
-    let mut short_pos = 0usize;
-    let mut short_filled = 0usize;
-    let mut short_loudness = Vec::new();
-    let mut short_term_max = SILENCE_LUFS;
-
-    let mut sample_peak = 0.0f32;
-    let mut clipped_samples = 0usize;
-    let mut dc_sum = vec![0.0f64; channels];
-    let mut channel_sum_sq = vec![0.0f64; channels];
-    let mut max_discontinuity = 0.0f32;
-    let mut prev = vec![0.0f32; channels];
-    let mut has_prev = false;
-
-    let silence_linear = 10f32.powf(config.silence_threshold_dbfs / 20.0);
-    let mut silence_run = 0usize;
-    let mut longest_silence = 0usize;
-
-    for frame in 0..frames {
-        let mut frame_energy = 0.0f64;
-        let mut frame_peak = 0.0f32;
-        for c in 0..channels {
-            let x = samples[frame * channels + c];
-            let abs = x.abs();
-            sample_peak = sample_peak.max(abs);
-            frame_peak = frame_peak.max(abs);
-            if abs >= config.clipping_threshold {
-                clipped_samples += 1;
-            }
-            dc_sum[c] += f64::from(x);
-            channel_sum_sq[c] += f64::from(x) * f64::from(x);
-            if has_prev {
-                max_discontinuity = max_discontinuity.max((x - prev[c]).abs());
-            }
-            prev[c] = x;
-            let filtered = hp_states[c].process(shelf_states[c].process(x));
-            frame_energy += f64::from(filtered) * f64::from(filtered);
-        }
-        has_prev = true;
-
-        if frame_peak < silence_linear {
-            silence_run += 1;
-            longest_silence = longest_silence.max(silence_run);
-        } else {
-            silence_run = 0;
-        }
-
-        block_sum += frame_energy - block_ring[block_pos];
-        block_ring[block_pos] = frame_energy;
-        block_pos = (block_pos + 1) % block;
-        block_filled = (block_filled + 1).min(block);
-        if block_filled == block && (frame + 1 - block).is_multiple_of(hop) {
-            let loudness = loudness_from_energy(block_sum / block as f64);
-            momentary_max = momentary_max.max(loudness);
-            block_loudness.push(loudness);
-        }
-
-        short_sum += frame_energy - short_ring[short_pos];
-        short_ring[short_pos] = frame_energy;
-        short_pos = (short_pos + 1) % short_block;
-        short_filled = (short_filled + 1).min(short_block);
-        if short_filled == short_block && (frame + 1 - short_block).is_multiple_of(short_hop) {
-            let loudness = loudness_from_energy(short_sum / short_block as f64);
-            short_term_max = short_term_max.max(loudness);
-            short_loudness.push(loudness);
-        }
-    }
-
-    let duration_s = frames as f64 / f64::from(sample_rate);
-    let dc_offset = dc_sum
-        .iter()
-        .map(|&sum| (sum / frames as f64).abs() as f32)
-        .fold(0.0f32, f32::max);
-    let channel_imbalance_db = channel_imbalance(&channel_sum_sq, frames);
-    let sample_peak_dbfs = if sample_peak > 0.0 {
-        20.0 * sample_peak.log10()
-    } else {
-        SILENCE_LUFS
-    };
-    let true_peak = true_peak(samples, channels);
-    let true_peak_dbtp = if true_peak > 0.0 {
-        20.0 * true_peak.log10()
-    } else {
-        SILENCE_LUFS
-    };
-    let mut prev_short: Option<f32> = None;
-    let mut max_gain_change_lu = 0.0f32;
-    for &loudness in &short_loudness {
-        if loudness <= -70.0 {
-            prev_short = None;
-            continue;
-        }
-        if let Some(previous) = prev_short {
-            max_gain_change_lu = max_gain_change_lu.max((loudness - previous).abs());
-        }
-        prev_short = Some(loudness);
-    }
-
-    LoudnessMeasurement {
-        integrated_lufs: integrated_loudness(&block_loudness),
-        loudness_range_lu: loudness_range(&short_loudness),
-        momentary_max_lufs: momentary_max,
-        short_term_max_lufs: short_term_max,
-        sample_peak_dbfs,
-        true_peak_dbtp,
-        dc_offset,
-        clipped_samples,
-        longest_silence_ms: (longest_silence as f64 * 1000.0 / f64::from(sample_rate)) as u64,
-        max_discontinuity,
-        max_gain_change_lu,
-        channel_imbalance_db,
-        duration_s,
-    }
+    let mut meter = LoudnessMeter::new(sample_rate, channels, config);
+    meter.push(samples);
+    meter.finish()
 }

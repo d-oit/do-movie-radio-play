@@ -16,6 +16,75 @@ use crate::assemble::{
 };
 
 impl RadioPlayAssembler {
+    /// Streams the ducked mix to `writer` as raw little-endian `f32`.
+    ///
+    /// Equivalent to [`RadioPlayAssembler::assemble`] but holds one chunk
+    /// instead of a full-length copy of the source, so peak memory does not
+    /// scale with film length (#418).
+    pub fn assemble_to_writer<W: Write>(
+        &self,
+        original: &[f32],
+        narrations: &[NarrationSegment],
+        writer: &mut W,
+    ) -> Result<()> {
+        self.validate_no_overlaps(narrations)?;
+        let total_len = original.len();
+        let mut chunk = vec![0.0f32; ASSEMBLY_CHUNK_SAMPLES];
+        let mut bytes = Vec::new();
+        let mut start = 0usize;
+        while start < total_len {
+            let end = (start + ASSEMBLY_CHUNK_SAMPLES).min(total_len);
+            let buffer = &mut chunk[..end - start];
+            buffer.copy_from_slice(&original[start..end]);
+            self.duck_chunk(narrations, start, buffer, total_len);
+
+            bytes.clear();
+            bytes.reserve(buffer.len() * 4);
+            for sample in buffer.iter() {
+                bytes.extend_from_slice(&sample.to_le_bytes());
+            }
+            writer.write_all(&bytes)?;
+            start = end;
+        }
+        Ok(())
+    }
+
+    /// Applies narration ducking in place to `[chunk_start, chunk_start + buffer.len())`.
+    ///
+    /// Ducking only rewrites a window around each narration, so a chunk needs
+    /// only the narrations that overlap it — that is what lets the streaming
+    /// path avoid a full-length copy.
+    fn duck_chunk(
+        &self,
+        narrations: &[NarrationSegment],
+        chunk_start: usize,
+        buffer: &mut [f32],
+        total_len: usize,
+    ) {
+        let chunk_end = chunk_start + buffer.len();
+        for narration in narrations {
+            let narr_start = narration.start_sample.min(total_len);
+            let narr_end = narration.end_sample.min(total_len);
+            let narr_len = narr_end.saturating_sub(narr_start);
+            if narr_len == 0 {
+                continue;
+            }
+            let samples = &narration.samples[..narr_len.min(narration.samples.len())];
+            let span_end = narr_start + samples.len();
+            let lo = narr_start.max(chunk_start);
+            let hi = span_end.min(chunk_end);
+            if lo >= hi {
+                continue;
+            }
+            for pos in lo..hi {
+                let i = pos - narr_start;
+                let (duck_ramp, envelope) = self.duck_envelope(i, samples.len());
+                let slot = &mut buffer[pos - chunk_start];
+                *slot = *slot * duck_ramp + samples[i] * envelope;
+            }
+        }
+    }
+
     /// Streams the SFX-mixed radio play to `writer` as raw little-endian `f32`.
     ///
     /// Equivalent to [`RadioPlayAssembler::assemble_with_sfx`]: same ducking,

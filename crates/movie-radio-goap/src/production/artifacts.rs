@@ -90,12 +90,16 @@ pub fn persist_stage_artifacts(
             artifacts.insert("deliverable".to_string(), path_string(deliverable));
             // Keep the pre-mastering mix so a resumed run compares preservation
             // against the same signal, not the gain-adjusted deliverable.
-            let mix = ctx
-                .assembled_audio
-                .as_ref()
-                .context("cannot commit assembled mix: no samples in context")?;
             let path = dir.join(ASSEMBLED_MIX_WAV);
-            commit_wav(&path, mix, ctx.sample_rate)?;
+            if let Some(mix) = ctx.assembled_mix.as_ref() {
+                commit_raw_mix_wav(&path, mix.path(), ctx.sample_rate)?;
+            } else {
+                let mix = ctx
+                    .assembled_audio
+                    .as_ref()
+                    .context("cannot commit assembled mix: no samples in context")?;
+                commit_wav(&path, mix, ctx.sample_rate)?;
+            }
             artifacts.insert("assembled_mix".to_string(), path_string(&path));
             // Source/output intervals for narration and SFX, used by the run
             // manifest to link every item to where it landed.
@@ -279,6 +283,41 @@ fn commit_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     let tmp = part_sibling(path);
     let bytes = serde_json::to_vec_pretty(value)?;
     fs::write(&tmp, bytes).with_context(|| format!("cannot write {}", tmp.display()))?;
+    commit(&tmp, path)
+}
+
+/// Commits a raw little-endian `f32` mono mix as a 16-bit WAV artifact,
+/// streaming so the mix is never loaded whole.
+fn commit_raw_mix_wav(path: &Path, raw_path: &Path, sample_rate_hz: u32) -> Result<()> {
+    use std::io::Read;
+
+    let tmp = part_sibling(path);
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate: sample_rate_hz,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    {
+        let mut writer = hound::WavWriter::create(&tmp, spec)
+            .with_context(|| format!("cannot write {}", tmp.display()))?;
+        let mut reader = std::io::BufReader::new(
+            fs::File::open(raw_path)
+                .with_context(|| format!("cannot open {}", raw_path.display()))?,
+        );
+        let mut bytes = vec![0u8; 1 << 22];
+        loop {
+            let read = reader.read(&mut bytes)?;
+            if read == 0 {
+                break;
+            }
+            for chunk in bytes[..read].as_chunks::<4>().0 {
+                let sample = f32::from_le_bytes(*chunk);
+                writer.write_sample((sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16)?;
+            }
+        }
+        writer.finalize()?;
+    }
     commit(&tmp, path)
 }
 

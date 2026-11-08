@@ -133,6 +133,58 @@ fn ms_to_sample(ms: u64, sample_rate: u32, channels: u16) -> usize {
     samples_per_channel * channels as usize
 }
 
+/// A raw little-endian `f32` mono stream read on demand.
+///
+/// This is the shape assembly streams the pre-mastering mix in, so
+/// verification can read its windows without loading the mix back into memory.
+pub struct RawF32Source {
+    path: PathBuf,
+    frames: usize,
+}
+
+impl RawF32Source {
+    pub fn open(path: &Path) -> Result<Self> {
+        let bytes = std::fs::metadata(path)
+            .with_context(|| format!("cannot stat {}", path.display()))?
+            .len();
+        Ok(Self {
+            path: path.to_path_buf(),
+            frames: (bytes / 4) as usize,
+        })
+    }
+}
+
+impl SampleSource for RawF32Source {
+    fn len(&self) -> usize {
+        self.frames
+    }
+
+    fn read_window(&self, start: usize, end: usize, out: &mut Vec<f32>) -> Result<()> {
+        use std::io::{Read, Seek, SeekFrom};
+
+        out.clear();
+        let end = end.min(self.frames);
+        if start >= end {
+            return Ok(());
+        }
+        let mut file = std::fs::File::open(&self.path)
+            .with_context(|| format!("cannot open {}", self.path.display()))?;
+        file.seek(SeekFrom::Start((start * 4) as u64))
+            .with_context(|| format!("cannot seek {}", self.path.display()))?;
+        let mut bytes = vec![0u8; (end - start) * 4];
+        file.read_exact(&mut bytes)
+            .with_context(|| format!("cannot read {}", self.path.display()))?;
+        out.extend(
+            bytes
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|chunk| f32::from_le_bytes(*chunk)),
+        );
+        Ok(())
+    }
+}
+
 /// Evaluates audio preservation and narration placement on in-memory audio buffers.
 pub fn verify_audio_preservation_samples(
     source_samples: &[f32],

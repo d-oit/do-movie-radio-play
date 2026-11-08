@@ -17,10 +17,11 @@ mod tests;
 pub use analysis::{analyze_audio_features, SegmentAnalysis, SpectralFeatures, VerificationStatus};
 pub use extractor::extract_segment_audio;
 pub use preservation::{
-    verify_audio_preservation_files, verify_audio_preservation_samples, ContentProvenance,
-    FileIntegrityResult, GainDuckingOperation, LicenseProvenanceVerdict, PreservationConfig,
-    PreservationReport, PreservationSummary, TimeRange, TrackMap, TrackMapEntry, TrackType,
-    WindowType, WindowVerificationVerdict,
+    verify_audio_preservation_files, verify_audio_preservation_samples,
+    verify_audio_preservation_sources, ContentProvenance, FileIntegrityResult,
+    GainDuckingOperation, LicenseProvenanceVerdict, PreservationConfig, PreservationReport,
+    PreservationSummary, RawF32Source, SampleSource, TimeRange, TrackMap, TrackMapEntry, TrackType,
+    WavSampleSource, WindowType, WindowVerificationVerdict,
 };
 pub use scoring::AppliedThresholds;
 

@@ -336,3 +336,102 @@ fn test_mutation_disallowed_sfx_license_fails() {
         license_verdict.reason
     );
 }
+
+/// Writing the output as a raw f32 stream — the shape assembly produces —
+/// must verify identically to holding it in memory.
+#[test]
+fn test_raw_file_source_matches_in_memory_source() {
+    let fix = generate_deterministic_e2e_fixture();
+
+    let in_memory = verify_audio_preservation_samples(
+        &fix.source_samples,
+        &fix.output_samples,
+        fix.sample_rate,
+        1,
+        &fix.dialogue_regions,
+        &fix.track_map,
+        &fix.config,
+    );
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let raw_path = dir.path().join("mix.f32");
+    let bytes: Vec<u8> = fix
+        .output_samples
+        .iter()
+        .flat_map(|sample| sample.to_le_bytes())
+        .collect();
+    std::fs::write(&raw_path, bytes).expect("write raw mix");
+
+    let file_source = RawF32Source::open(&raw_path).expect("open raw mix");
+    assert_eq!(file_source.len(), fix.output_samples.len());
+
+    let from_file = verify_audio_preservation_sources(
+        fix.source_samples.as_slice(),
+        &file_source,
+        fix.sample_rate,
+        1,
+        &fix.dialogue_regions,
+        &fix.track_map,
+        &fix.config,
+    )
+    .expect("verify from file");
+
+    assert_eq!(in_memory.overall_passed, from_file.overall_passed);
+    assert_eq!(
+        in_memory.summary.total_windows,
+        from_file.summary.total_windows
+    );
+    assert_eq!(
+        in_memory.summary.failed_windows,
+        from_file.summary.failed_windows
+    );
+    assert_eq!(
+        in_memory.file_integrity.duration_ms,
+        from_file.file_integrity.duration_ms
+    );
+    assert_eq!(
+        in_memory.file_integrity.codec_valid,
+        from_file.file_integrity.codec_valid
+    );
+    assert_eq!(
+        in_memory.window_verdicts.len(),
+        from_file.window_verdicts.len()
+    );
+    for (memory, file) in in_memory
+        .window_verdicts
+        .iter()
+        .zip(&from_file.window_verdicts)
+    {
+        assert_eq!(memory.window_id, file.window_id);
+        assert_eq!(memory.passed, file.passed);
+        assert_eq!(
+            memory.measured_preservation_rms_diff,
+            file.measured_preservation_rms_diff
+        );
+        assert_eq!(
+            memory.measured_dialogue_attenuation_db,
+            file.measured_dialogue_attenuation_db
+        );
+        assert_eq!(memory.measured_peak_level, file.measured_peak_level);
+    }
+}
+
+/// Windows are clamped to the source length, and a window past the end must
+/// behave like the in-memory slice it replaces.
+#[test]
+fn test_raw_file_source_clamps_windows() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let raw_path = dir.path().join("short.f32");
+    let samples: Vec<f32> = (0..10).map(|i| i as f32 / 10.0).collect();
+    let bytes: Vec<u8> = samples.iter().flat_map(|s| s.to_le_bytes()).collect();
+    std::fs::write(&raw_path, bytes).expect("write raw");
+
+    let source = RawF32Source::open(&raw_path).expect("open");
+    let mut out = Vec::new();
+
+    source.read_window(4, 100, &mut out).expect("read past end");
+    assert_eq!(out, vec![0.4, 0.5, 0.6, 0.7, 0.8, 0.9]);
+
+    source.read_window(50, 60, &mut out).expect("read beyond");
+    assert!(out.is_empty());
+}

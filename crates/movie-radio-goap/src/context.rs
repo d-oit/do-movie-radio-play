@@ -32,6 +32,12 @@ pub struct PipelineContext {
     pub learning_db_path: Option<PathBuf>,
     /// Assembled radio play PCM samples after `assemble_radio_play` action.
     pub assembled_audio: Option<Vec<f32>>,
+    /// Pre-mastering mix on disk, as raw little-endian mono `f32`.
+    ///
+    /// Assembly streams the mix here instead of keeping a full-length buffer in
+    /// memory, and preservation verification reads windows from it. Owned so
+    /// the file is removed when the run ends.
+    pub assembled_mix: Option<tempfile::NamedTempFile>,
     /// Track and segment mapping artifact produced during assembly.
     pub track_map: Option<movie_radio_verification::TrackMap>,
     /// Provenance for every SFX asset mixed into this run.
@@ -79,6 +85,7 @@ impl PipelineContext {
             learning_state_path: None,
             learning_db_path: None,
             assembled_audio: None,
+            assembled_mix: None,
             track_map: None,
             sfx_assets: Vec::new(),
             preservation_report: None,

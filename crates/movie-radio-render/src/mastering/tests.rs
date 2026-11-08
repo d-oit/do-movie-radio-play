@@ -242,3 +242,56 @@ fn streaming_master_handles_dynamic_material() {
             < 0.5
     );
 }
+
+fn write_f32_file(path: &std::path::Path, samples: &[f32]) {
+    let mut bytes = Vec::with_capacity(samples.len() * 4);
+    for sample in samples {
+        bytes.extend_from_slice(&sample.to_le_bytes());
+    }
+    std::fs::write(path, bytes).expect("write f32 file");
+}
+
+#[test]
+fn file_backed_master_matches_slice_master() {
+    let input = interleave(&tone(440.0, 2.0, 0.2), &tone(660.0, 2.0, 0.1));
+    let profile = MasteringProfile::podcast();
+    let dir = tempfile::tempdir().expect("tempdir");
+
+    let slice_path = dir.path().join("slice.wav");
+    let slice = master_to_wav(&input, &slice_path, SR, 2, &profile).expect("slice master");
+
+    let source_path = dir.path().join("source.f32");
+    write_f32_file(&source_path, &input);
+    let file_path = dir.path().join("file.wav");
+    let file = master_file_to_wav(&source_path, &file_path, SR, 2, &profile).expect("file master");
+
+    assert_eq!(
+        slice.report.measurements, file.report.measurements,
+        "file-backed mastering must measure identically"
+    );
+    assert_eq!(slice.applied_gain_db, file.applied_gain_db);
+    assert_eq!(slice.limiting_reduction_db, file.limiting_reduction_db);
+    assert_eq!(
+        std::fs::read(&slice_path).expect("read slice"),
+        std::fs::read(&file_path).expect("read file"),
+        "file-backed mastering must produce identical bytes"
+    );
+}
+
+#[test]
+fn file_backed_master_handles_empty_source() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let source_path = dir.path().join("empty.f32");
+    write_f32_file(&source_path, &[]);
+    let output_path = dir.path().join("out.wav");
+    let outcome = master_file_to_wav(
+        &source_path,
+        &output_path,
+        SR,
+        1,
+        &MasteringProfile::ebu_r128(),
+    )
+    .expect("empty master");
+    assert_eq!(outcome.report.measurements.duration_s, 0.0);
+    assert!(output_path.exists());
+}

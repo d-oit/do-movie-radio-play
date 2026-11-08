@@ -8,6 +8,10 @@
 # a summary table.
 #
 # Usage: bash scripts/benchmark-memory.sh [duration_seconds...]
+#
+# Both assembly strategies are measured for each duration: `buffered` holds the
+# whole mix in memory, `streaming` writes it a chunk at a time. Comparing them
+# shows the bounded-memory win directly.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,15 +35,20 @@ binary="${repo_root}/target/release/assembly_mem"
 time_report="$(mktemp)"
 trap 'rm -f "${time_report}"' EXIT
 
-printf '%-12s %-14s %-12s %-10s\n' "duration_s" "peak_rss_mb" "elapsed_ms" "x_realtime"
+printf '%-12s %-11s %-14s %-12s %-10s\n' \
+  "duration_s" "mode" "peak_rss_mb" "elapsed_ms" "x_realtime"
 for duration in "${durations[@]}"; do
-  # One run: GNU time reports on stderr, the benchmark writes JSON to stdout.
-  json="$(/usr/bin/time -f 'peak_rss_kb=%M' "${binary}" "${duration}" 2>"${time_report}")"
-  peak_kb="$(sed -n 's/.*peak_rss_kb=\([0-9]*\).*/\1/p' "${time_report}")"
-  elapsed_ms="$(sed -n 's/.*"elapsed_ms":\([0-9]*\).*/\1/p' <<<"${json}")"
-  throughput="$(sed -n 's/.*"throughput_x_realtime":\([0-9.]*\).*/\1/p' <<<"${json}")"
-  peak_mb="$(awk -v kb="${peak_kb:-0}" 'BEGIN { printf "%.1f", kb / 1024 }')"
-  printf '%-12s %-14s %-12s %-10s\n' "${duration}" "${peak_mb}" "${elapsed_ms}" "${throughput}"
-  printf '{"duration_s":%s,"peak_rss_kb":%s,"elapsed_ms":%s,"throughput_x_realtime":%s}\n' \
-    "${duration}" "${peak_kb:-0}" "${elapsed_ms:-0}" "${throughput:-0}"
+  for mode in buffered streaming; do
+    # One run: GNU time reports on stderr, the benchmark writes JSON to stdout.
+    json="$(/usr/bin/time -f 'peak_rss_kb=%M' \
+      "${binary}" "${duration}" --mode "${mode}" 2>"${time_report}")"
+    peak_kb="$(sed -n 's/.*peak_rss_kb=\([0-9]*\).*/\1/p' "${time_report}")"
+    elapsed_ms="$(sed -n 's/.*"elapsed_ms":\([0-9]*\).*/\1/p' <<<"${json}")"
+    throughput="$(sed -n 's/.*"throughput_x_realtime":\([0-9.]*\).*/\1/p' <<<"${json}")"
+    peak_mb="$(awk -v kb="${peak_kb:-0}" 'BEGIN { printf "%.1f", kb / 1024 }')"
+    printf '%-12s %-11s %-14s %-12s %-10s\n' \
+      "${duration}" "${mode}" "${peak_mb}" "${elapsed_ms}" "${throughput}"
+    printf '{"duration_s":%s,"mode":"%s","peak_rss_kb":%s,"elapsed_ms":%s,"throughput_x_realtime":%s}\n' \
+      "${duration}" "${mode}" "${peak_kb:-0}" "${elapsed_ms:-0}" "${throughput:-0}"
+  done
 done

@@ -1,5 +1,6 @@
 use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use tracing::info;
 
@@ -78,16 +79,30 @@ impl Action for AssembleRadioPlay {
             }
         }
 
-        let radio_play =
-            assembler.assemble_with_sfx(original, &narration_segments, &sfx_segments)?;
+        let total_samples = original.len();
         let track_map =
-            assembler.build_track_map(original.len(), &narration_segments, &sfx_segments);
+            assembler.build_track_map(total_samples, &narration_segments, &sfx_segments);
         ctx.track_map = Some(track_map);
         ctx.sfx_assets = sfx_assets;
 
-        // Master the deliverable to the configured delivery profile. The
-        // pre-mastering mix stays in `assembled_audio` so preservation checks
-        // compare like with like.
+        // Stream the mix to disk instead of holding it in memory. Mastering
+        // reads it back chunk by chunk, and preservation verification reads
+        // only the windows it checks, so the pre-mastering signal is still
+        // available for a like-with-like comparison.
+        let mix_file = tempfile::NamedTempFile::new().context("create assembled mix file")?;
+        {
+            let mut writer =
+                std::io::BufWriter::new(mix_file.reopen().context("open assembled mix file")?);
+            assembler.assemble_with_sfx_to_writer(
+                original,
+                &narration_segments,
+                &sfx_segments,
+                &mut writer,
+            )?;
+            writer.flush().context("flush assembled mix")?;
+        }
+
+        // Master the deliverable to the configured delivery profile.
         let is_mp3 = ctx
             .output_path
             .extension()
@@ -111,8 +126,8 @@ impl Action for AssembleRadioPlay {
         // writer and the MP3 encoder write incrementally, so they write to a
         // staging file that is only moved into place once complete.
         let staged_wav = StagedDeliverable::new(&ctx.output_path)?;
-        let mastered = movie_radio_render::mastering::master_to_wav(
-            &radio_play,
+        let mastered = movie_radio_render::mastering::master_file_to_wav(
+            mix_file.path(),
             staged_wav.path(),
             ctx.sample_rate,
             1,
@@ -130,10 +145,10 @@ impl Action for AssembleRadioPlay {
 
         info!(
             output = %ctx.output_path.display(),
-            duration_s = radio_play.len() as f64 / ctx.sample_rate as f64,
+            duration_s = total_samples as f64 / ctx.sample_rate as f64,
             "Radio play assembled"
         );
-        ctx.assembled_audio = Some(radio_play);
+        ctx.assembled_mix = Some(mix_file);
         Ok(())
     }
 }

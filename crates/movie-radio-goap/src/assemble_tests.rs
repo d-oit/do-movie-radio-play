@@ -16,6 +16,107 @@ fn test_assemble_empty_narrations() {
     assert_eq!(result, original);
 }
 
+fn streamed(
+    assembler: &RadioPlayAssembler,
+    original: &[f32],
+    narrations: &[NarrationSegment],
+) -> Vec<f32> {
+    let mut bytes = Vec::new();
+    assembler
+        .assemble_to_writer(original, narrations, &mut bytes)
+        .expect("stream assembly");
+    bytes
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| f32::from_le_bytes(*chunk))
+        .collect()
+}
+
+fn varied_source(len: usize) -> Vec<f32> {
+    (0..len)
+        .map(|i| {
+            let t = i as f32;
+            (t * 0.013).sin() * 0.3 + (t * 0.0007).cos() * 0.2
+        })
+        .collect()
+}
+
+#[test]
+fn streaming_assembly_matches_buffered_assembly() {
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let original = varied_source(200_000);
+    let narrations = vec![
+        make_narration(1_000, 4_000),
+        make_narration(50_000, 9_000),
+        make_narration(150_000, 2_500),
+    ];
+    let buffered = assembler
+        .assemble(&original, &narrations)
+        .expect("buffered");
+    let streamed = streamed(&assembler, &original, &narrations);
+    assert_eq!(buffered.len(), streamed.len());
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_assembly_matches_across_chunk_boundaries() {
+    // Narrations deliberately straddle the 1M-sample chunk boundary so the
+    // overlap arithmetic is exercised on both sides of a split.
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let boundary = ASSEMBLY_CHUNK_SAMPLES;
+    let original = varied_source(boundary * 2 + 5_000);
+    let narrations = vec![
+        make_narration(boundary - 2_000, 4_000),
+        make_narration(boundary * 2 - 500, 3_000),
+    ];
+    let buffered = assembler
+        .assemble(&original, &narrations)
+        .expect("buffered");
+    let streamed = streamed(&assembler, &original, &narrations);
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_assembly_matches_with_zero_crossfade() {
+    // A zero crossfade takes the branch the old inline code handled
+    // separately, so it must still agree.
+    let assembler = RadioPlayAssembler::new(16_000, 0, 0.3);
+    let original = varied_source(20_000);
+    let narrations = vec![make_narration(1_000, 3_000)];
+    let buffered = assembler
+        .assemble(&original, &narrations)
+        .expect("buffered");
+    let streamed = streamed(&assembler, &original, &narrations);
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_assembly_truncates_narration_past_end_like_buffered() {
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let original = varied_source(10_000);
+    // Narration runs past the end of the source and carries more samples than
+    // its declared span.
+    let mut narration = make_narration(9_000, 5_000);
+    narration.samples = vec![0.4; 8_000];
+    let narrations = vec![narration];
+    let buffered = assembler
+        .assemble(&original, &narrations)
+        .expect("buffered");
+    let streamed = streamed(&assembler, &original, &narrations);
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_assembly_rejects_overlaps() {
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let narrations = vec![make_narration(100, 200), make_narration(150, 200)];
+    let mut bytes = Vec::new();
+    assert!(assembler
+        .assemble_to_writer(&vec![0.0; 1_000], &narrations, &mut bytes)
+        .is_err());
+}
+
 #[test]
 fn test_no_overlap_validation() {
     let assembler = RadioPlayAssembler::new(16000, 50, 0.3);
@@ -193,4 +294,102 @@ fn test_time_stretch_with_out_of_order_scripts() {
     assert_eq!(segments.len(), 2);
     assert!(segments[0].start_sample < segments[1].start_sample);
     assert!(segments[0].end_sample <= segments[1].start_sample);
+}
+
+fn streamed_with_sfx(
+    assembler: &RadioPlayAssembler,
+    original: &[f32],
+    narrations: &[NarrationSegment],
+    sfx: &[SfxSegment],
+) -> Vec<f32> {
+    let mut bytes = Vec::new();
+    assembler
+        .assemble_with_sfx_to_writer(original, narrations, sfx, &mut bytes)
+        .expect("stream assembly with sfx");
+    bytes
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| f32::from_le_bytes(*chunk))
+        .collect()
+}
+
+fn sfx_segment(start_sample: usize, len: usize) -> SfxSegment {
+    SfxSegment {
+        start_sample,
+        samples: (0..len).map(|i| (i as f32 * 0.02).sin() * 0.25).collect(),
+        provenance: None,
+    }
+}
+
+#[test]
+fn streaming_sfx_mix_matches_buffered_sfx_mix() {
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let original = varied_source(120_000);
+    let narrations = vec![make_narration(1_000, 4_000), make_narration(60_000, 9_000)];
+    let sfx = vec![sfx_segment(2_000, 6_000), sfx_segment(70_000, 3_000)];
+
+    let buffered = assembler
+        .assemble_with_sfx(&original, &narrations, &sfx)
+        .expect("buffered");
+    let streamed = streamed_with_sfx(&assembler, &original, &narrations, &sfx);
+    assert_eq!(buffered.len(), streamed.len());
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_sfx_mix_matches_when_normalization_clips() {
+    // A loud source drives the summed peak above 1.0, so the normalization
+    // branch runs on both paths.
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let mut original = varied_source(40_000);
+    for sample in &mut original {
+        *sample *= 4.0;
+    }
+    let narrations = vec![make_narration(500, 3_000)];
+    let sfx = vec![sfx_segment(1_000, 5_000)];
+
+    let buffered = assembler
+        .assemble_with_sfx(&original, &narrations, &sfx)
+        .expect("buffered");
+    let streamed = streamed_with_sfx(&assembler, &original, &narrations, &sfx);
+    assert_eq!(buffered, streamed);
+    assert!(
+        buffered.iter().any(|s| s.abs() > 1.0),
+        "fixture should be loud enough to need normalization"
+    );
+}
+
+#[test]
+fn streaming_sfx_mix_matches_across_chunk_boundaries() {
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let boundary = ASSEMBLY_CHUNK_SAMPLES;
+    let original = varied_source(boundary + 20_000);
+    let narrations = vec![make_narration(boundary - 1_000, 5_000)];
+    let sfx = vec![
+        sfx_segment(boundary - 3_000, 8_000),
+        sfx_segment(1_000, 2_000),
+    ];
+
+    let buffered = assembler
+        .assemble_with_sfx(&original, &narrations, &sfx)
+        .expect("buffered");
+    let streamed = streamed_with_sfx(&assembler, &original, &narrations, &sfx);
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_sfx_mix_without_effects_matches_ducked_mix() {
+    // `assemble_with_sfx` skips AGC, fold and normalization when there are no
+    // effects; the streaming path must do the same.
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let original = varied_source(30_000);
+    let narrations = vec![make_narration(1_000, 3_000)];
+
+    let buffered = assembler
+        .assemble_with_sfx(&original, &narrations, &[])
+        .expect("buffered");
+    let mixed = streamed_with_sfx(&assembler, &original, &narrations, &[]);
+    assert_eq!(buffered, mixed);
+    assert_eq!(mixed, streamed(&assembler, &original, &narrations));
 }

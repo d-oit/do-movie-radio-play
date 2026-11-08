@@ -11,7 +11,8 @@ use movie_radio_learning::database::LearningDb;
 use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_types::SegmentKind;
 use movie_radio_verification::{
-    verify_audio_preservation_samples, verify_timeline, PreservationConfig, TimeRange,
+    verify_audio_preservation_samples, verify_audio_preservation_sources, verify_timeline,
+    PreservationConfig, RawF32Source, TimeRange,
 };
 
 /// Six optional spectral thresholds passed to `verify_timeline`.
@@ -169,9 +170,15 @@ impl VerifyQuality {
     }
 
     fn verify_preservation_and_placement(&self, ctx: &mut PipelineContext) -> Result<()> {
-        let (original, assembled) = match (&ctx.original_audio, &ctx.assembled_audio) {
-            (Some(orig), Some(asm)) => (orig.as_slice(), asm.as_slice()),
-            _ => return Ok(()),
+        let original = match &ctx.original_audio {
+            Some(orig) => orig.as_slice(),
+            None => return Ok(()),
+        };
+        // The mix is normally on disk; a resumed run may only have the
+        // in-memory copy restored from its checkpoint.
+        let mix_file = match (&ctx.assembled_mix, &ctx.assembled_audio) {
+            (Some(file), _) => Some(RawF32Source::open(file.path())?),
+            (None, _) => None,
         };
 
         let dialogue_regions: Vec<TimeRange> = ctx
@@ -195,15 +202,27 @@ impl VerifyQuality {
         });
 
         let config = PreservationConfig::default();
-        let pres_report = verify_audio_preservation_samples(
-            original,
-            assembled,
-            ctx.sample_rate,
-            1,
-            &dialogue_regions,
-            &track_map,
-            &config,
-        );
+        let pres_report = match (&mix_file, &ctx.assembled_audio) {
+            (Some(mix), _) => verify_audio_preservation_sources(
+                original,
+                mix,
+                ctx.sample_rate,
+                1,
+                &dialogue_regions,
+                &track_map,
+                &config,
+            )?,
+            (None, Some(assembled)) => verify_audio_preservation_samples(
+                original,
+                assembled,
+                ctx.sample_rate,
+                1,
+                &dialogue_regions,
+                &track_map,
+                &config,
+            ),
+            (None, None) => return Ok(()),
+        };
 
         let report_path = ctx.output_path.with_extension("preservation-report.json");
         if let Ok(json) = serde_json::to_string_pretty(&pres_report) {

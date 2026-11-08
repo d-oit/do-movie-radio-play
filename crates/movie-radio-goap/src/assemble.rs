@@ -8,6 +8,14 @@ use movie_radio_types::SfxAssetProvenance;
 /// Samples per streaming assembly step. 1M mono samples is 4 MB.
 pub const ASSEMBLY_CHUNK_SAMPLES: usize = 1 << 20;
 
+/// AGC settings the centre-mono mix applies to its main and SFX tracks.
+///
+/// Shared with the streaming mix so the two paths cannot drift apart.
+pub(crate) const MIX_AGC_ATTACK_SECS: f32 = 0.01;
+pub(crate) const MIX_AGC_RELEASE_SECS: f32 = 0.1;
+pub(crate) const MIX_AGC_MAIN_MAX_GAIN: f32 = 1.0;
+pub(crate) const MIX_AGC_SFX_MAX_GAIN: f32 = 20.0;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NarrationSegment {
     pub start_sample: usize,
@@ -107,28 +115,7 @@ impl RadioPlayAssembler {
             let end = (start + ASSEMBLY_CHUNK_SAMPLES).min(total_len);
             let buffer = &mut chunk[..end - start];
             buffer.copy_from_slice(&original[start..end]);
-
-            for narration in narrations {
-                let narr_start = narration.start_sample.min(total_len);
-                let narr_end = narration.end_sample.min(total_len);
-                let narr_len = narr_end.saturating_sub(narr_start);
-                if narr_len == 0 {
-                    continue;
-                }
-                let samples = &narration.samples[..narr_len.min(narration.samples.len())];
-                let span_end = narr_start + samples.len();
-                let lo = narr_start.max(start);
-                let hi = span_end.min(end);
-                if lo >= hi {
-                    continue;
-                }
-                for pos in lo..hi {
-                    let i = pos - narr_start;
-                    let (duck_ramp, envelope) = self.duck_envelope(i, samples.len());
-                    let slot = &mut buffer[pos - start];
-                    *slot = *slot * duck_ramp + samples[i] * envelope;
-                }
-            }
+            self.duck_chunk(narrations, start, buffer, total_len);
 
             bytes.clear();
             bytes.reserve(buffer.len() * 4);
@@ -139,6 +126,42 @@ impl RadioPlayAssembler {
             start = end;
         }
         Ok(())
+    }
+
+    /// Applies narration ducking in place to the samples at `[chunk_start, chunk_start + buffer.len())`.
+    ///
+    /// Ducking only rewrites a window around each narration, so a chunk needs
+    /// only the narrations that overlap it — that is what lets the streaming
+    /// path avoid a full-length copy.
+    pub(crate) fn duck_chunk(
+        &self,
+        narrations: &[NarrationSegment],
+        chunk_start: usize,
+        buffer: &mut [f32],
+        total_len: usize,
+    ) {
+        let chunk_end = chunk_start + buffer.len();
+        for narration in narrations {
+            let narr_start = narration.start_sample.min(total_len);
+            let narr_end = narration.end_sample.min(total_len);
+            let narr_len = narr_end.saturating_sub(narr_start);
+            if narr_len == 0 {
+                continue;
+            }
+            let samples = &narration.samples[..narr_len.min(narration.samples.len())];
+            let span_end = narr_start + samples.len();
+            let lo = narr_start.max(chunk_start);
+            let hi = span_end.min(chunk_end);
+            if lo >= hi {
+                continue;
+            }
+            for pos in lo..hi {
+                let i = pos - narr_start;
+                let (duck_ramp, envelope) = self.duck_envelope(i, samples.len());
+                let slot = &mut buffer[pos - chunk_start];
+                *slot = *slot * duck_ramp + samples[i] * envelope;
+            }
+        }
     }
 
     pub fn assemble_with_sfx(
@@ -182,9 +205,9 @@ impl RadioPlayAssembler {
             sample_rate: self.sample_rate,
             position: StereoPosition::CENTRE,
             reverb: None,
-            agc_attack: 0.01,
-            agc_release: 0.1,
-            agc_max_gain: 1.0,
+            agc_attack: MIX_AGC_ATTACK_SECS,
+            agc_release: MIX_AGC_RELEASE_SECS,
+            agc_max_gain: MIX_AGC_MAIN_MAX_GAIN,
         };
 
         let track_sfx = TrackInput {
@@ -192,9 +215,9 @@ impl RadioPlayAssembler {
             sample_rate: self.sample_rate,
             position: StereoPosition::CENTRE,
             reverb: None,
-            agc_attack: 0.01,
-            agc_release: 0.1,
-            agc_max_gain: 20.0,
+            agc_attack: MIX_AGC_ATTACK_SECS,
+            agc_release: MIX_AGC_RELEASE_SECS,
+            agc_max_gain: MIX_AGC_SFX_MAX_GAIN,
         };
 
         let mut mixer = Mixer::new();
@@ -202,7 +225,7 @@ impl RadioPlayAssembler {
     }
 }
 
-fn add_sfx_segment(track: &mut [f32], seg: &SfxSegment) {
+pub(crate) fn add_sfx_segment(track: &mut [f32], seg: &SfxSegment) {
     let start = seg.start_sample;
     if start >= track.len() {
         return;
@@ -214,7 +237,7 @@ fn add_sfx_segment(track: &mut [f32], seg: &SfxSegment) {
 }
 
 impl RadioPlayAssembler {
-    fn validate_no_overlaps(&self, narrations: &[NarrationSegment]) -> Result<()> {
+    pub(crate) fn validate_no_overlaps(&self, narrations: &[NarrationSegment]) -> Result<()> {
         for i in 0..narrations.len() {
             for j in (i + 1)..narrations.len() {
                 let a = &narrations[i];
@@ -262,7 +285,7 @@ impl RadioPlayAssembler {
     /// old inline version had a branch that was unreachable for a non-zero
     /// crossfade and produced the same values as this formula when the
     /// crossfade was zero, so this is a pure simplification.
-    fn duck_envelope(&self, i: usize, len: usize) -> (f32, f32) {
+    pub(crate) fn duck_envelope(&self, i: usize, len: usize) -> (f32, f32) {
         let cf = self.crossfade_samples;
         let fade_in = if i < cf { i as f32 / cf as f32 } else { 1.0 };
         let remaining = len - i;

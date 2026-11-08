@@ -295,3 +295,101 @@ fn test_time_stretch_with_out_of_order_scripts() {
     assert!(segments[0].start_sample < segments[1].start_sample);
     assert!(segments[0].end_sample <= segments[1].start_sample);
 }
+
+fn streamed_with_sfx(
+    assembler: &RadioPlayAssembler,
+    original: &[f32],
+    narrations: &[NarrationSegment],
+    sfx: &[SfxSegment],
+) -> Vec<f32> {
+    let mut bytes = Vec::new();
+    assembler
+        .assemble_with_sfx_to_writer(original, narrations, sfx, &mut bytes)
+        .expect("stream assembly with sfx");
+    bytes
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| f32::from_le_bytes(*chunk))
+        .collect()
+}
+
+fn sfx_segment(start_sample: usize, len: usize) -> SfxSegment {
+    SfxSegment {
+        start_sample,
+        samples: (0..len).map(|i| (i as f32 * 0.02).sin() * 0.25).collect(),
+        provenance: None,
+    }
+}
+
+#[test]
+fn streaming_sfx_mix_matches_buffered_sfx_mix() {
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let original = varied_source(120_000);
+    let narrations = vec![make_narration(1_000, 4_000), make_narration(60_000, 9_000)];
+    let sfx = vec![sfx_segment(2_000, 6_000), sfx_segment(70_000, 3_000)];
+
+    let buffered = assembler
+        .assemble_with_sfx(&original, &narrations, &sfx)
+        .expect("buffered");
+    let streamed = streamed_with_sfx(&assembler, &original, &narrations, &sfx);
+    assert_eq!(buffered.len(), streamed.len());
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_sfx_mix_matches_when_normalization_clips() {
+    // A loud source drives the summed peak above 1.0, so the normalization
+    // branch runs on both paths.
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let mut original = varied_source(40_000);
+    for sample in &mut original {
+        *sample *= 4.0;
+    }
+    let narrations = vec![make_narration(500, 3_000)];
+    let sfx = vec![sfx_segment(1_000, 5_000)];
+
+    let buffered = assembler
+        .assemble_with_sfx(&original, &narrations, &sfx)
+        .expect("buffered");
+    let streamed = streamed_with_sfx(&assembler, &original, &narrations, &sfx);
+    assert_eq!(buffered, streamed);
+    assert!(
+        buffered.iter().any(|s| s.abs() > 1.0),
+        "fixture should be loud enough to need normalization"
+    );
+}
+
+#[test]
+fn streaming_sfx_mix_matches_across_chunk_boundaries() {
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let boundary = ASSEMBLY_CHUNK_SAMPLES;
+    let original = varied_source(boundary + 20_000);
+    let narrations = vec![make_narration(boundary - 1_000, 5_000)];
+    let sfx = vec![
+        sfx_segment(boundary - 3_000, 8_000),
+        sfx_segment(1_000, 2_000),
+    ];
+
+    let buffered = assembler
+        .assemble_with_sfx(&original, &narrations, &sfx)
+        .expect("buffered");
+    let streamed = streamed_with_sfx(&assembler, &original, &narrations, &sfx);
+    assert_eq!(buffered, streamed);
+}
+
+#[test]
+fn streaming_sfx_mix_without_effects_matches_ducked_mix() {
+    // `assemble_with_sfx` skips AGC, fold and normalization when there are no
+    // effects; the streaming path must do the same.
+    let assembler = RadioPlayAssembler::new(16_000, 50, 0.3);
+    let original = varied_source(30_000);
+    let narrations = vec![make_narration(1_000, 3_000)];
+
+    let buffered = assembler
+        .assemble_with_sfx(&original, &narrations, &[])
+        .expect("buffered");
+    let mixed = streamed_with_sfx(&assembler, &original, &narrations, &[]);
+    assert_eq!(buffered, mixed);
+    assert_eq!(mixed, streamed(&assembler, &original, &narrations));
+}

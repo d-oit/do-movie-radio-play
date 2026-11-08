@@ -236,6 +236,7 @@ pub trait Action: std::fmt::Debug + Send + Sync {
 
 pub mod actions;
 pub mod assemble;
+mod assemble_stream;
 mod context;
 pub mod gaps;
 pub mod narrate;

@@ -21,6 +21,13 @@ def metric(report: dict, key: str) -> float | None:
     return float(value)
 
 
+def media_set(report: dict) -> list[str] | None:
+    media = report.get("media")
+    if not isinstance(media, list):
+        return None
+    return sorted(str(entry) for entry in media)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Compare two FP sweep reports")
     parser.add_argument("--previous", required=True, help="Previous report path")
@@ -63,6 +70,25 @@ def main() -> int:
         "current_weighted_false_positive_risk_rate": current_risk,
         "weighted_false_positive_risk_rate_delta": risk_delta,
     }
+
+    # Deltas are only meaningful when both sweeps scored the same films. A
+    # baseline written before media tracking cannot be compared like-for-like.
+    previous_media = media_set(previous)
+    current_media = media_set(current)
+    comparison["previous_media"] = previous_media
+    comparison["current_media"] = current_media
+    if previous_media is None or current_media is None:
+        skip_reason = "baseline does not record its media set; regenerate it"
+    elif previous_media != current_media:
+        skip_reason = "media set changed; regenerate the baseline before comparing"
+    else:
+        skip_reason = None
+    if skip_reason is not None:
+        comparison["skipped"] = True
+        comparison["skip_reason"] = skip_reason
+        comparison["winner_changed"] = False
+        comparison["weighted_false_positive_rate_delta"] = None
+        comparison["weighted_false_positive_risk_rate_delta"] = None
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(comparison, indent=2) + "\n", encoding="utf-8")

@@ -2,6 +2,7 @@
 import argparse
 import json
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -232,9 +233,14 @@ def main() -> int:
     )
     media_paths = unique_paths(media_inputs)
     legacy_media = {str(path) for path in unique_paths(legacy_inputs)}
-    for media_path in media_paths:
-        if not media_path.exists():
-            raise FileNotFoundError(f"missing media fixture: {media_path}")
+    # Legacy fixtures are local-only fallbacks (plans/040-validation/MOVIES.md);
+    # CI fetches only the post-2000 set, so sweep whatever is present.
+    missing = [path for path in media_paths if not path.exists()]
+    for media_path in missing:
+        print(f"WARN: skipping missing media fixture {media_path}", file=sys.stderr)
+    media_paths = [path for path in media_paths if path.exists()]
+    if not media_paths:
+        raise FileNotFoundError("no media fixtures available for the sweep")
 
     output_path = Path(args.output)
     work_dir = Path(args.work_dir)
@@ -422,6 +428,7 @@ def main() -> int:
     final_report = {
         "generated_at_unix": int(time.time()),
         "elapsed_ms": int((time.time() - started) * 1000),
+        "media": [str(path) for path in media_paths],
         "coverage_guard": {
             "min_coverage_ratio": args.min_coverage_ratio,
             "baseline_non_voice_segments": baseline_coverage,

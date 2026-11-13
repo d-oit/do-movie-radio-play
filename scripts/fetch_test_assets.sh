@@ -36,6 +36,22 @@ fetch_large(){
   return 0
 }
 
+# A swapped upstream file keeps its URL but shifts every timestamp, which
+# surfaces as a detector regression. Drop media whose length is off so the
+# failure names the asset. Usage: require_duration FILE EXPECTED_S TOLERANCE_S
+require_duration(){
+  local file="$1" expected="$2" tol="$3" actual
+  [[ -s "$file" ]] || return 0
+  command -v ffprobe >/dev/null 2>&1 || return 0
+  actual="$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$file" 2>/dev/null || true)"
+  if ! awk -v a="${actual:-}" -v e="$expected" -v t="$tol" \
+    'BEGIN { exit !(a != "" && a - e <= t && e - a <= t) }'; then
+    echo "WARN: $file is ${actual:-unreadable} s, expected ${expected} s +/- ${tol}; discarding"
+    rm -f "$file"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+}
+
 # Mirrors recorded 2026-11-03 after a download.blender.org outage aborted every
 # job (this script marks sintel_trailer_2010.mp4 critical). Each alternate was
 # checked to be the same cut and to decode through the pipeline; Wikimedia is a
@@ -172,11 +188,13 @@ if [[ "${FETCH_SECOND_FILM:-0}" == "1" ]]; then
   # Legacy cohort (pre-2000, public domain). Wikimedia Commons hosts the films and
   # community timed text; the timed text is CC BY-SA 3.0 and the films are PD.
   # Plan 9 from Outer Space (1959) - English truth, 680 cues.
-  # The original upload path (6/64) now 404s; the file lives at e/e8 under its
-  # current name. Prefer the 480p transcode (295 MB) over the 1.2 GB original.
+  # The timed text is synced to the 4747 s cut. Commons deleted that upload on
+  # 2026-11-04 in favour of a 4697 s cut whose audio is ~50 s shorter, so the
+  # truth no longer lines up there. Archive.org hosts the matching cut (public
+  # domain mark). The file is MP4 despite the .webm name; both go through ffmpeg.
   fetch_large "testdata/raw/plan9_1959.webm" \
-    "https://upload.wikimedia.org/wikipedia/commons/transcoded/e/e8/Plan_9_from_Outer_Space_%281959_film%29.webm/Plan_9_from_Outer_Space_%281959_film%29.webm.480p.vp9.webm" \
-    "https://upload.wikimedia.org/wikipedia/commons/e/e8/Plan_9_from_Outer_Space_%281959_film%29.webm"
+    "https://archive.org/download/plan-9-from-outer-space_202009/Plan%209%20from%20Outer%20Space.mp4"
+  require_duration "testdata/raw/plan9_1959.webm" 4747 3
   fetch "https://commons.wikimedia.org/wiki/TimedText:Plan_9_from_Outer_Space_(1959).webm.en.srt?action=raw" "testdata/raw/plan9_1959.en.srt"
   plan9_cues="$(grep -c -- '-->' testdata/raw/plan9_1959.en.srt 2>/dev/null || true)"
   if [[ "${plan9_cues:-0}" != "680" ]]; then

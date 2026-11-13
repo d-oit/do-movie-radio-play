@@ -181,16 +181,16 @@
       "input_media": "testdata/raw/plan9_1959.webm",
       "truth_type": "subtitles",
       "truth_path": "testdata/raw/plan9_1959.en.srt",
-      "total_ms": 4746645,
+      "total_ms": 4747018,
       "profile": "radio-play-default",
       "output_report": "testdata/validation/plan9_1959_en_validation.json",
       "vad_engine": "silero",
       "cue_source": "detector_only",
       "provenance": {
-        "source_url": "https://commons.wikimedia.org/wiki/File:Plan_9_from_Outer_Space_(1959).webm",
+        "source_url": "https://archive.org/details/plan-9-from-outer-space_202009",
         "license": "Public domain (film); CC BY-SA 3.0 (Wikimedia timed text)",
         "license_status": "public_domain",
-        "retrieved": "2026-11-03"
+        "retrieved": "2026-11-13"
       },
       "truth_source": "authored_subtitles",
       "language": "en",

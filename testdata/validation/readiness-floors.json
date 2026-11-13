@@ -22,11 +22,11 @@
       "speech_time_recall": 0.6508
     },
     "plan9-1959-en-holdout": {
-      "non_voice_precision": 0.906,
-      "non_voice_recall": 0.7285,
-      "overlap_ratio": 0.8076,
-      "speech_time_precision": 0.7938,
-      "speech_time_recall": 0.9325
+      "non_voice_precision": 0.899,
+      "non_voice_recall": 0.7288,
+      "overlap_ratio": 0.805,
+      "speech_time_precision": 0.7929,
+      "speech_time_recall": 0.9269
     },
     "charade-1963-fr-holdout": {
       "non_voice_precision": 0.8827,

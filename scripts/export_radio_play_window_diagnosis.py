@@ -116,7 +116,20 @@ def extract_timeline(
     out: Path,
     tag: bool = True,
 ) -> dict:
-    cmd = ["cargo", "run", "--quiet", "--", "extract", str(media), "--output", str(out)]
+    cmd = [
+        "cargo",
+        "run",
+        "--quiet",
+        "-p",
+        "movie-radio-timeline",
+        "--bin",
+        "timeline",
+        "--",
+        "extract",
+        str(media),
+        "--output",
+        str(out),
+    ]
     if config is not None:
         cmd.extend(["--config", str(config)])
     if vad_engine:
@@ -133,6 +146,10 @@ def extract_timeline(
         "cargo",
         "run",
         "--quiet",
+        "-p",
+        "movie-radio-timeline",
+        "--bin",
+        "timeline",
         "--",
         "tag",
         str(media),

@@ -23,9 +23,11 @@ pub fn handle_mastering(
         )
     })?;
     if let Some(target) = target_lufs {
+        // Move the fail band with the target so it keeps the profile's width.
+        let shift = target - profile.target_lufs;
         profile.target_lufs = target;
-        profile.min_lufs = target - profile.tolerance_lu;
-        profile.max_lufs = target + profile.tolerance_lu;
+        profile.min_lufs += shift;
+        profile.max_lufs += shift;
     }
     if let Some(ceiling) = max_true_peak {
         profile.max_true_peak_dbtp = ceiling;

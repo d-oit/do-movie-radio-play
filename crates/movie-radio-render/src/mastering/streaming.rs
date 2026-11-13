@@ -427,11 +427,12 @@ impl StreamingLimiter {
             }
             if self.pending.len() > self.lookahead {
                 let gain = self.window.iter().copied().fold(1.0f32, f32::min);
-                let mut frame = self.pending.pop_front().expect("pending frame");
-                for s in &mut frame {
-                    *s *= gain;
+                if let Some(mut frame) = self.pending.pop_front() {
+                    for s in &mut frame {
+                        *s *= gain;
+                    }
+                    output.extend_from_slice(&frame);
                 }
-                output.extend_from_slice(&frame);
             }
         }
     }

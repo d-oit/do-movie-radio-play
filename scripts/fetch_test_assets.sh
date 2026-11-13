@@ -18,6 +18,24 @@ fetch(){
   return 0
 }
 
+# Full-length films exceed the 120s cap in `fetch`. Try each URL in turn with a
+# generous timeout; the first that yields a non-empty file wins.
+fetch_large(){
+  local out="$1"; shift
+  if [[ -s "$out" ]]; then echo "ok $out"; return 0; fi
+  local url
+  for url in "$@"; do
+    if curl -L --fail --connect-timeout 15 --max-time 900 -o "$out" "$url" 2>/dev/null && [[ -s "$out" ]]; then
+      echo "ok $out"
+      return 0
+    fi
+    rm -f "$out"
+  done
+  echo "WARN: failed to fetch $out from $*"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+  return 0
+}
+
 # Mirrors recorded 2026-11-03 after a download.blender.org outage aborted every
 # job (this script marks sintel_trailer_2010.mp4 critical). Each alternate was
 # checked to be the same cut and to decode through the pipeline; Wikimedia is a
@@ -154,7 +172,11 @@ if [[ "${FETCH_SECOND_FILM:-0}" == "1" ]]; then
   # Legacy cohort (pre-2000, public domain). Wikimedia Commons hosts the films and
   # community timed text; the timed text is CC BY-SA 3.0 and the films are PD.
   # Plan 9 from Outer Space (1959) - English truth, 680 cues.
-  fetch "https://upload.wikimedia.org/wikipedia/commons/6/64/Plan_9_from_Outer_Space_%281959%29.webm" "testdata/raw/plan9_1959.webm"
+  # The original upload path (6/64) now 404s; the file lives at e/e8 under its
+  # current name. Prefer the 480p transcode (295 MB) over the 1.2 GB original.
+  fetch_large "testdata/raw/plan9_1959.webm" \
+    "https://upload.wikimedia.org/wikipedia/commons/transcoded/e/e8/Plan_9_from_Outer_Space_%281959_film%29.webm/Plan_9_from_Outer_Space_%281959_film%29.webm.480p.vp9.webm" \
+    "https://upload.wikimedia.org/wikipedia/commons/e/e8/Plan_9_from_Outer_Space_%281959_film%29.webm"
   fetch "https://commons.wikimedia.org/wiki/TimedText:Plan_9_from_Outer_Space_(1959).webm.en.srt?action=raw" "testdata/raw/plan9_1959.en.srt"
   plan9_cues="$(grep -c -- '-->' testdata/raw/plan9_1959.en.srt 2>/dev/null || true)"
   if [[ "${plan9_cues:-0}" != "680" ]]; then

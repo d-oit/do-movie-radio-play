@@ -95,11 +95,7 @@ impl ActiveLearningSelector {
         // 3. Periodic/random sampling to prevent bias (deterministic based on segment index)
         let hash = (index * 2654435761) % 1000;
         let limit = (self.config.random_sample_rate * 1000.0) as usize;
-        if hash < limit {
-            return true;
-        }
-
-        false
+        hash < limit
     }
 }
 

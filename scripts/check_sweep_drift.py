@@ -43,6 +43,9 @@ def main() -> int:
         return 2
 
     data = load_json(comparison_path)
+    if data.get("skipped"):
+        print(f"sweep drift check skipped: {data.get('skip_reason', 'not comparable')}")
+        return 0
     winner_changed = bool(data.get("winner_changed", False))
     fp_delta = float(data.get("weighted_false_positive_rate_delta", 0.0) or 0.0)
     risk_delta = float(data.get("weighted_false_positive_risk_rate_delta", 0.0) or 0.0)

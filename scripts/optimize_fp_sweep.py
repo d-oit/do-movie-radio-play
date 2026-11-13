@@ -428,6 +428,7 @@ def main() -> int:
     final_report = {
         "generated_at_unix": int(time.time()),
         "elapsed_ms": int((time.time() - started) * 1000),
+        "media": [str(path) for path in media_paths],
         "coverage_guard": {
             "min_coverage_ratio": args.min_coverage_ratio,
             "baseline_non_voice_segments": baseline_coverage,

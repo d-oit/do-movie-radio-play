@@ -182,7 +182,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - run: bash scripts/install-system-deps.sh ffmpeg libasound2-dev
       - run: bash scripts/fetch_test_assets.sh
-      - run: cargo run --quiet -p movie-radio-timeline -- gen-fixtures --output-dir testdata/generated
+      - run: cargo run --quiet -p movie-radio-timeline --bin timeline -- gen-fixtures --output-dir testdata/generated
       - run: python3 scripts/check_validation_coverage.py --tier A --strict-files
       - run: cargo build --workspace
       - run: cargo test --workspace
@@ -233,7 +233,7 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cb407c4fe87966b0b9d1f7350974e80c133dd4bb # cargo-llvm-cov
       - run: bash scripts/fetch_test_assets.sh
-      - run: cargo run --quiet -p movie-radio-timeline -- gen-fixtures --output-dir testdata/generated
+      - run: cargo run --quiet -p movie-radio-timeline --bin timeline -- gen-fixtures --output-dir testdata/generated
       - name: Generate code coverage report
         run: cargo llvm-cov --workspace --all-targets --lcov --output-path lcov.info
       - name: Upload coverage to Codecov

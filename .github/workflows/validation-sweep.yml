@@ -27,7 +27,7 @@ jobs:
           bash scripts/fetch_silero_vad.sh
           pip install onnxruntime
           echo "ORT_DYLIB_PATH=$(python3 -c 'import glob,os,onnxruntime as o;print(glob.glob(os.path.join(os.path.dirname(o.__file__),"capi","libonnxruntime.so*"))[0])')" >> "$GITHUB_ENV"
-      - run: cargo run --quiet -- gen-fixtures --output-dir testdata/generated
+      - run: cargo run --quiet -p movie-radio-timeline --bin timeline -- gen-fixtures --output-dir testdata/generated
       - run: chmod +x scripts/check_validation_coverage.py scripts/run_validation_manifest.py scripts/build_radio_play_failure_breakdown.py scripts/build_radio_play_readiness_report.py scripts/build_radio_play_trend.py scripts/export_radio_play_window_diagnosis.py
       - run: python3 scripts/check_media_intake.py --input analysis/media/modern-multilang-intake.json --min-sub-langs 2 --strict-license
       - run: python3 scripts/check_media_intake.py --input analysis/media/legacy-multilang-intake.json --min-sub-langs 2 --strict-license

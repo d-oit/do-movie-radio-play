@@ -8,6 +8,15 @@ updates:
     labels:
       - "dependencies"
       - "rust"
+    ignore:
+      # qwen_tts 0.1.x pins candle-core/nn/transformers to ^0.9, so bumping
+      # candle-core alone splits the tree into two incompatible candle_core
+      # versions and breaks the qwen3 provider (E0308 in voice/qwen3.rs).
+      # Remove once qwen_tts supports candle 0.11.
+      - dependency-name: "candle-core"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
 
   - package-ecosystem: "github-actions"
     directory: "/"

@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use tracing::info;
 
 mod assemble_action;
+mod retag;
 mod synthesize;
 mod verify;
 
@@ -10,17 +11,12 @@ pub use assemble_action::AssembleRadioPlay;
 pub use synthesize::SynthesizeNarrator;
 pub use verify::{ApplyLearnings, VerifyQuality};
 
-use crate::gaps::{
-    energy_trend_from_source, split_gap_windows, subtract_cues, GapIdentifier,
-    MAX_NARRATION_WINDOW_MS,
-};
+use crate::gaps::{split_gap_windows, subtract_cues, GapIdentifier, MAX_NARRATION_WINDOW_MS};
 use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::chunked::extract_timeline_from_raw_f32;
 use movie_radio_pipeline::pipeline::extract_timeline;
-use movie_radio_pipeline::pipeline::tags::add_tags_from_reader;
-use movie_radio_verification::SampleSource;
-use std::borrow::Cow;
+use retag::{retag_windows, tag_from_source};
 
 #[derive(Debug, Default)]
 pub struct DecodeMovie;
@@ -107,55 +103,6 @@ const SUBTITLE_PAD_MS: u64 = 300;
 /// Speech-to-text timings are rougher than authored subtitles.
 const DERIVED_CUE_PAD_MS: u64 = 800;
 const MIN_WINDOW_MS: u64 = 1_000;
-
-/// Re-derives each window's tags from its own audio so a long scene is
-/// described by what is audible in that stretch, not by the whole segment.
-fn retag_windows(
-    windows: &mut [movie_radio_types::VisualGap],
-    source: &crate::OriginalAudio,
-    sr: u32,
-    file: &str,
-) -> Result<()> {
-    use movie_radio_types::{Segment, SegmentKind, TimelineOutput};
-    let mut tl = TimelineOutput {
-        file: file.to_string(),
-        analysis_sample_rate: sr,
-        frame_ms: 20,
-        segments: windows
-            .iter()
-            .map(|w| Segment {
-                start_ms: w.start_ms,
-                end_ms: w.end_ms,
-                kind: SegmentKind::NonVoice,
-                confidence: w.confidence,
-                tags: Vec::new(),
-                prompt: None,
-                sfx_trigger: None,
-            })
-            .collect(),
-    };
-    tag_from_source(source, sr, &mut tl)?;
-    for (w, seg) in windows.iter_mut().zip(tl.segments) {
-        if !seg.tags.is_empty() {
-            w.tags = seg.tags;
-        }
-        w.trend = energy_trend_from_source(source, sr, w.start_ms, w.end_ms)?;
-    }
-    Ok(())
-}
-
-/// Tags non-voice segments from their own windows of the spooled audio.
-fn tag_from_source<S: SampleSource + ?Sized>(
-    source: &S,
-    sr: u32,
-    timeline: &mut movie_radio_types::TimelineOutput,
-) -> Result<()> {
-    add_tags_from_reader(source.len(), sr, timeline, None, |start, end| {
-        let mut clip = Vec::new();
-        source.read_window(start, end, &mut clip)?;
-        Ok(Cow::Owned(clip))
-    })
-}
 
 #[derive(Debug, Default)]
 pub struct IdentifyVisualGaps;

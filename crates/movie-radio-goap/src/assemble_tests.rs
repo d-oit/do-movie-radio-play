@@ -113,7 +113,7 @@ fn streaming_assembly_rejects_overlaps() {
     let narrations = vec![make_narration(100, 200), make_narration(150, 200)];
     let mut bytes = Vec::new();
     assert!(assembler
-        .assemble_to_writer(&vec![0.0; 1_000], &narrations, &mut bytes)
+        .assemble_to_writer(&vec![0.0; 1_000][..], &narrations, &mut bytes)
         .is_err());
 }
 

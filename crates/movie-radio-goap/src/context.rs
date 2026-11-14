@@ -18,7 +18,7 @@ pub struct PipelineContext {
     pub narration_audio: Vec<Option<movie_radio_voice::AudioOutput>>,
     /// Provider for each `narration_audio` entry; keeps trace attribution honest.
     pub narration_provider: Vec<Option<String>>,
-    pub original_audio: Option<Vec<f32>>,
+    pub original_audio: Option<crate::OriginalAudio>,
     pub sample_rate: u32,
     /// Optional voice synthesis config (providers, fallback chain, language, voice_id).
     pub voice_config: Option<movie_radio_voice::VoiceSynthesisConfig>,

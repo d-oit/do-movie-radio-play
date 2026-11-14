@@ -295,3 +295,25 @@ fn file_backed_master_handles_empty_source() {
     assert_eq!(outcome.report.measurements.duration_s, 0.0);
     assert!(output_path.exists());
 }
+
+#[test]
+fn ebu_r128_warns_outside_half_lu_and_fails_outside_one_lu() {
+    let signal = tone(1000.0, 3.0, 0.05);
+    let measured = validate(&signal, SR, 1, &MasteringProfile::ebu_r128())
+        .measurements
+        .integrated_lufs;
+    let status_at = |offset: f32| {
+        let mut profile = MasteringProfile::ebu_r128();
+        profile.target_lufs = measured + offset;
+        profile.min_lufs = profile.target_lufs - 1.0;
+        profile.max_lufs = profile.target_lufs + 1.0;
+        validate(&signal, SR, 1, &profile)
+            .checks
+            .iter()
+            .find(|c| c.id == "integrated_loudness")
+            .map(|c| c.status)
+    };
+    assert_eq!(status_at(0.2), Some(CheckStatus::Pass));
+    assert_eq!(status_at(0.7), Some(CheckStatus::Warn));
+    assert_eq!(status_at(1.5), Some(CheckStatus::Fail));
+}

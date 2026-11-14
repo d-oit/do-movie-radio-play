@@ -30,11 +30,15 @@ impl Default for MasteringProfile {
 
 impl MasteringProfile {
     /// EBU R128 broadcast delivery: -23 LUFS integrated, -1 dBTP ceiling.
+    ///
+    /// R 128 v5 sets ±0.5 LU as the normal tolerance and allows ±1.0 LU only
+    /// where the target is not practically achievable, so the inner band warns
+    /// and the outer band fails.
     pub fn ebu_r128() -> Self {
         Self {
             name: "ebu_r128".to_string(),
             target_lufs: -23.0,
-            tolerance_lu: 1.0,
+            tolerance_lu: 0.5,
             max_true_peak_dbtp: -1.0,
             max_lra_lu: 20.0,
             min_lufs: -24.0,

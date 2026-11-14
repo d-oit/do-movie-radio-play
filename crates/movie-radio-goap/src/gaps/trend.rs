@@ -31,8 +31,40 @@ pub fn energy_trend(
     if third == 0 {
         return None;
     }
-    let first = rms(&samples[start..start + third]);
-    let last = rms(&samples[end - third..end]);
+    classify(
+        rms(&samples[start..start + third]),
+        rms(&samples[end - third..end]),
+    )
+}
+
+/// [`energy_trend`] over a source read on demand; only the first and last
+/// third of the span are read.
+pub fn energy_trend_from_source<S>(
+    source: &S,
+    sample_rate: u32,
+    start_ms: u64,
+    end_ms: u64,
+) -> anyhow::Result<Option<GapTrend>>
+where
+    S: movie_radio_verification::SampleSource + ?Sized,
+{
+    if end_ms.saturating_sub(start_ms) < MIN_SPAN_MS || sample_rate == 0 {
+        return Ok(None);
+    }
+    let at = |ms: u64| ((ms as u128 * u128::from(sample_rate) / 1000) as usize).min(source.len());
+    let (start, end) = (at(start_ms), at(end_ms));
+    let third = end.saturating_sub(start) / 3;
+    if third == 0 {
+        return Ok(None);
+    }
+    let mut head = Vec::new();
+    let mut tail = Vec::new();
+    source.read_window(start, start + third, &mut head)?;
+    source.read_window(end - third, end, &mut tail)?;
+    Ok(classify(rms(&head), rms(&tail)))
+}
+
+fn classify(first: f32, last: f32) -> Option<GapTrend> {
     if first.max(last) < AUDIBLE_RMS {
         return None;
     }

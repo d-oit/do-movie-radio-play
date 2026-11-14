@@ -47,7 +47,7 @@ pub fn persist_stage_artifacts(
                 .as_ref()
                 .context("cannot commit decoded audio: no samples in context")?;
             let path = dir.join(DECODED_AUDIO);
-            commit_wav(&path, samples, ctx.sample_rate)?;
+            commit_raw_mix_wav(&path, samples.path(), ctx.sample_rate)?;
             artifacts.insert("decoded_audio".to_string(), path_string(&path));
         }
         "analyze_speech" => {
@@ -152,7 +152,7 @@ pub fn restore_stage_artifacts(
             let path = artifact_path(artifacts, "decoded_audio")?;
             let (samples, sample_rate) = read_wav(path)?;
             ctx.sample_rate = sample_rate;
-            ctx.original_audio = Some(samples);
+            ctx.original_audio = Some(crate::OriginalAudio::from_samples(&samples)?);
         }
         "analyze_speech" => {
             ctx.timeline = Some(read_json(artifact_path(artifacts, "timeline")?)?);

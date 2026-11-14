@@ -1,7 +1,7 @@
 mod split;
 mod trend;
 pub use split::{split_gap_windows, subtract_cues, MAX_NARRATION_WINDOW_MS};
-pub use trend::energy_trend;
+pub use trend::{energy_trend, energy_trend_from_source};
 
 use anyhow::Result;
 use movie_radio_types::{GapAnalysisOutput, Segment, SegmentKind, TimelineOutput, VisualGap};

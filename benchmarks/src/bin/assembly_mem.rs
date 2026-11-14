@@ -85,7 +85,7 @@ fn main() {
         Mode::Streaming => {
             let mut sink = std::io::BufWriter::new(std::io::sink());
             assembler
-                .assemble_with_sfx_to_writer(&original, &narrations, &[], &mut sink)
+                .assemble_with_sfx_to_writer(&original[..], &narrations, &[], &mut sink)
                 .expect("stream assemble");
             total_samples
         }

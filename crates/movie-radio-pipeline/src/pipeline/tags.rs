@@ -50,6 +50,25 @@ pub fn add_tags_from_samples(
     timeline: &mut TimelineOutput,
     rules: Option<&TagRules>,
 ) {
+    let read = |start: usize, end: usize| -> Result<std::borrow::Cow<'_, [f32]>> {
+        Ok(std::borrow::Cow::Borrowed(&samples[start..end]))
+    };
+    // Slice reads cannot fail.
+    let _ = add_tags_from_reader(samples.len(), sr, timeline, rules, read);
+}
+
+/// Tags non-voice segments reading only each segment's window, so the source
+/// can live on disk. `read(start, end)` receives in-range sample indices.
+pub fn add_tags_from_reader<'a, F>(
+    total_samples: usize,
+    sr: u32,
+    timeline: &mut TimelineOutput,
+    rules: Option<&TagRules>,
+    mut read: F,
+) -> Result<()>
+where
+    F: FnMut(usize, usize) -> Result<std::borrow::Cow<'a, [f32]>>,
+{
     let default_rules = TagRules::default();
     let rules = rules.unwrap_or(&default_rules);
     let mut extractor = FeatureExtractor::new(1024);
@@ -60,14 +79,15 @@ pub fn add_tags_from_samples(
         let start = (seg.start_ms * sr as u64 / 1000) as usize;
         let end = (seg.end_ms * sr as u64 / 1000) as usize;
 
-        let start = start.min(samples.len());
-        let end = end.clamp(start, samples.len());
+        let start = start.min(total_samples);
+        let end = end.clamp(start, total_samples);
 
-        let clip = &samples[start..end];
-        let f = extractor.extract(clip, sr);
+        let clip = read(start, end)?;
+        let f = extractor.extract(&clip, sr);
         seg.tags = map_tags(f, rules);
     }
     autofill_silent_scene_sfx(timeline);
+    Ok(())
 }
 
 fn map_tags(f: crate::pipeline::features::FeatureSet, rules: &TagRules) -> Vec<String> {

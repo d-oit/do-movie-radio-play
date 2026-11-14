@@ -137,6 +137,58 @@ where
     Ok(false)
 }
 
+/// Seconds of audio decoded per step when spooling to a file.
+const SPOOL_CHUNK_SEC: u64 = 60;
+
+/// Decodes `path` to a mono little-endian `f32` file at `target_sample_rate`
+/// without holding the decoded track in memory. Returns the sample count.
+pub fn decode_audio_to_raw_f32(path: &Path, target_sample_rate: u32, out: &Path) -> Result<usize> {
+    use std::io::{Seek, SeekFrom, Write};
+
+    let mut file = std::fs::File::create(out)?;
+    let mut samples = 0usize;
+    let mut bytes = Vec::new();
+    // Chunk 0 restarts the output, which discards what a failed incremental
+    // attempt delivered before the full-decode retry.
+    let mut spool = |chunk: &[f32], idx: usize| -> Result<()> {
+        if idx == 0 {
+            file.set_len(0)?;
+            file.seek(SeekFrom::Start(0))?;
+            samples = 0;
+        }
+        bytes.clear();
+        bytes.reserve(chunk.len() * 4);
+        for sample in chunk {
+            bytes.extend_from_slice(&sample.to_le_bytes());
+        }
+        file.write_all(&bytes)?;
+        samples += chunk.len();
+        Ok(())
+    };
+    let streamed = decode_audio_chunks_prefer_streaming(
+        path,
+        target_sample_rate,
+        SPOOL_CHUNK_SEC,
+        &mut spool,
+    )?;
+    if !streamed {
+        decode_audio_chunks_cb(path, target_sample_rate, SPOOL_CHUNK_SEC, &mut spool)?;
+    }
+    file.flush()?;
+    Ok(samples)
+}
+
+/// Reads a mono little-endian `f32` file whole.
+pub fn read_raw_f32(path: &Path) -> Result<Vec<f32>> {
+    let bytes = std::fs::read(path)?;
+    Ok(bytes
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|b| f32::from_le_bytes(*b))
+        .collect())
+}
+
 pub fn decode_audio_chunked(
     path: &Path,
     target_sample_rate: u32,

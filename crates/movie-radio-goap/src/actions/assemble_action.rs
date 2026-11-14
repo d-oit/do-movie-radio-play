@@ -9,6 +9,7 @@ use crate::{Action, PipelineContext, WorldState};
 use movie_radio_pipeline::pipeline::sfx_autofill::autofill_silent_scene_sfx;
 use movie_radio_render::sfx::SfxManager;
 use movie_radio_types::SfxTrigger;
+use movie_radio_verification::SampleSource;
 
 #[derive(Debug, Default)]
 pub struct AssembleRadioPlay;
@@ -79,7 +80,7 @@ impl Action for AssembleRadioPlay {
             }
         }
 
-        let total_samples = original.len();
+        let total_samples = SampleSource::len(original);
         let track_map =
             assembler.build_track_map(total_samples, &narration_segments, &sfx_segments);
         ctx.track_map = Some(track_map);

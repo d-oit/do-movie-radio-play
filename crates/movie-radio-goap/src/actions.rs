@@ -11,13 +11,16 @@ pub use synthesize::SynthesizeNarrator;
 pub use verify::{ApplyLearnings, VerifyQuality};
 
 use crate::gaps::{
-    energy_trend, split_gap_windows, subtract_cues, GapIdentifier, MAX_NARRATION_WINDOW_MS,
+    energy_trend_from_source, split_gap_windows, subtract_cues, GapIdentifier,
+    MAX_NARRATION_WINDOW_MS,
 };
 use crate::narrate::NarrationGenerator;
 use crate::{Action, PipelineContext, WorldState};
-use movie_radio_pipeline::pipeline::decode::decode_audio;
-use movie_radio_pipeline::pipeline::tags::add_tags_from_samples;
-use movie_radio_pipeline::pipeline::{extract_timeline, extract_timeline_from_samples_with_path};
+use movie_radio_pipeline::pipeline::chunked::extract_timeline_from_raw_f32;
+use movie_radio_pipeline::pipeline::extract_timeline;
+use movie_radio_pipeline::pipeline::tags::add_tags_from_reader;
+use movie_radio_verification::SampleSource;
+use std::borrow::Cow;
 
 #[derive(Debug, Default)]
 pub struct DecodeMovie;
@@ -46,13 +49,9 @@ impl Action for DecodeMovie {
             return Ok(());
         }
         info!(movie = %ctx.movie_path.display(), "Decoding movie audio");
-        let (samples, sample_rate) = decode_audio(&ctx.movie_path, ctx.sample_rate)?;
-        ctx.original_audio = Some(samples);
-        ctx.sample_rate = sample_rate;
-        info!(
-            samples = ctx.original_audio.as_ref().map_or(0, |s| s.len()),
-            "Movie decoded"
-        );
+        let audio = crate::OriginalAudio::decode(&ctx.movie_path, ctx.sample_rate)?;
+        info!(samples = audio.len(), "Movie decoded to spool file");
+        ctx.original_audio = Some(audio);
         Ok(())
     }
 }
@@ -89,10 +88,10 @@ impl Action for ExtractTimeline {
         info!("Extracting audio timeline");
         let timeline = if let Some(ref original) = ctx.original_audio {
             let mut timeline =
-                extract_timeline_from_samples_with_path(original, &ctx.movie_path, &ctx.config)?;
+                extract_timeline_from_raw_f32(original.path(), &ctx.movie_path, &ctx.config)?;
             // Untagged segments never clear the gap-confidence threshold, so
             // without this the narrator silently emits nothing.
-            add_tags_from_samples(original, ctx.sample_rate, &mut timeline, None);
+            tag_from_source(original, ctx.sample_rate, &mut timeline)?;
             timeline
         } else {
             extract_timeline(&ctx.movie_path, &ctx.config)?
@@ -113,10 +112,10 @@ const MIN_WINDOW_MS: u64 = 1_000;
 /// described by what is audible in that stretch, not by the whole segment.
 fn retag_windows(
     windows: &mut [movie_radio_types::VisualGap],
-    samples: &[f32],
+    source: &crate::OriginalAudio,
     sr: u32,
     file: &str,
-) {
+) -> Result<()> {
     use movie_radio_types::{Segment, SegmentKind, TimelineOutput};
     let mut tl = TimelineOutput {
         file: file.to_string(),
@@ -135,13 +134,27 @@ fn retag_windows(
             })
             .collect(),
     };
-    add_tags_from_samples(samples, sr, &mut tl, None);
+    tag_from_source(source, sr, &mut tl)?;
     for (w, seg) in windows.iter_mut().zip(tl.segments) {
         if !seg.tags.is_empty() {
             w.tags = seg.tags;
         }
-        w.trend = energy_trend(samples, sr, w.start_ms, w.end_ms);
+        w.trend = energy_trend_from_source(source, sr, w.start_ms, w.end_ms)?;
     }
+    Ok(())
+}
+
+/// Tags non-voice segments from their own windows of the spooled audio.
+fn tag_from_source<S: SampleSource + ?Sized>(
+    source: &S,
+    sr: u32,
+    timeline: &mut movie_radio_types::TimelineOutput,
+) -> Result<()> {
+    add_tags_from_reader(source.len(), sr, timeline, None, |start, end| {
+        let mut clip = Vec::new();
+        source.read_window(start, end, &mut clip)?;
+        Ok(Cow::Owned(clip))
+    })
 }
 
 #[derive(Debug, Default)]
@@ -205,8 +218,8 @@ impl Action for IdentifyVisualGaps {
             None => gap_analysis.gaps.clone(),
         };
         let mut windows = split_gap_windows(&clear_gaps, MAX_NARRATION_WINDOW_MS);
-        if let Some(samples) = ctx.original_audio.as_deref() {
-            retag_windows(&mut windows, samples, ctx.sample_rate, &timeline.file);
+        if let Some(source) = ctx.original_audio.as_ref() {
+            retag_windows(&mut windows, source, ctx.sample_rate, &timeline.file)?;
         }
         let gap_analysis = movie_radio_types::GapAnalysisOutput {
             gaps: windows,

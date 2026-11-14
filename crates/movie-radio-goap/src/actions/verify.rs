@@ -11,8 +11,7 @@ use movie_radio_learning::database::LearningDb;
 use movie_radio_pipeline::pipeline::decode::decode_audio;
 use movie_radio_types::SegmentKind;
 use movie_radio_verification::{
-    verify_audio_preservation_samples, verify_audio_preservation_sources, verify_timeline,
-    PreservationConfig, RawF32Source, TimeRange,
+    verify_audio_preservation_sources, verify_timeline, PreservationConfig, RawF32Source, TimeRange,
 };
 
 /// Six optional spectral thresholds passed to `verify_timeline`.
@@ -171,7 +170,7 @@ impl VerifyQuality {
 
     fn verify_preservation_and_placement(&self, ctx: &mut PipelineContext) -> Result<()> {
         let original = match &ctx.original_audio {
-            Some(orig) => orig.as_slice(),
+            Some(orig) => orig,
             None => return Ok(()),
         };
         // The mix is normally on disk; a resumed run may only have the
@@ -212,15 +211,15 @@ impl VerifyQuality {
                 &track_map,
                 &config,
             )?,
-            (None, Some(assembled)) => verify_audio_preservation_samples(
+            (None, Some(assembled)) => verify_audio_preservation_sources(
                 original,
-                assembled,
+                &assembled[..],
                 ctx.sample_rate,
                 1,
                 &dialogue_regions,
                 &track_map,
                 &config,
-            ),
+            )?,
             (None, None) => return Ok(()),
         };
 

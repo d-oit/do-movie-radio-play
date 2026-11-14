@@ -241,8 +241,10 @@ mod context;
 pub mod gaps;
 pub mod narrate;
 pub mod orchestrator;
+mod original_audio;
 pub mod planner;
 pub use context::PipelineContext;
+pub use original_audio::OriginalAudio;
 pub mod production;
 
 #[cfg(test)]

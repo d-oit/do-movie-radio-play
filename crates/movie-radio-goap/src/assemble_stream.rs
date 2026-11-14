@@ -5,6 +5,7 @@
 //! memory stays bounded for long films (#418).
 
 use anyhow::Result;
+use movie_radio_verification::SampleSource;
 use std::io::Write;
 
 use movie_radio_render::agc::StreamingAgc;
@@ -21,21 +22,23 @@ impl RadioPlayAssembler {
     /// Equivalent to [`RadioPlayAssembler::assemble`] but holds one chunk
     /// instead of a full-length copy of the source, so peak memory does not
     /// scale with film length (#418).
-    pub fn assemble_to_writer<W: Write>(
+    pub fn assemble_to_writer<S: SampleSource + ?Sized, W: Write>(
         &self,
-        original: &[f32],
+        original: &S,
         narrations: &[NarrationSegment],
         writer: &mut W,
     ) -> Result<()> {
         self.validate_no_overlaps(narrations)?;
         let total_len = original.len();
         let mut chunk = vec![0.0f32; ASSEMBLY_CHUNK_SAMPLES];
+        let mut window = Vec::with_capacity(ASSEMBLY_CHUNK_SAMPLES);
         let mut bytes = Vec::new();
         let mut start = 0usize;
         while start < total_len {
             let end = (start + ASSEMBLY_CHUNK_SAMPLES).min(total_len);
             let buffer = &mut chunk[..end - start];
-            buffer.copy_from_slice(&original[start..end]);
+            original.read_window(start, end, &mut window)?;
+            buffer.copy_from_slice(&window);
             self.duck_chunk(narrations, start, buffer, total_len);
 
             bytes.clear();
@@ -90,9 +93,9 @@ impl RadioPlayAssembler {
     /// Equivalent to [`RadioPlayAssembler::assemble_with_sfx`]: same ducking,
     /// same AGC per track, same summation, and the same `SQRT_2` fold with the
     /// same peak normalization, applied in the same order so the bytes match.
-    pub fn assemble_with_sfx_to_writer<W: Write>(
+    pub fn assemble_with_sfx_to_writer<S: SampleSource + ?Sized, W: Write>(
         &self,
-        original: &[f32],
+        original: &S,
         narrations: &[NarrationSegment],
         sfx_segments: &[SfxSegment],
         writer: &mut W,
@@ -142,9 +145,9 @@ impl RadioPlayAssembler {
     }
 
     /// Calls `visit` with each mixed chunk, in order.
-    fn for_each_mixed_chunk<F>(
+    fn for_each_mixed_chunk<S: SampleSource + ?Sized, F>(
         &self,
-        original: &[f32],
+        original: &S,
         narrations: &[NarrationSegment],
         sfx_track: &[f32],
         mut visit: F,
@@ -169,12 +172,14 @@ impl RadioPlayAssembler {
             MIX_AGC_SFX_MAX_GAIN,
         )?;
         let mut chunk = vec![0.0f32; ASSEMBLY_CHUNK_SAMPLES];
+        let mut window = Vec::with_capacity(ASSEMBLY_CHUNK_SAMPLES);
         let mut sfx_buf = vec![0.0f32; ASSEMBLY_CHUNK_SAMPLES];
         let mut start = 0usize;
         while start < total_len {
             let end = (start + ASSEMBLY_CHUNK_SAMPLES).min(total_len);
             let buffer = &mut chunk[..end - start];
-            buffer.copy_from_slice(&original[start..end]);
+            original.read_window(start, end, &mut window)?;
+            buffer.copy_from_slice(&window);
             self.duck_chunk(narrations, start, buffer, total_len);
             main_agc.process(buffer);
             for sample in buffer.iter_mut() {

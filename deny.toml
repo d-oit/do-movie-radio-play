@@ -16,7 +16,6 @@ ignore = [
   "RUSTSEC-2026-0367",  # zip transitive dep
   "RUSTSEC-2026-0368",  # zip transitive dep
   "RUSTSEC-2026-0369",  # zip transitive dep
-  "RUSTSEC-2026-0381",  # webpki-roots 0.26 transitive dep of ureq 2
   # zip 7.4.0 <= qwen_tts -> candle-core 0.9.2 -> zip ^7.2.0. The fix needs
   # zip >= 9.0.0; only candle-core >= 0.11 accepts that, and qwen_tts 0.1.1
   # requires candle ^0.9, so no resolvable upgrade exists. The advisory covers

@@ -288,7 +288,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
-      - run: bash scripts/install-system-deps.sh ffmpeg libasound2-dev
+      # FFmpeg is optional for benchmarks: benchmark.sh falls back to the generated WAV
+      # fixture, while pipeline_bench falls back to deterministic synthetic PCM.
+      # Keep only ALSA headers, which are required to build the workspace audio crates.
+      - run: bash scripts/install-system-deps.sh libasound2-dev
       - run: bash scripts/fetch_test_assets.sh
       - run: bash scripts/benchmark.sh testdata/raw/elephants_dream_2006.mp4 analysis/benchmarks/ci.json
       - name: Check benchmark regression
